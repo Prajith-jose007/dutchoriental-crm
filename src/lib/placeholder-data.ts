@@ -10,8 +10,8 @@ export const placeholderUsers: User[] = [
 export const placeholderAgents: Agent[] = [
   { id: 'agentA', name: 'Prime Charters Agency', email: 'contact@primecharters.com', discountRate: 12, websiteUrl: 'https://primecharters.com', status: 'Active' },
   { id: 'agentB', name: 'Luxury Yacht Bookings Co.', email: 'bookings@lyb.co', discountRate: 15, websiteUrl: 'https://lyb.co', status: 'Active' },
-  { id: 'agentC', name: 'Nautical Adventures Ltd.', email: 'info@nauticalltd.com', discountRate: 10, status: 'Inactive' },
-  { id: 'agentD', name: 'Old Timer Fleet (Closed)', email: 'archive@oldtimer.com', discountRate: 5, status: 'Archived' },
+  { id: 'agentC', name: 'Nautical Adventures Ltd.', email: 'info@nauticalltd.com', discountRate: 10, status: 'Non Active' }, // Updated status
+  { id: 'agentD', name: 'Old Timer Fleet (Closed)', email: 'archive@oldtimer.com', discountRate: 5, status: 'Dead' }, // Updated status
 ];
 
 export const placeholderYachts: Yacht[] = [
@@ -62,7 +62,7 @@ export const placeholderLeads: Lead[] = [
     type: 'Corporate Event', invoiceId: 'inv001', packageType: 'LOTUS', clientName: 'Tech Corp',
     lotusVip499: 10, 
     quantity: 10, rate: 1500, 
-    totalAmount: 15000, commissionPercentage: 12, commissionAmount: 1800, // agentA's rate
+    totalAmount: 15000, commissionPercentage: 12, commissionAmount: 1800, 
     netAmount: 13200, paidAmount: 15000, balanceAmount: 0,
     createdAt: '2024-06-15', updatedAt: '2024-07-01'
   },
@@ -71,7 +71,7 @@ export const placeholderLeads: Lead[] = [
     type: 'Private Party', packageType: 'SUNSET', clientName: 'Innovate Ltd',
     sunsetDrinks299: 20,
     quantity: 20, rate: 1100, 
-    totalAmount: 22000, commissionPercentage: 15, commissionAmount: 3300, // agentB's rate
+    totalAmount: 22000, commissionPercentage: 15, commissionAmount: 3300, 
     netAmount: 18700, paidAmount: 10000, balanceAmount: 12000,
     createdAt: '2024-06-20', updatedAt: '2024-07-05'
   },
@@ -80,7 +80,7 @@ export const placeholderLeads: Lead[] = [
     type: 'Tour Group', packageType: 'OE', clientName: 'Solutions Inc',
     oeFood149: 50,
     quantity: 50, rate: 360, 
-    totalAmount: 18000, commissionPercentage: 12, commissionAmount: 2160, // agentA's rate
+    totalAmount: 18000, commissionPercentage: 12, commissionAmount: 2160, 
     netAmount: 15840, paidAmount: 0, balanceAmount: 18000,
     createdAt: '2024-07-10', updatedAt: '2024-07-12'
   },
@@ -89,7 +89,7 @@ export const placeholderLeads: Lead[] = [
     type: 'Wedding Reception', packageType: 'DHOW', clientName: 'Global Co',
     dhowVip299: 30, othersAmtCake: 500,
     quantity: 30, rate: 1000, 
-    totalAmount: 30500, commissionPercentage: 10, commissionAmount: 3050, // agentC's rate
+    totalAmount: 30500, commissionPercentage: 10, commissionAmount: 3050, 
     netAmount: 27450, paidAmount: 0, balanceAmount: 30500,
     createdAt: '2024-07-20', updatedAt: '2024-07-20'
   },

@@ -5,18 +5,17 @@ export interface User {
   email: string;
   designation: string;
   avatarUrl?: string;
-  // commissionRate removed as it's now handled by Agent.discountRate
-  websiteUrl?: string; // Added as per a previous thought, can be removed if only for Agent
-  status?: 'Active' | 'Inactive' | 'Archived'; // Added as per a previous thought
+  websiteUrl?: string; 
+  status?: 'Active' | 'Inactive' | 'Archived'; 
 }
 
 export interface Agent {
   id: string;
   name: string;
-  email: string; // Registered email id
-  discountRate: number; // Discount rate in percentage
+  email: string; 
+  discountRate: number; 
   websiteUrl?: string;
-  status: 'Active' | 'Inactive' | 'Archived';
+  status: 'Active' | 'Non Active' | 'Dead'; // Updated status types
 }
 
 export interface Yacht {
@@ -25,7 +24,6 @@ export interface Yacht {
   imageUrl?: string;
   capacity: number;
   status: 'Available' | 'Booked' | 'Maintenance';
-  // Storing rates for each package item directly on the yacht
   dhowChild89_rate?: number;
   dhowFood99_rate?: number;
   dhowDrinks199_rate?: number;
@@ -63,16 +61,15 @@ export interface PackageItem {
 
 export interface Lead {
   id:string;
-  agent: string; // Now Agent ID
+  agent: string; 
   status: 'New' | 'Contacted' | 'Qualified' | 'Proposal Sent' | 'Closed Won' | 'Closed Lost';
-  month: string; // e.g., "YYYY-MM"
-  yacht: string; // Yacht ID
-  type: string; // e.g., "Corporate", "Private Party", "Tour"
+  month: string; 
+  yacht: string; 
+  type: string; 
   invoiceId?: string;
   packageType: 'DHOW' | 'OE' | 'SUNSET' | 'LOTUS' | 'OTHER' | '';
   clientName: string;
   free?: boolean;
-  // Package details - these fields store quantities
   dhowChild89?: number;
   dhowFood99?: number;
   dhowDrinks199?: number;
@@ -95,13 +92,13 @@ export interface Lead {
   
   totalAmount: number;
   commissionAmount?: number;
-  commissionPercentage: number; // This will store the Agent's discountRate for the lead
+  commissionPercentage: number; 
   netAmount: number;
   paidAmount: number;
   balanceAmount: number;
   
-  createdAt: string; // ISO Date string
-  updatedAt: string; // ISO Date string
+  createdAt: string; 
+  updatedAt: string; 
 }
 
 export interface BookingReportData {
@@ -110,6 +107,6 @@ export interface BookingReportData {
 }
 
 export interface RevenueData {
-  period: string; // 'Daily', 'Monthly', 'Yearly'
+  period: string; 
   amount: number;
 }

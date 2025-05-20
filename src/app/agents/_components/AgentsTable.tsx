@@ -26,7 +26,6 @@ import type { Agent } from '@/lib/types';
 interface AgentsTableProps {
   agents: Agent[];
   onEditAgent: (agent: Agent) => void;
-  // onDeleteAgent: (agentId: string) => void; // Future implementation
 }
 
 export function AgentsTable({ agents, onEditAgent }: AgentsTableProps) {
@@ -35,9 +34,9 @@ export function AgentsTable({ agents, onEditAgent }: AgentsTableProps) {
     switch (status) {
       case 'Active':
         return 'default';
-      case 'Inactive':
+      case 'Non Active': // Updated status
         return 'secondary';
-      case 'Archived':
+      case 'Dead': // Updated status
         return 'outline';
       default:
         return 'outline';

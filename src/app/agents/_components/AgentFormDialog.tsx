@@ -40,7 +40,7 @@ const agentFormSchema = z.object({
   email: z.string().email('Invalid email address'),
   discountRate: z.coerce.number().min(0, "Rate must be non-negative").max(100, 'Rate cannot exceed 100%'),
   websiteUrl: z.string().url({ message: "Invalid URL format" }).optional().or(z.literal('')),
-  status: z.enum(['Active', 'Inactive', 'Archived']),
+  status: z.enum(['Active', 'Non Active', 'Dead']), // Updated status types
 });
 
 export type AgentFormData = z.infer<typeof agentFormSchema>;
@@ -52,7 +52,7 @@ interface AgentFormDialogProps {
   onSubmitSuccess: (data: Agent) => void;
 }
 
-const statusOptions: Agent['status'][] = ['Active', 'Inactive', 'Archived'];
+const statusOptions: Agent['status'][] = ['Active', 'Non Active', 'Dead']; // Updated status options
 
 export function AgentFormDialog({ isOpen, onOpenChange, agent, onSubmitSuccess }: AgentFormDialogProps) {
   const { toast } = useToast();
@@ -86,7 +86,7 @@ export function AgentFormDialog({ isOpen, onOpenChange, agent, onSubmitSuccess }
   function onSubmit(data: AgentFormData) {
     const submittedAgent: Agent = {
       ...data,
-      id: agent?.id || `agent-${Date.now()}`, // Generate ID if new
+      id: agent?.id || `agent-${Date.now()}`, 
       websiteUrl: data.websiteUrl || undefined,
     };
     onSubmitSuccess(submittedAgent);

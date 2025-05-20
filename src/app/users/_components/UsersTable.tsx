@@ -23,6 +23,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import type { User } from '@/lib/types';
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 
 interface UsersTableProps {
   users: User[];
@@ -41,7 +42,7 @@ export function UsersTable({ users, onEditUser }: UsersTableProps) {
   };
 
   return (
-    <div className="rounded-md border">
+    <ScrollArea className="rounded-md border whitespace-nowrap">
       <Table>
         <TableHeader>
           <TableRow>
@@ -129,6 +130,7 @@ export function UsersTable({ users, onEditUser }: UsersTableProps) {
           )}
         </TableBody>
       </Table>
-    </div>
+      <ScrollBar orientation="horizontal" />
+    </ScrollArea>
   );
 }

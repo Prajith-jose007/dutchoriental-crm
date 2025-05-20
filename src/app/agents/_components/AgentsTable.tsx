@@ -22,6 +22,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import type { Agent } from '@/lib/types';
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 
 interface AgentsTableProps {
   agents: Agent[];
@@ -34,9 +35,9 @@ export function AgentsTable({ agents, onEditAgent }: AgentsTableProps) {
     switch (status) {
       case 'Active':
         return 'default';
-      case 'Non Active': // Updated status
+      case 'Non Active':
         return 'secondary';
-      case 'Dead': // Updated status
+      case 'Dead':
         return 'outline';
       default:
         return 'outline';
@@ -44,7 +45,7 @@ export function AgentsTable({ agents, onEditAgent }: AgentsTableProps) {
   };
 
   return (
-    <div className="rounded-md border">
+    <ScrollArea className="rounded-md border whitespace-nowrap">
       <Table>
         <TableHeader>
           <TableRow>
@@ -122,6 +123,7 @@ export function AgentsTable({ agents, onEditAgent }: AgentsTableProps) {
           )}
         </TableBody>
       </Table>
-    </div>
+      <ScrollBar orientation="horizontal" />
+    </ScrollArea>
   );
 }

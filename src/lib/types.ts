@@ -5,7 +5,18 @@ export interface User {
   email: string;
   designation: string;
   avatarUrl?: string;
-  commissionRate?: number; // Added commission rate
+  // commissionRate removed as it's now handled by Agent.discountRate
+  websiteUrl?: string; // Added as per a previous thought, can be removed if only for Agent
+  status?: 'Active' | 'Inactive' | 'Archived'; // Added as per a previous thought
+}
+
+export interface Agent {
+  id: string;
+  name: string;
+  email: string; // Registered email id
+  discountRate: number; // Discount rate in percentage
+  websiteUrl?: string;
+  status: 'Active' | 'Inactive' | 'Archived';
 }
 
 export interface Yacht {
@@ -30,10 +41,7 @@ export interface Yacht {
   lotusDrinks349_rate?: number;
   lotusVip399_rate?: number;
   lotusVip499_rate?: number;
-  othersAmtCake_rate?: number; // Assuming 'othersAmtCake' might also have a configurable base rate per yacht if it's a recurring item. Or it's a direct amount.
-                                // For now, if 'othersAmtCake' in Lead is a direct amount, this field might not be used in calc the same way.
-                                // If 'othersAmtCake' in Lead becomes a quantity, this rate is used.
-                                // The PRD field name implies it's an amount, so this yacht rate might be for a default quantity=1 scenario.
+  othersAmtCake_rate?: number;
 }
 
 export interface Invoice {
@@ -55,13 +63,13 @@ export interface PackageItem {
 
 export interface Lead {
   id:string;
-  agent: string; // User ID or Name
+  agent: string; // Now Agent ID
   status: 'New' | 'Contacted' | 'Qualified' | 'Proposal Sent' | 'Closed Won' | 'Closed Lost';
   month: string; // e.g., "YYYY-MM"
   yacht: string; // Yacht ID
   type: string; // e.g., "Corporate", "Private Party", "Tour"
   invoiceId?: string;
-  packageType: 'DHOW' | 'OE' | 'SUNSET' | 'LOTUS' | 'OTHER' | ''; // Made it more specific, added empty for initial
+  packageType: 'DHOW' | 'OE' | 'SUNSET' | 'LOTUS' | 'OTHER' | '';
   clientName: string;
   free?: boolean;
   // Package details - these fields store quantities
@@ -80,14 +88,14 @@ export interface Lead {
   lotusDrinks349?: number;
   lotusVip399?: number;
   lotusVip499?: number;
-  othersAmtCake?: number; // This is an amount, not a quantity.
+  othersAmtCake?: number;
   
-  quantity: number; // Overall/primary quantity - may be less relevant if totalAmount is sum of packages
-  rate: number; // Primary rate - may be less relevant
+  quantity: number;
+  rate: number;
   
   totalAmount: number;
-  commissionAmount?: number; // Calculated field
-  commissionPercentage: number; // This comes from Agent, but stored on lead for record keeping
+  commissionAmount?: number;
+  commissionPercentage: number; // This will store the Agent's discountRate for the lead
   netAmount: number;
   paidAmount: number;
   balanceAmount: number;

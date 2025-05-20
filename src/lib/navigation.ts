@@ -1,5 +1,6 @@
+
 import type { LucideIcon } from 'lucide-react';
-import { LayoutDashboard, ClipboardList, Users, Ship, Settings, Anchor } from 'lucide-react';
+import { LayoutDashboard, ClipboardList, Users, Ship, Settings, Anchor, Briefcase } from 'lucide-react';
 
 export interface NavItem {
   title: string;
@@ -21,12 +22,17 @@ export const mainNavItems: NavItem[] = [
     icon: ClipboardList,
   },
   {
+    title: 'Agents', // Added Agents Nav Item
+    href: '/agents',
+    icon: Briefcase,
+  },
+  {
     title: 'Users',
     href: '/users',
     icon: Users,
   },
   {
-    title: 'Yachts', // Added Yachts as a separate section for managing yachts if needed
+    title: 'Yachts',
     href: '/yachts',
     icon: Ship,
   },

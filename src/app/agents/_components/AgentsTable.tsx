@@ -1,7 +1,6 @@
 
 'use client';
 
-import Image from 'next/image';
 import { MoreHorizontal } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -22,21 +21,26 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import type { User } from '@/lib/types';
+import type { Agent } from '@/lib/types';
 
-interface UsersTableProps {
-  users: User[];
-  onEditUser: (user: User) => void;
+interface AgentsTableProps {
+  agents: Agent[];
+  onEditAgent: (agent: Agent) => void;
+  // onDeleteAgent: (agentId: string) => void; // Future implementation
 }
 
-export function UsersTable({ users, onEditUser }: UsersTableProps) {
+export function AgentsTable({ agents, onEditAgent }: AgentsTableProps) {
 
-  const getStatusBadgeVariant = (status?: User['status']) => {
+  const getStatusBadgeVariant = (status: Agent['status']) => {
     switch (status) {
-      case 'Active': return 'default';
-      case 'Inactive': return 'secondary';
-      case 'Archived': return 'outline';
-      default: return 'outline';
+      case 'Active':
+        return 'default';
+      case 'Inactive':
+        return 'secondary';
+      case 'Archived':
+        return 'outline';
+      default:
+        return 'outline';
     }
   };
 
@@ -46,51 +50,41 @@ export function UsersTable({ users, onEditUser }: UsersTableProps) {
         <TableHeader>
           <TableRow>
             <TableHead className="w-[40px]">
-              <Checkbox aria-label="Select all users" />
+              <Checkbox aria-label="Select all agents" />
             </TableHead>
             <TableHead>Name</TableHead>
+            <TableHead>ID</TableHead>
             <TableHead>Email</TableHead>
-            <TableHead>Designation</TableHead>
+            <TableHead>Discount (%)</TableHead>
             <TableHead>Website</TableHead>
             <TableHead>Status</TableHead>
             <TableHead>Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          {users.length === 0 ? (
+          {agents.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={7} className="h-24 text-center">
-                No users found.
+              <TableCell colSpan={8} className="h-24 text-center">
+                No agents found.
               </TableCell>
             </TableRow>
           ) : (
-            users.map((user) => (
-              <TableRow key={user.id}>
+            agents.map((agent) => (
+              <TableRow key={agent.id}>
                 <TableCell>
-                  <Checkbox aria-label={`Select user ${user.name}`} />
+                  <Checkbox aria-label={`Select agent ${agent.name}`} />
                 </TableCell>
+                <TableCell className="font-medium">{agent.name}</TableCell>
                 <TableCell>
-                  <div className="flex items-center gap-2">
-                    {user.avatarUrl && (
-                      <Image
-                        src={user.avatarUrl}
-                        alt={user.name}
-                        width={32}
-                        height={32}
-                        className="rounded-full"
-                        data-ai-hint="person avatar"
-                      />
-                    )}
-                    <span className="font-medium">{user.name}</span>
-                  </div>
+                    <Button variant="link" className="p-0 h-auto font-normal" onClick={() => onEditAgent(agent)}>
+                        {agent.id.length > 10 ? agent.id.substring(0,4) + '...' + agent.id.substring(agent.id.length-4) : agent.id}
+                    </Button>
                 </TableCell>
-                <TableCell>{user.email}</TableCell>
+                <TableCell>{agent.email}</TableCell>
+                <TableCell>{agent.discountRate.toFixed(1)}%</TableCell>
                 <TableCell>
-                  <Badge variant="outline">{user.designation}</Badge>
-                </TableCell>
-                <TableCell>
-                  {user.websiteUrl ? (
-                    <a href={user.websiteUrl} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                  {agent.websiteUrl ? (
+                    <a href={agent.websiteUrl} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
                       Link
                     </a>
                   ) : (
@@ -98,7 +92,7 @@ export function UsersTable({ users, onEditUser }: UsersTableProps) {
                   )}
                 </TableCell>
                 <TableCell>
-                  <Badge variant={getStatusBadgeVariant(user.status)}>{user.status || 'N/A'}</Badge>
+                  <Badge variant={getStatusBadgeVariant(agent.status)}>{agent.status}</Badge>
                 </TableCell>
                 <TableCell>
                   <DropdownMenu>
@@ -110,16 +104,16 @@ export function UsersTable({ users, onEditUser }: UsersTableProps) {
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                      <DropdownMenuItem onClick={() => onEditUser(user)}>
-                        Edit User
+                      <DropdownMenuItem onClick={() => onEditAgent(agent)}>
+                        Edit Agent
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => console.log('View user profile', user.id)}>View Profile</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => console.log('View agent details', agent.id)}>View Details</DropdownMenuItem>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem 
                         className="text-destructive"
-                        onClick={() => console.warn('Delete user action (not implemented)', user.id)}
+                        onClick={() => console.warn('Delete agent action (not implemented)', agent.id)}
                       >
-                        Delete User
+                        Delete Agent
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>

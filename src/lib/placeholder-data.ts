@@ -1,10 +1,17 @@
 
-import type { Lead, User, Yacht, Invoice, BookingReportData, RevenueData } from './types';
+import type { Lead, User, Yacht, Invoice, BookingReportData, RevenueData, Agent } from './types';
 
 export const placeholderUsers: User[] = [
-  { id: 'user1', name: 'Alice Smith', email: 'alice@example.com', designation: 'Sales Manager', avatarUrl: 'https://placehold.co/100x100.png', commissionRate: 10 },
-  { id: 'user2', name: 'Bob Johnson', email: 'bob@example.com', designation: 'Sales Agent', avatarUrl: 'https://placehold.co/100x100.png', commissionRate: 8 },
-  { id: 'user3', name: 'Carol White', email: 'carol@example.com', designation: 'Admin', avatarUrl: 'https://placehold.co/100x100.png', commissionRate: 0 }, // Admins might not have commission
+  { id: 'user1', name: 'Alice Smith', email: 'alice@example.com', designation: 'Sales Manager', avatarUrl: 'https://placehold.co/100x100.png', status: 'Active' },
+  { id: 'user2', name: 'Bob Johnson', email: 'bob@example.com', designation: 'Sales Agent', avatarUrl: 'https://placehold.co/100x100.png', status: 'Active' },
+  { id: 'user3', name: 'Carol White', email: 'carol@example.com', designation: 'Admin', avatarUrl: 'https://placehold.co/100x100.png', status: 'Active' },
+];
+
+export const placeholderAgents: Agent[] = [
+  { id: 'agentA', name: 'Prime Charters Agency', email: 'contact@primecharters.com', discountRate: 12, websiteUrl: 'https://primecharters.com', status: 'Active' },
+  { id: 'agentB', name: 'Luxury Yacht Bookings Co.', email: 'bookings@lyb.co', discountRate: 15, websiteUrl: 'https://lyb.co', status: 'Active' },
+  { id: 'agentC', name: 'Nautical Adventures Ltd.', email: 'info@nauticalltd.com', discountRate: 10, status: 'Inactive' },
+  { id: 'agentD', name: 'Old Timer Fleet (Closed)', email: 'archive@oldtimer.com', discountRate: 5, status: 'Archived' },
 ];
 
 export const placeholderYachts: Yacht[] = [
@@ -14,7 +21,7 @@ export const placeholderYachts: Yacht[] = [
     oeChild129_rate: 129, oeFood149_rate: 149, oeDrinks249_rate: 249, oeVip349_rate: 349,
     sunsetChild179_rate: 179, sunsetFood199_rate: 199, sunsetDrinks299_rate: 299,
     lotusFood249_rate: 249, lotusDrinks349_rate: 349, lotusVip399_rate: 399, lotusVip499_rate: 499,
-    othersAmtCake_rate: 100, // Example rate for a standard cake, if 'othersAmtCake' becomes a quantity field
+    othersAmtCake_rate: 100,
   },
   { 
     id: 'yacht2', name: 'Ocean Voyager', capacity: 100, status: 'Booked', imageUrl: 'https://placehold.co/300x200.png',
@@ -51,39 +58,39 @@ export const placeholderInvoices: Invoice[] = [
 
 export const placeholderLeads: Lead[] = [
   { 
-    id: 'lead1', agent: 'Alice Smith', status: 'Closed Won', month: '2024-07', yacht: 'yacht2', // Ocean Voyager
+    id: 'lead1', agent: 'agentA', status: 'Closed Won', month: '2024-07', yacht: 'yacht2', 
     type: 'Corporate Event', invoiceId: 'inv001', packageType: 'LOTUS', clientName: 'Tech Corp',
-    lotusVip499: 10, // Example: 10 VIP packages
-    quantity: 10, rate: 1500, // These might be overridden by package calculation
-    totalAmount: 15000, commissionPercentage: 10, commissionAmount: 1500,
-    netAmount: 13500, paidAmount: 15000, balanceAmount: 0,
+    lotusVip499: 10, 
+    quantity: 10, rate: 1500, 
+    totalAmount: 15000, commissionPercentage: 12, commissionAmount: 1800, // agentA's rate
+    netAmount: 13200, paidAmount: 15000, balanceAmount: 0,
     createdAt: '2024-06-15', updatedAt: '2024-07-01'
   },
   { 
-    id: 'lead2', agent: 'Bob Johnson', status: 'Proposal Sent', month: '2024-07', yacht: 'yacht1', // The Sea Serpent
+    id: 'lead2', agent: 'agentB', status: 'Proposal Sent', month: '2024-07', yacht: 'yacht1', 
     type: 'Private Party', packageType: 'SUNSET', clientName: 'Innovate Ltd',
     sunsetDrinks299: 20,
     quantity: 20, rate: 1100, 
-    totalAmount: 22000, commissionPercentage: 8, commissionAmount: 1760,
-    netAmount: 20240, paidAmount: 10000, balanceAmount: 12000,
+    totalAmount: 22000, commissionPercentage: 15, commissionAmount: 3300, // agentB's rate
+    netAmount: 18700, paidAmount: 10000, balanceAmount: 12000,
     createdAt: '2024-06-20', updatedAt: '2024-07-05'
   },
   { 
-    id: 'lead3', agent: 'Alice Smith', status: 'Qualified', month: '2024-08', yacht: 'yacht3', // Marina Queen
+    id: 'lead3', agent: 'agentA', status: 'Qualified', month: '2024-08', yacht: 'yacht3', 
     type: 'Tour Group', packageType: 'OE', clientName: 'Solutions Inc',
     oeFood149: 50,
     quantity: 50, rate: 360, 
-    totalAmount: 18000, commissionPercentage: 10, commissionAmount: 1800, // Alice's rate
-    netAmount: 16200, paidAmount: 0, balanceAmount: 18000,
+    totalAmount: 18000, commissionPercentage: 12, commissionAmount: 2160, // agentA's rate
+    netAmount: 15840, paidAmount: 0, balanceAmount: 18000,
     createdAt: '2024-07-10', updatedAt: '2024-07-12'
   },
   { 
-    id: 'lead4', agent: 'Bob Johnson', status: 'New', month: '2024-08', yacht: 'yacht4', // Azure Spirit
+    id: 'lead4', agent: 'agentC', status: 'New', month: '2024-08', yacht: 'yacht4', 
     type: 'Wedding Reception', packageType: 'DHOW', clientName: 'Global Co',
-    dhowVip299: 30, othersAmtCake: 500, // othersAmtCake is a direct amount
+    dhowVip299: 30, othersAmtCake: 500,
     quantity: 30, rate: 1000, 
-    totalAmount: 30500, commissionPercentage: 8, commissionAmount: 2440, // Bob's rate
-    netAmount: 28060, paidAmount: 0, balanceAmount: 30500,
+    totalAmount: 30500, commissionPercentage: 10, commissionAmount: 3050, // agentC's rate
+    netAmount: 27450, paidAmount: 0, balanceAmount: 30500,
     createdAt: '2024-07-20', updatedAt: '2024-07-20'
   },
 ];

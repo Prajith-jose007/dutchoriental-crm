@@ -31,43 +31,37 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import type { User } from '@/lib/types';
+import type { Agent } from '@/lib/types';
 import { useEffect } from 'react';
 
-const userFormSchema = z.object({
+const agentFormSchema = z.object({
   id: z.string().optional(),
-  name: z.string().min(2, 'Name must be at least 2 characters'),
+  name: z.string().min(2, 'Agent name must be at least 2 characters'),
   email: z.string().email('Invalid email address'),
-  designation: z.string().min(2, 'Designation is required'),
-  avatarUrl: z.string().url().optional().or(z.literal('')),
-  websiteUrl: z.string().url({ message: "Invalid URL" }).optional().or(z.literal('')),
-  status: z.enum(['Active', 'Inactive', 'Archived']).optional().default('Active'),
+  discountRate: z.coerce.number().min(0, "Rate must be non-negative").max(100, 'Rate cannot exceed 100%'),
+  websiteUrl: z.string().url({ message: "Invalid URL format" }).optional().or(z.literal('')),
+  status: z.enum(['Active', 'Inactive', 'Archived']),
 });
 
-export type UserFormData = z.infer<typeof userFormSchema>;
+export type AgentFormData = z.infer<typeof agentFormSchema>;
 
-interface UserFormDialogProps {
+interface AgentFormDialogProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
-  user?: User | null;
-  onSubmitSuccess: (data: User) => void;
+  agent?: Agent | null;
+  onSubmitSuccess: (data: Agent) => void;
 }
 
-const statusOptions: User['status'][] = ['Active', 'Inactive', 'Archived'];
+const statusOptions: Agent['status'][] = ['Active', 'Inactive', 'Archived'];
 
-export function UserFormDialog({ isOpen, onOpenChange, user, onSubmitSuccess }: UserFormDialogProps) {
+export function AgentFormDialog({ isOpen, onOpenChange, agent, onSubmitSuccess }: AgentFormDialogProps) {
   const { toast } = useToast();
-  const form = useForm<UserFormData>({
-    resolver: zodResolver(userFormSchema),
-    defaultValues: user ? {
-      ...user,
-      websiteUrl: user.websiteUrl || '',
-      status: user.status || 'Active',
-    } : {
+  const form = useForm<AgentFormData>({
+    resolver: zodResolver(agentFormSchema),
+    defaultValues: agent || {
       name: '',
       email: '',
-      designation: '',
-      avatarUrl: '',
+      discountRate: 0,
       websiteUrl: '',
       status: 'Active',
     },
@@ -75,34 +69,30 @@ export function UserFormDialog({ isOpen, onOpenChange, user, onSubmitSuccess }: 
 
   useEffect(() => {
     if (isOpen) {
-      form.reset(user ? {
-        ...user,
-        websiteUrl: user.websiteUrl || '',
-        status: user.status || 'Active',
+      form.reset(agent ? {
+        ...agent,
+        websiteUrl: agent.websiteUrl || '',
       } : {
         id: undefined,
         name: '',
         email: '',
-        designation: '',
-        avatarUrl: '',
+        discountRate: 0,
         websiteUrl: '',
         status: 'Active',
       });
     }
-  }, [user, form, isOpen]);
+  }, [agent, form, isOpen]);
 
-  function onSubmit(data: UserFormData) {
-    const submittedUser: User = {
+  function onSubmit(data: AgentFormData) {
+    const submittedAgent: Agent = {
       ...data,
-      id: user?.id || `user-${Date.now()}`,
-      avatarUrl: data.avatarUrl || undefined,
+      id: agent?.id || `agent-${Date.now()}`, // Generate ID if new
       websiteUrl: data.websiteUrl || undefined,
-      status: data.status || 'Active',
     };
-    onSubmitSuccess(submittedUser);
+    onSubmitSuccess(submittedAgent);
     toast({
-      title: user ? 'User Updated' : 'User Added',
-      description: `${data.name} has been ${user ? 'updated' : 'added'}.`,
+      title: agent ? 'Agent Updated' : 'Agent Added',
+      description: `${data.name} has been ${agent ? 'updated' : 'added'}.`,
     });
     onOpenChange(false);
   }
@@ -111,9 +101,9 @@ export function UserFormDialog({ isOpen, onOpenChange, user, onSubmitSuccess }: 
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>{user ? 'Edit User' : 'Add New User'}</DialogTitle>
+          <DialogTitle>{agent ? 'Edit Agent' : 'Add New Agent'}</DialogTitle>
           <DialogDescription>
-            {user ? 'Update the details for this user.' : 'Fill in the details for the new user.'}
+            {agent ? 'Update the details for this agent.' : 'Fill in the details for the new agent.'}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -123,9 +113,9 @@ export function UserFormDialog({ isOpen, onOpenChange, user, onSubmitSuccess }: 
               name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Name</FormLabel>
+                  <FormLabel>Agent Name</FormLabel>
                   <FormControl>
-                    <Input placeholder="e.g., John Doe" {...field} />
+                    <Input placeholder="e.g., Super Charters Inc." {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -136,9 +126,9 @@ export function UserFormDialog({ isOpen, onOpenChange, user, onSubmitSuccess }: 
               name="email"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Email</FormLabel>
+                  <FormLabel>Registered Email ID</FormLabel>
                   <FormControl>
-                    <Input type="email" placeholder="e.g., john@example.com" {...field} />
+                    <Input type="email" placeholder="e.g., contact@supercharters.com" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -146,25 +136,12 @@ export function UserFormDialog({ isOpen, onOpenChange, user, onSubmitSuccess }: 
             />
             <FormField
               control={form.control}
-              name="designation"
+              name="discountRate"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Designation</FormLabel>
+                  <FormLabel>Discount Rate (%)</FormLabel>
                   <FormControl>
-                    <Input placeholder="e.g., Sales Agent" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="avatarUrl"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Avatar URL (Optional)</FormLabel>
-                  <FormControl>
-                    <Input placeholder="https://placehold.co/100x100.png" {...field} />
+                    <Input type="number" placeholder="e.g., 10" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -175,9 +152,9 @@ export function UserFormDialog({ isOpen, onOpenChange, user, onSubmitSuccess }: 
               name="websiteUrl"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Website URL (Optional)</FormLabel>
+                  <FormLabel>Agent Website URL (Optional)</FormLabel>
                   <FormControl>
-                    <Input placeholder="https://example.com" {...field} />
+                    <Input placeholder="https://supercharters.com" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -209,7 +186,7 @@ export function UserFormDialog({ isOpen, onOpenChange, user, onSubmitSuccess }: 
               <DialogClose asChild>
                 <Button type="button" variant="outline">Cancel</Button>
               </DialogClose>
-              <Button type="submit">{user ? 'Save Changes' : 'Add User'}</Button>
+              <Button type="submit">{agent ? 'Save Changes' : 'Add Agent'}</Button>
             </DialogFooter>
           </form>
         </Form>

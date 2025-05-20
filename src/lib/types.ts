@@ -110,3 +110,9 @@ export interface RevenueData {
   period: string; 
   amount: number;
 }
+
+export interface PieChartDataItem {
+  name: string;
+  value: number;
+  fill: string;
+}

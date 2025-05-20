@@ -1,5 +1,5 @@
 
-import type { Lead, User, Yacht, Invoice, BookingReportData, RevenueData, Agent } from './types';
+import type { Lead, User, Yacht, Invoice, BookingReportData, RevenueData, Agent, PieChartDataItem } from './types';
 
 export const placeholderUsers: User[] = [
   { id: 'user1', name: 'Alice Smith', email: 'alice@example.com', designation: 'Sales Manager', avatarUrl: 'https://placehold.co/100x100.png', status: 'Active' },
@@ -19,7 +19,7 @@ export const placeholderYachts: Yacht[] = [
     id: 'yacht1', name: 'The Sea Serpent', capacity: 50, status: 'Available', imageUrl: 'https://placehold.co/300x200.png',
     dhowChild89_rate: 89, dhowFood99_rate: 99, dhowDrinks199_rate: 199, dhowVip299_rate: 299,
     oeChild129_rate: 129, oeFood149_rate: 149, oeDrinks249_rate: 249, oeVip349_rate: 349,
-    sunsetChild179_rate: 179, sunsetFood199_rate: 199, sunsetDrinks299_rate: 299,
+    sunsetChild179_rate: 179, sunsetFood199_rate: 190, sunsetDrinks299_rate: 299, // Corrected typo sunsetFood199_rate
     lotusFood249_rate: 249, lotusDrinks349_rate: 349, lotusVip399_rate: 399, lotusVip499_rate: 499,
     othersAmtCake_rate: 100,
   },
@@ -54,6 +54,7 @@ export const placeholderInvoices: Invoice[] = [
   { id: 'inv002', leadId: 'lead2', clientName: 'Innovate Ltd', amount: 22000, dueDate: '2024-08-20', status: 'Pending', createdAt: '2024-07-05' },
   { id: 'inv003', leadId: 'lead3', clientName: 'Solutions Inc', amount: 18000, dueDate: '2024-07-25', status: 'Overdue', createdAt: '2024-06-10' },
   { id: 'inv004', leadId: 'lead4', clientName: 'Global Co', amount: 30000, dueDate: '2024-09-01', status: 'Pending', createdAt: '2024-07-15' },
+  { id: 'inv005', leadId: 'lead1', clientName: 'Alpha LLC', amount: 12000, dueDate: '2024-09-10', status: 'Paid', createdAt: '2024-08-01' },
 ];
 
 export const placeholderLeads: Lead[] = [
@@ -61,9 +62,9 @@ export const placeholderLeads: Lead[] = [
     id: 'lead1', agent: 'agentA', status: 'Closed Won', month: '2024-07', yacht: 'yacht2', 
     type: 'Corporate Event', invoiceId: 'inv001', packageType: 'LOTUS', clientName: 'Tech Corp',
     lotusVip499: 10, 
-    quantity: 10, rate: 1500, 
-    totalAmount: 15000, commissionPercentage: 12, commissionAmount: 1800, 
-    netAmount: 13200, paidAmount: 15000, balanceAmount: 0,
+    quantity: 10, rate: 1500, // This rate might be overridden by package calc
+    totalAmount: 5050, commissionPercentage: 12, commissionAmount: 606, 
+    netAmount: 4444, paidAmount: 5050, balanceAmount: 0,
     createdAt: '2024-06-15', updatedAt: '2024-07-01'
   },
   { 
@@ -71,17 +72,17 @@ export const placeholderLeads: Lead[] = [
     type: 'Private Party', packageType: 'SUNSET', clientName: 'Innovate Ltd',
     sunsetDrinks299: 20,
     quantity: 20, rate: 1100, 
-    totalAmount: 22000, commissionPercentage: 15, commissionAmount: 3300, 
-    netAmount: 18700, paidAmount: 10000, balanceAmount: 12000,
+    totalAmount: 5980, commissionPercentage: 15, commissionAmount: 897, 
+    netAmount: 5083, paidAmount: 2500, balanceAmount: 3480,
     createdAt: '2024-06-20', updatedAt: '2024-07-05'
   },
   { 
-    id: 'lead3', agent: 'agentA', status: 'Qualified', month: '2024-08', yacht: 'yacht3', 
+    id: 'lead3', agent: 'agentA', status: 'Closed Won', month: '2024-08', yacht: 'yacht3', 
     type: 'Tour Group', packageType: 'OE', clientName: 'Solutions Inc',
     oeFood149: 50,
     quantity: 50, rate: 360, 
-    totalAmount: 18000, commissionPercentage: 12, commissionAmount: 2160, 
-    netAmount: 15840, paidAmount: 0, balanceAmount: 18000,
+    totalAmount: 7000, commissionPercentage: 12, commissionAmount: 840, 
+    netAmount: 6160, paidAmount: 7000, balanceAmount: 0,
     createdAt: '2024-07-10', updatedAt: '2024-07-12'
   },
   { 
@@ -89,20 +90,20 @@ export const placeholderLeads: Lead[] = [
     type: 'Wedding Reception', packageType: 'DHOW', clientName: 'Global Co',
     dhowVip299: 30, othersAmtCake: 500,
     quantity: 30, rate: 1000, 
-    totalAmount: 30500, commissionPercentage: 10, commissionAmount: 3050, 
-    netAmount: 27450, paidAmount: 0, balanceAmount: 30500,
+    totalAmount: 9560, commissionPercentage: 10, commissionAmount: 956, 
+    netAmount: 8604, paidAmount: 0, balanceAmount: 9560,
     createdAt: '2024-07-20', updatedAt: '2024-07-20'
   },
 ];
 
 export const placeholderBookingReport: BookingReportData[] = [
-  { month: 'Jan', bookings: 120 },
-  { month: 'Feb', bookings: 180 },
-  { month: 'Mar', bookings: 200 },
-  { month: 'Apr', bookings: 278 },
-  { month: 'May', bookings: 189 },
-  { month: 'Jun', bookings: 239 },
-  { month: 'Jul', bookings: 150 },
+  { month: 'Jan', bookings: 12 },
+  { month: 'Feb', bookings: 18 },
+  { month: 'Mar', bookings: 20 },
+  { month: 'Apr', bookings: 27 },
+  { month: 'May', bookings: 19 },
+  { month: 'Jun', bookings: 23 },
+  { month: 'Jul', bookings: 15 },
 ];
 
 export const placeholderRevenueData: RevenueData[] = [
@@ -110,3 +111,14 @@ export const placeholderRevenueData: RevenueData[] = [
     { period: 'This Month', amount: 85600 },
     { period: 'This Year', amount: 750200 },
 ];
+
+// Calculate invoice status data for pie chart
+const paidInvoices = placeholderInvoices.filter(inv => inv.status === 'Paid').length;
+const pendingInvoices = placeholderInvoices.filter(inv => inv.status === 'Pending').length;
+const overdueInvoices = placeholderInvoices.filter(inv => inv.status === 'Overdue').length;
+
+export const placeholderInvoiceStatusData: PieChartDataItem[] = [
+  { name: 'Paid', value: paidInvoices, fill: 'hsl(var(--chart-1))' },
+  { name: 'Pending', value: pendingInvoices, fill: 'hsl(var(--chart-2))' },
+  { name: 'Overdue', value: overdueInvoices, fill: 'hsl(var(--chart-3))' },
+].filter(item => item.value > 0); // Filter out series with 0 value for cleaner chart

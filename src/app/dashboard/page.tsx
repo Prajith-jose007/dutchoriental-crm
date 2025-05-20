@@ -1,7 +1,9 @@
+
 import { PageHeader } from '@/components/PageHeader';
 import { BookingReportChart } from './_components/BookingReportChart';
 import { RevenueSummary } from './_components/RevenueSummary';
-import { YachtList } from './_components/YachtList';
+import { PerformanceSummary } from './_components/PerformanceSummary';
+import { InvoiceStatusPieChart } from './_components/InvoiceStatusPieChart';
 import { LatestInvoicesTable } from './_components/LatestInvoicesTable';
 
 export default function DashboardPage() {
@@ -11,13 +13,14 @@ export default function DashboardPage() {
       
       <div className="grid gap-6">
         <RevenueSummary />
+        <PerformanceSummary />
         
-        <div className="grid gap-6 lg:grid-cols-3">
-          <div className="lg:col-span-2">
+        <div className="grid gap-6 lg:grid-cols-2 xl:grid-cols-5">
+          <div className="xl:col-span-3">
             <BookingReportChart />
           </div>
-          <div className="lg:col-span-1">
-            <YachtList />
+          <div className="lg:col-span-1 xl:col-span-2">
+            <InvoiceStatusPieChart />
           </div>
         </div>
         

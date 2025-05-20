@@ -35,12 +35,12 @@ import type { Agent } from '@/lib/types';
 import { useEffect } from 'react';
 
 const agentFormSchema = z.object({
-  id: z.string().optional(),
+  id: z.string().min(1, 'Agent ID is required'),
   name: z.string().min(2, 'Agent name must be at least 2 characters'),
   email: z.string().email('Invalid email address'),
   discountRate: z.coerce.number().min(0, "Rate must be non-negative").max(100, 'Rate cannot exceed 100%'),
   websiteUrl: z.string().url({ message: "Invalid URL format" }).optional().or(z.literal('')),
-  status: z.enum(['Active', 'Non Active', 'Dead']), // Updated status types
+  status: z.enum(['Active', 'Non Active', 'Dead']),
 });
 
 export type AgentFormData = z.infer<typeof agentFormSchema>;
@@ -52,13 +52,14 @@ interface AgentFormDialogProps {
   onSubmitSuccess: (data: Agent) => void;
 }
 
-const statusOptions: Agent['status'][] = ['Active', 'Non Active', 'Dead']; // Updated status options
+const statusOptions: Agent['status'][] = ['Active', 'Non Active', 'Dead'];
 
 export function AgentFormDialog({ isOpen, onOpenChange, agent, onSubmitSuccess }: AgentFormDialogProps) {
   const { toast } = useToast();
   const form = useForm<AgentFormData>({
     resolver: zodResolver(agentFormSchema),
     defaultValues: agent || {
+      id: '', // Default to empty for new agent, will be filled by user
       name: '',
       email: '',
       discountRate: 0,
@@ -69,24 +70,28 @@ export function AgentFormDialog({ isOpen, onOpenChange, agent, onSubmitSuccess }
 
   useEffect(() => {
     if (isOpen) {
-      form.reset(agent ? {
-        ...agent,
-        websiteUrl: agent.websiteUrl || '',
-      } : {
-        id: undefined,
-        name: '',
-        email: '',
-        discountRate: 0,
-        websiteUrl: '',
-        status: 'Active',
-      });
+      if (agent) {
+        form.reset({
+          ...agent,
+          websiteUrl: agent.websiteUrl || '',
+        });
+      } else {
+        form.reset({
+          id: '', // Explicitly set ID to empty for new agent form
+          name: '',
+          email: '',
+          discountRate: 0,
+          websiteUrl: '',
+          status: 'Active',
+        });
+      }
     }
   }, [agent, form, isOpen]);
 
   function onSubmit(data: AgentFormData) {
+    // ID now comes directly from form data, enforced by schema
     const submittedAgent: Agent = {
       ...data,
-      id: agent?.id || `agent-${Date.now()}`, 
       websiteUrl: data.websiteUrl || undefined,
     };
     onSubmitSuccess(submittedAgent);
@@ -108,6 +113,24 @@ export function AgentFormDialog({ isOpen, onOpenChange, agent, onSubmitSuccess }
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
+            <FormField
+              control={form.control}
+              name="id"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Agent ID</FormLabel>
+                  <FormControl>
+                    <Input 
+                      placeholder="e.g., AGENT001" 
+                      {...field} 
+                      readOnly={!!agent} // Read-only if editing an existing agent
+                      className={!!agent ? "bg-muted/50" : ""}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
             <FormField
               control={form.control}
               name="name"

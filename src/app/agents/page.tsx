@@ -31,17 +31,18 @@ export default function AgentsPage() {
 
   const handleAgentFormSubmit = (submittedAgentData: Agent) => {
     if (editingAgent) {
+      // Update existing agent: find by original ID and replace with new data
       setAgents(prevAgents => 
-        prevAgents.map(a => a.id === submittedAgentData.id ? submittedAgentData : a)
+        prevAgents.map(a => (a.id === editingAgent.id ? submittedAgentData : a))
       );
-       const agentIndex = initialAgents.findIndex(a => a.id === submittedAgentData.id);
+       const agentIndex = initialAgents.findIndex(a => a.id === editingAgent.id);
         if (agentIndex > -1) {
             initialAgents[agentIndex] = submittedAgentData;
         }
     } else {
-      const newAgent = { ...submittedAgentData, id: `agent-${Date.now()}` };
-      setAgents(prevAgents => [...prevAgents, newAgent]);
-      initialAgents.push(newAgent);
+      // Add new agent: ID is now part of submittedAgentData
+      setAgents(prevAgents => [...prevAgents, submittedAgentData]);
+      initialAgents.push(submittedAgentData);
     }
     setIsAgentDialogOpen(false);
     setEditingAgent(null);

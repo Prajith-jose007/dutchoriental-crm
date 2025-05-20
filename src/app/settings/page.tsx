@@ -1,3 +1,4 @@
+
 import { PageHeader } from '@/components/PageHeader';
 import { LogoUpload } from './_components/LogoUpload';
 import { ThemeSettings } from './_components/ThemeSettings';
@@ -9,7 +10,7 @@ export default function SettingsPage() {
     <div className="container mx-auto py-2">
       <PageHeader 
         title="Settings"
-        description="Configure and customize your AquaLeads CRM."
+        description="Configure and customize your DutchOriental CRM."
       />
       
       <Tabs defaultValue="general" className="w-full">

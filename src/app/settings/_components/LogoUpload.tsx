@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, type ChangeEvent } from 'react';
@@ -10,7 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 
 export function LogoUpload() {
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
-  const [currentLogo, setCurrentLogo] = useState<string | null>('https://placehold.co/150x50.png?text=Current+Logo'); // Placeholder for existing logo
+  const [currentLogo, setCurrentLogo] = useState<string | null>('https://placehold.co/150x50.png?text=DutchOriental+Logo'); // Placeholder for existing logo
   const { toast } = useToast();
 
   const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {

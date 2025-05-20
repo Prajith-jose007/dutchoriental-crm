@@ -1,6 +1,6 @@
 
 import type { LucideIcon } from 'lucide-react';
-import { LayoutDashboard, ClipboardList, Users, Ship, Settings, Anchor, Briefcase } from 'lucide-react';
+import { LayoutDashboard, ClipboardList, Users, Ship, Settings, Briefcase } from 'lucide-react'; // Changed Anchor to Ship
 
 export interface NavItem {
   title: string;
@@ -22,7 +22,7 @@ export const mainNavItems: NavItem[] = [
     icon: ClipboardList,
   },
   {
-    title: 'Agents', // Added Agents Nav Item
+    title: 'Agents',
     href: '/agents',
     icon: Briefcase,
   },
@@ -34,7 +34,7 @@ export const mainNavItems: NavItem[] = [
   {
     title: 'Yachts',
     href: '/yachts',
-    icon: Ship,
+    icon: Ship, // Kept Ship for Yachts section
   },
   {
     title: 'Settings',
@@ -43,5 +43,5 @@ export const mainNavItems: NavItem[] = [
   },
 ];
 
-export const AppLogo = Anchor; // Using Anchor as a placeholder for nautical theme
-export const AppName = "AquaLeads CRM";
+export const AppLogo = Ship; // Changed from Anchor to Ship for the main app logo
+export const AppName = "DutchOriental CRM"; // Changed AppName

@@ -9,7 +9,7 @@ import { LatestInvoicesTable } from './_components/LatestInvoicesTable';
 export default function DashboardPage() {
   return (
     <div className="container mx-auto py-2">
-      <PageHeader title="Dashboard" description="Welcome to AquaLeads CRM. Here's an overview of your yacht business." />
+      <PageHeader title="Dashboard" description="Welcome to DutchOriental CRM. Here's an overview of your yacht business." />
       
       <div className="grid gap-6">
         <RevenueSummary />

@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -60,7 +61,7 @@ export function SidebarNav() {
           <UserCircle className="h-8 w-8 text-sidebar-foreground"/>
           <div className={cn("flex flex-col", state === "expanded" ? "opacity-100" : "opacity-0", "transition-opacity duration-300")}>
             <span className="text-sm font-medium text-sidebar-foreground">Admin User</span>
-            <span className="text-xs text-sidebar-foreground/70">admin@aqualeads.com</span>
+            <span className="text-xs text-sidebar-foreground/70">admin@dutchoriental.com</span>
           </div>
         </div>
         <Button variant="ghost" className={cn("w-full justify-start gap-2 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground", state === "collapsed" && "justify-center")}>

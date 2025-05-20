@@ -1,3 +1,4 @@
+
 'use client';
 
 import { MoreHorizontal } from 'lucide-react';
@@ -21,16 +22,15 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import type { Lead } from '@/lib/types';
-import { placeholderLeads } from '@/lib/placeholder-data';
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 
-const leadColumns: { accessorKey: keyof Lead | 'actions' | 'select', header: string }[] = [
+const leadColumns: { accessorKey: keyof Lead | 'actions' | 'select', header: string, isCurrency?: boolean }[] = [
   { accessorKey: 'select', header: '' },
   { accessorKey: 'id', header: 'ID' },
   { accessorKey: 'agent', header: 'Agent' },
   { accessorKey: 'status', header: 'Status' },
   { accessorKey: 'month', header: 'Month' },
-  { accessorKey: 'yacht', header: 'Yacht' },
+  { accessorKey: 'yacht', header: 'Yacht' }, // Will display Yacht ID, could be enhanced to show name
   { accessorKey: 'type', header: 'Type' },
   { accessorKey: 'invoiceId', header: 'Invoice' },
   { accessorKey: 'packageType', header: 'Package' },
@@ -51,33 +51,40 @@ const leadColumns: { accessorKey: keyof Lead | 'actions' | 'select', header: str
   { accessorKey: 'lotusDrinks349', header: 'Lotus Drinks 349' },
   { accessorKey: 'lotusVip399', header: 'Lotus VIP 399' },
   { accessorKey: 'lotusVip499', header: 'Lotus VIP 499' },
-  { accessorKey: 'othersAmtCake', header: 'Others (Cake)' },
+  { accessorKey: 'othersAmtCake', header: 'Others (Cake)', isCurrency: true },
   { accessorKey: 'quantity', header: 'Qty' },
-  { accessorKey: 'rate', header: 'Rate' },
-  { accessorKey: 'totalAmount', header: 'Amt' },
+  { accessorKey: 'rate', header: 'Rate', isCurrency: true },
+  { accessorKey: 'totalAmount', header: 'Amt', isCurrency: true },
   { accessorKey: 'commissionPercentage', header: 'Comm %' },
-  { accessorKey: 'netAmount', header: 'Net' },
-  { accessorKey: 'paidAmount', header: 'Paid' },
-  { accessorKey: 'balanceAmount', header: 'Balance' },
+  { accessorKey: 'netAmount', header: 'Net', isCurrency: true },
+  { accessorKey: 'paidAmount', header: 'Paid', isCurrency: true },
+  { accessorKey: 'balanceAmount', header: 'Balance', isCurrency: true },
   { accessorKey: 'actions', header: 'Actions' },
 ];
 
+interface LeadsTableProps {
+  leads: Lead[];
+  onEditLead: (lead: Lead) => void;
+}
 
-export function LeadsTable() {
-  const leads: Lead[] = placeholderLeads;
+export function LeadsTable({ leads, onEditLead }: LeadsTableProps) {
 
   const getStatusVariant = (status: Lead['status']) => {
     switch (status) {
       case 'New': return 'outline';
       case 'Contacted': return 'secondary';
-      case 'Qualified': return 'default'; // Using primary for qualified
-      case 'Proposal Sent': return 'default'; // Using a variant of primary or accent
-      case 'Closed Won': return 'default'; // Greenish, shadcn 'default' can be primary
+      case 'Qualified': return 'default'; 
+      case 'Proposal Sent': return 'default'; 
+      case 'Closed Won': return 'default'; 
       case 'Closed Lost': return 'destructive';
       default: return 'outline';
     }
   };
 
+  const formatCurrency = (amount: number | undefined | null) => {
+    if (typeof amount !== 'number') return '-';
+    return `${amount.toLocaleString()} AED`;
+  };
 
   return (
     <ScrollArea className="rounded-md border whitespace-nowrap">
@@ -108,10 +115,16 @@ export function LeadsTable() {
                 </TableCell>
                 {leadColumns.slice(1, -1).map(col => (
                   <TableCell key={col.accessorKey}>
-                    {col.accessorKey === 'status' ? (
+                    {col.accessorKey === 'id' ? (
+                       <Button variant="link" className="p-0 h-auto" onClick={() => onEditLead(lead)}>
+                        {lead.id}
+                       </Button>
+                    ) : col.accessorKey === 'status' ? (
                       <Badge variant={getStatusVariant(lead.status)}>{lead.status}</Badge>
                     ) : col.accessorKey === 'free' ? (
                       lead.free ? 'Yes' : 'No'
+                    ) : col.isCurrency ? (
+                      formatCurrency(lead[col.accessorKey as keyof Lead] as number | undefined)
                     ) : (
                       lead[col.accessorKey as keyof Lead] !== undefined && lead[col.accessorKey as keyof Lead] !== null ? 
                       String(lead[col.accessorKey as keyof Lead]) : '-'
@@ -128,14 +141,19 @@ export function LeadsTable() {
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                      <DropdownMenuItem onClick={() => console.log('View lead', lead.id)}>
-                        View Details
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => console.log('Edit lead', lead.id)}>
+                      <DropdownMenuItem onClick={() => onEditLead(lead)}>
                         Edit Lead
                       </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => console.log('View lead details', lead.id)}>
+                        View Details
+                      </DropdownMenuItem>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem className="text-destructive">Delete Lead</DropdownMenuItem>
+                      <DropdownMenuItem 
+                        className="text-destructive" 
+                        onClick={() => console.log('Delete lead action (not implemented)', lead.id)}
+                      >
+                        Delete Lead
+                      </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </TableCell>

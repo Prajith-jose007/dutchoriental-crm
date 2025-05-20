@@ -1,3 +1,4 @@
+
 export interface User {
   id: string;
   name: string;
@@ -42,14 +43,14 @@ export interface Lead {
   agent: string;
   status: 'New' | 'Contacted' | 'Qualified' | 'Proposal Sent' | 'Closed Won' | 'Closed Lost';
   month: string; // e.g., "YYYY-MM"
-  yacht: string;
+  yacht: string; // Should store Yacht ID, will be displayed as name
   type: string; // e.g., "Corporate", "Private Party", "Tour"
   invoiceId?: string;
   packageType: string; // e.g., "DHOW", "OE", "SUNSET", "LOTUS"
   clientName: string;
   free?: boolean;
-  // Package details as individual items or structured data
-  dhowChild89?: number; // Store quantity or amount, needs clarification
+  // Package details - these fields store quantities
+  dhowChild89?: number;
   dhowFood99?: number;
   dhowDrinks199?: number;
   dhowVip299?: number;
@@ -65,15 +66,15 @@ export interface Lead {
   lotusVip399?: number;
   lotusVip499?: number;
   othersAmtCake?: number;
-  quantity: number; // Overall quantity or specific item quantity?
-  rate: number;
+  quantity: number; // Overall/primary quantity
+  rate: number; // Primary rate
   totalAmount: number;
   commissionPercentage: number;
   netAmount: number;
   paidAmount: number;
   balanceAmount: number;
-  createdAt: string;
-  updatedAt: string;
+  createdAt: string; // ISO Date string
+  updatedAt: string; // ISO Date string
 }
 
 export interface BookingReportData {

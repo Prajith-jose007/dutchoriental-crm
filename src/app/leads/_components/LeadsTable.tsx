@@ -21,46 +21,47 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import type { Lead } from '@/lib/types';
+import type { Lead, Yacht, User } from '@/lib/types';
+import { placeholderYachts, placeholderUsers } from '@/lib/placeholder-data';
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 
-const leadColumns: { accessorKey: keyof Lead | 'actions' | 'select', header: string, isCurrency?: boolean }[] = [
+// Find yacht name from ID
+const getYachtName = (yachtId: string): string => {
+  const yacht = placeholderYachts.find(y => y.id === yachtId);
+  return yacht ? yacht.name : yachtId;
+};
+
+// Find agent name from ID
+const getAgentName = (agentId: string): string => {
+  const user = placeholderUsers.find(u => u.id === agentId);
+  return user ? user.name : agentId;
+}
+
+const leadColumns: { accessorKey: keyof Lead | 'actions' | 'select', header: string, isCurrency?: boolean, isPercentage?: boolean }[] = [
   { accessorKey: 'select', header: '' },
   { accessorKey: 'id', header: 'ID' },
-  { accessorKey: 'agent', header: 'Agent' },
+  { accessorKey: 'agent', header: 'Agent' }, // Will display Agent Name
   { accessorKey: 'status', header: 'Status' },
   { accessorKey: 'month', header: 'Month' },
-  { accessorKey: 'yacht', header: 'Yacht' }, // Will display Yacht ID, could be enhanced to show name
+  { accessorKey: 'yacht', header: 'Yacht' }, // Will display Yacht Name
   { accessorKey: 'type', header: 'Type' },
   { accessorKey: 'invoiceId', header: 'Invoice' },
   { accessorKey: 'packageType', header: 'Package' },
   { accessorKey: 'clientName', header: 'Client' },
   { accessorKey: 'free', header: 'Free' },
-  { accessorKey: 'dhowChild89', header: 'Dhow Child 89' },
-  { accessorKey: 'dhowFood99', header: 'Dhow Food 99' },
-  { accessorKey: 'dhowDrinks199', header: 'Dhow Drinks 199' },
-  { accessorKey: 'dhowVip299', header: 'Dhow VIP 299' },
-  { accessorKey: 'oeChild129', header: 'OE Child 129' },
-  { accessorKey: 'oeFood149', header: 'OE Food 149' },
-  { accessorKey: 'oeDrinks249', header: 'OE Drinks 249' },
-  { accessorKey: 'oeVip349', header: 'OE VIP 349' },
-  { accessorKey: 'sunsetChild179', header: 'Sunset Child 179' },
-  { accessorKey: 'sunsetFood199', header: 'Sunset Food 199' },
-  { accessorKey: 'sunsetDrinks299', header: 'Sunset Drinks 299' },
-  { accessorKey: 'lotusFood249', header: 'Lotus Food 249' },
-  { accessorKey: 'lotusDrinks349', header: 'Lotus Drinks 349' },
-  { accessorKey: 'lotusVip399', header: 'Lotus VIP 399' },
-  { accessorKey: 'lotusVip499', header: 'Lotus VIP 499' },
-  { accessorKey: 'othersAmtCake', header: 'Others (Cake)', isCurrency: true },
-  { accessorKey: 'quantity', header: 'Qty' },
-  { accessorKey: 'rate', header: 'Rate', isCurrency: true },
-  { accessorKey: 'totalAmount', header: 'Amt', isCurrency: true },
-  { accessorKey: 'commissionPercentage', header: 'Comm %' },
-  { accessorKey: 'netAmount', header: 'Net', isCurrency: true },
-  { accessorKey: 'paidAmount', header: 'Paid', isCurrency: true },
+  // Quantities - these are numbers, not currency
+  { accessorKey: 'dhowChild89', header: 'Dhow Child Qty' },
+  { accessorKey: 'dhowFood99', header: 'Dhow Food Qty' },
+  // ... (add all other quantity fields here if needed in table, or keep table concise)
+  { accessorKey: 'totalAmount', header: 'Total Amt', isCurrency: true },
+  { accessorKey: 'commissionPercentage', header: 'Comm %', isPercentage: true },
+  { accessorKey: 'commissionAmount', header: 'Comm Amt', isCurrency: true },
+  { accessorKey: 'netAmount', header: 'Net Amt', isCurrency: true },
+  { accessorKey: 'paidAmount', header: 'Paid Amt', isCurrency: true },
   { accessorKey: 'balanceAmount', header: 'Balance', isCurrency: true },
   { accessorKey: 'actions', header: 'Actions' },
 ];
+
 
 interface LeadsTableProps {
   leads: Lead[];
@@ -75,7 +76,7 @@ export function LeadsTable({ leads, onEditLead }: LeadsTableProps) {
       case 'Contacted': return 'secondary';
       case 'Qualified': return 'default'; 
       case 'Proposal Sent': return 'default'; 
-      case 'Closed Won': return 'default'; 
+      case 'Closed Won': return 'default'; // Successful status often uses primary/default
       case 'Closed Lost': return 'destructive';
       default: return 'outline';
     }
@@ -83,8 +84,13 @@ export function LeadsTable({ leads, onEditLead }: LeadsTableProps) {
 
   const formatCurrency = (amount: number | undefined | null) => {
     if (typeof amount !== 'number') return '-';
-    return `${amount.toLocaleString()} AED`;
+    return `${amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} AED`;
   };
+  
+  const formatPercentage = (value: number | undefined | null) => {
+    if (typeof value !== 'number') return '-';
+    return `${value.toFixed(1)}%`;
+  }
 
   return (
     <ScrollArea className="rounded-md border whitespace-nowrap">
@@ -116,15 +122,22 @@ export function LeadsTable({ leads, onEditLead }: LeadsTableProps) {
                 {leadColumns.slice(1, -1).map(col => (
                   <TableCell key={col.accessorKey}>
                     {col.accessorKey === 'id' ? (
-                       <Button variant="link" className="p-0 h-auto" onClick={() => onEditLead(lead)}>
-                        {lead.id}
+                       <Button variant="link" className="p-0 h-auto font-medium" onClick={() => onEditLead(lead)}>
+                        {/* Shorten ID for display if too long, or show full */}
+                        {lead.id.length > 10 ? lead.id.substring(0,4) + '...' + lead.id.substring(lead.id.length-4) : lead.id}
                        </Button>
-                    ) : col.accessorKey === 'status' ? (
+                    ) : col.accessorKey === 'agent' ? (
+                        getAgentName(lead.agent)
+                    ) : col.accessorKey === 'yacht' ? (
+                        getYachtName(lead.yacht)
+                    ): col.accessorKey === 'status' ? (
                       <Badge variant={getStatusVariant(lead.status)}>{lead.status}</Badge>
                     ) : col.accessorKey === 'free' ? (
-                      lead.free ? 'Yes' : 'No'
+                      lead.free ? <Badge variant="secondary">Yes</Badge> : 'No'
                     ) : col.isCurrency ? (
                       formatCurrency(lead[col.accessorKey as keyof Lead] as number | undefined)
+                    ) : col.isPercentage ? (
+                        formatPercentage(lead[col.accessorKey as keyof Lead] as number | undefined)
                     ) : (
                       lead[col.accessorKey as keyof Lead] !== undefined && lead[col.accessorKey as keyof Lead] !== null ? 
                       String(lead[col.accessorKey as keyof Lead]) : '-'
@@ -150,7 +163,7 @@ export function LeadsTable({ leads, onEditLead }: LeadsTableProps) {
                       <DropdownMenuSeparator />
                       <DropdownMenuItem 
                         className="text-destructive" 
-                        onClick={() => console.log('Delete lead action (not implemented)', lead.id)}
+                        onClick={() => console.warn('Delete lead action (not implemented)', lead.id)}
                       >
                         Delete Lead
                       </DropdownMenuItem>

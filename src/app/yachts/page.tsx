@@ -57,12 +57,21 @@ export default function YachtsPage() {
               <CardDescription>Capacity: {yacht.capacity} guests</CardDescription>
             </CardHeader>
             <CardContent className="flex-grow">
-              <Badge variant={getStatusBadgeVariant(yacht.status)} className="flex items-center w-fit">
+              <Badge variant={getStatusBadgeVariant(yacht.status)} className="flex items-center w-fit mb-2">
                 {getStatusIcon(yacht.status)}
                 {yacht.status}
               </Badge>
+              <div className="space-y-1 text-sm text-muted-foreground">
+                <h4 className="font-medium text-foreground">Package Costs:</h4>
+                {typeof yacht.childPackageCost === 'number' && <div>Child: ${yacht.childPackageCost.toLocaleString()}</div>}
+                {typeof yacht.adultPackageCost === 'number' && <div>Adult: ${yacht.adultPackageCost.toLocaleString()}</div>}
+                {typeof yacht.vipPackageCost === 'number' && <div>VIP: ${yacht.vipPackageCost.toLocaleString()}</div>}
+                {typeof yacht.vipAlcoholPackageCost === 'number' && <div>VIP Alcohol: ${yacht.vipAlcoholPackageCost.toLocaleString()}</div>}
+                {typeof yacht.vipChildPackageCost === 'number' && <div>VIP Child: ${yacht.vipChildPackageCost.toLocaleString()}</div>}
+                {typeof yacht.royalPackageCost === 'number' && <div>Royal: ${yacht.royalPackageCost.toLocaleString()}</div>}
+              </div>
             </CardContent>
-            <CardFooter className="flex justify-end gap-2">
+            <CardFooter className="flex justify-end gap-2 mt-auto pt-4"> {/* Added mt-auto and pt-4 for better spacing */}
               <Button variant="outline" size="sm">
                 <Edit className="mr-2 h-4 w-4" /> Edit
               </Button>

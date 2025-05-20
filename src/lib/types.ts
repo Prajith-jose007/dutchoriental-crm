@@ -12,6 +12,12 @@ export interface Yacht {
   imageUrl?: string;
   capacity: number;
   status: 'Available' | 'Booked' | 'Maintenance';
+  childPackageCost?: number;
+  adultPackageCost?: number;
+  vipPackageCost?: number;
+  vipAlcoholPackageCost?: number;
+  vipChildPackageCost?: number;
+  royalPackageCost?: number;
 }
 
 export interface Invoice {

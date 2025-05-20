@@ -7,10 +7,22 @@ export const placeholderUsers: User[] = [
 ];
 
 export const placeholderYachts: Yacht[] = [
-  { id: 'yacht1', name: 'The Sea Serpent', capacity: 50, status: 'Available', imageUrl: 'https://placehold.co/300x200.png' },
-  { id: 'yacht2', name: 'Ocean Voyager', capacity: 100, status: 'Booked', imageUrl: 'https://placehold.co/300x200.png' },
-  { id: 'yacht3', name: 'Marina Queen', capacity: 75, status: 'Maintenance', imageUrl: 'https://placehold.co/300x200.png' },
-  { id: 'yacht4', name: 'Azure Spirit', capacity: 60, status: 'Available', imageUrl: 'https://placehold.co/300x200.png' },
+  { 
+    id: 'yacht1', name: 'The Sea Serpent', capacity: 50, status: 'Available', imageUrl: 'https://placehold.co/300x200.png',
+    childPackageCost: 100, adultPackageCost: 150, vipPackageCost: 250, vipAlcoholPackageCost: 350, vipChildPackageCost: 120, royalPackageCost: 500
+  },
+  { 
+    id: 'yacht2', name: 'Ocean Voyager', capacity: 100, status: 'Booked', imageUrl: 'https://placehold.co/300x200.png',
+    childPackageCost: 120, adultPackageCost: 180, vipPackageCost: 280, vipAlcoholPackageCost: 380, vipChildPackageCost: 140, royalPackageCost: 550
+  },
+  { 
+    id: 'yacht3', name: 'Marina Queen', capacity: 75, status: 'Maintenance', imageUrl: 'https://placehold.co/300x200.png',
+    childPackageCost: 90, adultPackageCost: 140, vipPackageCost: 240, vipAlcoholPackageCost: 340, vipChildPackageCost: 110, royalPackageCost: 480
+  },
+  { 
+    id: 'yacht4', name: 'Azure Spirit', capacity: 60, status: 'Available', imageUrl: 'https://placehold.co/300x200.png',
+    childPackageCost: 110, adultPackageCost: 160, vipPackageCost: 260, vipAlcoholPackageCost: 360, vipChildPackageCost: 130, royalPackageCost: 520
+  },
 ];
 
 export const placeholderInvoices: Invoice[] = [

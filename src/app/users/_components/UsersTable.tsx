@@ -35,7 +35,6 @@ export function UsersTable() {
             <TableHead className="w-[40px]">
               <Checkbox aria-label="Select all users" />
             </TableHead>
-            <TableHead className="w-[80px]">Avatar</TableHead>
             <TableHead>Name</TableHead>
             <TableHead>Email</TableHead>
             <TableHead>Designation</TableHead>
@@ -45,7 +44,7 @@ export function UsersTable() {
         <TableBody>
           {users.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={6} className="h-24 text-center">
+              <TableCell colSpan={5} className="h-24 text-center">
                 No users found.
               </TableCell>
             </TableRow>
@@ -54,16 +53,6 @@ export function UsersTable() {
               <TableRow key={user.id}>
                 <TableCell>
                   <Checkbox aria-label={`Select user ${user.name}`} />
-                </TableCell>
-                <TableCell>
-                  <Image
-                    src={user.avatarUrl || `https://placehold.co/40x40.png`}
-                    alt={user.name}
-                    width={40}
-                    height={40}
-                    data-ai-hint="profile person"
-                    className="rounded-full"
-                  />
                 </TableCell>
                 <TableCell className="font-medium">{user.name}</TableCell>
                 <TableCell>{user.email}</TableCell>

@@ -55,7 +55,7 @@ export function LatestInvoicesTable() {
               <TableRow key={invoice.id}>
                 <TableCell className="font-medium">{invoice.id.toUpperCase()}</TableCell>
                 <TableCell>{invoice.clientName}</TableCell>
-                <TableCell>${invoice.amount.toLocaleString()}</TableCell>
+                <TableCell>{invoice.amount.toLocaleString()} AED</TableCell>
                 <TableCell>{new Date(invoice.createdAt).toLocaleDateString()}</TableCell>
                 <TableCell>
                   <Badge variant={getStatusBadgeVariant(invoice.status)}>{invoice.status}</Badge>

@@ -29,7 +29,7 @@ export function RevenueSummary() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              ${item.amount.toLocaleString()}
+              {item.amount.toLocaleString()} AED
             </div>
             <p className="text-xs text-muted-foreground">
               Compared to last period

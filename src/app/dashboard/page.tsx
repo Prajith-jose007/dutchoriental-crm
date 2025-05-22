@@ -5,6 +5,8 @@ import { RevenueSummary } from './_components/RevenueSummary';
 import { PerformanceSummary } from './_components/PerformanceSummary';
 import { InvoiceStatusPieChart } from './_components/InvoiceStatusPieChart';
 import { LatestInvoicesTable } from './_components/LatestInvoicesTable';
+import { SalesByYachtPieChart } from './_components/SalesByYachtPieChart';
+import { BookingsByAgentBarChart } from './_components/BookingsByAgentBarChart';
 
 export default function DashboardPage() {
   return (
@@ -21,6 +23,15 @@ export default function DashboardPage() {
           </div>
           <div className="lg:col-span-1 xl:col-span-2">
             <InvoiceStatusPieChart />
+          </div>
+        </div>
+
+        <div className="grid gap-6 lg:grid-cols-2">
+          <div>
+            <SalesByYachtPieChart />
+          </div>
+          <div>
+            <BookingsByAgentBarChart />
           </div>
         </div>
         

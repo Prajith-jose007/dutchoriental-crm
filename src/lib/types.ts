@@ -66,15 +66,14 @@ export type PackageType = 'DHOW' | 'OE' | 'SUNSET' | 'LOTUS' | 'OTHER' | '';
 
 export interface Lead {
   id:string;
-  agent: string;
+  agent: string; // Agent ID
   status: LeadStatus;
-  month: string;
-  yacht: string;
+  month: string; // YYYY-MM
+  yacht: string; // Yacht ID
   type: string;
   invoiceId?: string;
   packageType: PackageType;
   clientName: string;
-  // free?: boolean; // Removed free
   dhowChild89?: number;
   dhowFood99?: number;
   dhowDrinks199?: number;
@@ -92,18 +91,18 @@ export interface Lead {
   lotusVip499?: number;
   othersAmtCake?: number;
 
-  quantity: number;
-  rate: number;
+  quantity: number; // General quantity, might be redundant if package items cover all
+  rate: number; // General rate, might be redundant
 
   totalAmount: number;
   commissionAmount?: number;
-  commissionPercentage: number;
+  commissionPercentage: number; // From Agent
   netAmount: number;
   paidAmount: number;
   balanceAmount: number;
 
-  createdAt: string;
-  updatedAt: string;
+  createdAt: string; // ISO Date string
+  updatedAt: string; // ISO Date string
 }
 
 export interface BookingReportData {
@@ -122,3 +121,11 @@ export interface PieChartDataItem {
   fill: string;
 }
 
+// New type for Bookings by Agent Bar Chart
+export interface BookingsByAgentData {
+  agentName: string;
+  bookings: number;
+}
+
+// Re-exporting for easier import in CSV parser
+export type { LeadStatus as ExportedLeadStatus, PackageType as ExportedPackageType };

@@ -1,5 +1,4 @@
 
-
 export interface User {
   id: string;
   name: string;
@@ -61,7 +60,7 @@ export interface PackageItem {
 }
 
 export type LeadStatus = 'New' | 'Contacted' | 'Qualified' | 'Proposal Sent' | 'Closed Won' | 'Closed Lost';
-export type PackageType = 'DHOW' | 'OE' | 'SUNSET' | 'LOTUS' | 'OTHER' | '';
+export type ModeOfPayment = 'Online' | 'Offline' | 'Credit';
 
 
 export interface Lead {
@@ -72,7 +71,7 @@ export interface Lead {
   yacht: string; // Yacht ID
   type: string;
   invoiceId?: string;
-  packageType: PackageType;
+  modeOfPayment: ModeOfPayment;
   clientName: string;
   dhowChild89?: number;
   dhowFood99?: number;
@@ -89,7 +88,7 @@ export interface Lead {
   lotusDrinks349?: number;
   lotusVip399?: number;
   lotusVip499?: number;
-  othersAmtCake?: number;
+  othersAmtCake?: number; // This is a direct amount for other charges
 
   quantity: number; // General quantity, might be redundant if package items cover all
   rate: number; // General rate, might be redundant
@@ -128,4 +127,4 @@ export interface BookingsByAgentData {
 }
 
 // Re-exporting for easier import in CSV parser
-export type { LeadStatus as ExportedLeadStatus, PackageType as ExportedPackageType };
+export type { LeadStatus as ExportedLeadStatus, ModeOfPayment as ExportedModeOfPayment };

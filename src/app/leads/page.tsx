@@ -6,7 +6,7 @@ import { PageHeader } from '@/components/PageHeader';
 import { LeadsTable } from './_components/LeadsTable';
 import { ImportExportButtons } from './_components/ImportExportButtons';
 import { LeadFormDialog } from './_components/LeadFormDialog';
-import type { Lead, LeadStatus, PackageType } from '@/lib/types';
+import type { Lead, LeadStatus, ModeOfPayment } from '@/lib/types';
 import { placeholderLeads as initialLeads } from '@/lib/placeholder-data';
 import { useToast } from '@/hooks/use-toast';
 
@@ -16,7 +16,6 @@ const convertValue = (key: keyof Lead, value: string): any => {
 
   if (trimmedValue === '' || value === null || value === undefined) {
     switch (key) {
-        // case 'free': return false; // Removed free
         case 'dhowChild89': case 'dhowFood99': case 'dhowDrinks199': case 'dhowVip299':
         case 'oeChild129': case 'oeFood149': case 'oeDrinks249': case 'oeVip349':
         case 'sunsetChild179': case 'sunsetFood199': case 'sunsetDrinks299':
@@ -25,13 +24,12 @@ const convertValue = (key: keyof Lead, value: string): any => {
         case 'commissionPercentage': case 'commissionAmount': case 'netAmount':
         case 'paidAmount': case 'balanceAmount':
             return 0;
+        case 'modeOfPayment': return 'Online'; // Default mode of payment
         default: return undefined;
     }
   }
 
   switch (key) {
-    // case 'free': // Removed free
-    //   return trimmedValue.toLowerCase() === 'true';
     case 'dhowChild89': case 'dhowFood99': case 'dhowDrinks199': case 'dhowVip299':
     case 'oeChild129': case 'oeFood149': case 'oeDrinks249': case 'oeVip349':
     case 'sunsetChild179': case 'sunsetFood199': case 'sunsetDrinks299':
@@ -41,6 +39,9 @@ const convertValue = (key: keyof Lead, value: string): any => {
     case 'paidAmount': case 'balanceAmount':
       const num = parseFloat(trimmedValue);
       return isNaN(num) ? 0 : num;
+    case 'modeOfPayment':
+      const validModes: ModeOfPayment[] = ['Online', 'Offline', 'Credit'];
+      return validModes.includes(trimmedValue as ModeOfPayment) ? trimmedValue : 'Online';
     default:
       return trimmedValue; // Return trimmed string for other fields
   }
@@ -118,7 +119,7 @@ export default function LeadsPage() {
             headerLine = headerLine.substring(1);
         }
         const headers = headerLine.split(',').map(h => h.trim() as keyof Lead);
-        console.log("Parsed CSV Headers:", headers); // Diagnostic log
+        console.log("Parsed CSV Headers:", headers); 
 
         const newLeadsFromCsv: Lead[] = [];
         let skippedCount = 0;
@@ -145,7 +146,7 @@ export default function LeadsPage() {
             parsedRow[header] = convertValue(header, data[index]);
           });
 
-          if (i === 1) { // Log first parsed data row for diagnostics
+          if (i === 1) { 
             console.log("First Parsed Data Row (raw values from CSV after convertValue):", JSON.parse(JSON.stringify(parsedRow)));
           }
 
@@ -179,11 +180,10 @@ export default function LeadsPage() {
             month: typeof parsedRow.month === 'string' && parsedRow.month.match(/^\d{4}-\d{2}$/) ? parsedRow.month : new Date().toISOString().slice(0,7),
             yacht: typeof parsedRow.yacht === 'string' ? parsedRow.yacht : '',
             type: typeof parsedRow.type === 'string' && parsedRow.type.trim() !== '' ? parsedRow.type : 'Imported',
-            packageType: (parsedRow.packageType as PackageType) || '',
+            modeOfPayment: (parsedRow.modeOfPayment as ModeOfPayment) || 'Online',
             clientName: typeof parsedRow.clientName === 'string' && parsedRow.clientName.trim() !== '' ? parsedRow.clientName : 'N/A',
             invoiceId: typeof parsedRow.invoiceId === 'string' ? parsedRow.invoiceId : undefined,
-            // free: typeof parsedRow.free === 'boolean' ? parsedRow.free : false, // Removed free
-
+            
             dhowChild89: typeof parsedRow.dhowChild89 === 'number' ? parsedRow.dhowChild89 : 0,
             dhowFood99: typeof parsedRow.dhowFood99 === 'number' ? parsedRow.dhowFood99 : 0,
             dhowDrinks199: typeof parsedRow.dhowDrinks199 === 'number' ? parsedRow.dhowDrinks199 : 0,
@@ -214,7 +214,7 @@ export default function LeadsPage() {
             createdAt: typeof parsedRow.createdAt === 'string' && parsedRow.createdAt.trim() !== '' ? parsedRow.createdAt : new Date().toISOString(),
             updatedAt: new Date().toISOString(),
           };
-          if (i === 1) { // Log first fully constructed lead object
+          if (i === 1) { 
              console.log("First Full Lead Object (after defaults):", JSON.parse(JSON.stringify(fullLead)));
           }
 
@@ -276,7 +276,7 @@ export default function LeadsPage() {
     }
 
     const headers: (keyof Lead)[] = [
-      'id', 'agent', 'status', 'month', 'yacht', 'type', 'invoiceId', 'packageType', 'clientName', // 'free', // Removed free
+      'id', 'agent', 'status', 'month', 'yacht', 'type', 'invoiceId', 'modeOfPayment', 'clientName',
       'dhowChild89', 'dhowFood99', 'dhowDrinks199', 'dhowVip299',
       'oeChild129', 'oeFood149', 'oeDrinks249', 'oeVip349',
       'sunsetChild179', 'sunsetFood199', 'sunsetDrinks299',

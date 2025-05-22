@@ -31,12 +31,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-// import { Checkbox } from '@/components/ui/checkbox'; // Removed Checkbox import
 import { ScrollArea } from '@/components/ui/scroll-area';
-import type { Lead, Agent, Yacht } from '@/lib/types';
+import type { Lead, Agent, Yacht, ModeOfPayment } from '@/lib/types';
 import { placeholderAgents, placeholderYachts } from '@/lib/placeholder-data';
 import { useToast } from '@/hooks/use-toast';
-import { useEffect, useMemo } from 'react';
+import { useEffect } from 'react';
 
 const leadFormSchema = z.object({
   id: z.string().optional(),
@@ -46,9 +45,8 @@ const leadFormSchema = z.object({
   yacht: z.string().min(1, 'Yacht selection is required'),
   type: z.string().min(1, 'Lead type is required'),
   invoiceId: z.string().optional(),
-  packageType: z.enum(['DHOW', 'OE', 'SUNSET', 'LOTUS', 'OTHER', '']),
+  modeOfPayment: z.enum(['Online', 'Offline', 'Credit']),
   clientName: z.string().min(1, 'Client name is required'),
-  // free: z.boolean().optional().default(false), // Removed free
   dhowChild89: z.coerce.number().optional().default(0),
   dhowFood99: z.coerce.number().optional().default(0),
   dhowDrinks199: z.coerce.number().optional().default(0),
@@ -64,9 +62,9 @@ const leadFormSchema = z.object({
   lotusDrinks349: z.coerce.number().optional().default(0),
   lotusVip399: z.coerce.number().optional().default(0),
   lotusVip499: z.coerce.number().optional().default(0),
-  othersAmtCake: z.coerce.number().optional().default(0),
-  quantity: z.coerce.number().min(0).optional().default(0),
-  rate: z.coerce.number().min(0).optional().default(0),
+  othersAmtCake: z.coerce.number().optional().default(0), // This is a direct amount
+  quantity: z.coerce.number().min(0).optional().default(0), // General quantity, less used now
+  rate: z.coerce.number().min(0).optional().default(0), // General rate, less used now
   totalAmount: z.coerce.number().min(0).default(0),
   commissionPercentage: z.coerce.number().min(0).max(100).default(0),
   commissionAmount: z.coerce.number().optional().default(0),
@@ -87,32 +85,32 @@ interface LeadFormDialogProps {
 }
 
 interface PackageFieldConfig {
-  name: keyof LeadFormData;
+  name: keyof LeadFormData; // e.g. 'dhowChild89'
   label: string;
-  packageTypes: Array<Lead['packageType']>;
-  rateKeySuffix: string;
+  rateKeySuffix: string; // e.g. '_rate', so we can find 'dhowChild89_rate' on the yacht
 }
 
 const allPackageItemFields: PackageFieldConfig[] = [
-  { name: 'dhowChild89', label: 'Dhow Child Qty', packageTypes: ['DHOW'], rateKeySuffix: '_rate' },
-  { name: 'dhowFood99', label: 'Dhow Food Qty', packageTypes: ['DHOW'], rateKeySuffix: '_rate' },
-  { name: 'dhowDrinks199', label: 'Dhow Drinks Qty', packageTypes: ['DHOW'], rateKeySuffix: '_rate' },
-  { name: 'dhowVip299', label: 'Dhow VIP Qty', packageTypes: ['DHOW'], rateKeySuffix: '_rate' },
-  { name: 'oeChild129', label: 'OE Child Qty', packageTypes: ['OE'], rateKeySuffix: '_rate' },
-  { name: 'oeFood149', label: 'OE Food Qty', packageTypes: ['OE'], rateKeySuffix: '_rate' },
-  { name: 'oeDrinks249', label: 'OE Drinks Qty', packageTypes: ['OE'], rateKeySuffix: '_rate' },
-  { name: 'oeVip349', label: 'OE VIP Qty', packageTypes: ['OE'], rateKeySuffix: '_rate' },
-  { name: 'sunsetChild179', label: 'Sunset Child Qty', packageTypes: ['SUNSET'], rateKeySuffix: '_rate' },
-  { name: 'sunsetFood199', label: 'Sunset Food Qty', packageTypes: ['SUNSET'], rateKeySuffix: '_rate' },
-  { name: 'sunsetDrinks299', label: 'Sunset Drinks Qty', packageTypes: ['SUNSET'], rateKeySuffix: '_rate' },
-  { name: 'lotusFood249', label: 'Lotus Food Qty', packageTypes: ['LOTUS'], rateKeySuffix: '_rate' },
-  { name: 'lotusDrinks349', label: 'Lotus Drinks Qty', packageTypes: ['LOTUS'], rateKeySuffix: '_rate' },
-  { name: 'lotusVip399', label: 'Lotus VIP Qty', packageTypes: ['LOTUS'], rateKeySuffix: '_rate' },
-  { name: 'lotusVip499', label: 'Lotus VIP Qty', packageTypes: ['LOTUS'], rateKeySuffix: '_rate' },
+  { name: 'dhowChild89', label: 'Dhow Child Qty', rateKeySuffix: '_rate' },
+  { name: 'dhowFood99', label: 'Dhow Food Qty', rateKeySuffix: '_rate' },
+  { name: 'dhowDrinks199', label: 'Dhow Drinks Qty', rateKeySuffix: '_rate' },
+  { name: 'dhowVip299', label: 'Dhow VIP Qty', rateKeySuffix: '_rate' },
+  { name: 'oeChild129', label: 'OE Child Qty', rateKeySuffix: '_rate' },
+  { name: 'oeFood149', label: 'OE Food Qty', rateKeySuffix: '_rate' },
+  { name: 'oeDrinks249', label: 'OE Drinks Qty', rateKeySuffix: '_rate' },
+  { name: 'oeVip349', label: 'OE VIP Qty', rateKeySuffix: '_rate' },
+  { name: 'sunsetChild179', label: 'Sunset Child Qty', rateKeySuffix: '_rate' },
+  { name: 'sunsetFood199', label: 'Sunset Food Qty', rateKeySuffix: '_rate' },
+  { name: 'sunsetDrinks299', label: 'Sunset Drinks Qty', rateKeySuffix: '_rate' },
+  { name: 'lotusFood249', label: 'Lotus Food Qty', rateKeySuffix: '_rate' },
+  { name: 'lotusDrinks349', label: 'Lotus Drinks Qty', rateKeySuffix: '_rate' },
+  { name: 'lotusVip399', label: 'Lotus VIP Qty', rateKeySuffix: '_rate' },
+  { name: 'lotusVip499', label: 'Lotus VIP Qty', rateKeySuffix: '_rate' },
+  // Note: 'othersAmtCake' is a direct amount, not handled by this config
 ];
 
 const leadStatusOptions: Lead['status'][] = ['New', 'Contacted', 'Qualified', 'Proposal Sent', 'Closed Won', 'Closed Lost'];
-const packageTypeOptions: Lead['packageType'][] = ['DHOW', 'OE', 'SUNSET', 'LOTUS', 'OTHER', ''];
+const modeOfPaymentOptions: ModeOfPayment[] = ['Online', 'Offline', 'Credit'];
 
 export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: LeadFormDialogProps) {
   const { toast } = useToast();
@@ -123,7 +121,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
     resolver: zodResolver(leadFormSchema),
     defaultValues: lead || {
       agent: '', status: 'New', month: new Date().toISOString().slice(0,7), yacht: '',
-      type: '', packageType: '', clientName: '', // free: false, // Removed free
+      type: '', modeOfPayment: 'Online', clientName: '',
       ...allPackageItemFields.reduce((acc, field) => ({ ...acc, [field.name]: 0 }), {}),
       othersAmtCake: 0,
       quantity: 0, rate: 0, totalAmount: 0, commissionPercentage: 0, commissionAmount:0, netAmount: 0,
@@ -131,63 +129,36 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
     },
   });
 
-  const watchedPackageType = form.watch('packageType');
   const watchedAgentId = form.watch('agent');
   const watchedYachtId = form.watch('yacht');
   const watchedPackageQuantities = allPackageItemFields.map(field => form.watch(field.name));
   const watchedOthersAmtCake = form.watch('othersAmtCake');
   const watchedPaidAmount = form.watch('paidAmount');
-  // const watchedFree = form.watch('free'); // Removed free
 
-  const visiblePackageFields = useMemo(() => {
-    if (!watchedPackageType || watchedPackageType === 'OTHER' || watchedPackageType === '') {
-      return [];
-    }
-    return allPackageItemFields.filter(field => field.packageTypes.includes(watchedPackageType));
-  }, [watchedPackageType]);
 
   useEffect(() => {
-    // if (watchedFree) { // Removed free logic block
-    //   form.setValue('totalAmount', 0);
-    //   form.setValue('commissionAmount', 0);
-    //   form.setValue('netAmount', 0);
-    //   form.setValue('paidAmount', 0);
-    //   form.setValue('balanceAmount', 0);
-    //   form.setValue('commissionPercentage', 0);
-    //   return;
-    // }
-
     const selectedAgent = agents.find(a => a.id === watchedAgentId);
     const agentDiscountRate = selectedAgent?.discountRate ?? 0;
     form.setValue('commissionPercentage', agentDiscountRate);
 
     const selectedYacht = yachts.find(y => y.id === watchedYachtId);
-    if (!selectedYacht) {
-        form.setValue('totalAmount', 0);
-        form.setValue('commissionAmount', 0);
-        form.setValue('netAmount', 0);
-        form.setValue('balanceAmount', form.getValues('totalAmount') - form.getValues('paidAmount'));
-        return;
-    }
-
+    
     let currentTotalAmount = 0;
-    allPackageItemFields.forEach(pkgField => {
-      const quantity = form.getValues(pkgField.name) as number || 0;
-      if (quantity > 0) {
-        const rateKey = (pkgField.name + pkgField.rateKeySuffix) as keyof Yacht;
-        const rate = selectedYacht[rateKey] as number || 0;
-        currentTotalAmount += quantity * rate;
-      }
-    });
-
-     if (watchedPackageType === 'OTHER') {
-        currentTotalAmount += form.getValues('othersAmtCake') || 0;
-     } else {
-        const othersAmt = form.getValues('othersAmtCake');
-        if (typeof othersAmt === 'number' && othersAmt > 0 && !allPackageItemFields.find(pf => pf.name === 'othersAmtCake' && pf.packageTypes.includes(watchedPackageType))) {
-            currentTotalAmount += othersAmt;
+    if (selectedYacht) {
+      allPackageItemFields.forEach(pkgField => {
+        const quantity = form.getValues(pkgField.name) as number || 0;
+        if (quantity > 0) {
+          const rateKey = (pkgField.name + pkgField.rateKeySuffix) as keyof Yacht;
+          const rate = selectedYacht[rateKey] as number || 0;
+          currentTotalAmount += quantity * rate;
         }
-     }
+      });
+    }
+    
+    const othersCakeAmt = form.getValues('othersAmtCake') || 0;
+    if (typeof othersCakeAmt === 'number' && othersCakeAmt > 0) {
+        currentTotalAmount += othersCakeAmt;
+    }
 
     form.setValue('totalAmount', currentTotalAmount);
 
@@ -201,15 +172,15 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
     form.setValue('balanceAmount', currentBalanceAmount);
 
   }, [
-    watchedAgentId, watchedYachtId, watchedPackageType, ...watchedPackageQuantities,
-    watchedOthersAmtCake, watchedPaidAmount, /*watchedFree,*/ form, agents, yachts // Removed watchedFree
+    watchedAgentId, watchedYachtId, ...watchedPackageQuantities,
+    watchedOthersAmtCake, watchedPaidAmount, form, agents, yachts
   ]);
 
   useEffect(() => {
     if (isOpen) {
         const defaultVals = lead || {
             agent: '', status: 'New', month: new Date().toISOString().slice(0,7), yacht: '',
-            type: '', packageType: '', clientName: '', // free: false, // Removed free
+            type: '', modeOfPayment: 'Online', clientName: '',
              ...allPackageItemFields.reduce((acc, field) => ({ ...acc, [field.name]: 0 }), {}),
             othersAmtCake: 0,
             quantity: 0, rate: 0, totalAmount: 0, commissionPercentage: 0, commissionAmount: 0, netAmount: 0,
@@ -243,7 +214,6 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
       othersAmtCake: data.othersAmtCake || 0,
       commissionPercentage: data.commissionPercentage || 0,
       commissionAmount: data.commissionAmount || 0,
-      // free: data.free, // Removed free
     };
     onSubmitSuccess(submittedLead);
     toast({
@@ -347,16 +317,16 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
                   </FormItem>
                 )}
               />
-              <FormField
+               <FormField
                 control={form.control}
-                name="packageType"
+                name="modeOfPayment"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Package Type</FormLabel>
+                    <FormLabel>Mode of Payment</FormLabel>
                      <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value || undefined}>
-                      <FormControl><SelectTrigger><SelectValue placeholder="Select package type" /></SelectTrigger></FormControl>
+                      <FormControl><SelectTrigger><SelectValue placeholder="Select payment mode" /></SelectTrigger></FormControl>
                       <SelectContent>
-                        {packageTypeOptions.filter(pt => pt !== '').map(pkgType => (<SelectItem key={pkgType} value={pkgType}>{pkgType}</SelectItem>))}
+                        {modeOfPaymentOptions.map(mop => (<SelectItem key={mop} value={mop}>{mop}</SelectItem>))}
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -374,50 +344,43 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
                   </FormItem>
                 )}
               />
-              {/* Removed Free Booking FormField */}
             </div>
 
-            {visiblePackageFields.length > 0 && (
-                <>
-                    <h3 className="text-lg font-medium pt-4 border-t mt-6">Package Item Quantities for {form.getValues('packageType')}</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {visiblePackageFields.map(pkgFieldConfig => (
-                        <FormField
-                        key={pkgFieldConfig.name}
-                        control={form.control}
-                        name={pkgFieldConfig.name}
-                        render={({ field }) => (
-                            <FormItem>
-                            <FormLabel>{pkgFieldConfig.label}</FormLabel>
-                            <FormControl>
-                                <Input type="number" placeholder="0" {...field} onChange={e => field.onChange(parseInt(e.target.value,10) || 0)} />
-                            </FormControl>
-                            <FormMessage />
-                            </FormItem>
-                        )}
-                        />
-                    ))}
-                    </div>
-                </>
-            )}
-            {watchedPackageType === 'OTHER' && (
-                 <>
-                    <h3 className="text-lg font-medium pt-4 border-t mt-6">Other Package Details</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        <FormField
-                            control={form.control}
-                            name="othersAmtCake"
-                            render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Others Amount (e.g., Cake) (AED)</FormLabel>
-                                <FormControl><Input type="number" placeholder="0.00" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl>
-                                <FormMessage />
-                            </FormItem>
-                            )}
-                        />
-                    </div>
-                </>
-            )}
+            <h3 className="text-lg font-medium pt-4 border-t mt-6">Package Item Quantities</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {allPackageItemFields.map(pkgFieldConfig => (
+                <FormField
+                key={pkgFieldConfig.name}
+                control={form.control}
+                name={pkgFieldConfig.name}
+                render={({ field }) => (
+                    <FormItem>
+                    <FormLabel>{pkgFieldConfig.label}</FormLabel>
+                    <FormControl>
+                        <Input type="number" placeholder="0" {...field} onChange={e => field.onChange(parseInt(e.target.value,10) || 0)} />
+                    </FormControl>
+                    <FormMessage />
+                    </FormItem>
+                )}
+                />
+            ))}
+            </div>
+            
+            <h3 className="text-lg font-medium pt-4 border-t mt-6">Additional Charges</h3>
+             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <FormField
+                    control={form.control}
+                    name="othersAmtCake"
+                    render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>Other Charges (e.g., Cake) (AED)</FormLabel>
+                        <FormControl><Input type="number" placeholder="0.00" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl>
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                />
+            </div>
+
 
             <h3 className="text-lg font-medium pt-4 border-t mt-6">Financials</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -428,7 +391,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
                     <FormItem>
                       <FormLabel>Total Amount (AED)</FormLabel>
                       <FormControl><Input type="number" placeholder="0.00" {...field} readOnly className="bg-muted/50" /></FormControl>
-                       <FormDescription>Calculated from packages</FormDescription>
+                       <FormDescription>Calculated from packages & other charges</FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}

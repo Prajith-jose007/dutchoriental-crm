@@ -21,7 +21,7 @@ export const placeholderYachts: Yacht[] = [
     oeChild129_rate: 129, oeFood149_rate: 149, oeDrinks249_rate: 249, oeVip349_rate: 349,
     sunsetChild179_rate: 179, sunsetFood199_rate: 190, sunsetDrinks299_rate: 299,
     lotusFood249_rate: 249, lotusDrinks349_rate: 349, lotusVip399_rate: 399, lotusVip499_rate: 499,
-    othersAmtCake_rate: 100,
+    othersAmtCake_rate: 100, // This rate is for a potential "Cake Package Qty", but Lead.othersAmtCake is a direct amount.
   },
   {
     id: 'DO-yacht2', name: 'Ocean Voyager', capacity: 100, status: 'Booked', imageUrl: 'https://placehold.co/300x200.png?text=Ocean+Voyager',
@@ -60,7 +60,7 @@ export const placeholderInvoices: Invoice[] = [
 export const placeholderLeads: Lead[] = [
   {
     id: 'DO-lead1', agent: 'DO-agentA', status: 'Closed Won', month: '2024-07', yacht: 'DO-yacht2',
-    type: 'Corporate Event', invoiceId: 'DO-inv001', packageType: 'LOTUS', clientName: 'Tech Corp',
+    type: 'Corporate Event', invoiceId: 'DO-inv001', modeOfPayment: 'Online', clientName: 'Tech Corp',
     lotusVip499: 10, // 10 * 505 (from DO-yacht2) = 5050
     quantity: 10, rate: 0, // General quantity/rate not used if specific package items are
     totalAmount: 5050, commissionPercentage: 12, commissionAmount: 606, // 5050 * 0.12
@@ -69,7 +69,7 @@ export const placeholderLeads: Lead[] = [
   },
   {
     id: 'DO-lead2', agent: 'DO-agentB', status: 'Proposal Sent', month: '2024-07', yacht: 'DO-yacht1',
-    type: 'Private Party', packageType: 'SUNSET', clientName: 'Innovate Ltd',
+    type: 'Private Party', modeOfPayment: 'Offline', clientName: 'Innovate Ltd',
     sunsetDrinks299: 20, // 20 * 299 (from DO-yacht1) = 5980
     quantity: 20, rate: 0,
     totalAmount: 5980, commissionPercentage: 15, commissionAmount: 897, // 5980 * 0.15
@@ -78,7 +78,7 @@ export const placeholderLeads: Lead[] = [
   },
   {
     id: 'DO-lead3', agent: 'DO-agentA', status: 'Closed Won', month: '2024-08', yacht: 'DO-yacht3',
-    type: 'Tour Group', packageType: 'OE', clientName: 'Solutions Inc',
+    type: 'Tour Group', modeOfPayment: 'Credit', clientName: 'Solutions Inc',
     oeFood149: 50, // 50 * 140 (from DO-yacht3) = 7000
     quantity: 50, rate: 0,
     totalAmount: 7000, commissionPercentage: 12, commissionAmount: 840, // 7000 * 0.12
@@ -87,7 +87,7 @@ export const placeholderLeads: Lead[] = [
   },
   {
     id: 'DO-lead4', agent: 'DO-agentC', status: 'New', month: '2024-08', yacht: 'DO-yacht4',
-    type: 'Wedding Reception', packageType: 'DHOW', clientName: 'Global Co',
+    type: 'Wedding Reception', modeOfPayment: 'Online', clientName: 'Global Co',
     dhowVip299: 30, othersAmtCake: 500, // (30 * 302 from DO-yacht4) + 500 = 9060 + 500 = 9560
     quantity: 30, rate: 0,
     totalAmount: 9560, commissionPercentage: 10, commissionAmount: 956, // 9560 * 0.10
@@ -96,7 +96,7 @@ export const placeholderLeads: Lead[] = [
   },
   {
     id: 'DO-lead5', agent: 'DO-agentB', status: 'Closed Won', month: '2024-09', yacht: 'DO-yacht1',
-    type: 'Birthday Celebration', packageType: 'DHOW', clientName: 'Celebrations LLC',
+    type: 'Birthday Celebration', modeOfPayment: 'Offline', clientName: 'Celebrations LLC',
     dhowFood99: 30, // 30 * 99 (from DO-yacht1) = 2970
     quantity: 30, rate: 0,
     totalAmount: 2970, commissionPercentage: 15, commissionAmount: 445.50,

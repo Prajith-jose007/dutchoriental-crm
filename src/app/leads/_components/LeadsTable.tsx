@@ -44,9 +44,8 @@ const leadColumns: { accessorKey: keyof Lead | 'actions' | 'select', header: str
   { accessorKey: 'yacht', header: 'Yacht' },
   { accessorKey: 'type', header: 'Type' },
   { accessorKey: 'invoiceId', header: 'Invoice' },
-  { accessorKey: 'packageType', header: 'Package' },
+  { accessorKey: 'modeOfPayment', header: 'Payment Mode' },
   { accessorKey: 'clientName', header: 'Client' },
-  // { accessorKey: 'free', header: 'Free' }, // Removed Free column
   { accessorKey: 'dhowChild89', header: 'Dhow Child Qty' },
   { accessorKey: 'dhowFood99', header: 'Dhow Food Qty' },
   { accessorKey: 'totalAmount', header: 'Total Amt', isCurrency: true },
@@ -126,8 +125,8 @@ export function LeadsTable({ leads, onEditLead }: LeadsTableProps) {
                         getYachtName(lead.yacht)
                     ): col.accessorKey === 'status' ? (
                       <Badge variant={getStatusVariant(lead.status)}>{lead.status}</Badge>
-                    // ) : col.accessorKey === 'free' ? ( // Removed Free rendering
-                    //   lead.free ? <Badge variant="secondary">Yes</Badge> : 'No'
+                    ) : col.accessorKey === 'modeOfPayment' ? (
+                      lead.modeOfPayment
                     ) : col.isCurrency ? (
                       formatCurrency(lead[col.accessorKey as keyof Lead] as number | undefined)
                     ) : col.isPercentage ? (

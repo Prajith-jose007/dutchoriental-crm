@@ -5,12 +5,12 @@ import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+// Removed Badge import as it's no longer used for status on cards
 import { PageHeader } from '@/components/PageHeader';
 import { placeholderYachts as initialYachts } from '@/lib/placeholder-data';
 import type { Yacht } from '@/lib/types';
-import { PlusCircle, Edit, Trash2, Zap, Wrench, Ship as ShipIcon } from 'lucide-react';
-import { YachtFormDialog } from './_components/YachtFormDialog'; // Ensure this path is correct
+import { PlusCircle, Edit, Trash2 } from 'lucide-react'; // Removed Zap, Wrench, ShipIcon as they were for status
+import { YachtFormDialog } from './_components/YachtFormDialog'; 
 
 export default function YachtsPage() {
   const [yachts, setYachts] = useState<Yacht[]>(initialYachts);
@@ -48,38 +48,17 @@ export default function YachtsPage() {
     setEditingYacht(null);
   };
   
-    const handleDeleteYacht = (yachtId: string) => {
-    // For now, this will just log and filter from local state.
-    // In a real app, this would be an API call.
+  const handleDeleteYacht = (yachtId: string) => {
     console.warn('Delete yacht action (not fully implemented)', yachtId);
     setYachts(prevYachts => prevYachts.filter(y => y.id !== yachtId));
     const yachtIndex = initialYachts.findIndex(y => y.id === yachtId);
     if (yachtIndex > -1) {
         initialYachts.splice(yachtIndex, 1);
     }
-    // Optionally, add a toast message here
   };
 
+  // Removed getStatusBadgeVariant and getStatusIcon functions
 
-  const getStatusBadgeVariant = (status: Yacht['status']) => {
-    switch (status) {
-      case 'Available': return 'default';
-      case 'Booked': return 'secondary';
-      case 'Maintenance': return 'destructive';
-      default: return 'outline';
-    }
-  };
-
-  const getStatusIcon = (status: Yacht['status']) => {
-    switch (status) {
-      case 'Available': return <Zap className="mr-1 h-3 w-3" />;
-      case 'Booked': return <ShipIcon className="mr-1 h-3 w-3" />;
-      case 'Maintenance': return <Wrench className="mr-1 h-3 w-3" />;
-      default: return null;
-    }
-  };
-
-  // Helper to display package costs concisely
   const renderPackageCosts = (yacht: Yacht) => {
     const costs = [
       { label: 'Dhow Child', value: yacht.dhowChild89_rate },
@@ -100,13 +79,12 @@ export default function YachtsPage() {
       { label: 'Others/Cake', value: yacht.othersAmtCake_rate },
     ];
     const definedCosts = costs.filter(cost => typeof cost.value === 'number' && cost.value > 0);
-    if (definedCosts.length === 0) return <div>No specific package rates defined.</div>;
+    if (definedCosts.length === 0) return <div className="text-sm text-muted-foreground">No specific package rates defined.</div>;
 
     return definedCosts.map(cost => (
-      <div key={cost.label}>{cost.label}: {cost.value?.toLocaleString()} AED</div>
+      <div key={cost.label} className="text-sm">{cost.label}: {cost.value?.toLocaleString()} AED</div>
     ));
   };
-
 
   return (
     <div className="container mx-auto py-2">
@@ -136,17 +114,16 @@ export default function YachtsPage() {
               <CardTitle className="mt-4">{yacht.name}</CardTitle>
               <CardDescription>Capacity: {yacht.capacity} guests</CardDescription>
             </CardHeader>
-            <CardContent className="flex-grow space-y-2">
-              <Badge variant={getStatusBadgeVariant(yacht.status)} className="flex items-center w-fit mb-2">
-                {getStatusIcon(yacht.status)}
-                {yacht.status}
-              </Badge>
-              <div className="space-y-1 text-sm text-muted-foreground">
-                <h4 className="font-medium text-foreground">Package Rates:</h4>
-                {renderPackageCosts(yacht)}
+            <CardContent className="flex-grow space-y-3"> {/* Increased space-y slightly for better separation */}
+              {/* Status badge and icon removed from here */}
+              <div>
+                <h4 className="text-md font-semibold text-foreground mb-1">Package Rates:</h4>
+                <div className="space-y-1 text-muted-foreground">
+                  {renderPackageCosts(yacht)}
+                </div>
               </div>
             </CardContent>
-            <CardFooter className="flex justify-end gap-2 mt-auto pt-4">
+            <CardFooter className="flex justify-end gap-2 mt-auto pt-4 border-t"> {/* Added border-t for visual separation */}
               <Button variant="outline" size="sm" onClick={() => handleEditYachtClick(yacht)}>
                 <Edit className="mr-2 h-4 w-4" /> Edit
               </Button>

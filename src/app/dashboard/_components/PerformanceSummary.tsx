@@ -8,9 +8,7 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
-  CardDescription,
 } from '@/components/ui/card';
-import { placeholderInvoices } from '@/lib/placeholder-data'; // Still used for invoice data
 import type { Lead, Invoice } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -48,13 +46,16 @@ function SummaryCard({ title, value, description, icon, isLoading }: SummaryCard
 
 export function PerformanceSummary() {
   const [leads, setLeads] = useState<Lead[]>([]);
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [isLoadingLeads, setIsLoadingLeads] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [isLoadingInvoices, setIsLoadingInvoices] = useState(true);
+  const [errorLeads, setErrorLeads] = useState<string | null>(null);
+  const [errorInvoices, setErrorInvoices] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchLeadsData = async () => {
       setIsLoadingLeads(true);
-      setError(null);
+      setErrorLeads(null);
       try {
         const response = await fetch('/api/leads');
         if (!response.ok) {
@@ -64,13 +65,34 @@ export function PerformanceSummary() {
         setLeads(Array.isArray(data) ? data : []);
       } catch (err) {
         console.error("Error fetching leads for dashboard:", err);
-        setError((err as Error).message);
-        setLeads([]); // Fallback to empty or could use placeholderLeads as a fallback
+        setErrorLeads((err as Error).message);
+        setLeads([]);
       } finally {
         setIsLoadingLeads(false);
       }
     };
+
+    const fetchInvoicesData = async () => {
+      setIsLoadingInvoices(true);
+      setErrorInvoices(null);
+      try {
+        const response = await fetch('/api/invoices');
+        if (!response.ok) {
+          throw new Error(`Failed to fetch invoices: ${response.statusText}`);
+        }
+        const data = await response.json();
+        setInvoices(Array.isArray(data) ? data : []);
+      } catch (err) {
+        console.error("Error fetching invoices for dashboard:", err);
+        setErrorInvoices((err as Error).message);
+        setInvoices([]);
+      } finally {
+        setIsLoadingInvoices(false);
+      }
+    };
+
     fetchLeadsData();
+    fetchInvoicesData();
   }, []);
 
   const { totalConfirmedBookings, totalConfirmedEarnings } = useMemo(() => {
@@ -83,69 +105,48 @@ export function PerformanceSummary() {
     };
   }, [leads]);
 
-  // Invoice data still comes from placeholders
   const { overdueInvoicesCount, totalPendingPayments } = useMemo(() => {
-    const overdueInvoices = placeholderInvoices.filter(invoice => invoice.status === 'Overdue').length;
-    const pendingPayments = placeholderInvoices
+    const overdue = invoices.filter(invoice => invoice.status === 'Overdue').length;
+    const pending = invoices
       .filter(invoice => invoice.status === 'Pending' || invoice.status === 'Overdue')
       .reduce((sum, invoice) => sum + invoice.amount, 0);
     return {
-      overdueInvoicesCount: overdueInvoices,
-      totalPendingPayments: pendingPayments,
+      overdueInvoicesCount: overdue,
+      totalPendingPayments: pending,
     };
-  }, []);
+  }, [invoices]);
 
-  if (error && isLoadingLeads) { // Show error only if loading failed, not if it's just loading
-    return (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <Card><CardContent className="pt-6"><p className="text-destructive">Error loading leads data.</p></CardContent></Card>
-            <Card><CardContent className="pt-6"><p className="text-destructive">Error loading leads data.</p></CardContent></Card>
-             {/* Static invoice cards can still render */}
-            <SummaryCard
-                title="Overdue Invoices"
-                value={overdueInvoicesCount}
-                icon={<FileWarning className="h-5 w-5 text-muted-foreground" />}
-                description="Number of invoices past due date"
-            />
-            <SummaryCard
-                title="Pending Payments"
-                value={`${totalPendingPayments.toLocaleString()} AED`}
-                icon={<CircleDollarSign className="h-5 w-5 text-muted-foreground" />}
-                description="Total from pending and overdue invoices"
-            />
-        </div>
-    );
-  }
-
+  const isLoading = isLoadingLeads || isLoadingInvoices;
 
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
       <SummaryCard
         title="Total Confirmed Bookings"
-        value={totalConfirmedBookings}
+        value={errorLeads ? 'Error' : totalConfirmedBookings}
         icon={<BookOpenCheck className="h-5 w-5 text-muted-foreground" />}
-        description="Number of 'Closed Won' leads"
+        description={errorLeads ? errorLeads : "Number of 'Closed Won' leads"}
         isLoading={isLoadingLeads}
       />
       <SummaryCard
         title="Total Confirmed Earnings"
-        value={`${totalConfirmedEarnings.toLocaleString()} AED`}
+        value={errorLeads ? 'Error' : `${totalConfirmedEarnings.toLocaleString()} AED`}
         icon={<Banknote className="h-5 w-5 text-muted-foreground" />}
-        description="Sum of net amounts for 'Closed Won' leads"
+        description={errorLeads ? errorLeads : "Sum of net amounts for 'Closed Won' leads"}
         isLoading={isLoadingLeads}
       />
-      {/* Invoice related cards remain, using placeholder data */}
       <SummaryCard
         title="Overdue Invoices"
-        value={overdueInvoicesCount}
+        value={errorInvoices ? 'Error' : overdueInvoicesCount}
         icon={<FileWarning className="h-5 w-5 text-muted-foreground" />}
-        description="Number of invoices past due date"
+        description={errorInvoices ? errorInvoices : "Number of invoices past due date"}
+        isLoading={isLoadingInvoices}
       />
       <SummaryCard
         title="Pending Payments"
-        value={`${totalPendingPayments.toLocaleString()} AED`}
+        value={errorInvoices ? 'Error' : `${totalPendingPayments.toLocaleString()} AED`}
         icon={<CircleDollarSign className="h-5 w-5 text-muted-foreground" />}
-        description="Total from pending and overdue invoices"
+        description={errorInvoices ? errorInvoices : "Total from pending and overdue invoices"}
+        isLoading={isLoadingInvoices}
       />
     </div>
   );

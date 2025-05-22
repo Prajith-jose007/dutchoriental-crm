@@ -1,3 +1,7 @@
+
+'use client';
+
+import { useEffect, useState } from 'react';
 import {
   Table,
   TableBody,
@@ -14,11 +18,37 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { placeholderInvoices } from '@/lib/placeholder-data';
 import type { Invoice } from '@/lib/types';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export function LatestInvoicesTable() {
-  const invoices: Invoice[] = placeholderInvoices.slice(0, 5); // Display latest 5
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchInvoices = async () => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const response = await fetch('/api/invoices');
+        if (!response.ok) {
+          throw new Error(`Failed to fetch invoices: ${response.statusText}`);
+        }
+        const data = await response.json();
+        // Display latest 5, assuming the API returns them sorted or we sort here.
+        // The API mock now sorts by createdAt descending.
+        setInvoices(Array.isArray(data) ? data.slice(0, 5) : []);
+      } catch (err) {
+        console.error("Error fetching invoices for LatestInvoicesTable:", err);
+        setError((err as Error).message);
+        setInvoices([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchInvoices();
+  }, []);
 
   const getStatusBadgeVariant = (status: Invoice['status']) => {
     switch (status) {
@@ -32,6 +62,52 @@ export function LatestInvoicesTable() {
         return 'outline';
     }
   };
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Latest Invoices</CardTitle>
+          <CardDescription>A summary of your most recent invoices.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-2">
+            {[...Array(5)].map((_, i) => (
+              <Skeleton key={i} className="h-10 w-full" />
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (error) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Latest Invoices</CardTitle>
+          <CardDescription>A summary of your most recent invoices.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <p className="text-destructive">Error loading invoices: {error}</p>
+        </CardContent>
+      </Card>
+    );
+  }
+  
+  if (invoices.length === 0) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Latest Invoices</CardTitle>
+          <CardDescription>A summary of your most recent invoices.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <p className="text-muted-foreground">No invoices found.</p>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card>

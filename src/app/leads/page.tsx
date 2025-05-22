@@ -89,7 +89,7 @@ export default function LeadsPage() {
       }
       initialLeads.push(submittedLeadData);
       setLeads(prevLeads => [...prevLeads, submittedLeadData]);
-    } else if (!editingLead && existingLeadIndex !== -1) { // Should not happen if ID is truly unique
+    } else if (!editingLead && existingLeadIndex !== -1) { 
       toast({
         title: 'Error Adding Lead',
         description: `A lead with ID ${submittedLeadData.id} already exists. This should not happen if IDs are unique.`,
@@ -110,14 +110,13 @@ export default function LeadsPage() {
         return;
       }
       try {
-        const lines = csvText.split(/\r\n|\n/).filter(line => line.trim() !== ''); // Filter out empty lines
+        const lines = csvText.split(/\r\n|\n/).filter(line => line.trim() !== ''); 
         if (lines.length < 2) {
           toast({ title: 'Import Error', description: 'CSV file must have a header and at least one data row.', variant: 'destructive' });
           return;
         }
         
         let headerLine = lines[0];
-        // Check for and remove UTF-8 BOM
         if (headerLine.charCodeAt(0) === 0xFEFF) {
             headerLine = headerLine.substring(1);
         }
@@ -129,12 +128,11 @@ export default function LeadsPage() {
         for (let i = 1; i < lines.length; i++) {
           let data = lines[i].split(',');
 
-          // Attempt to handle rows with more columns than header, if extra columns are empty
           if (data.length > headers.length) {
             const extraColumns = data.slice(headers.length);
             const allExtraAreEmpty = extraColumns.every(col => col.trim() === '');
             if (allExtraAreEmpty) {
-              data = data.slice(0, headers.length); // Truncate to match header length
+              data = data.slice(0, headers.length);
             }
           }
           
@@ -219,17 +217,16 @@ export default function LeadsPage() {
           }
         }
 
-        if (skippedCount > 0 && newLeadsFromCsv.length > 0) { // Added this condition
+        if (skippedCount > 0 && newLeadsFromCsv.length > 0) { 
             toast({ title: 'Import Partially Completed', description: `${newLeadsFromCsv.length} new leads imported, ${skippedCount} rows were skipped.`, variant: 'default' });
-        } else if (skippedCount > 0 && newLeadsFromCsv.length === 0 && (lines.length -1) > 0) { // Ensures we don't show this if there were no data lines to begin with
-             // This condition is for when all data rows were skipped, but there were data rows to process
+        } else if (skippedCount > 0 && newLeadsFromCsv.length === 0 && (lines.length -1) > 0) { 
         }
 
 
         if (newLeadsFromCsv.length > 0) {
           initialLeads.push(...newLeadsFromCsv); 
           setLeads(prevLeads => [...prevLeads, ...newLeadsFromCsv]); 
-          // Toast for success is now handled by the "Partially Completed" or a new full success toast if no skips
+          
           if (skippedCount === 0) {
             toast({ title: 'Import Successful', description: `${newLeadsFromCsv.length} new leads imported.` });
           }
@@ -240,7 +237,7 @@ export default function LeadsPage() {
             variant: 'destructive' 
           });
         }
-         else { // This covers cases like empty file (after header) or all duplicates
+         else { 
           toast({ title: 'Import Complete', description: 'No new leads were imported (possibly all duplicates or file had no valid data rows after header).' });
         }
 
@@ -259,12 +256,70 @@ export default function LeadsPage() {
     reader.readAsText(file);
   };
 
+  const handleCsvExport = () => {
+    if (leads.length === 0) {
+      toast({ title: 'No Data', description: 'There are no leads to export.', variant: 'default' });
+      return;
+    }
+
+    const headers: (keyof Lead)[] = [
+      'id', 'agent', 'status', 'month', 'yacht', 'type', 'invoiceId', 'packageType', 'clientName', 'free',
+      'dhowChild89', 'dhowFood99', 'dhowDrinks199', 'dhowVip299',
+      'oeChild129', 'oeFood149', 'oeDrinks249', 'oeVip349',
+      'sunsetChild179', 'sunsetFood199', 'sunsetDrinks299',
+      'lotusFood249', 'lotusDrinks349', 'lotusVip399', 'lotusVip499',
+      'othersAmtCake', 'quantity', 'rate', 'totalAmount', 'commissionPercentage', 
+      'commissionAmount', 'netAmount', 'paidAmount', 'balanceAmount', 'createdAt', 'updatedAt'
+    ];
+    
+    const escapeCsvCell = (cellData: any): string => {
+      if (cellData === null || cellData === undefined) {
+        return '';
+      }
+      const stringValue = String(cellData);
+      // If the string contains a comma, double quote, or newline, enclose it in double quotes
+      // and escape any existing double quotes by doubling them.
+      if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n')) {
+        return `"${stringValue.replace(/"/g, '""')}"`;
+      }
+      return stringValue;
+    };
+
+    const csvRows = [
+      headers.join(','), // Header row
+      ...leads.map(lead => 
+        headers.map(header => escapeCsvCell(lead[header])).join(',')
+      )
+    ];
+    const csvString = csvRows.join('\n');
+
+    const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    if (link.download !== undefined) { // Feature detection
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', 'dutchoriental_leads_export.csv');
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      toast({ title: 'Export Successful', description: 'Leads have been exported to CSV.' });
+    } else {
+      toast({ title: 'Export Failed', description: 'Your browser does not support this feature.', variant: 'destructive' });
+    }
+  };
+
   return (
     <div className="container mx-auto py-2">
       <PageHeader 
         title="Leads Management"
         description="Track and manage all your sales leads."
-        actions={<ImportExportButtons onAddLeadClick={handleAddLeadClick} onCsvImport={handleCsvImport} />}
+        actions={<ImportExportButtons 
+                    onAddLeadClick={handleAddLeadClick} 
+                    onCsvImport={handleCsvImport} 
+                    onCsvExport={handleCsvExport} // Pass the export handler
+                  />}
       />
       <LeadsTable leads={leads} onEditLead={handleEditLeadClick} />
       {isLeadDialogOpen && (
@@ -278,4 +333,3 @@ export default function LeadsPage() {
     </div>
   );
 }
-

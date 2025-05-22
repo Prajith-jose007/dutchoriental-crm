@@ -9,9 +9,10 @@ import { useToast } from '@/hooks/use-toast';
 interface ImportExportButtonsProps {
   onAddLeadClick: () => void;
   onCsvImport: (file: File) => void;
+  onCsvExport: () => void; // Added prop for export handler
 }
 
-export function ImportExportButtons({ onAddLeadClick, onCsvImport }: ImportExportButtonsProps) {
+export function ImportExportButtons({ onAddLeadClick, onCsvImport, onCsvExport }: ImportExportButtonsProps) {
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -22,7 +23,7 @@ export function ImportExportButtons({ onAddLeadClick, onCsvImport }: ImportExpor
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      if (file.type === 'text/csv') {
+      if (file.type === 'text/csv' || file.name.endsWith('.csv')) { // More lenient check for .csv
         onCsvImport(file);
       } else {
         toast({
@@ -38,9 +39,7 @@ export function ImportExportButtons({ onAddLeadClick, onCsvImport }: ImportExpor
     }
   };
 
-  const handleExport = () => {
-    toast({ title: 'Export Initiated', description: 'CSV export feature is not yet implemented.' });
-  };
+  // Removed handleExport, will use onCsvExport prop directly
   
   return (
     <div className="flex items-center gap-2">
@@ -55,7 +54,7 @@ export function ImportExportButtons({ onAddLeadClick, onCsvImport }: ImportExpor
         <Upload className="mr-2 h-4 w-4" />
         Import CSV
       </Button>
-      <Button variant="outline" onClick={handleExport}>
+      <Button variant="outline" onClick={onCsvExport}> {/* Calls the passed export handler */}
         <Download className="mr-2 h-4 w-4" />
         Export CSV
       </Button>

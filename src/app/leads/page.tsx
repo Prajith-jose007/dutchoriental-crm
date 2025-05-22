@@ -116,14 +116,30 @@ export default function LeadsPage() {
           return;
         }
         
-        const headers = lines[0].split(',').map(h => h.trim() as keyof Lead);
-        const newLeadsFromCsv: Lead[] = []; // Renamed to avoid confusion with 'newLeads' state setter
+        let headerLine = lines[0];
+        // Check for and remove UTF-8 BOM
+        if (headerLine.charCodeAt(0) === 0xFEFF) {
+            headerLine = headerLine.substring(1);
+        }
+        const headers = headerLine.split(',').map(h => h.trim() as keyof Lead);
+        
+        const newLeadsFromCsv: Lead[] = []; 
         let skippedCount = 0;
 
         for (let i = 1; i < lines.length; i++) {
-          const data = lines[i].split(',');
+          let data = lines[i].split(',');
+
+          // Attempt to handle rows with more columns than header, if extra columns are empty
+          if (data.length > headers.length) {
+            const extraColumns = data.slice(headers.length);
+            const allExtraAreEmpty = extraColumns.every(col => col.trim() === '');
+            if (allExtraAreEmpty) {
+              data = data.slice(0, headers.length); // Truncate to match header length
+            }
+          }
+          
           if (data.length !== headers.length) {
-            console.warn(`Skipping malformed CSV line ${i + 1}: Expected ${headers.length} columns, got ${data.length}. Line: "${lines[i]}"`);
+            console.warn(`Skipping malformed CSV line ${i + 1}: Expected ${headers.length} columns, got ${data.length}. Ensure delimiter is comma and check column count. Line: "${lines[i]}"`);
             skippedCount++;
             continue;
           }
@@ -135,7 +151,6 @@ export default function LeadsPage() {
           
           let leadId = parsedRow.id || `imported-lead-${Date.now()}-${i}`;
           
-          // Ensure generated ID is unique if parsedRow.id was not present
           if (!parsedRow.id) {
             let counter = 0;
             let tempId = leadId;
@@ -191,7 +206,6 @@ export default function LeadsPage() {
             commissionAmount: typeof parsedRow.commissionAmount === 'number' ? parsedRow.commissionAmount : 0,
           };
 
-          // Check for duplicates against initial data, current state, AND this batch
           const isDuplicateInInitial = initialLeads.some(l => l.id === fullLead.id);
           const isDuplicateInCurrentState = leads.some(l => l.id === fullLead.id);
           const isDuplicateInThisBatch = newLeadsFromCsv.some(l => l.id === fullLead.id);
@@ -205,19 +219,29 @@ export default function LeadsPage() {
           }
         }
 
-        if (skippedCount > 0) {
-            toast({ title: 'Import Partially Completed', description: `${skippedCount} rows were skipped due to errors or duplicates.`, variant: 'default' });
+        if (skippedCount > 0 && newLeadsFromCsv.length > 0) { // Added this condition
+            toast({ title: 'Import Partially Completed', description: `${newLeadsFromCsv.length} new leads imported, ${skippedCount} rows were skipped.`, variant: 'default' });
+        } else if (skippedCount > 0 && newLeadsFromCsv.length === 0 && (lines.length -1) > 0) { // Ensures we don't show this if there were no data lines to begin with
+             // This condition is for when all data rows were skipped, but there were data rows to process
         }
+
 
         if (newLeadsFromCsv.length > 0) {
           initialLeads.push(...newLeadsFromCsv); 
           setLeads(prevLeads => [...prevLeads, ...newLeadsFromCsv]); 
-          toast({ title: 'Import Successful', description: `${newLeadsFromCsv.length} new leads imported.` });
+          // Toast for success is now handled by the "Partially Completed" or a new full success toast if no skips
+          if (skippedCount === 0) {
+            toast({ title: 'Import Successful', description: `${newLeadsFromCsv.length} new leads imported.` });
+          }
         } else if (skippedCount === lines.length -1 && lines.length > 1) {
-           toast({ title: 'Import Failed', description: 'All data rows were skipped. Please check your CSV file for issues.' });
+           toast({ 
+            title: 'Import Failed', 
+            description: `All ${lines.length - 1} data rows were skipped. Please check your CSV file. Common issues: column count mismatch with header, or incorrect delimiter (must be comma).`, 
+            variant: 'destructive' 
+          });
         }
-         else {
-          toast({ title: 'Import Complete', description: 'No new leads were imported (possibly all duplicates or empty/invalid file after header).' });
+         else { // This covers cases like empty file (after header) or all duplicates
+          toast({ title: 'Import Complete', description: 'No new leads were imported (possibly all duplicates or file had no valid data rows after header).' });
         }
 
       } catch (error) {

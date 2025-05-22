@@ -21,8 +21,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import type { Lead, Yacht, Agent } from '@/lib/types'; // Changed User to Agent
-import { placeholderYachts, placeholderAgents } from '@/lib/placeholder-data'; // Changed placeholderUsers to placeholderAgents
+import type { Lead, Yacht, Agent } from '@/lib/types';
+import { placeholderYachts, placeholderAgents } from '@/lib/placeholder-data';
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 
 const getYachtName = (yachtId: string): string => {
@@ -31,7 +31,7 @@ const getYachtName = (yachtId: string): string => {
 };
 
 const getAgentName = (agentId: string): string => {
-  const agent = placeholderAgents.find(a => a.id === agentId); // Search in placeholderAgents
+  const agent = placeholderAgents.find(a => a.id === agentId);
   return agent ? agent.name : agentId;
 }
 
@@ -46,11 +46,11 @@ const leadColumns: { accessorKey: keyof Lead | 'actions' | 'select', header: str
   { accessorKey: 'invoiceId', header: 'Invoice' },
   { accessorKey: 'packageType', header: 'Package' },
   { accessorKey: 'clientName', header: 'Client' },
-  { accessorKey: 'free', header: 'Free' },
+  // { accessorKey: 'free', header: 'Free' }, // Removed Free column
   { accessorKey: 'dhowChild89', header: 'Dhow Child Qty' },
   { accessorKey: 'dhowFood99', header: 'Dhow Food Qty' },
   { accessorKey: 'totalAmount', header: 'Total Amt', isCurrency: true },
-  { accessorKey: 'commissionPercentage', header: 'Agent Disc. %', isPercentage: true }, // Updated header
+  { accessorKey: 'commissionPercentage', header: 'Agent Disc. %', isPercentage: true },
   { accessorKey: 'commissionAmount', header: 'Comm Amt', isCurrency: true },
   { accessorKey: 'netAmount', header: 'Net Amt', isCurrency: true },
   { accessorKey: 'paidAmount', header: 'Paid Amt', isCurrency: true },
@@ -69,8 +69,8 @@ export function LeadsTable({ leads, onEditLead }: LeadsTableProps) {
     switch (status) {
       case 'New': return 'outline';
       case 'Contacted': return 'secondary';
-      case 'Qualified': return 'default'; 
-      case 'Proposal Sent': return 'default'; 
+      case 'Qualified': return 'default';
+      case 'Proposal Sent': return 'default';
       case 'Closed Won': return 'default';
       case 'Closed Lost': return 'destructive';
       default: return 'outline';
@@ -81,7 +81,7 @@ export function LeadsTable({ leads, onEditLead }: LeadsTableProps) {
     if (typeof amount !== 'number') return '-';
     return `${amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} AED`;
   };
-  
+
   const formatPercentage = (value: number | undefined | null) => {
     if (typeof value !== 'number') return '-';
     return `${value.toFixed(1)}%`;
@@ -126,14 +126,14 @@ export function LeadsTable({ leads, onEditLead }: LeadsTableProps) {
                         getYachtName(lead.yacht)
                     ): col.accessorKey === 'status' ? (
                       <Badge variant={getStatusVariant(lead.status)}>{lead.status}</Badge>
-                    ) : col.accessorKey === 'free' ? (
-                      lead.free ? <Badge variant="secondary">Yes</Badge> : 'No'
+                    // ) : col.accessorKey === 'free' ? ( // Removed Free rendering
+                    //   lead.free ? <Badge variant="secondary">Yes</Badge> : 'No'
                     ) : col.isCurrency ? (
                       formatCurrency(lead[col.accessorKey as keyof Lead] as number | undefined)
                     ) : col.isPercentage ? (
                         formatPercentage(lead[col.accessorKey as keyof Lead] as number | undefined)
                     ) : (
-                      lead[col.accessorKey as keyof Lead] !== undefined && lead[col.accessorKey as keyof Lead] !== null ? 
+                      lead[col.accessorKey as keyof Lead] !== undefined && lead[col.accessorKey as keyof Lead] !== null ?
                       String(lead[col.accessorKey as keyof Lead]) : '-'
                     )}
                   </TableCell>
@@ -155,8 +155,8 @@ export function LeadsTable({ leads, onEditLead }: LeadsTableProps) {
                         View Details
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem 
-                        className="text-destructive" 
+                      <DropdownMenuItem
+                        className="text-destructive"
                         onClick={() => console.warn('Delete lead action (not implemented)', lead.id)}
                       >
                         Delete Lead

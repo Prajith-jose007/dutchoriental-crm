@@ -6,17 +6,17 @@ export interface User {
   email: string;
   designation: string;
   avatarUrl?: string;
-  websiteUrl?: string; 
-  status?: 'Active' | 'Inactive' | 'Archived'; 
+  websiteUrl?: string;
+  status?: 'Active' | 'Inactive' | 'Archived';
 }
 
 export interface Agent {
   id: string;
   name: string;
-  email: string; 
-  discountRate: number; 
+  email: string;
+  discountRate: number;
   websiteUrl?: string;
-  status: 'Active' | 'Non Active' | 'Dead'; 
+  status: 'Active' | 'Non Active' | 'Dead';
 }
 
 export interface Yacht {
@@ -66,15 +66,15 @@ export type PackageType = 'DHOW' | 'OE' | 'SUNSET' | 'LOTUS' | 'OTHER' | '';
 
 export interface Lead {
   id:string;
-  agent: string; 
+  agent: string;
   status: LeadStatus;
-  month: string; 
-  yacht: string; 
-  type: string; 
+  month: string;
+  yacht: string;
+  type: string;
   invoiceId?: string;
   packageType: PackageType;
   clientName: string;
-  free?: boolean;
+  // free?: boolean; // Removed free
   dhowChild89?: number;
   dhowFood99?: number;
   dhowDrinks199?: number;
@@ -91,19 +91,19 @@ export interface Lead {
   lotusVip399?: number;
   lotusVip499?: number;
   othersAmtCake?: number;
-  
+
   quantity: number;
   rate: number;
-  
+
   totalAmount: number;
   commissionAmount?: number;
-  commissionPercentage: number; 
+  commissionPercentage: number;
   netAmount: number;
   paidAmount: number;
   balanceAmount: number;
-  
-  createdAt: string; 
-  updatedAt: string; 
+
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface BookingReportData {
@@ -112,7 +112,7 @@ export interface BookingReportData {
 }
 
 export interface RevenueData {
-  period: string; 
+  period: string;
   amount: number;
 }
 

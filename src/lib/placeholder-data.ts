@@ -15,7 +15,7 @@ export const placeholderAgents: Agent[] = [
 ];
 
 export const placeholderYachts: Yacht[] = [
-  { 
+  {
     id: 'DO-yacht1', name: 'The Sea Serpent', capacity: 50, status: 'Available', imageUrl: 'https://placehold.co/300x200.png',
     dhowChild89_rate: 89, dhowFood99_rate: 99, dhowDrinks199_rate: 199, dhowVip299_rate: 299,
     oeChild129_rate: 129, oeFood149_rate: 149, oeDrinks249_rate: 249, oeVip349_rate: 349,
@@ -23,7 +23,7 @@ export const placeholderYachts: Yacht[] = [
     lotusFood249_rate: 249, lotusDrinks349_rate: 349, lotusVip399_rate: 399, lotusVip499_rate: 499,
     othersAmtCake_rate: 100,
   },
-  { 
+  {
     id: 'DO-yacht2', name: 'Ocean Voyager', capacity: 100, status: 'Booked', imageUrl: 'https://placehold.co/300x200.png',
     dhowChild89_rate: 95, dhowFood99_rate: 105, dhowDrinks199_rate: 205, dhowVip299_rate: 305,
     oeChild129_rate: 135, oeFood149_rate: 155, oeDrinks249_rate: 255, oeVip349_rate: 355,
@@ -31,7 +31,7 @@ export const placeholderYachts: Yacht[] = [
     lotusFood249_rate: 255, lotusDrinks349_rate: 355, lotusVip399_rate: 405, lotusVip499_rate: 505,
     othersAmtCake_rate: 120,
   },
-  { 
+  {
     id: 'DO-yacht3', name: 'Marina Queen', capacity: 75, status: 'Maintenance', imageUrl: 'https://placehold.co/300x200.png',
     dhowChild89_rate: 80, dhowFood99_rate: 90, dhowDrinks199_rate: 190, dhowVip299_rate: 290,
     oeChild129_rate: 120, oeFood149_rate: 140, oeDrinks249_rate: 240, oeVip349_rate: 340,
@@ -39,7 +39,7 @@ export const placeholderYachts: Yacht[] = [
     lotusFood249_rate: 240, lotusDrinks349_rate: 340, lotusVip399_rate: 390, lotusVip499_rate: 490,
     othersAmtCake_rate: 90,
   },
-  { 
+  {
     id: 'DO-yacht4', name: 'Azure Spirit', capacity: 60, status: 'Available', imageUrl: 'https://placehold.co/300x200.png',
     dhowChild89_rate: 92, dhowFood99_rate: 102, dhowDrinks199_rate: 202, dhowVip299_rate: 302,
     oeChild129_rate: 132, oeFood149_rate: 152, oeDrinks249_rate: 252, oeVip349_rate: 352,
@@ -58,39 +58,39 @@ export const placeholderInvoices: Invoice[] = [
 ];
 
 export const placeholderLeads: Lead[] = [
-  { 
-    id: 'DO-lead1', agent: 'DO-agentA', status: 'Closed Won', month: '2024-07', yacht: 'DO-yacht2', 
+  {
+    id: 'DO-lead1', agent: 'DO-agentA', status: 'Closed Won', month: '2024-07', yacht: 'DO-yacht2',
     type: 'Corporate Event', invoiceId: 'DO-inv001', packageType: 'LOTUS', clientName: 'Tech Corp',
-    lotusVip499: 10, 
+    lotusVip499: 10,
     quantity: 10, rate: 1500,
-    totalAmount: 5050, commissionPercentage: 12, commissionAmount: 606, 
+    totalAmount: 5050, commissionPercentage: 12, commissionAmount: 606,
     netAmount: 4444, paidAmount: 5050, balanceAmount: 0,
     createdAt: '2024-06-15', updatedAt: '2024-07-01'
   },
-  { 
-    id: 'DO-lead2', agent: 'DO-agentB', status: 'Proposal Sent', month: '2024-07', yacht: 'DO-yacht1', 
+  {
+    id: 'DO-lead2', agent: 'DO-agentB', status: 'Proposal Sent', month: '2024-07', yacht: 'DO-yacht1',
     type: 'Private Party', packageType: 'SUNSET', clientName: 'Innovate Ltd',
     sunsetDrinks299: 20,
-    quantity: 20, rate: 1100, 
-    totalAmount: 5980, commissionPercentage: 15, commissionAmount: 897, 
+    quantity: 20, rate: 1100,
+    totalAmount: 5980, commissionPercentage: 15, commissionAmount: 897,
     netAmount: 5083, paidAmount: 2500, balanceAmount: 3480,
     createdAt: '2024-06-20', updatedAt: '2024-07-05'
   },
-  { 
-    id: 'DO-lead3', agent: 'DO-agentA', status: 'Closed Won', month: '2024-08', yacht: 'DO-yacht3', 
+  {
+    id: 'DO-lead3', agent: 'DO-agentA', status: 'Closed Won', month: '2024-08', yacht: 'DO-yacht3',
     type: 'Tour Group', packageType: 'OE', clientName: 'Solutions Inc',
     oeFood149: 50,
-    quantity: 50, rate: 360, 
-    totalAmount: 7000, commissionPercentage: 12, commissionAmount: 840, 
+    quantity: 50, rate: 360,
+    totalAmount: 7000, commissionPercentage: 12, commissionAmount: 840,
     netAmount: 6160, paidAmount: 7000, balanceAmount: 0,
     createdAt: '2024-07-10', updatedAt: '2024-07-12'
   },
-  { 
-    id: 'DO-lead4', agent: 'DO-agentC', status: 'New', month: '2024-08', yacht: 'DO-yacht4', 
+  {
+    id: 'DO-lead4', agent: 'DO-agentC', status: 'New', month: '2024-08', yacht: 'DO-yacht4',
     type: 'Wedding Reception', packageType: 'DHOW', clientName: 'Global Co',
     dhowVip299: 30, othersAmtCake: 500,
-    quantity: 30, rate: 1000, 
-    totalAmount: 9560, commissionPercentage: 10, commissionAmount: 956, 
+    quantity: 30, rate: 1000,
+    totalAmount: 9560, commissionPercentage: 10, commissionAmount: 956,
     netAmount: 8604, paidAmount: 0, balanceAmount: 9560,
     createdAt: '2024-07-20', updatedAt: '2024-07-20'
   },

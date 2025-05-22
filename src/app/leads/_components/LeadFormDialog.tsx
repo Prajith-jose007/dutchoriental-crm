@@ -31,16 +31,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Checkbox } from '@/components/ui/checkbox';
+// import { Checkbox } from '@/components/ui/checkbox'; // Removed Checkbox import
 import { ScrollArea } from '@/components/ui/scroll-area';
-import type { Lead, Agent, Yacht } from '@/lib/types'; // Changed User to Agent
-import { placeholderAgents, placeholderYachts } from '@/lib/placeholder-data'; // Changed placeholderUsers to placeholderAgents
+import type { Lead, Agent, Yacht } from '@/lib/types';
+import { placeholderAgents, placeholderYachts } from '@/lib/placeholder-data';
 import { useToast } from '@/hooks/use-toast';
 import { useEffect, useMemo } from 'react';
 
 const leadFormSchema = z.object({
   id: z.string().optional(),
-  agent: z.string().min(1, 'Agent is required'), // Now Agent ID
+  agent: z.string().min(1, 'Agent is required'),
   status: z.enum(['New', 'Contacted', 'Qualified', 'Proposal Sent', 'Closed Won', 'Closed Lost']),
   month: z.string().regex(/^\d{4}-\d{2}$/, 'Month must be in YYYY-MM format'),
   yacht: z.string().min(1, 'Yacht selection is required'),
@@ -48,7 +48,7 @@ const leadFormSchema = z.object({
   invoiceId: z.string().optional(),
   packageType: z.enum(['DHOW', 'OE', 'SUNSET', 'LOTUS', 'OTHER', '']),
   clientName: z.string().min(1, 'Client name is required'),
-  free: z.boolean().optional().default(false),
+  // free: z.boolean().optional().default(false), // Removed free
   dhowChild89: z.coerce.number().optional().default(0),
   dhowFood99: z.coerce.number().optional().default(0),
   dhowDrinks199: z.coerce.number().optional().default(0),
@@ -68,7 +68,7 @@ const leadFormSchema = z.object({
   quantity: z.coerce.number().min(0).optional().default(0),
   rate: z.coerce.number().min(0).optional().default(0),
   totalAmount: z.coerce.number().min(0).default(0),
-  commissionPercentage: z.coerce.number().min(0).max(100).default(0), // Will be set from agent's discountRate
+  commissionPercentage: z.coerce.number().min(0).max(100).default(0),
   commissionAmount: z.coerce.number().optional().default(0),
   netAmount: z.coerce.number().min(0).default(0),
   paidAmount: z.coerce.number().min(0).default(0),
@@ -116,14 +116,14 @@ const packageTypeOptions: Lead['packageType'][] = ['DHOW', 'OE', 'SUNSET', 'LOTU
 
 export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: LeadFormDialogProps) {
   const { toast } = useToast();
-  const agents: Agent[] = placeholderAgents; // Use placeholderAgents
+  const agents: Agent[] = placeholderAgents;
   const yachts: Yacht[] = placeholderYachts;
 
   const form = useForm<LeadFormData>({
     resolver: zodResolver(leadFormSchema),
     defaultValues: lead || {
       agent: '', status: 'New', month: new Date().toISOString().slice(0,7), yacht: '',
-      type: '', packageType: '', clientName: '', free: false,
+      type: '', packageType: '', clientName: '', // free: false, // Removed free
       ...allPackageItemFields.reduce((acc, field) => ({ ...acc, [field.name]: 0 }), {}),
       othersAmtCake: 0,
       quantity: 0, rate: 0, totalAmount: 0, commissionPercentage: 0, commissionAmount:0, netAmount: 0,
@@ -137,7 +137,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
   const watchedPackageQuantities = allPackageItemFields.map(field => form.watch(field.name));
   const watchedOthersAmtCake = form.watch('othersAmtCake');
   const watchedPaidAmount = form.watch('paidAmount');
-  const watchedFree = form.watch('free');
+  // const watchedFree = form.watch('free'); // Removed free
 
   const visiblePackageFields = useMemo(() => {
     if (!watchedPackageType || watchedPackageType === 'OTHER' || watchedPackageType === '') {
@@ -147,18 +147,18 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
   }, [watchedPackageType]);
 
   useEffect(() => {
-    if (watchedFree) {
-      form.setValue('totalAmount', 0);
-      form.setValue('commissionAmount', 0);
-      form.setValue('netAmount', 0);
-      form.setValue('paidAmount', 0);
-      form.setValue('balanceAmount', 0);
-      form.setValue('commissionPercentage', 0);
-      return;
-    }
+    // if (watchedFree) { // Removed free logic block
+    //   form.setValue('totalAmount', 0);
+    //   form.setValue('commissionAmount', 0);
+    //   form.setValue('netAmount', 0);
+    //   form.setValue('paidAmount', 0);
+    //   form.setValue('balanceAmount', 0);
+    //   form.setValue('commissionPercentage', 0);
+    //   return;
+    // }
 
     const selectedAgent = agents.find(a => a.id === watchedAgentId);
-    const agentDiscountRate = selectedAgent?.discountRate ?? 0; // Use agent's discountRate
+    const agentDiscountRate = selectedAgent?.discountRate ?? 0;
     form.setValue('commissionPercentage', agentDiscountRate);
 
     const selectedYacht = yachts.find(y => y.id === watchedYachtId);
@@ -169,7 +169,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
         form.setValue('balanceAmount', form.getValues('totalAmount') - form.getValues('paidAmount'));
         return;
     }
-    
+
     let currentTotalAmount = 0;
     allPackageItemFields.forEach(pkgField => {
       const quantity = form.getValues(pkgField.name) as number || 0;
@@ -179,7 +179,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
         currentTotalAmount += quantity * rate;
       }
     });
-    
+
      if (watchedPackageType === 'OTHER') {
         currentTotalAmount += form.getValues('othersAmtCake') || 0;
      } else {
@@ -190,26 +190,26 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
      }
 
     form.setValue('totalAmount', currentTotalAmount);
-    
+
     const currentCommissionAmount = (currentTotalAmount * agentDiscountRate) / 100;
     form.setValue('commissionAmount', currentCommissionAmount);
-    
+
     const currentNetAmount = currentTotalAmount - currentCommissionAmount;
     form.setValue('netAmount', currentNetAmount);
-    
+
     const currentBalanceAmount = currentTotalAmount - (form.getValues('paidAmount') || 0);
     form.setValue('balanceAmount', currentBalanceAmount);
 
   }, [
-    watchedAgentId, watchedYachtId, watchedPackageType, ...watchedPackageQuantities, 
-    watchedOthersAmtCake, watchedPaidAmount, watchedFree, form, agents, yachts // agents instead of users
+    watchedAgentId, watchedYachtId, watchedPackageType, ...watchedPackageQuantities,
+    watchedOthersAmtCake, watchedPaidAmount, /*watchedFree,*/ form, agents, yachts // Removed watchedFree
   ]);
 
   useEffect(() => {
     if (isOpen) {
         const defaultVals = lead || {
             agent: '', status: 'New', month: new Date().toISOString().slice(0,7), yacht: '',
-            type: '', packageType: '', clientName: '', free: false,
+            type: '', packageType: '', clientName: '', // free: false, // Removed free
              ...allPackageItemFields.reduce((acc, field) => ({ ...acc, [field.name]: 0 }), {}),
             othersAmtCake: 0,
             quantity: 0, rate: 0, totalAmount: 0, commissionPercentage: 0, commissionAmount: 0, netAmount: 0,
@@ -243,6 +243,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
       othersAmtCake: data.othersAmtCake || 0,
       commissionPercentage: data.commissionPercentage || 0,
       commissionAmount: data.commissionAmount || 0,
+      // free: data.free, // Removed free
     };
     onSubmitSuccess(submittedLead);
     toast({
@@ -278,7 +279,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
               />
               <FormField
                 control={form.control}
-                name="agent" // This now refers to Agent ID
+                name="agent"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Agent</FormLabel>
@@ -373,19 +374,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
                   </FormItem>
                 )}
               />
-               <FormField
-                control={form.control}
-                name="free"
-                render={({ field }) => (
-                  <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4 md:col-span-1 items-center h-full">
-                    <FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl>
-                    <div className="space-y-1 leading-none">
-                      <FormLabel>Free Booking</FormLabel>
-                      <FormDescription>Is this lead/service free of charge?</FormDescription>
-                    </div>
-                  </FormItem>
-                )}
-              />
+              {/* Removed Free Booking FormField */}
             </div>
 
             {visiblePackageFields.length > 0 && (
@@ -507,7 +496,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
             </div>
             <DialogFooter className="pt-6">
               <DialogClose asChild><Button type="button" variant="outline">Cancel</Button></DialogClose>
-              <Button type="submit" disabled={form.formState.isSubmitting || watchedFree && form.getValues('totalAmount') !== 0}>
+              <Button type="submit" disabled={form.formState.isSubmitting}>
                 {lead ? 'Save Changes' : 'Add Lead'}
               </Button>
             </DialogFooter>

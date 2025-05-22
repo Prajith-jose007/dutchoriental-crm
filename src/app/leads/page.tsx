@@ -16,7 +16,7 @@ const convertValue = (key: keyof Lead, value: string): any => {
 
   if (trimmedValue === '' || value === null || value === undefined) {
     switch (key) {
-        case 'free': return false;
+        // case 'free': return false; // Removed free
         case 'dhowChild89': case 'dhowFood99': case 'dhowDrinks199': case 'dhowVip299':
         case 'oeChild129': case 'oeFood149': case 'oeDrinks249': case 'oeVip349':
         case 'sunsetChild179': case 'sunsetFood199': case 'sunsetDrinks299':
@@ -24,14 +24,14 @@ const convertValue = (key: keyof Lead, value: string): any => {
         case 'othersAmtCake': case 'quantity': case 'rate': case 'totalAmount':
         case 'commissionPercentage': case 'commissionAmount': case 'netAmount':
         case 'paidAmount': case 'balanceAmount':
-            return 0; 
-        default: return undefined; 
+            return 0;
+        default: return undefined;
     }
   }
-  
+
   switch (key) {
-    case 'free':
-      return trimmedValue.toLowerCase() === 'true';
+    // case 'free': // Removed free
+    //   return trimmedValue.toLowerCase() === 'true';
     case 'dhowChild89': case 'dhowFood99': case 'dhowDrinks199': case 'dhowVip299':
     case 'oeChild129': case 'oeFood149': case 'oeDrinks249': case 'oeVip349':
     case 'sunsetChild179': case 'sunsetFood199': case 'sunsetDrinks299':
@@ -50,7 +50,7 @@ const convertValue = (key: keyof Lead, value: string): any => {
 export default function LeadsPage() {
   const [isLeadDialogOpen, setIsLeadDialogOpen] = useState(false);
   const [editingLead, setEditingLead] = useState<Lead | null>(null);
-  const [leads, setLeads] = useState<Lead[]>([]); 
+  const [leads, setLeads] = useState<Lead[]>([]);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -72,10 +72,10 @@ export default function LeadsPage() {
     const existingLeadIndex = initialLeads.findIndex(l => l.id === submittedLeadData.id);
     if (editingLead && existingLeadIndex !== -1) {
       initialLeads[existingLeadIndex] = submittedLeadData;
-      setLeads(prevLeads => 
+      setLeads(prevLeads =>
         prevLeads.map(l => l.id === submittedLeadData.id ? submittedLeadData : l)
       );
-    } else if (!editingLead && existingLeadIndex === -1) { 
+    } else if (!editingLead && existingLeadIndex === -1) {
       if (initialLeads.some(l => l.id === submittedLeadData.id) || leads.some(l => l.id === submittedLeadData.id)) {
         toast({
           title: 'Error Adding Lead',
@@ -86,13 +86,13 @@ export default function LeadsPage() {
       }
       initialLeads.push(submittedLeadData);
       setLeads(prevLeads => [...prevLeads, submittedLeadData]);
-    } else if (!editingLead && existingLeadIndex !== -1) { 
+    } else if (!editingLead && existingLeadIndex !== -1) {
       toast({
         title: 'Error Adding Lead',
         description: `A lead with ID ${submittedLeadData.id} already exists. This should not happen if IDs are unique.`,
         variant: 'destructive',
       });
-      return; 
+      return;
     }
     setIsLeadDialogOpen(false);
     setEditingLead(null);
@@ -107,25 +107,25 @@ export default function LeadsPage() {
         return;
       }
       try {
-        const lines = csvText.split(/\r\n|\n/).filter(line => line.trim() !== ''); 
+        const lines = csvText.split(/\r\n|\n/).filter(line => line.trim() !== '');
         if (lines.length < 2) {
           toast({ title: 'Import Error', description: 'CSV file must have a header and at least one data row.', variant: 'destructive' });
           return;
         }
-        
+
         let headerLine = lines[0];
         if (headerLine.charCodeAt(0) === 0xFEFF) { // Check for BOM
             headerLine = headerLine.substring(1);
         }
         const headers = headerLine.split(',').map(h => h.trim() as keyof Lead);
         console.log("Parsed CSV Headers:", headers); // Diagnostic log
-        
-        const newLeadsFromCsv: Lead[] = []; 
+
+        const newLeadsFromCsv: Lead[] = [];
         let skippedCount = 0;
 
-        for (let i = 1; i < lines.length; i++) { 
+        for (let i = 1; i < lines.length; i++) {
           let data = lines[i].split(',');
-          
+
           if (data.length > headers.length) {
             const extraColumns = data.slice(headers.length);
             const allExtraAreEmpty = extraColumns.every(col => (col || '').trim() === '');
@@ -133,7 +133,7 @@ export default function LeadsPage() {
               data = data.slice(0, headers.length);
             }
           }
-          
+
           if (data.length !== headers.length) {
             console.warn(`Skipping malformed CSV line ${i + 1}: Expected ${headers.length} columns, got ${data.length}. Line: "${lines[i]}"`);
             skippedCount++;
@@ -148,16 +148,16 @@ export default function LeadsPage() {
           if (i === 1) { // Log first parsed data row for diagnostics
             console.log("First Parsed Data Row (raw values from CSV after convertValue):", JSON.parse(JSON.stringify(parsedRow)));
           }
-          
+
           let leadId = typeof parsedRow.id === 'string' && parsedRow.id.trim() !== '' ? parsedRow.id.trim() : undefined;
-          
+
           if (!leadId) {
             const baseGeneratedId = `imported-lead-${Date.now()}-${i}`;
             let currentGeneratedId = baseGeneratedId;
             let uniqueIdCounter = 0;
-            
-            while (initialLeads.some(l => l.id === currentGeneratedId) || 
-                   leads.some(l => l.id === currentGeneratedId) || 
+
+            while (initialLeads.some(l => l.id === currentGeneratedId) ||
+                   leads.some(l => l.id === currentGeneratedId) ||
                    newLeadsFromCsv.some(l => l.id === currentGeneratedId)) {
                 uniqueIdCounter++;
                 currentGeneratedId = `${baseGeneratedId}-${uniqueIdCounter}`;
@@ -182,8 +182,8 @@ export default function LeadsPage() {
             packageType: (parsedRow.packageType as PackageType) || '',
             clientName: typeof parsedRow.clientName === 'string' && parsedRow.clientName.trim() !== '' ? parsedRow.clientName : 'N/A',
             invoiceId: typeof parsedRow.invoiceId === 'string' ? parsedRow.invoiceId : undefined,
-            free: typeof parsedRow.free === 'boolean' ? parsedRow.free : false,
-            
+            // free: typeof parsedRow.free === 'boolean' ? parsedRow.free : false, // Removed free
+
             dhowChild89: typeof parsedRow.dhowChild89 === 'number' ? parsedRow.dhowChild89 : 0,
             dhowFood99: typeof parsedRow.dhowFood99 === 'number' ? parsedRow.dhowFood99 : 0,
             dhowDrinks199: typeof parsedRow.dhowDrinks199 === 'number' ? parsedRow.dhowDrinks199 : 0,
@@ -200,17 +200,17 @@ export default function LeadsPage() {
             lotusVip399: typeof parsedRow.lotusVip399 === 'number' ? parsedRow.lotusVip399 : 0,
             lotusVip499: typeof parsedRow.lotusVip499 === 'number' ? parsedRow.lotusVip499 : 0,
             othersAmtCake: typeof parsedRow.othersAmtCake === 'number' ? parsedRow.othersAmtCake : 0,
-            
+
             quantity: typeof parsedRow.quantity === 'number' ? parsedRow.quantity : 0,
             rate: typeof parsedRow.rate === 'number' ? parsedRow.rate : 0,
-            
+
             totalAmount: typeof parsedRow.totalAmount === 'number' ? parsedRow.totalAmount : 0,
             commissionPercentage: typeof parsedRow.commissionPercentage === 'number' ? parsedRow.commissionPercentage : 0,
             commissionAmount: typeof parsedRow.commissionAmount === 'number' ? parsedRow.commissionAmount : 0,
             netAmount: typeof parsedRow.netAmount === 'number' ? parsedRow.netAmount : 0,
             paidAmount: typeof parsedRow.paidAmount === 'number' ? parsedRow.paidAmount : 0,
             balanceAmount: typeof parsedRow.balanceAmount === 'number' ? parsedRow.balanceAmount : 0,
-            
+
             createdAt: typeof parsedRow.createdAt === 'string' && parsedRow.createdAt.trim() !== '' ? parsedRow.createdAt : new Date().toISOString(),
             updatedAt: new Date().toISOString(),
           };
@@ -231,26 +231,26 @@ export default function LeadsPage() {
           }
         }
 
-        if (skippedCount > 0 && newLeadsFromCsv.length > 0) { 
+        if (skippedCount > 0 && newLeadsFromCsv.length > 0) {
             toast({ title: 'Import Partially Completed', description: `${newLeadsFromCsv.length} new leads imported, ${skippedCount} CSV rows were skipped. Check console for details.`, variant: 'default' });
         }
 
 
         if (newLeadsFromCsv.length > 0) {
-          initialLeads.push(...newLeadsFromCsv); 
-          setLeads(prevLeads => [...prevLeads, ...newLeadsFromCsv]); 
-          
+          initialLeads.push(...newLeadsFromCsv);
+          setLeads(prevLeads => [...prevLeads, ...newLeadsFromCsv]);
+
           if (skippedCount === 0) {
             toast({ title: 'Import Successful', description: `${newLeadsFromCsv.length} new leads imported.` });
           }
         } else if (skippedCount === lines.length -1 && lines.length > 1) {
-           toast({ 
-            title: 'Import Failed', 
-            description: `All ${lines.length - 1} data rows were skipped. Please check your CSV file. Common issues: column count mismatch with header, or incorrect delimiter (must be comma). Ensure IDs in CSV are unique if provided. Check console for details on skipped rows.`, 
-            variant: 'destructive' 
+           toast({
+            title: 'Import Failed',
+            description: `All ${lines.length - 1} data rows were skipped. Please check your CSV file. Common issues: column count mismatch with header, or incorrect delimiter (must be comma). Ensure IDs in CSV are unique if provided. Check console for details on skipped rows.`,
+            variant: 'destructive'
           });
         }
-         else { 
+         else {
           toast({ title: 'Import Complete', description: 'No new leads were imported (possibly all duplicates or file had no valid data rows after header). Check console for details.' });
         }
 
@@ -276,15 +276,15 @@ export default function LeadsPage() {
     }
 
     const headers: (keyof Lead)[] = [
-      'id', 'agent', 'status', 'month', 'yacht', 'type', 'invoiceId', 'packageType', 'clientName', 'free',
+      'id', 'agent', 'status', 'month', 'yacht', 'type', 'invoiceId', 'packageType', 'clientName', // 'free', // Removed free
       'dhowChild89', 'dhowFood99', 'dhowDrinks199', 'dhowVip299',
       'oeChild129', 'oeFood149', 'oeDrinks249', 'oeVip349',
       'sunsetChild179', 'sunsetFood199', 'sunsetDrinks299',
       'lotusFood249', 'lotusDrinks349', 'lotusVip399', 'lotusVip499',
-      'othersAmtCake', 'quantity', 'rate', 'totalAmount', 'commissionPercentage', 
+      'othersAmtCake', 'quantity', 'rate', 'totalAmount', 'commissionPercentage',
       'commissionAmount', 'netAmount', 'paidAmount', 'balanceAmount', 'createdAt', 'updatedAt'
     ];
-    
+
     const escapeCsvCell = (cellData: any): string => {
       if (cellData === null || cellData === undefined) {
         return '';
@@ -298,7 +298,7 @@ export default function LeadsPage() {
 
     const csvRows = [
       headers.join(','),
-      ...leads.map(lead => 
+      ...leads.map(lead =>
         headers.map(header => escapeCsvCell(lead[header])).join(',')
       )
     ];
@@ -323,12 +323,12 @@ export default function LeadsPage() {
 
   return (
     <div className="container mx-auto py-2">
-      <PageHeader 
+      <PageHeader
         title="Leads Management"
         description="Track and manage all your sales leads."
-        actions={<ImportExportButtons 
-                    onAddLeadClick={handleAddLeadClick} 
-                    onCsvImport={handleCsvImport} 
+        actions={<ImportExportButtons
+                    onAddLeadClick={handleAddLeadClick}
+                    onCsvImport={handleCsvImport}
                     onCsvExport={handleCsvExport}
                   />}
       />

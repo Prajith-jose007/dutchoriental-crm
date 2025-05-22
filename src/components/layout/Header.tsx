@@ -1,3 +1,4 @@
+
 import Link from 'next/link';
 import { Bell, UserCircle, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -19,7 +20,10 @@ export function Header() {
       <div className="md:hidden">
         <SidebarTrigger />
       </div>
-      <div className="relative flex-1 md:grow-0">
+      <div className="hidden md:flex items-center">
+        <Logo />
+      </div>
+      <div className="relative flex-1 md:grow-0 md:ml-4">
         {/* Search for larger screens, could be hidden on mobile if space is an issue */}
       </div>
       <div className="flex flex-1 items-center justify-end gap-4">

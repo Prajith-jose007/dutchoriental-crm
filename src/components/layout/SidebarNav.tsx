@@ -22,7 +22,7 @@ import { LogOut, UserCircle } from 'lucide-react';
 
 export function SidebarNav() {
   const pathname = usePathname();
-  const { open, state } = useSidebar();
+  const { state } = useSidebar(); // Removed 'open' as it wasn't used
 
   return (
     <Sidebar collapsible="icon" variant="sidebar" side="left">
@@ -35,19 +35,17 @@ export function SidebarNav() {
             const isActive = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href));
             return (
               <SidebarMenuItem key={item.title}>
-                <Link href={item.href} passHref>
-                  <SidebarMenuButton
-                    asChild
-                    isActive={isActive}
-                    tooltip={item.title}
-                    aria-label={item.title}
-                  >
-                    <>
-                      <item.icon />
-                      <span>{item.title}</span>
-                    </>
-                  </SidebarMenuButton>
-                </Link>
+                <SidebarMenuButton
+                  asChild
+                  isActive={isActive}
+                  tooltip={item.title}
+                  aria-label={item.title}
+                >
+                  <Link href={item.href}>
+                    <item.icon />
+                    <span>{item.title}</span>
+                  </Link>
+                </SidebarMenuButton>
                 {/* Example badge, can be dynamic */}
                 {/* {item.title === 'Leads' && <SidebarMenuBadge>12</SidebarMenuBadge>} */}
               </SidebarMenuItem>

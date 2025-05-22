@@ -24,8 +24,8 @@ const convertValue = (key: keyof Lead, value: string): any => {
         case 'othersAmtCake': case 'quantity': case 'rate': case 'totalAmount':
         case 'commissionPercentage': case 'commissionAmount': case 'netAmount':
         case 'paidAmount': case 'balanceAmount':
-            const numOrZero = parseFloat(value);
-            return isNaN(numOrZero) ? 0 : numOrZero;
+            // For CSV import, if a numeric field is empty, default to 0.
+            return 0; 
         default: return undefined; // Let downstream logic handle undefined for optional or string fields
     }
   }
@@ -78,12 +78,21 @@ export default function LeadsPage() {
         prevLeads.map(l => l.id === submittedLeadData.id ? submittedLeadData : l)
       );
     } else if (!editingLead && existingLeadIndex === -1) { 
+      // Ensure new lead ID is unique before adding
+      if (initialLeads.some(l => l.id === submittedLeadData.id) || leads.some(l => l.id === submittedLeadData.id)) {
+        toast({
+          title: 'Error Adding Lead',
+          description: `A lead with ID ${submittedLeadData.id} already exists. Please use a unique ID.`,
+          variant: 'destructive',
+        });
+        return;
+      }
       initialLeads.push(submittedLeadData);
       setLeads(prevLeads => [...prevLeads, submittedLeadData]);
-    } else if (!editingLead && existingLeadIndex !== -1) {
+    } else if (!editingLead && existingLeadIndex !== -1) { // Should not happen if ID is truly unique
       toast({
         title: 'Error Adding Lead',
-        description: `A lead with ID ${submittedLeadData.id} already exists. Please use a unique ID.`,
+        description: `A lead with ID ${submittedLeadData.id} already exists. This should not happen if IDs are unique.`,
         variant: 'destructive',
       });
       return; 
@@ -108,13 +117,14 @@ export default function LeadsPage() {
         }
         
         const headers = lines[0].split(',').map(h => h.trim() as keyof Lead);
-        const newLeads: Lead[] = [];
+        const newLeadsFromCsv: Lead[] = []; // Renamed to avoid confusion with 'newLeads' state setter
+        let skippedCount = 0;
 
         for (let i = 1; i < lines.length; i++) {
           const data = lines[i].split(',');
           if (data.length !== headers.length) {
             console.warn(`Skipping malformed CSV line ${i + 1}: Expected ${headers.length} columns, got ${data.length}. Line: "${lines[i]}"`);
-            toast({ title: 'Import Warning', description: `Skipped row ${i+1} due to incorrect column count.`, variant: 'default'});
+            skippedCount++;
             continue;
           }
 
@@ -123,14 +133,26 @@ export default function LeadsPage() {
             parsedRow[header] = convertValue(header, data[index]?.trim());
           });
           
-          // --- Robust fullLead object creation ---
           let leadId = parsedRow.id || `imported-lead-${Date.now()}-${i}`;
+          
+          // Ensure generated ID is unique if parsedRow.id was not present
           if (!parsedRow.id) {
-             toast({ title: 'Import Warning', description: `Lead at row ${i+1} was missing an ID and one was generated: ${leadId}.`, variant: 'default' });
+            let counter = 0;
+            let tempId = leadId;
+            while (initialLeads.some(l => l.id === tempId) || leads.some(l => l.id === tempId) || newLeadsFromCsv.some(l => l.id === tempId)) {
+                counter++;
+                tempId = `imported-lead-${Date.now()}-${i}-${counter}`;
+            }
+            leadId = tempId;
+            if (counter > 0) {
+                 toast({ title: 'Import Warning', description: `Lead at row ${i+1} generated a duplicate ID. New ID assigned: ${leadId}.`, variant: 'default' });
+            } else {
+                 toast({ title: 'Import Warning', description: `Lead at row ${i+1} was missing an ID and one was generated: ${leadId}.`, variant: 'default' });
+            }
           }
 
+
           const fullLead: Lead = {
-            // Required fields with defaults
             id: leadId,
             agent: typeof parsedRow.agent === 'string' ? parsedRow.agent : '',
             status: (parsedRow.status as LeadStatus) || 'New',
@@ -148,8 +170,6 @@ export default function LeadsPage() {
             balanceAmount: typeof parsedRow.balanceAmount === 'number' ? parsedRow.balanceAmount : 0,
             createdAt: typeof parsedRow.createdAt === 'string' ? parsedRow.createdAt : new Date().toISOString(),
             updatedAt: new Date().toISOString(),
-
-            // Optional fields - directly from parsedRow or default if undefined
             invoiceId: parsedRow.invoiceId,
             free: typeof parsedRow.free === 'boolean' ? parsedRow.free : false,
             dhowChild89: typeof parsedRow.dhowChild89 === 'number' ? parsedRow.dhowChild89 : 0,
@@ -170,22 +190,33 @@ export default function LeadsPage() {
             othersAmtCake: typeof parsedRow.othersAmtCake === 'number' ? parsedRow.othersAmtCake : 0,
             commissionAmount: typeof parsedRow.commissionAmount === 'number' ? parsedRow.commissionAmount : 0,
           };
-          // --- End of robust fullLead object creation ---
 
-          // Check if lead with this ID already exists in initialLeads (our mock DB) or current state
-          if (!initialLeads.find(l => l.id === fullLead.id) && !leads.find(l => l.id === fullLead.id)) {
-            newLeads.push(fullLead);
+          // Check for duplicates against initial data, current state, AND this batch
+          const isDuplicateInInitial = initialLeads.some(l => l.id === fullLead.id);
+          const isDuplicateInCurrentState = leads.some(l => l.id === fullLead.id);
+          const isDuplicateInThisBatch = newLeadsFromCsv.some(l => l.id === fullLead.id);
+
+          if (!isDuplicateInInitial && !isDuplicateInCurrentState && !isDuplicateInThisBatch) {
+            newLeadsFromCsv.push(fullLead);
           } else {
-            console.warn(`Skipping import for lead with duplicate ID: ${fullLead.id}`);
-             toast({ title: 'Import Warning', description: `Lead with ID ${fullLead.id} already exists and was skipped.`, variant: 'default' });
+            console.warn(`Skipping import for lead with duplicate ID: ${fullLead.id} at row ${i + 1}`);
+            toast({ title: 'Import Warning', description: `Lead with ID ${fullLead.id} at row ${i + 1} already exists or is a duplicate in this file. Skipped.`, variant: 'default' });
+            skippedCount++;
           }
         }
 
-        if (newLeads.length > 0) {
-          initialLeads.push(...newLeads); 
-          setLeads(prevLeads => [...prevLeads, ...newLeads]); 
-          toast({ title: 'Import Successful', description: `${newLeads.length} new leads imported.` });
-        } else {
+        if (skippedCount > 0) {
+            toast({ title: 'Import Partially Completed', description: `${skippedCount} rows were skipped due to errors or duplicates.`, variant: 'default' });
+        }
+
+        if (newLeadsFromCsv.length > 0) {
+          initialLeads.push(...newLeadsFromCsv); 
+          setLeads(prevLeads => [...prevLeads, ...newLeadsFromCsv]); 
+          toast({ title: 'Import Successful', description: `${newLeadsFromCsv.length} new leads imported.` });
+        } else if (skippedCount === lines.length -1 && lines.length > 1) {
+           toast({ title: 'Import Failed', description: 'All data rows were skipped. Please check your CSV file for issues.' });
+        }
+         else {
           toast({ title: 'Import Complete', description: 'No new leads were imported (possibly all duplicates or empty/invalid file after header).' });
         }
 

@@ -6,18 +6,39 @@ import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { PageHeader } from '@/components/PageHeader';
-import { placeholderYachts as initialYachts } from '@/lib/placeholder-data';
+import { placeholderYachts as initialYachtsData } from '@/lib/placeholder-data';
 import type { Yacht } from '@/lib/types';
 import { PlusCircle, Edit, Trash2 } from 'lucide-react';
-import { YachtFormDialog } from './_components/YachtFormDialog'; 
+import { YachtFormDialog } from './_components/YachtFormDialog';
+import { useToast } from '@/hooks/use-toast';
+
+const YACHTS_STORAGE_KEY = 'dutchOrientalCrmYachts';
+let initialYachts: Yacht[] = JSON.parse(JSON.stringify(initialYachtsData));
 
 export default function YachtsPage() {
-  const [yachts, setYachts] = useState<Yacht[]>(initialYachts);
+  const [yachts, setYachts] = useState<Yacht[]>([]);
   const [isYachtDialogOpen, setIsYachtDialogOpen] = useState(false);
   const [editingYacht, setEditingYacht] = useState<Yacht | null>(null);
+  const { toast } = useToast();
 
   useEffect(() => {
-    setYachts(initialYachts);
+    const storedYachts = localStorage.getItem(YACHTS_STORAGE_KEY);
+    let currentYachtsData: Yacht[];
+    if (storedYachts) {
+      try {
+        currentYachtsData = JSON.parse(storedYachts);
+      } catch (error) {
+        console.error("Error parsing yachts from localStorage:", error);
+        currentYachtsData = JSON.parse(JSON.stringify(initialYachtsData));
+        localStorage.setItem(YACHTS_STORAGE_KEY, JSON.stringify(currentYachtsData));
+      }
+    } else {
+      currentYachtsData = JSON.parse(JSON.stringify(initialYachtsData));
+      localStorage.setItem(YACHTS_STORAGE_KEY, JSON.stringify(currentYachtsData));
+    }
+    initialYachts.length = 0;
+    initialYachts.push(...currentYachtsData);
+    setYachts(currentYachtsData);
   }, []);
 
   const handleAddYachtClick = () => {
@@ -31,35 +52,40 @@ export default function YachtsPage() {
   };
 
   const handleYachtFormSubmit = (submittedYachtData: Yacht) => {
-    if (editingYacht) {
-      setYachts(prevYachts =>
-        prevYachts.map(y => (y.id === editingYacht.id ? submittedYachtData : y))
-      );
-      const yachtIndex = initialYachts.findIndex(y => y.id === editingYacht.id);
-      if (yachtIndex > -1) {
-        initialYachts[yachtIndex] = submittedYachtData;
-      }
-    } else {
-      setYachts(prevYachts => [...prevYachts, submittedYachtData]);
+    const yachtIndex = initialYachts.findIndex(y => y.id === submittedYachtData.id);
+
+    if (editingYacht && yachtIndex > -1) {
+      initialYachts[yachtIndex] = submittedYachtData;
+    } else if (!editingYacht && !initialYachts.some(y => y.id === submittedYachtData.id)) {
       initialYachts.push(submittedYachtData);
+    } else if (!editingYacht) {
+      toast({
+        title: "Error",
+        description: `Yacht with ID ${submittedYachtData.id} already exists or ID is invalid.`,
+        variant: "destructive",
+      });
+      return;
     }
+    
+    localStorage.setItem(YACHTS_STORAGE_KEY, JSON.stringify(initialYachts));
+    setYachts([...initialYachts]);
     setIsYachtDialogOpen(false);
     setEditingYacht(null);
   };
-  
+
   const handleDeleteYacht = (yachtId: string) => {
-    console.warn('Delete yacht action (not fully implemented)', yachtId);
-    // Basic removal from state and placeholder data for demo
-    setYachts(prevYachts => prevYachts.filter(y => y.id !== yachtId));
-    const yachtIndex = initialYachts.findIndex(y => y.id === yachtId);
-    if (yachtIndex > -1) {
-        initialYachts.splice(yachtIndex, 1);
-    }
+    initialYachts = initialYachts.filter(y => y.id !== yachtId);
+    localStorage.setItem(YACHTS_STORAGE_KEY, JSON.stringify(initialYachts));
+    setYachts([...initialYachts]);
+    toast({
+        title: "Yacht Deleted",
+        description: `Yacht with ID ${yachtId} has been removed.`,
+    });
   };
 
   return (
     <div className="container mx-auto py-2">
-      <PageHeader 
+      <PageHeader
         title="Yacht Management"
         description="View and manage your fleet of yachts. Click 'Edit' to see package rates."
         actions={
@@ -86,8 +112,9 @@ export default function YachtsPage() {
               <CardDescription>Capacity: {yacht.capacity} guests</CardDescription>
             </CardHeader>
             <CardContent className="flex-grow space-y-3">
-              {/* Package rates removed from here as per request */}
               <p className="text-sm text-muted-foreground">
+                ID: {yacht.id} <br />
+                Status: {yacht.status} <br />
                 Click 'Edit' to view and manage package rates for this yacht.
               </p>
             </CardContent>

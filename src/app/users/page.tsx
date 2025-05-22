@@ -8,16 +8,34 @@ import { PageHeader } from '@/components/PageHeader';
 import { UsersTable } from './_components/UsersTable';
 import { UserFormDialog } from './_components/UserFormDialog';
 import type { User } from '@/lib/types';
-import { placeholderUsers as initialUsers } from '@/lib/placeholder-data';
+import { placeholderUsers as initialUsersData } from '@/lib/placeholder-data';
+
+const USERS_STORAGE_KEY = 'dutchOrientalCrmUsers';
+let initialUsers: User[] = JSON.parse(JSON.stringify(initialUsersData));
 
 export default function UsersPage() {
   const [isUserDialogOpen, setIsUserDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
-  const [users, setUsers] = useState<User[]>(initialUsers);
+  const [users, setUsers] = useState<User[]>([]);
 
   useEffect(() => {
-    // This ensures that if placeholderUsers data changes (e.g. HMR), the table updates.
-    setUsers(initialUsers);
+    const storedUsers = localStorage.getItem(USERS_STORAGE_KEY);
+    let currentUsersData: User[];
+    if (storedUsers) {
+      try {
+        currentUsersData = JSON.parse(storedUsers);
+      } catch (error) {
+        console.error("Error parsing users from localStorage:", error);
+        currentUsersData = JSON.parse(JSON.stringify(initialUsersData));
+        localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(currentUsersData));
+      }
+    } else {
+      currentUsersData = JSON.parse(JSON.stringify(initialUsersData));
+      localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(currentUsersData));
+    }
+    initialUsers.length = 0;
+    initialUsers.push(...currentUsersData);
+    setUsers(currentUsersData);
   }, []);
 
 
@@ -32,31 +50,25 @@ export default function UsersPage() {
   };
 
   const handleUserFormSubmit = (submittedUserData: User) => {
-    if (editingUser) {
-      // Update existing user
-      setUsers(prevUsers => 
-        prevUsers.map(u => u.id === submittedUserData.id ? submittedUserData : u)
-      );
-    } else {
-      // Add new user
-      setUsers(prevUsers => [...prevUsers, submittedUserData]);
-    }
-    // Also update initialUsers for persistence in this demo scenario.
-    // In a real app, this would be an API call.
     const userIndex = initialUsers.findIndex(u => u.id === submittedUserData.id);
-    if (userIndex > -1) {
+    if (editingUser && userIndex > -1) {
         initialUsers[userIndex] = submittedUserData;
-    } else {
+    } else if (!editingUser && !initialUsers.some(u => u.id === submittedUserData.id)) {
         initialUsers.push(submittedUserData);
+    } else if (!editingUser) {
+        console.error("Trying to add a user with an existing ID or ID issue:", submittedUserData.id);
+        return;
     }
 
+    localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(initialUsers));
+    setUsers([...initialUsers]);
     setIsUserDialogOpen(false);
     setEditingUser(null);
   };
 
   return (
     <div className="container mx-auto py-2">
-      <PageHeader 
+      <PageHeader
         title="User Management"
         description="Manage your team members and their roles."
         actions={
@@ -67,7 +79,7 @@ export default function UsersPage() {
         }
       />
       <UsersTable users={users} onEditUser={handleEditUserClick} />
-      {isUserDialogOpen && ( // Conditionally render dialog to ensure form resets correctly on open
+      {isUserDialogOpen && (
         <UserFormDialog
           isOpen={isUserDialogOpen}
           onOpenChange={setIsUserDialogOpen}

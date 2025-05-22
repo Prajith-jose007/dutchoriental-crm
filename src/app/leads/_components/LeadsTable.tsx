@@ -35,7 +35,7 @@ const getAgentName = (agentId: string): string => {
   return agent ? agent.name : agentId;
 }
 
-// Updated columns to reflect new Lead structure
+// Updated columns to reflect new Lead structure including all package quantities
 const leadColumns: { accessorKey: keyof Lead | 'actions' | 'select', header: string, isCurrency?: boolean, isPercentage?: boolean, isNumeric?: boolean }[] = [
   { accessorKey: 'select', header: '' },
   { accessorKey: 'id', header: 'ID' },
@@ -43,14 +43,39 @@ const leadColumns: { accessorKey: keyof Lead | 'actions' | 'select', header: str
   { accessorKey: 'status', header: 'Status' },
   { accessorKey: 'month', header: 'Month' },
   { accessorKey: 'yacht', header: 'Yacht' },
-  { accessorKey: 'type', header: 'Type' }, // Lead Type
+  { accessorKey: 'type', header: 'Type' },
   { accessorKey: 'invoiceId', header: 'Invoice' },
   { accessorKey: 'modeOfPayment', header: 'Payment Mode' },
   { accessorKey: 'clientName', header: 'Client' },
-  // Example new package quantity fields:
-  { accessorKey: 'dhowChildQty', header: 'Dhow Child Qty', isNumeric: true },
-  { accessorKey: 'dhowAdultQty', header: 'Dhow Adult Qty', isNumeric: true },
-  // Add more package qty columns here if needed
+  // DHOW Packages
+  { accessorKey: 'dhowChildQty', header: 'Dhow Child', isNumeric: true },
+  { accessorKey: 'dhowAdultQty', header: 'Dhow Adult', isNumeric: true },
+  { accessorKey: 'dhowVipQty', header: 'Dhow VIP', isNumeric: true },
+  { accessorKey: 'dhowVipChildQty', header: 'Dhow VIP Child', isNumeric: true },
+  { accessorKey: 'dhowVipAlcoholQty', header: 'Dhow VIP Alcohol', isNumeric: true },
+  // OE Packages
+  { accessorKey: 'oeChildQty', header: 'OE Child', isNumeric: true },
+  { accessorKey: 'oeAdultQty', header: 'OE Adult', isNumeric: true },
+  { accessorKey: 'oeVipQty', header: 'OE VIP', isNumeric: true },
+  { accessorKey: 'oeVipChildQty', header: 'OE VIP Child', isNumeric: true },
+  { accessorKey: 'oeVipAlcoholQty', header: 'OE VIP Alcohol', isNumeric: true },
+  // SUNSET Packages
+  { accessorKey: 'sunsetChildQty', header: 'Sunset Child', isNumeric: true },
+  { accessorKey: 'sunsetAdultQty', header: 'Sunset Adult', isNumeric: true },
+  { accessorKey: 'sunsetVipQty', header: 'Sunset VIP', isNumeric: true },
+  { accessorKey: 'sunsetVipChildQty', header: 'Sunset VIP Child', isNumeric: true },
+  { accessorKey: 'sunsetVipAlcoholQty', header: 'Sunset VIP Alcohol', isNumeric: true },
+  // LOTUS Packages
+  { accessorKey: 'lotusChildQty', header: 'Lotus Child', isNumeric: true },
+  { accessorKey: 'lotusAdultQty', header: 'Lotus Adult', isNumeric: true },
+  { accessorKey: 'lotusVipQty', header: 'Lotus VIP', isNumeric: true },
+  { accessorKey: 'lotusVipChildQty', header: 'Lotus VIP Child', isNumeric: true },
+  { accessorKey: 'lotusVipAlcoholQty', header: 'Lotus VIP Alcohol', isNumeric: true },
+  // ROYAL Package
+  { accessorKey: 'royalQty', header: 'Royal Pkg', isNumeric: true },
+  // Other Charges
+  { accessorKey: 'othersAmtCake', header: 'Other Charges', isCurrency: true },
+  // Financials
   { accessorKey: 'totalAmount', header: 'Total Amt', isCurrency: true },
   { accessorKey: 'commissionPercentage', header: 'Agent Disc. %', isPercentage: true },
   { accessorKey: 'commissionAmount', header: 'Comm Amt', isCurrency: true },
@@ -90,7 +115,7 @@ export function LeadsTable({ leads, onEditLead }: LeadsTableProps) {
   }
   
   const formatNumeric = (value: number | undefined | null) => {
-    if (typeof value !== 'number') return '0'; // Default to 0 if not a number or undefined
+    if (typeof value !== 'number' || isNaN(value)) return '0'; // Default to 0 if not a number or undefined/NaN
     return String(value);
   }
 
@@ -183,3 +208,4 @@ export function LeadsTable({ leads, onEditLead }: LeadsTableProps) {
     </ScrollArea>
   );
 }
+

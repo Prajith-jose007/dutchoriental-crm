@@ -117,6 +117,7 @@ export default function LeadsPage() {
         }
         
         let headerLine = lines[0];
+        // Remove BOM if present
         if (headerLine.charCodeAt(0) === 0xFEFF) {
             headerLine = headerLine.substring(1);
         }
@@ -125,9 +126,10 @@ export default function LeadsPage() {
         const newLeadsFromCsv: Lead[] = []; 
         let skippedCount = 0;
 
-        for (let i = 1; i < lines.length; i++) {
+        for (let i = 1; i < lines.length; i++) { // Start from 1 to skip header row
           let data = lines[i].split(',');
 
+          // Tolerate trailing empty columns if data.length > headers.length
           if (data.length > headers.length) {
             const extraColumns = data.slice(headers.length);
             const allExtraAreEmpty = extraColumns.every(col => col.trim() === '');
@@ -137,7 +139,7 @@ export default function LeadsPage() {
           }
           
           if (data.length !== headers.length) {
-            console.warn(`Skipping malformed CSV line ${i + 1}: Expected ${headers.length} columns, got ${data.length}. Ensure delimiter is comma and check column count. Line: "${lines[i]}"`);
+            console.warn(`Skipping malformed CSV line ${i + 1}: Expected ${headers.length} columns based on header, but got ${data.length}. Line: "${lines[i]}"`);
             skippedCount++;
             continue;
           }
@@ -147,26 +149,32 @@ export default function LeadsPage() {
             parsedRow[header] = convertValue(header, data[index]?.trim());
           });
           
-          let leadId = parsedRow.id || `imported-lead-${Date.now()}-${i}`;
+          let leadId = parsedRow.id; // Get ID from CSV if present
           
-          if (!parsedRow.id) {
-            let counter = 0;
-            let tempId = leadId;
-            while (initialLeads.some(l => l.id === tempId) || leads.some(l => l.id === tempId) || newLeadsFromCsv.some(l => l.id === tempId)) {
-                counter++;
-                tempId = `imported-lead-${Date.now()}-${i}-${counter}`;
+          if (!leadId) { // If ID is not in CSV, generate one
+            const baseGeneratedId = `imported-lead-${Date.now()}-${i}`; // Suffix 'i' is 1-based index of data rows
+            let currentGeneratedId = baseGeneratedId;
+            let uniqueIdCounter = 0;
+            
+            // Check against initialLeads, current leads state, and this batch (newLeadsFromCsv)
+            while (initialLeads.some(l => l.id === currentGeneratedId) || 
+                   leads.some(l => l.id === currentGeneratedId) || 
+                   newLeadsFromCsv.some(l => l.id === currentGeneratedId)) {
+                uniqueIdCounter++;
+                currentGeneratedId = `${baseGeneratedId}-${uniqueIdCounter}`; // Append counter to the *original* base
             }
-            leadId = tempId;
-            if (counter > 0) {
-                 toast({ title: 'Import Warning', description: `Lead at row ${i+1} generated a duplicate ID. New ID assigned: ${leadId}.`, variant: 'default' });
+            leadId = currentGeneratedId; // This is now the unique ID for this row
+
+            if (uniqueIdCounter > 0) {
+                 toast({ title: 'Import Info', description: `Lead at CSV row ${i+1} generated a duplicate ID. New unique ID assigned: ${leadId}.`, variant: 'default' });
             } else {
-                 toast({ title: 'Import Warning', description: `Lead at row ${i+1} was missing an ID and one was generated: ${leadId}.`, variant: 'default' });
+                 toast({ title: 'Import Info', description: `Lead at CSV row ${i+1} was missing an ID and one was generated: ${leadId}.`, variant: 'default' });
             }
           }
 
 
           const fullLead: Lead = {
-            id: leadId,
+            id: leadId, // Use the determined leadId (from CSV or generated)
             agent: typeof parsedRow.agent === 'string' ? parsedRow.agent : '',
             status: (parsedRow.status as LeadStatus) || 'New',
             month: typeof parsedRow.month === 'string' && parsedRow.month.match(/^\d{4}-\d{2}$/) ? parsedRow.month : new Date().toISOString().slice(0,7),
@@ -211,15 +219,14 @@ export default function LeadsPage() {
           if (!isDuplicateInInitial && !isDuplicateInCurrentState && !isDuplicateInThisBatch) {
             newLeadsFromCsv.push(fullLead);
           } else {
-            console.warn(`Skipping import for lead with duplicate ID: ${fullLead.id} at row ${i + 1}`);
-            toast({ title: 'Import Warning', description: `Lead with ID ${fullLead.id} at row ${i + 1} already exists or is a duplicate in this file. Skipped.`, variant: 'default' });
+            console.warn(`Skipping import for lead with duplicate ID: ${fullLead.id} at CSV row ${i + 1}`);
+            toast({ title: 'Import Warning', description: `Lead with ID ${fullLead.id} (CSV row ${i + 1}) already exists or is a duplicate in this file. Skipped.`, variant: 'default' });
             skippedCount++;
           }
         }
 
         if (skippedCount > 0 && newLeadsFromCsv.length > 0) { 
-            toast({ title: 'Import Partially Completed', description: `${newLeadsFromCsv.length} new leads imported, ${skippedCount} rows were skipped.`, variant: 'default' });
-        } else if (skippedCount > 0 && newLeadsFromCsv.length === 0 && (lines.length -1) > 0) { 
+            toast({ title: 'Import Partially Completed', description: `${newLeadsFromCsv.length} new leads imported, ${skippedCount} CSV rows were skipped.`, variant: 'default' });
         }
 
 
@@ -233,7 +240,7 @@ export default function LeadsPage() {
         } else if (skippedCount === lines.length -1 && lines.length > 1) {
            toast({ 
             title: 'Import Failed', 
-            description: `All ${lines.length - 1} data rows were skipped. Please check your CSV file. Common issues: column count mismatch with header, or incorrect delimiter (must be comma).`, 
+            description: `All ${lines.length - 1} data rows were skipped. Please check your CSV file. Common issues: column count mismatch with header, or incorrect delimiter (must be comma). Ensure IDs in CSV are unique if provided.`, 
             variant: 'destructive' 
           });
         }
@@ -333,3 +340,5 @@ export default function LeadsPage() {
     </div>
   );
 }
+
+    

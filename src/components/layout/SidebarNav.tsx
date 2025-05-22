@@ -35,17 +35,17 @@ export function SidebarNav() {
             const isActive = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href));
             return (
               <SidebarMenuItem key={item.title}>
-                <Link href={item.href} passHref legacyBehavior>
+                <Link href={item.href} passHref>
                   <SidebarMenuButton
                     asChild
                     isActive={isActive}
                     tooltip={item.title}
                     aria-label={item.title}
                   >
-                    <a>
+                    <>
                       <item.icon />
                       <span>{item.title}</span>
-                    </a>
+                    </>
                   </SidebarMenuButton>
                 </Link>
                 {/* Example badge, can be dynamic */}

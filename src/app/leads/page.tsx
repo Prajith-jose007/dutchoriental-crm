@@ -7,13 +7,14 @@ import { LeadsTable } from './_components/LeadsTable';
 import { ImportExportButtons } from './_components/ImportExportButtons';
 import { LeadFormDialog } from './_components/LeadFormDialog';
 import type { Lead, LeadStatus, ModeOfPayment, ExportedLeadStatus } from '@/lib/types';
+// placeholderLeads will now serve as an initial seed if the backend is empty or for examples.
 import { placeholderLeads as initialLeadsData } from '@/lib/placeholder-data';
 import { useToast } from '@/hooks/use-toast';
 
-const LEADS_STORAGE_KEY = 'dutchOrientalCrmLeads';
+// const LEADS_STORAGE_KEY = 'dutchOrientalCrmLeads'; // No longer using localStorage
 
-// Keep a mutable copy of initial data for in-memory modifications
-let initialLeads: Lead[] = JSON.parse(JSON.stringify(initialLeadsData));
+// Keep a mutable copy of initial data for in-memory modifications if API fails or for seeding
+// let initialLeads: Lead[] = JSON.parse(JSON.stringify(initialLeadsData));
 
 
 const convertValue = (key: keyof Lead, value: string): any => {
@@ -30,7 +31,7 @@ const convertValue = (key: keyof Lead, value: string): any => {
         case 'commissionPercentage': case 'commissionAmount': case 'netAmount':
         case 'paidAmount': case 'balanceAmount':
             return 0;
-        case 'modeOfPayment': return 'Online';
+        case 'modeOfPayment': return 'Online'; // Default mode of payment
         default: return undefined;
     }
   }
@@ -62,27 +63,29 @@ export default function LeadsPage() {
   const [isLeadDialogOpen, setIsLeadDialogOpen] = useState(false);
   const [editingLead, setEditingLead] = useState<Lead | null>(null);
   const [leads, setLeads] = useState<Lead[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
-  useEffect(() => {
-    const storedLeads = localStorage.getItem(LEADS_STORAGE_KEY);
-    let currentLeadsData: Lead[];
-    if (storedLeads) {
-      try {
-        currentLeadsData = JSON.parse(storedLeads);
-      } catch (error) {
-        console.error("Error parsing leads from localStorage:", error);
-        currentLeadsData = JSON.parse(JSON.stringify(initialLeadsData));
-        localStorage.setItem(LEADS_STORAGE_KEY, JSON.stringify(currentLeadsData));
+  const fetchLeads = async () => {
+    setIsLoading(true);
+    try {
+      const response = await fetch('/api/leads');
+      if (!response.ok) {
+        throw new Error(`Failed to fetch leads: ${response.statusText}`);
       }
-    } else {
-      currentLeadsData = JSON.parse(JSON.stringify(initialLeadsData));
-      localStorage.setItem(LEADS_STORAGE_KEY, JSON.stringify(currentLeadsData));
+      const data = await response.json();
+      setLeads(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error("Error fetching leads:", error);
+      toast({ title: 'Error Fetching Leads', description: (error as Error).message, variant: 'destructive' });
+      setLeads(JSON.parse(JSON.stringify(initialLeadsData))); // Fallback to placeholder if API fails
+    } finally {
+      setIsLoading(false);
     }
-    // Update the in-memory mutable array `initialLeads` to match what was loaded.
-    initialLeads.length = 0;
-    initialLeads.push(...currentLeadsData);
-    setLeads(currentLeadsData);
+  };
+
+  useEffect(() => {
+    fetchLeads();
   }, []);
 
 
@@ -96,39 +99,78 @@ export default function LeadsPage() {
     setIsLeadDialogOpen(true);
   };
 
-  const handleLeadFormSubmit = (submittedLeadData: Lead) => {
-    const existingLeadIndex = initialLeads.findIndex(l => l.id === submittedLeadData.id);
-
-    if (editingLead && submittedLeadData.id === editingLead.id && existingLeadIndex !== -1) {
-      initialLeads[existingLeadIndex] = submittedLeadData;
-    } else if (!editingLead) {
-      if (initialLeads.some(l => l.id === submittedLeadData.id)) {
-        toast({
-          title: 'Error Adding Lead',
-          description: `A lead with ID ${submittedLeadData.id} already exists. Please use a unique ID or let the system generate one.`,
-          variant: 'destructive',
+  const handleLeadFormSubmit = async (submittedLeadData: Lead) => {
+    try {
+      let response;
+      if (editingLead && submittedLeadData.id === editingLead.id) {
+        // Update existing lead
+        response = await fetch(`/api/leads/${editingLead.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(submittedLeadData),
         });
-        return;
-      }
-      initialLeads.push(submittedLeadData);
-    } else {
-        toast({
-            title: 'Error Saving Lead',
-            description: `Could not save lead. ID mismatch or unexpected state. ID: ${submittedLeadData.id}`,
+      } else {
+        // Add new lead
+         if (leads.some(l => l.id === submittedLeadData.id)) {
+            toast({
+            title: 'Error Adding Lead',
+            description: `A lead with ID ${submittedLeadData.id} already exists. Please use a unique ID or let the system generate one.`,
             variant: 'destructive',
+            });
+            return;
+        }
+        response = await fetch('/api/leads', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(submittedLeadData),
         });
-        return;
-    }
+      }
 
-    localStorage.setItem(LEADS_STORAGE_KEY, JSON.stringify(initialLeads));
-    setLeads([...initialLeads]);
-    setIsLeadDialogOpen(false);
-    setEditingLead(null);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || `Failed to save lead: ${response.statusText}`);
+      }
+      
+      // const savedLead = await response.json(); // The API returns the saved/updated lead
+      toast({
+        title: editingLead ? 'Lead Updated' : 'Lead Added',
+        description: `Lead for ${submittedLeadData.clientName} has been saved.`,
+      });
+      
+      fetchLeads(); // Re-fetch all leads to update the table
+      setIsLeadDialogOpen(false);
+      setEditingLead(null);
+
+    } catch (error) {
+      console.error("Error saving lead:", error);
+      toast({ title: 'Error Saving Lead', description: (error as Error).message, variant: 'destructive' });
+    }
   };
 
-  const handleCsvImport = (file: File) => {
+  const handleDeleteLead = async (leadId: string) => {
+    if (!confirm(`Are you sure you want to delete lead ${leadId}?`)) {
+      return;
+    }
+    try {
+      const response = await fetch(`/api/leads/${leadId}`, {
+        method: 'DELETE',
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || `Failed to delete lead: ${response.statusText}`);
+      }
+      toast({ title: 'Lead Deleted', description: `Lead ${leadId} has been deleted.` });
+      fetchLeads(); // Re-fetch leads
+    } catch (error) {
+      console.error("Error deleting lead:", error);
+      toast({ title: 'Error Deleting Lead', description: (error as Error).message, variant: 'destructive' });
+    }
+  };
+
+
+  const handleCsvImport = async (file: File) => {
     const reader = new FileReader();
-    reader.onload = (event) => {
+    reader.onload = async (event) => {
       const csvText = event.target?.result as string;
       if (!csvText) {
         toast({ title: 'Import Error', description: 'Could not read the CSV file.', variant: 'destructive' });
@@ -142,7 +184,7 @@ export default function LeadsPage() {
         }
 
         let headerLine = lines[0];
-        if (headerLine.charCodeAt(0) === 0xFEFF) { // Check for BOM
+        if (headerLine.charCodeAt(0) === 0xFEFF) { 
             headerLine = headerLine.substring(1);
         }
         const headers = headerLine.split(',').map(h => h.trim() as keyof Lead);
@@ -150,7 +192,9 @@ export default function LeadsPage() {
 
         const newLeadsFromCsv: Lead[] = [];
         let skippedCount = 0;
-        const importedIdsThisSession = new Set<string>();
+        let successCount = 0;
+        
+        const existingLeadIds = new Set(leads.map(l => l.id));
 
 
         for (let i = 1; i < lines.length; i++) {
@@ -174,7 +218,7 @@ export default function LeadsPage() {
           headers.forEach((header, index) => {
             parsedRow[header] = convertValue(header, data[index]);
           });
-
+          
           if (i === 1) {
             console.log("First Parsed Data Row (raw values from CSV after convertValue):", JSON.parse(JSON.stringify(parsedRow)));
           }
@@ -186,14 +230,11 @@ export default function LeadsPage() {
             let currentGeneratedId = baseGeneratedId;
             let uniqueIdCounter = 0;
 
-            while (initialLeads.some(l => l.id === currentGeneratedId) ||
-                   newLeadsFromCsv.some(l => l.id === currentGeneratedId) ||
-                   importedIdsThisSession.has(currentGeneratedId) ) {
+            while (existingLeadIds.has(currentGeneratedId) || newLeadsFromCsv.some(l => l.id === currentGeneratedId) ) {
                 uniqueIdCounter++;
                 currentGeneratedId = `${baseGeneratedId}-${uniqueIdCounter}`;
             }
             leadId = currentGeneratedId;
-             console.log(`Generated ID for CSV row ${i+1}: ${leadId}`);
           }
 
 
@@ -250,35 +291,60 @@ export default function LeadsPage() {
              console.log("First Full Lead Object (after defaults):", JSON.parse(JSON.stringify(fullLead)));
           }
 
-          const isDuplicateInInitial = initialLeads.some(l => l.id === fullLead.id);
+          const isDuplicateInExisting = existingLeadIds.has(fullLead.id);
           const isDuplicateInThisBatch = newLeadsFromCsv.some(l => l.id === fullLead.id);
-          const isDuplicateInSessionIds = importedIdsThisSession.has(fullLead.id);
 
-
-          if (!isDuplicateInInitial && !isDuplicateInThisBatch && !isDuplicateInSessionIds) {
+          if (!isDuplicateInExisting && !isDuplicateInThisBatch) {
             newLeadsFromCsv.push(fullLead);
-            importedIdsThisSession.add(fullLead.id);
+            existingLeadIds.add(fullLead.id); // Add to set to check against within this batch
           } else {
             console.warn(`Skipping import for lead with duplicate ID: ${fullLead.id} at CSV row ${i + 1}. Line: "${lines[i]}"`);
-            toast({ title: 'Import Warning', description: `Lead with ID ${fullLead.id} (CSV row ${i + 1}) already exists or is a duplicate in this file. Skipped.`, variant: 'default' });
             skippedCount++;
           }
         }
 
         if (newLeadsFromCsv.length > 0) {
-          initialLeads.push(...newLeadsFromCsv);
-          localStorage.setItem(LEADS_STORAGE_KEY, JSON.stringify(initialLeads));
-          setLeads([...initialLeads]);
-
-          if (skippedCount === 0) {
-            toast({ title: 'Import Successful', description: `${newLeadsFromCsv.length} new leads imported.` });
-          } else {
-             toast({ title: 'Import Partially Completed', description: `${newLeadsFromCsv.length} new leads imported, ${skippedCount} CSV rows were skipped. Check console for details.`, variant: 'default' });
+          // Post each new lead to the backend
+          for (const leadToImport of newLeadsFromCsv) {
+            try {
+              const response = await fetch('/api/leads', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(leadToImport),
+              });
+              if (response.ok) {
+                successCount++;
+              } else {
+                const errorData = await response.json();
+                console.warn(`Failed to import lead ${leadToImport.id}: ${errorData.message || response.statusText}`);
+                skippedCount++;
+              }
+            } catch (apiError) {
+                console.warn(`API error importing lead ${leadToImport.id}:`, apiError);
+                skippedCount++;
+            }
           }
+          
+          fetchLeads(); // Re-fetch all leads after import attempts
+
+          if (successCount > 0 && skippedCount === 0) {
+            toast({ title: 'Import Successful', description: `${successCount} new leads imported.` });
+          } else if (successCount > 0 && skippedCount > 0) {
+             toast({ title: 'Import Partially Completed', description: `${successCount} new leads imported, ${skippedCount} CSV rows/leads were skipped. Check console.`, variant: 'default' });
+          } else if (successCount === 0 && skippedCount > 0) {
+             toast({
+                title: 'Import Failed',
+                description: `All ${skippedCount} valid data rows from CSV were skipped during API submission or due to duplicates. Check console for details.`,
+                variant: 'destructive'
+            });
+          } else {
+             toast({ title: 'Import Complete', description: 'No new leads were imported (file had no valid data rows or all were duplicates). Check console.' });
+          }
+
         } else if (skippedCount === lines.length -1 && lines.length > 1) {
            toast({
             title: 'Import Failed',
-            description: `All ${lines.length - 1} data rows were skipped. Please check your CSV file. Common issues: column count mismatch with header, or incorrect delimiter (must be comma). Ensure IDs in CSV are unique if provided. Check console for details on skipped rows.`,
+            description: `All ${lines.length - 1} data rows were skipped during parsing. Please check your CSV file. Common issues: column count mismatch with header, or incorrect delimiter (must be comma). Ensure IDs in CSV are unique if provided. Check console for details on skipped rows.`,
             variant: 'destructive'
           });
         }
@@ -354,6 +420,10 @@ export default function LeadsPage() {
     }
   };
 
+  if (isLoading) {
+    return <div className="container mx-auto py-2 text-center">Loading leads...</div>;
+  }
+
   return (
     <div className="container mx-auto py-2">
       <PageHeader
@@ -362,10 +432,10 @@ export default function LeadsPage() {
         actions={<ImportExportButtons
                     onAddLeadClick={handleAddLeadClick}
                     onCsvImport={handleCsvImport}
-                    onCsvExport={handleCsvExport}
+                    onCsvExport={handleCsvExport} // Added prop for export handler
                   />}
       />
-      <LeadsTable leads={leads} onEditLead={handleEditLeadClick} />
+      <LeadsTable leads={leads} onEditLead={handleEditLeadClick} onDeleteLead={handleDeleteLead} />
       {isLeadDialogOpen && (
         <LeadFormDialog
           isOpen={isLeadDialogOpen}

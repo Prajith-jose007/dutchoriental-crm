@@ -88,17 +88,18 @@ const leadColumns: { accessorKey: keyof Lead | 'actions' | 'select', header: str
 interface LeadsTableProps {
   leads: Lead[];
   onEditLead: (lead: Lead) => void;
+  onDeleteLead: (leadId: string) => void; // Added prop for delete handler
 }
 
-export function LeadsTable({ leads, onEditLead }: LeadsTableProps) {
+export function LeadsTable({ leads, onEditLead, onDeleteLead }: LeadsTableProps) {
 
   const getStatusVariant = (status: Lead['status']) => {
     switch (status) {
       case 'New': return 'outline';
       case 'Contacted': return 'secondary';
-      case 'Qualified': return 'default';
-      case 'Proposal Sent': return 'default';
-      case 'Closed Won': return 'default'; 
+      case 'Qualified': return 'default'; // Consider a specific color for Qualified
+      case 'Proposal Sent': return 'default'; // Consider a specific color for Proposal Sent
+      case 'Closed Won': return 'default'; // Previously success, now using default
       case 'Closed Lost': return 'destructive';
       default: return 'outline';
     }
@@ -192,7 +193,7 @@ export function LeadsTable({ leads, onEditLead }: LeadsTableProps) {
                       <DropdownMenuSeparator />
                       <DropdownMenuItem
                         className="text-destructive"
-                        onClick={() => console.warn('Delete lead action (not implemented)', lead.id)}
+                        onClick={() => onDeleteLead(lead.id)} // Use onDeleteLead prop
                       >
                         Delete Lead
                       </DropdownMenuItem>
@@ -208,4 +209,3 @@ export function LeadsTable({ leads, onEditLead }: LeadsTableProps) {
     </ScrollArea>
   );
 }
-

@@ -16,9 +16,7 @@ import {
   ChartTooltipContent,
 } from '@/components/ui/chart';
 import type { Lead, Agent, BookingsByAgentData } from '@/lib/types';
-import { placeholderAgents } from '@/lib/placeholder-data'; // Still used for agent names
 import { Skeleton } from '@/components/ui/skeleton';
-
 
 const chartConfig = {
   bookings: {
@@ -29,29 +27,43 @@ const chartConfig = {
 
 export function BookingsByAgentBarChart() {
   const [leads, setLeads] = useState<Lead[]>([]);
+  const [agents, setAgents] = useState<Agent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchLeadsData = async () => {
+    const fetchData = async () => {
       setIsLoading(true);
       setError(null);
       try {
-        const response = await fetch('/api/leads');
-        if (!response.ok) {
-          throw new Error(`Failed to fetch leads for chart: ${response.statusText}`);
+        const [leadsResponse, agentsResponse] = await Promise.all([
+          fetch('/api/leads'),
+          fetch('/api/agents'),
+        ]);
+
+        if (!leadsResponse.ok) {
+          throw new Error(`Failed to fetch leads for chart: ${leadsResponse.statusText}`);
         }
-        const data = await response.json();
-        setLeads(Array.isArray(data) ? data : []);
+        if (!agentsResponse.ok) {
+          throw new Error(`Failed to fetch agents for chart: ${agentsResponse.statusText}`);
+        }
+        
+        const leadsData = await leadsResponse.json();
+        const agentsData = await agentsResponse.json();
+
+        setLeads(Array.isArray(leadsData) ? leadsData : []);
+        setAgents(Array.isArray(agentsData) ? agentsData : []);
+
       } catch (err) {
-        console.error("Error fetching leads for BookingsByAgentBarChart:", err);
+        console.error("Error fetching data for BookingsByAgentBarChart:", err);
         setError((err as Error).message);
         setLeads([]);
+        setAgents([]);
       } finally {
         setIsLoading(false);
       }
     };
-    fetchLeadsData();
+    fetchData();
   }, []);
 
   const chartData: BookingsByAgentData[] = useMemo(() => {
@@ -64,13 +76,14 @@ export function BookingsByAgentBarChart() {
     });
 
     return Array.from(bookingsByAgentMap.entries()).map(([agentId, bookingsCount]) => {
-      const agent = placeholderAgents.find(a => a.id === agentId);
+      const agent = agents.find(a => a.id === agentId);
       return {
         agentName: agent ? agent.name.substring(0,15) + (agent.name.length > 15 ? '...' : '') : `Agent ID: ${agentId.substring(0,6)}...`,
         bookings: bookingsCount,
       };
-    }).filter(item => item.bookings > 0);
-  }, [leads]);
+    }).filter(item => item.bookings > 0)
+      .sort((a,b) => b.bookings - a.bookings); // Sort by bookings desc
+  }, [leads, agents]);
 
 
   if (isLoading) {
@@ -113,7 +126,7 @@ export function BookingsByAgentBarChart() {
                 <CardDescription>'Closed Won' leads by agent.</CardDescription>
             </CardHeader>
             <CardContent className="flex items-center justify-center h-[300px]">
-                <p className="text-muted-foreground">No booking data by agent available.</p>
+                <p className="text-muted-foreground">No 'Closed Won' booking data by agent available.</p>
             </CardContent>
         </Card>
     );

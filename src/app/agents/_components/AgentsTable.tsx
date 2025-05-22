@@ -27,9 +27,10 @@ import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 interface AgentsTableProps {
   agents: Agent[];
   onEditAgent: (agent: Agent) => void;
+  onDeleteAgent: (agentId: string) => void; // Added for delete functionality
 }
 
-export function AgentsTable({ agents, onEditAgent }: AgentsTableProps) {
+export function AgentsTable({ agents, onEditAgent, onDeleteAgent }: AgentsTableProps) {
 
   const getStatusBadgeVariant = (status: Agent['status']) => {
     switch (status) {
@@ -38,7 +39,7 @@ export function AgentsTable({ agents, onEditAgent }: AgentsTableProps) {
       case 'Non Active':
         return 'secondary';
       case 'Dead':
-        return 'outline';
+        return 'outline'; // 'destructive' might be too strong, outline is more neutral for 'Dead'
       default:
         return 'outline';
     }
@@ -107,11 +108,11 @@ export function AgentsTable({ agents, onEditAgent }: AgentsTableProps) {
                       <DropdownMenuItem onClick={() => onEditAgent(agent)}>
                         Edit Agent
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => console.log('View agent details', agent.id)}>View Details</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => console.log('View agent details (not implemented)', agent.id)}>View Details</DropdownMenuItem>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem 
                         className="text-destructive"
-                        onClick={() => console.warn('Delete agent action (not implemented)', agent.id)}
+                        onClick={() => onDeleteAgent(agent.id)} // Use onDeleteAgent prop
                       >
                         Delete Agent
                       </DropdownMenuItem>

@@ -33,9 +33,10 @@ import {
 } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import type { Lead, Agent, Yacht, ModeOfPayment } from '@/lib/types';
-import { placeholderAgents, placeholderYachts } from '@/lib/placeholder-data';
+// Placeholder data will be replaced by API calls
+// import { placeholderAgents, placeholderYachts } from '@/lib/placeholder-data';
 import { useToast } from '@/hooks/use-toast';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 // Define the Zod schema based on the new Lead type
 const leadFormSchema = z.object({
@@ -103,41 +104,34 @@ interface LeadFormDialogProps {
 
 interface PackageFieldConfig {
   qtyKey: keyof LeadFormData;
-  rateKey: keyof Yacht; // Ensure this matches Yacht type properties
+  rateKey: keyof Yacht; 
   label: string;
-  category: 'DHOW' | 'OE' | 'SUNSET' | 'LOTUS' | 'ROYAL' | 'OTHER'; // 'OTHER' for things like cake
+  category: 'DHOW' | 'OE' | 'SUNSET' | 'LOTUS' | 'ROYAL' | 'OTHER';
 }
 
-// Updated package item configuration
 const allPackageItemConfigs: PackageFieldConfig[] = [
-  // DHOW
   { qtyKey: 'dhowChildQty', rateKey: 'dhowChildRate', label: 'DHOW - Child Qty', category: 'DHOW' },
   { qtyKey: 'dhowAdultQty', rateKey: 'dhowAdultRate', label: 'DHOW - Adult Qty', category: 'DHOW' },
   { qtyKey: 'dhowVipQty', rateKey: 'dhowVipRate', label: 'DHOW - VIP Qty', category: 'DHOW' },
   { qtyKey: 'dhowVipChildQty', rateKey: 'dhowVipChildRate', label: 'DHOW - VIP Child Qty', category: 'DHOW' },
   { qtyKey: 'dhowVipAlcoholQty', rateKey: 'dhowVipAlcoholRate', label: 'DHOW - VIP Alcohol Qty', category: 'DHOW' },
-  // OE
   { qtyKey: 'oeChildQty', rateKey: 'oeChildRate', label: 'OE - Child Qty', category: 'OE' },
   { qtyKey: 'oeAdultQty', rateKey: 'oeAdultRate', label: 'OE - Adult Qty', category: 'OE' },
   { qtyKey: 'oeVipQty', rateKey: 'oeVipRate', label: 'OE - VIP Qty', category: 'OE' },
   { qtyKey: 'oeVipChildQty', rateKey: 'oeVipChildRate', label: 'OE - VIP Child Qty', category: 'OE' },
   { qtyKey: 'oeVipAlcoholQty', rateKey: 'oeVipAlcoholRate', label: 'OE - VIP Alcohol Qty', category: 'OE' },
-  // SUNSET
   { qtyKey: 'sunsetChildQty', rateKey: 'sunsetChildRate', label: 'SUNSET - Child Qty', category: 'SUNSET' },
   { qtyKey: 'sunsetAdultQty', rateKey: 'sunsetAdultRate', label: 'SUNSET - Adult Qty', category: 'SUNSET' },
   { qtyKey: 'sunsetVipQty', rateKey: 'sunsetVipRate', label: 'SUNSET - VIP Qty', category: 'SUNSET' },
   { qtyKey: 'sunsetVipChildQty', rateKey: 'sunsetVipChildRate', label: 'SUNSET - VIP Child Qty', category: 'SUNSET' },
   { qtyKey: 'sunsetVipAlcoholQty', rateKey: 'sunsetVipAlcoholRate', label: 'SUNSET - VIP Alcohol Qty', category: 'SUNSET' },
-  // LOTUS
   { qtyKey: 'lotusChildQty', rateKey: 'lotusChildRate', label: 'LOTUS - Child Qty', category: 'LOTUS' },
   { qtyKey: 'lotusAdultQty', rateKey: 'lotusAdultRate', label: 'LOTUS - Adult Qty', category: 'LOTUS' },
   { qtyKey: 'lotusVipQty', rateKey: 'lotusVipRate', label: 'LOTUS - VIP Qty', category: 'LOTUS' },
   { qtyKey: 'lotusVipChildQty', rateKey: 'lotusVipChildRate', label: 'LOTUS - VIP Child Qty', category: 'LOTUS' },
   { qtyKey: 'lotusVipAlcoholQty', rateKey: 'lotusVipAlcoholRate', label: 'LOTUS - VIP Alcohol Qty', category: 'LOTUS' },
-  // ROYAL
   { qtyKey: 'royalQty', rateKey: 'royalRate', label: 'Royal Package Qty', category: 'ROYAL' },
 ];
-
 
 const leadStatusOptions: Lead['status'][] = ['New', 'Contacted', 'Qualified', 'Proposal Sent', 'Closed Won', 'Closed Lost'];
 const modeOfPaymentOptions: ModeOfPayment[] = ['Online', 'Offline', 'Credit'];
@@ -158,17 +152,48 @@ const getDefaultFormValues = (): LeadFormData => ({
 
 export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: LeadFormDialogProps) {
   const { toast } = useToast();
-  const agents: Agent[] = placeholderAgents;
-  const yachts: Yacht[] = placeholderYachts;
+  const [agents, setAgents] = useState<Agent[]>([]);
+  const [yachts, setYachts] = useState<Yacht[]>([]);
+  const [isLoadingDropdowns, setIsLoadingDropdowns] = useState(true);
 
   const form = useForm<LeadFormData>({
     resolver: zodResolver(leadFormSchema),
     defaultValues: lead ? lead as LeadFormData : getDefaultFormValues(),
   });
 
+  useEffect(() => {
+    const fetchDropdownData = async () => {
+      setIsLoadingDropdowns(true);
+      try {
+        const [agentsRes, yachtsRes] = await Promise.all([
+          fetch('/api/agents'),
+          fetch('/api/yachts'),
+        ]);
+        if (!agentsRes.ok) throw new Error('Failed to fetch agents');
+        if (!yachtsRes.ok) throw new Error('Failed to fetch yachts');
+        
+        const agentsData = await agentsRes.json();
+        const yachtsData = await yachtsRes.json();
+        
+        setAgents(Array.isArray(agentsData) ? agentsData : []);
+        setYachts(Array.isArray(yachtsData) ? yachtsData : []);
+
+      } catch (error) {
+        console.error("Error fetching dropdown data for Lead Form:", error);
+        toast({ title: 'Error loading form data', description: (error as Error).message, variant: 'destructive' });
+      } finally {
+        setIsLoadingDropdowns(false);
+      }
+    };
+
+    if (isOpen) {
+      fetchDropdownData();
+    }
+  }, [isOpen, toast]);
+
+
   const watchedAgentId = form.watch('agent');
   const watchedYachtId = form.watch('yacht');
-  // Watch all quantity fields and other relevant fields for calculation
   const watchedQuantities = allPackageItemConfigs.map(config => form.watch(config.qtyKey));
   const watchedOthersAmtCake = form.watch('othersAmtCake');
   const watchedPaidAmount = form.watch('paidAmount');
@@ -208,11 +233,11 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
     
     const paidAmtValue = form.getValues('paidAmount');
     const paidAmt = typeof paidAmtValue === 'number' ? paidAmtValue : 0;
-    const currentBalanceAmount = currentTotalAmount - paidAmt;
+    const currentBalanceAmount = currentTotalAmount - paidAmt; // This should be Total - Paid, not Net - Paid
     form.setValue('balanceAmount', currentBalanceAmount);
 
   }, [
-    watchedAgentId, watchedYachtId, ...watchedQuantities, // Spread watchedQuantities
+    watchedAgentId, watchedYachtId, ...watchedQuantities, 
     watchedOthersAmtCake, watchedPaidAmount, form, agents, yachts
   ]);
 
@@ -224,31 +249,55 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
 
   function onSubmit(data: LeadFormData) {
     const submittedLead: Lead = {
-      ...getDefaultFormValues(), // Start with defaults to ensure all fields are present
-      ...data, // Override with form data
-      id: lead?.id || `lead-${Date.now()}-${Math.random().toString(36).substring(2,7)}`, // Ensure unique ID for new
+      ...getDefaultFormValues(), 
+      ...data, 
+      id: lead?.id || `lead-${Date.now()}-${Math.random().toString(36).substring(2,7)}`,
       createdAt: lead?.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-      // Ensure all numeric qty fields are numbers, defaulting to 0 if undefined/null from form
       dhowChildQty: data.dhowChildQty || 0,
       dhowAdultQty: data.dhowAdultQty || 0,
-      // ... (repeat for all qty fields)
+      dhowVipQty: data.dhowVipQty || 0,
+      dhowVipChildQty: data.dhowVipChildQty || 0,
+      dhowVipAlcoholQty: data.dhowVipAlcoholQty || 0,
       oeChildQty: data.oeChildQty || 0,
       oeAdultQty: data.oeAdultQty || 0,
+      oeVipQty: data.oeVipQty || 0,
+      oeVipChildQty: data.oeVipChildQty || 0,
+      oeVipAlcoholQty: data.oeVipAlcoholQty || 0,
+      sunsetChildQty: data.sunsetChildQty || 0,
+      sunsetAdultQty: data.sunsetAdultQty || 0,
+      sunsetVipQty: data.sunsetVipQty || 0,
+      sunsetVipChildQty: data.sunsetVipChildQty || 0,
+      sunsetVipAlcoholQty: data.sunsetVipAlcoholQty || 0,
+      lotusChildQty: data.lotusChildQty || 0,
+      lotusAdultQty: data.lotusAdultQty || 0,
+      lotusVipQty: data.lotusVipQty || 0,
+      lotusVipChildQty: data.lotusVipChildQty || 0,
+      lotusVipAlcoholQty: data.lotusVipAlcoholQty || 0,
       royalQty: data.royalQty || 0,
       othersAmtCake: data.othersAmtCake || 0,
       commissionPercentage: data.commissionPercentage || 0,
       commissionAmount: data.commissionAmount || 0,
     };
     onSubmitSuccess(submittedLead);
-    toast({
-      title: lead ? 'Lead Updated' : 'Lead Added',
-      description: `Lead for ${data.clientName} has been ${lead ? 'updated' : 'added'}.`,
-    });
-    onOpenChange(false);
+    // Toast is handled by parent page after successful API call
+    // onOpenChange(false); // Also handled by parent
   }
 
   const packageCategories = ['DHOW', 'OE', 'SUNSET', 'LOTUS', 'ROYAL'] as const;
+
+  if (isLoadingDropdowns && isOpen) {
+    return (
+      <Dialog open={isOpen} onOpenChange={onOpenChange}>
+        <DialogContent className="sm:max-w-[600px] md:max-w-[800px] lg:max-w-[1000px]">
+          <DialogHeader>
+            <DialogTitle>{lead ? 'Edit Lead' : 'Add New Lead'}</DialogTitle>
+          </DialogHeader>
+          <div className="p-6 text-center">Loading form data...</div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -491,8 +540,8 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
             </div>
             <DialogFooter className="pt-6">
               <DialogClose asChild><Button type="button" variant="outline">Cancel</Button></DialogClose>
-              <Button type="submit" disabled={form.formState.isSubmitting}>
-                {lead ? 'Save Changes' : 'Add Lead'}
+              <Button type="submit" disabled={form.formState.isSubmitting || isLoadingDropdowns}>
+                {isLoadingDropdowns ? 'Loading...' : (lead ? 'Save Changes' : 'Add Lead')}
               </Button>
             </DialogFooter>
           </form>

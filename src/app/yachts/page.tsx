@@ -6,39 +6,40 @@ import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { PageHeader } from '@/components/PageHeader';
-import { placeholderYachts as initialYachtsData } from '@/lib/placeholder-data';
 import type { Yacht } from '@/lib/types';
 import { PlusCircle, Edit, Trash2 } from 'lucide-react';
 import { YachtFormDialog } from './_components/YachtFormDialog';
 import { useToast } from '@/hooks/use-toast';
-
-const YACHTS_STORAGE_KEY = 'dutchOrientalCrmYachts';
-let initialYachts: Yacht[] = JSON.parse(JSON.stringify(initialYachtsData));
+// Placeholder data is no longer the primary source after API integration
+// import { placeholderYachts as initialYachtsData } from '@/lib/placeholder-data';
 
 export default function YachtsPage() {
   const [yachts, setYachts] = useState<Yacht[]>([]);
   const [isYachtDialogOpen, setIsYachtDialogOpen] = useState(false);
   const [editingYacht, setEditingYacht] = useState<Yacht | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
-  useEffect(() => {
-    const storedYachts = localStorage.getItem(YACHTS_STORAGE_KEY);
-    let currentYachtsData: Yacht[];
-    if (storedYachts) {
-      try {
-        currentYachtsData = JSON.parse(storedYachts);
-      } catch (error) {
-        console.error("Error parsing yachts from localStorage:", error);
-        currentYachtsData = JSON.parse(JSON.stringify(initialYachtsData));
-        localStorage.setItem(YACHTS_STORAGE_KEY, JSON.stringify(currentYachtsData));
+  const fetchYachts = async () => {
+    setIsLoading(true);
+    try {
+      const response = await fetch('/api/yachts');
+      if (!response.ok) {
+        throw new Error(`Failed to fetch yachts: ${response.statusText}`);
       }
-    } else {
-      currentYachtsData = JSON.parse(JSON.stringify(initialYachtsData));
-      localStorage.setItem(YACHTS_STORAGE_KEY, JSON.stringify(currentYachtsData));
+      const data = await response.json();
+      setYachts(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error("Error fetching yachts:", error);
+      toast({ title: 'Error Fetching Yachts', description: (error as Error).message, variant: 'destructive' });
+      setYachts([]); // Fallback to empty
+    } finally {
+      setIsLoading(false);
     }
-    initialYachts.length = 0;
-    initialYachts.push(...currentYachtsData);
-    setYachts(currentYachtsData);
+  };
+
+  useEffect(() => {
+    fetchYachts();
   }, []);
 
   const handleAddYachtClick = () => {
@@ -51,37 +52,75 @@ export default function YachtsPage() {
     setIsYachtDialogOpen(true);
   };
 
-  const handleYachtFormSubmit = (submittedYachtData: Yacht) => {
-    const yachtIndex = initialYachts.findIndex(y => y.id === submittedYachtData.id);
+  const handleYachtFormSubmit = async (submittedYachtData: Yacht) => {
+     try {
+      let response;
+      if (editingYacht && submittedYachtData.id === editingYacht.id) {
+        response = await fetch(`/api/yachts/${editingYacht.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(submittedYachtData),
+        });
+      } else {
+        const existingYacht = yachts.find(y => y.id === submittedYachtData.id);
+        if (existingYacht && !editingYacht) {
+             toast({
+                title: 'Error Adding Yacht',
+                description: `Yacht with ID ${submittedYachtData.id} already exists.`,
+                variant: 'destructive',
+            });
+            return;
+        }
+        response = await fetch('/api/yachts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(submittedYachtData),
+        });
+      }
 
-    if (editingYacht && yachtIndex > -1) {
-      initialYachts[yachtIndex] = submittedYachtData;
-    } else if (!editingYacht && !initialYachts.some(y => y.id === submittedYachtData.id)) {
-      initialYachts.push(submittedYachtData);
-    } else if (!editingYacht) {
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || `Failed to save yacht: ${response.statusText}`);
+      }
+      
       toast({
-        title: "Error",
-        description: `Yacht with ID ${submittedYachtData.id} already exists or ID is invalid.`,
-        variant: "destructive",
+        title: editingYacht ? 'Yacht Updated' : 'Yacht Added',
+        description: `${submittedYachtData.name} has been saved.`,
       });
+      
+      fetchYachts(); // Re-fetch all yachts
+      setIsYachtDialogOpen(false);
+      setEditingYacht(null);
+
+    } catch (error) {
+      console.error("Error saving yacht:", error);
+      toast({ title: 'Error Saving Yacht', description: (error as Error).message, variant: 'destructive' });
+    }
+  };
+
+  const handleDeleteYacht = async (yachtId: string) => {
+    if (!confirm(`Are you sure you want to delete yacht ${yachtId}? This action cannot be undone.`)) {
       return;
     }
-    
-    localStorage.setItem(YACHTS_STORAGE_KEY, JSON.stringify(initialYachts));
-    setYachts([...initialYachts]);
-    setIsYachtDialogOpen(false);
-    setEditingYacht(null);
+    try {
+      const response = await fetch(`/api/yachts/${yachtId}`, {
+        method: 'DELETE',
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || `Failed to delete yacht: ${response.statusText}`);
+      }
+      toast({ title: 'Yacht Deleted', description: `Yacht ${yachtId} has been deleted.` });
+      fetchYachts(); // Re-fetch yachts
+    } catch (error) {
+      console.error("Error deleting yacht:", error);
+      toast({ title: 'Error Deleting Yacht', description: (error as Error).message, variant: 'destructive' });
+    }
   };
 
-  const handleDeleteYacht = (yachtId: string) => {
-    initialYachts = initialYachts.filter(y => y.id !== yachtId);
-    localStorage.setItem(YACHTS_STORAGE_KEY, JSON.stringify(initialYachts));
-    setYachts([...initialYachts]);
-    toast({
-        title: "Yacht Deleted",
-        description: `Yacht with ID ${yachtId} has been removed.`,
-    });
-  };
+  if (isLoading) {
+    return <div className="container mx-auto py-2 text-center">Loading yachts...</div>;
+  }
 
   return (
     <div className="container mx-auto py-2">
@@ -114,7 +153,6 @@ export default function YachtsPage() {
             <CardContent className="flex-grow space-y-3">
               <p className="text-sm text-muted-foreground">
                 ID: {yacht.id} <br />
-                Status: {yacht.status} <br />
                 Click 'Edit' to view and manage package rates for this yacht.
               </p>
             </CardContent>

@@ -41,22 +41,39 @@ const yachtFormSchema = z.object({
   imageUrl: z.string().url({ message: "Invalid URL format" }).optional().or(z.literal('')),
   capacity: z.coerce.number().min(1, 'Capacity must be at least 1'),
   status: z.enum(['Available', 'Booked', 'Maintenance']),
-  dhowChild89_rate: z.coerce.number().min(0).optional().default(0),
-  dhowFood99_rate: z.coerce.number().min(0).optional().default(0),
-  dhowDrinks199_rate: z.coerce.number().min(0).optional().default(0),
-  dhowVip299_rate: z.coerce.number().min(0).optional().default(0),
-  oeChild129_rate: z.coerce.number().min(0).optional().default(0),
-  oeFood149_rate: z.coerce.number().min(0).optional().default(0),
-  oeDrinks249_rate: z.coerce.number().min(0).optional().default(0),
-  oeVip349_rate: z.coerce.number().min(0).optional().default(0),
-  sunsetChild179_rate: z.coerce.number().min(0).optional().default(0),
-  sunsetFood199_rate: z.coerce.number().min(0).optional().default(0),
-  sunsetDrinks299_rate: z.coerce.number().min(0).optional().default(0),
-  lotusFood249_rate: z.coerce.number().min(0).optional().default(0),
-  lotusDrinks349_rate: z.coerce.number().min(0).optional().default(0),
-  lotusVip399_rate: z.coerce.number().min(0).optional().default(0),
-  lotusVip499_rate: z.coerce.number().min(0).optional().default(0),
-  othersAmtCake_rate: z.coerce.number().min(0).optional().default(0),
+
+  // DHOW Rates
+  dhowChildRate: z.coerce.number().min(0).optional().default(0),
+  dhowAdultRate: z.coerce.number().min(0).optional().default(0),
+  dhowVipRate: z.coerce.number().min(0).optional().default(0),
+  dhowVipChildRate: z.coerce.number().min(0).optional().default(0),
+  dhowVipAlcoholRate: z.coerce.number().min(0).optional().default(0),
+
+  // OE Rates
+  oeChildRate: z.coerce.number().min(0).optional().default(0),
+  oeAdultRate: z.coerce.number().min(0).optional().default(0),
+  oeVipRate: z.coerce.number().min(0).optional().default(0),
+  oeVipChildRate: z.coerce.number().min(0).optional().default(0),
+  oeVipAlcoholRate: z.coerce.number().min(0).optional().default(0),
+
+  // SUNSET Rates
+  sunsetChildRate: z.coerce.number().min(0).optional().default(0),
+  sunsetAdultRate: z.coerce.number().min(0).optional().default(0),
+  sunsetVipRate: z.coerce.number().min(0).optional().default(0),
+  sunsetVipChildRate: z.coerce.number().min(0).optional().default(0),
+  sunsetVipAlcoholRate: z.coerce.number().min(0).optional().default(0),
+  
+  // LOTUS Rates
+  lotusChildRate: z.coerce.number().min(0).optional().default(0),
+  lotusAdultRate: z.coerce.number().min(0).optional().default(0),
+  lotusVipRate: z.coerce.number().min(0).optional().default(0),
+  lotusVipChildRate: z.coerce.number().min(0).optional().default(0),
+  lotusVipAlcoholRate: z.coerce.number().min(0).optional().default(0),
+
+  // Royal Rate
+  royalRate: z.coerce.number().min(0).optional().default(0),
+  
+  othersAmtCake_rate: z.coerce.number().min(0).optional().default(0), // Kept for now
 });
 
 export type YachtFormData = z.infer<typeof yachtFormSchema>;
@@ -70,92 +87,74 @@ interface YachtFormDialogProps {
 
 const statusOptions: Yacht['status'][] = ['Available', 'Booked', 'Maintenance'];
 
-const packageRateFields: { name: keyof YachtFormData; label: string; packageType: string }[] = [
-  { name: 'dhowChild89_rate', label: 'Dhow Child (89 AED)', packageType: 'DHOW' },
-  { name: 'dhowFood99_rate', label: 'Dhow Food (99 AED)', packageType: 'DHOW' },
-  { name: 'dhowDrinks199_rate', label: 'Dhow Drinks (199 AED)', packageType: 'DHOW' },
-  { name: 'dhowVip299_rate', label: 'Dhow VIP (299 AED)', packageType: 'DHOW' },
-  { name: 'oeChild129_rate', label: 'OE Child (129 AED)', packageType: 'OE' },
-  { name: 'oeFood149_rate', label: 'OE Food (149 AED)', packageType: 'OE' },
-  { name: 'oeDrinks249_rate', label: 'OE Drinks (249 AED)', packageType: 'OE' },
-  { name: 'oeVip349_rate', label: 'OE VIP (349 AED)', packageType: 'OE' },
-  { name: 'sunsetChild179_rate', label: 'Sunset Child (179 AED)', packageType: 'SUNSET' },
-  { name: 'sunsetFood199_rate', label: 'Sunset Food (199 AED)', packageType: 'SUNSET' },
-  { name: 'sunsetDrinks299_rate', label: 'Sunset Drinks (299 AED)', packageType: 'SUNSET' },
-  { name: 'lotusFood249_rate', label: 'Lotus Food (249 AED)', packageType: 'LOTUS' },
-  { name: 'lotusDrinks349_rate', label: 'Lotus Drinks (349 AED)', packageType: 'LOTUS' },
-  { name: 'lotusVip399_rate', label: 'Lotus VIP (399 AED)', packageType: 'LOTUS' },
-  { name: 'lotusVip499_rate', label: 'Lotus VIP (499 AED)', packageType: 'LOTUS' },
-  { name: 'othersAmtCake_rate', label: 'Others/Cake Rate (AED)', packageType: 'OTHER' },
+interface PackageRateFieldConfig {
+  name: keyof YachtFormData; 
+  label: string; 
+  category: 'DHOW' | 'OE' | 'SUNSET' | 'LOTUS' | 'ROYAL' | 'OTHER';
+}
+
+const packageRateFields: PackageRateFieldConfig[] = [
+  // DHOW
+  { name: 'dhowChildRate', label: 'DHOW - Child Rate (AED)', category: 'DHOW' },
+  { name: 'dhowAdultRate', label: 'DHOW - Adult Rate (AED)', category: 'DHOW' },
+  { name: 'dhowVipRate', label: 'DHOW - VIP Rate (AED)', category: 'DHOW' },
+  { name: 'dhowVipChildRate', label: 'DHOW - VIP Child Rate (AED)', category: 'DHOW' },
+  { name: 'dhowVipAlcoholRate', label: 'DHOW - VIP Alcohol Rate (AED)', category: 'DHOW' },
+  // OE
+  { name: 'oeChildRate', label: 'OE - Child Rate (AED)', category: 'OE' },
+  { name: 'oeAdultRate', label: 'OE - Adult Rate (AED)', category: 'OE' },
+  { name: 'oeVipRate', label: 'OE - VIP Rate (AED)', category: 'OE' },
+  { name: 'oeVipChildRate', label: 'OE - VIP Child Rate (AED)', category: 'OE' },
+  { name: 'oeVipAlcoholRate', label: 'OE - VIP Alcohol Rate (AED)', category: 'OE' },
+  // SUNSET
+  { name: 'sunsetChildRate', label: 'SUNSET - Child Rate (AED)', category: 'SUNSET' },
+  { name: 'sunsetAdultRate', label: 'SUNSET - Adult Rate (AED)', category: 'SUNSET' },
+  { name: 'sunsetVipRate', label: 'SUNSET - VIP Rate (AED)', category: 'SUNSET' },
+  { name: 'sunsetVipChildRate', label: 'SUNSET - VIP Child Rate (AED)', category: 'SUNSET' },
+  { name: 'sunsetVipAlcoholRate', label: 'SUNSET - VIP Alcohol Rate (AED)', category: 'SUNSET' },
+  // LOTUS
+  { name: 'lotusChildRate', label: 'LOTUS - Child Rate (AED)', category: 'LOTUS' },
+  { name: 'lotusAdultRate', label: 'LOTUS - Adult Rate (AED)', category: 'LOTUS' },
+  { name: 'lotusVipRate', label: 'LOTUS - VIP Rate (AED)', category: 'LOTUS' },
+  { name: 'lotusVipChildRate', label: 'LOTUS - VIP Child Rate (AED)', category: 'LOTUS' },
+  { name: 'lotusVipAlcoholRate', label: 'LOTUS - VIP Alcohol Rate (AED)', category: 'LOTUS' },
+  // ROYAL
+  { name: 'royalRate', label: 'Royal Package Rate (AED)', category: 'ROYAL' },
+  // OTHER
+  { name: 'othersAmtCake_rate', label: 'Others/Cake Base Rate (AED)', category: 'OTHER' },
 ];
+
+const getDefaultYachtFormValues = (): YachtFormData => ({
+  id: '',
+  name: '',
+  imageUrl: '',
+  capacity: 50,
+  status: 'Available',
+  dhowChildRate: 0, dhowAdultRate: 0, dhowVipRate: 0, dhowVipChildRate: 0, dhowVipAlcoholRate: 0,
+  oeChildRate: 0, oeAdultRate: 0, oeVipRate: 0, oeVipChildRate: 0, oeVipAlcoholRate: 0,
+  sunsetChildRate: 0, sunsetAdultRate: 0, sunsetVipRate: 0, sunsetVipChildRate: 0, sunsetVipAlcoholRate: 0,
+  lotusChildRate: 0, lotusAdultRate: 0, lotusVipRate: 0, lotusVipChildRate: 0, lotusVipAlcoholRate: 0,
+  royalRate: 0,
+  othersAmtCake_rate: 0,
+});
 
 
 export function YachtFormDialog({ isOpen, onOpenChange, yacht, onSubmitSuccess }: YachtFormDialogProps) {
   const { toast } = useToast();
   const form = useForm<YachtFormData>({
     resolver: zodResolver(yachtFormSchema),
-    defaultValues: yacht || {
-      id: '',
-      name: '',
-      imageUrl: '',
-      capacity: 50,
-      status: 'Available',
-      dhowChild89_rate: 0,
-      dhowFood99_rate: 0,
-      dhowDrinks199_rate: 0,
-      dhowVip299_rate: 0,
-      oeChild129_rate: 0,
-      oeFood149_rate: 0,
-      oeDrinks249_rate: 0,
-      oeVip349_rate: 0,
-      sunsetChild179_rate: 0,
-      sunsetFood199_rate: 0,
-      sunsetDrinks299_rate: 0,
-      lotusFood249_rate: 0,
-      lotusDrinks349_rate: 0,
-      lotusVip399_rate: 0,
-      lotusVip499_rate: 0,
-      othersAmtCake_rate: 0,
-    },
+    defaultValues: yacht ? yacht as YachtFormData : getDefaultYachtFormValues(),
   });
 
   useEffect(() => {
     if (isOpen) {
-      if (yacht) {
-        form.reset({
-          ...yacht,
-          imageUrl: yacht.imageUrl || '',
-        });
-      } else {
-        form.reset({
-          id: '', 
-          name: '',
-          imageUrl: '',
-          capacity: 50,
-          status: 'Available',
-          dhowChild89_rate: 0,
-          dhowFood99_rate: 0,
-          dhowDrinks199_rate: 0,
-          dhowVip299_rate: 0,
-          oeChild129_rate: 0,
-          oeFood149_rate: 0,
-          oeDrinks249_rate: 0,
-          oeVip349_rate: 0,
-          sunsetChild179_rate: 0,
-          sunsetFood199_rate: 0,
-          sunsetDrinks299_rate: 0,
-          lotusFood249_rate: 0,
-          lotusDrinks349_rate: 0,
-          lotusVip399_rate: 0,
-          lotusVip499_rate: 0,
-          othersAmtCake_rate: 0,
-        });
-      }
+      form.reset(yacht ? { ...yacht, imageUrl: yacht.imageUrl || '' } as YachtFormData : getDefaultYachtFormValues());
     }
   }, [yacht, form, isOpen]);
 
   function onSubmit(data: YachtFormData) {
     const submittedYacht: Yacht = {
+      ...getDefaultYachtFormValues(),
       ...data,
       imageUrl: data.imageUrl || undefined,
     };
@@ -166,6 +165,8 @@ export function YachtFormDialog({ isOpen, onOpenChange, yacht, onSubmitSuccess }
     });
     onOpenChange(false);
   }
+  
+  const packageCategories = ['DHOW', 'OE', 'SUNSET', 'LOTUS', 'ROYAL', 'OTHER'] as const;
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -243,7 +244,7 @@ export function YachtFormDialog({ isOpen, onOpenChange, yacht, onSubmitSuccess }
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Status</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value || undefined}>
+                      <Select onValueChange={field.onChange} value={field.value || undefined} defaultValue={field.value}>
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="Select status" />
@@ -263,11 +264,11 @@ export function YachtFormDialog({ isOpen, onOpenChange, yacht, onSubmitSuccess }
 
               <h3 className="text-lg font-medium pt-4 border-t mt-6">Package Rates (AED)</h3>
               
-              {(['DHOW', 'OE', 'SUNSET', 'LOTUS', 'OTHER'] as const).map(packageGroup => (
-                <div key={packageGroup}>
-                  <h4 className="text-md font-medium mt-4 mb-2">{packageGroup} Package Rates</h4>
+              {packageCategories.map(category => (
+                <div key={category}>
+                  <h4 className="text-md font-semibold mt-4 mb-2">{category} Package Rates</h4>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {packageRateFields.filter(f => f.packageType === packageGroup).map(rateField => (
+                    {packageRateFields.filter(f => f.category === category).map(rateField => (
                       <FormField
                         key={rateField.name}
                         control={form.control}
@@ -286,6 +287,7 @@ export function YachtFormDialog({ isOpen, onOpenChange, yacht, onSubmitSuccess }
                   </div>
                 </div>
               ))}
+
 
               <DialogFooter className="pt-6">
                 <DialogClose asChild>

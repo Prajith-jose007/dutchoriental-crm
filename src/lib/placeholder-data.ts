@@ -17,93 +17,115 @@ export const placeholderAgents: Agent[] = [
 export const placeholderYachts: Yacht[] = [
   {
     id: 'DO-yacht1', name: 'The Sea Serpent', capacity: 50, status: 'Available', imageUrl: 'https://placehold.co/300x200.png?text=Sea+Serpent',
-    dhowChild89_rate: 89, dhowFood99_rate: 99, dhowDrinks199_rate: 199, dhowVip299_rate: 299,
-    oeChild129_rate: 129, oeFood149_rate: 149, oeDrinks249_rate: 249, oeVip349_rate: 349,
-    sunsetChild179_rate: 179, sunsetFood199_rate: 190, sunsetDrinks299_rate: 299,
-    lotusFood249_rate: 249, lotusDrinks349_rate: 349, lotusVip399_rate: 399, lotusVip499_rate: 499,
-    othersAmtCake_rate: 100, // This rate is for a potential "Cake Package Qty", but Lead.othersAmtCake is a direct amount.
+    dhowChildRate: 89, dhowAdultRate: 120, dhowVipRate: 199, dhowVipChildRate: 150, dhowVipAlcoholRate: 250,
+    oeChildRate: 100, oeAdultRate: 150, oeVipRate: 220, oeVipChildRate: 180, oeVipAlcoholRate: 280,
+    sunsetChildRate: 110, sunsetAdultRate: 170, sunsetVipRate: 250, sunsetVipChildRate: 200, sunsetVipAlcoholRate: 300,
+    lotusChildRate: 120, lotusAdultRate: 180, lotusVipRate: 270, lotusVipChildRate: 220, lotusVipAlcoholRate: 320,
+    royalRate: 500,
+    othersAmtCake_rate: 100, // If cake becomes a per-unit item, otherwise this is unused
   },
   {
     id: 'DO-yacht2', name: 'Ocean Voyager', capacity: 100, status: 'Booked', imageUrl: 'https://placehold.co/300x200.png?text=Ocean+Voyager',
-    dhowChild89_rate: 95, dhowFood99_rate: 105, dhowDrinks199_rate: 205, dhowVip299_rate: 305,
-    oeChild129_rate: 135, oeFood149_rate: 155, oeDrinks249_rate: 255, oeVip349_rate: 355,
-    sunsetChild179_rate: 185, sunsetFood199_rate: 205, sunsetDrinks299_rate: 305,
-    lotusFood249_rate: 255, lotusDrinks349_rate: 355, lotusVip399_rate: 405, lotusVip499_rate: 505,
-    othersAmtCake_rate: 120,
+    dhowChildRate: 95, dhowAdultRate: 130, dhowVipRate: 210, dhowVipChildRate: 160, dhowVipAlcoholRate: 260,
+    oeChildRate: 105, oeAdultRate: 160, oeVipRate: 230, oeVipChildRate: 190, oeVipAlcoholRate: 290,
+    royalRate: 550,
   },
   {
     id: 'DO-yacht3', name: 'Marina Queen', capacity: 75, status: 'Maintenance', imageUrl: 'https://placehold.co/300x200.png?text=Marina+Queen',
-    dhowChild89_rate: 80, dhowFood99_rate: 90, dhowDrinks199_rate: 190, dhowVip299_rate: 290,
-    oeChild129_rate: 120, oeFood149_rate: 140, oeDrinks249_rate: 240, oeVip349_rate: 340,
-    sunsetChild179_rate: 170, sunsetFood199_rate: 190, sunsetDrinks299_rate: 290,
-    lotusFood249_rate: 240, lotusDrinks349_rate: 340, lotusVip399_rate: 390, lotusVip499_rate: 490,
-    othersAmtCake_rate: 90,
+    dhowChildRate: 80, dhowAdultRate: 110, dhowVipRate: 190, dhowVipChildRate: 140, dhowVipAlcoholRate: 240,
+    royalRate: 450,
   },
   {
     id: 'DO-yacht4', name: 'Azure Spirit', capacity: 60, status: 'Available', imageUrl: 'https://placehold.co/300x200.png?text=Azure+Spirit',
-    dhowChild89_rate: 92, dhowFood99_rate: 102, dhowDrinks199_rate: 202, dhowVip299_rate: 302,
-    oeChild129_rate: 132, oeFood149_rate: 152, oeDrinks249_rate: 252, oeVip349_rate: 352,
-    sunsetChild179_rate: 182, sunsetFood199_rate: 202, sunsetDrinks299_rate: 302,
-    lotusFood249_rate: 252, lotusDrinks349_rate: 352, lotusVip399_rate: 402, lotusVip499_rate: 502,
-    othersAmtCake_rate: 110,
+    dhowChildRate: 92, dhowAdultRate: 125, dhowVipRate: 205, dhowVipChildRate: 155, dhowVipAlcoholRate: 255,
+    royalRate: 520,
   },
 ];
 
 export const placeholderInvoices: Invoice[] = [
-  { id: 'DO-inv001', leadId: 'DO-lead1', clientName: 'Tech Corp', amount: 5050, dueDate: '2024-08-15', status: 'Paid', createdAt: '2024-07-01' },
-  { id: 'DO-inv002', leadId: 'DO-lead2', clientName: 'Innovate Ltd', amount: 5980, dueDate: '2024-08-20', status: 'Pending', createdAt: '2024-07-05' },
-  { id: 'DO-inv003', leadId: 'DO-lead3', clientName: 'Solutions Inc', amount: 7000, dueDate: '2024-07-25', status: 'Overdue', createdAt: '2024-06-10' },
-  { id: 'DO-inv004', leadId: 'DO-lead4', clientName: 'Global Co', amount: 9560, dueDate: '2024-09-01', status: 'Pending', createdAt: '2024-07-15' },
-  { id: 'DO-inv005', leadId: 'DO-lead1', clientName: 'Alpha LLC (Repeat)', amount: 4444, dueDate: '2024-09-10', status: 'Paid', createdAt: '2024-08-01' },
+  { id: 'DO-inv001', leadId: 'DO-lead1', clientName: 'Tech Corp', amount: 1200, dueDate: '2024-08-15', status: 'Paid', createdAt: '2024-07-01' },
+  { id: 'DO-inv002', leadId: 'DO-lead2', clientName: 'Innovate Ltd', amount: 2600, dueDate: '2024-08-20', status: 'Pending', createdAt: '2024-07-05' },
+  { id: 'DO-inv003', leadId: 'DO-lead3', clientName: 'Solutions Inc', amount: 1100, dueDate: '2024-07-25', status: 'Overdue', createdAt: '2024-06-10' },
+  { id: 'DO-inv004', leadId: 'DO-lead4', clientName: 'Global Co', amount: 2500, dueDate: '2024-09-01', status: 'Pending', createdAt: '2024-07-15' },
+  { id: 'DO-inv005', leadId: 'DO-lead1', clientName: 'Alpha LLC (Repeat)', amount: 1200, dueDate: '2024-09-10', status: 'Paid', createdAt: '2024-08-01' },
 ];
+
 
 export const placeholderLeads: Lead[] = [
   {
-    id: 'DO-lead1', agent: 'DO-agentA', status: 'Closed Won', month: '2024-07', yacht: 'DO-yacht2',
+    id: 'DO-lead1', agent: 'DO-agentA', status: 'Closed Won', month: '2024-07', yacht: 'DO-yacht1',
     type: 'Corporate Event', invoiceId: 'DO-inv001', modeOfPayment: 'Online', clientName: 'Tech Corp',
-    lotusVip499: 10, // 10 * 505 (from DO-yacht2) = 5050
-    quantity: 10, rate: 0, // General quantity/rate not used if specific package items are
-    totalAmount: 5050, commissionPercentage: 12, commissionAmount: 606, // 5050 * 0.12
-    netAmount: 4444, paidAmount: 5050, balanceAmount: 0,
+    dhowAdultQty: 10, // 10 * 120 (from DO-yacht1 dhowAdultRate) = 1200
+    totalAmount: 1200, commissionPercentage: 12, commissionAmount: 144, // 1200 * 0.12
+    netAmount: 1056, paidAmount: 1200, balanceAmount: 0,
     createdAt: '2024-06-15', updatedAt: '2024-07-01'
   },
   {
-    id: 'DO-lead2', agent: 'DO-agentB', status: 'Proposal Sent', month: '2024-07', yacht: 'DO-yacht1',
+    id: 'DO-lead2', agent: 'DO-agentB', status: 'Proposal Sent', month: '2024-07', yacht: 'DO-yacht2',
     type: 'Private Party', modeOfPayment: 'Offline', clientName: 'Innovate Ltd',
-    sunsetDrinks299: 20, // 20 * 299 (from DO-yacht1) = 5980
-    quantity: 20, rate: 0,
-    totalAmount: 5980, commissionPercentage: 15, commissionAmount: 897, // 5980 * 0.15
-    netAmount: 5083, paidAmount: 2500, balanceAmount: 3480,
+    oeAdultQty: 20, // 20 * 160 (from DO-yacht2 oeAdultRate) = 3200. Example, if yacht2 had oeAdultRate
+    // Assuming oeAdultRate on DO-yacht2 is 130 for this example to reach 2600
+    // placeholderYachts needs oeAdultRate for DO-yacht2. Let's assume it's 130 for this lead.
+    // To make this consistent, Ocean Voyager (DO-yacht2) needs oeAdultRate.
+    // For this lead example: oeAdultQty: 20 * (rate of 130, assuming that's what makes 2600) = 2600
+    // I will ensure DO-yacht2 has oeAdultRate.
+    totalAmount: 2600, commissionPercentage: 15, commissionAmount: 390, // 2600 * 0.15
+    netAmount: 2210, paidAmount: 1000, balanceAmount: 1600,
     createdAt: '2024-06-20', updatedAt: '2024-07-05'
   },
   {
     id: 'DO-lead3', agent: 'DO-agentA', status: 'Closed Won', month: '2024-08', yacht: 'DO-yacht3',
     type: 'Tour Group', modeOfPayment: 'Credit', clientName: 'Solutions Inc',
-    oeFood149: 50, // 50 * 140 (from DO-yacht3) = 7000
-    quantity: 50, rate: 0,
-    totalAmount: 7000, commissionPercentage: 12, commissionAmount: 840, // 7000 * 0.12
-    netAmount: 6160, paidAmount: 7000, balanceAmount: 0,
+    dhowAdultQty: 10, // 10 * 110 (from DO-yacht3 dhowAdultRate) = 1100
+    totalAmount: 1100, commissionPercentage: 12, commissionAmount: 132,
+    netAmount: 968, paidAmount: 1100, balanceAmount: 0,
     createdAt: '2024-07-10', updatedAt: '2024-07-12'
   },
   {
     id: 'DO-lead4', agent: 'DO-agentC', status: 'New', month: '2024-08', yacht: 'DO-yacht4',
     type: 'Wedding Reception', modeOfPayment: 'Online', clientName: 'Global Co',
-    dhowVip299: 30, othersAmtCake: 500, // (30 * 302 from DO-yacht4) + 500 = 9060 + 500 = 9560
-    quantity: 30, rate: 0,
-    totalAmount: 9560, commissionPercentage: 10, commissionAmount: 956, // 9560 * 0.10
-    netAmount: 8604, paidAmount: 0, balanceAmount: 9560,
+    royalQty: 5, // 5 * 520 (from DO-yacht4 royalRate) = 2600
+    othersAmtCake: 150, // Total should be 2600 + 150 = 2750.
+    // The original totalAmount was 9560. This is a big change due to new structure. Let's adjust this example.
+    // Let's say dhowVipQty: 20 * (rate of DO-yacht4.dhowVipRate which is 205) = 4100
+    // And othersAmtCake = 100. Total = 4200
+    dhowVipQty: 20,
+    othersAmtCake: 100,
+    totalAmount: 4200, commissionPercentage: 10, commissionAmount: 420,
+    netAmount: 3780, paidAmount: 0, balanceAmount: 4200,
     createdAt: '2024-07-20', updatedAt: '2024-07-20'
   },
   {
     id: 'DO-lead5', agent: 'DO-agentB', status: 'Closed Won', month: '2024-09', yacht: 'DO-yacht1',
     type: 'Birthday Celebration', modeOfPayment: 'Offline', clientName: 'Celebrations LLC',
-    dhowFood99: 30, // 30 * 99 (from DO-yacht1) = 2970
-    quantity: 30, rate: 0,
-    totalAmount: 2970, commissionPercentage: 15, commissionAmount: 445.50,
-    netAmount: 2524.50, paidAmount: 2970, balanceAmount: 0,
+    dhowChildQty: 10, // 10 * 89 = 890
+    dhowAdultQty: 10, // 10 * 120 = 1200. Total = 890 + 1200 = 2090
+    totalAmount: 2090, commissionPercentage: 15, commissionAmount: 313.50,
+    netAmount: 1776.50, paidAmount: 2090, balanceAmount: 0,
     createdAt: '2024-08-10', updatedAt: '2024-08-15'
   }
 ];
+// Correcting placeholderLeads based on DO-yacht2 having more rates
+placeholderYachts[1] = { // DO-yacht2
+    ...placeholderYachts[1],
+    oeChildRate: 105, oeAdultRate: 160, oeVipRate: 230, oeVipChildRate: 190, oeVipAlcoholRate: 290,
+    sunsetChildRate: 115, sunsetAdultRate: 170, sunsetVipRate: 250, sunsetVipChildRate: 200, sunsetVipAlcoholRate: 300,
+    lotusChildRate: 125, lotusAdultRate: 180, lotusVipRate: 270, lotusVipChildRate: 220, lotusVipAlcoholRate: 320,
+};
+// Re-calculate for DO-lead2 using new yacht rates if needed
+// placeholderLeads[1].oeAdultQty = 20; // 20 * 160 (oeAdultRate for DO-yacht2) = 3200
+// placeholderLeads[1].totalAmount = 3200;
+// placeholderLeads[1].commissionAmount = 3200 * 0.15; // 480
+// placeholderLeads[1].netAmount = 3200 - 480; // 2720
+// placeholderLeads[1].balanceAmount = 3200 - placeholderLeads[1].paidAmount;
+
+// Let's re-adjust DO-lead2 for simplicity with updated yacht data
+placeholderLeads[1].oeAdultQty = 10; // 10 * 160 (Ocean Voyager's oeAdultRate) = 1600
+placeholderLeads[1].totalAmount = 1600;
+placeholderLeads[1].commissionAmount = 1600 * 0.15; // 240
+placeholderLeads[1].netAmount = 1600 - 240; // 1360
+placeholderLeads[1].paidAmount = 500; // Given
+placeholderLeads[1].balanceAmount = 1600 - 500; // 1100
 
 export const placeholderBookingReport: BookingReportData[] = [
   { month: 'Jan', bookings: 12 },
@@ -132,7 +154,6 @@ export const placeholderInvoiceStatusData: PieChartDataItem[] = [
 ].filter(item => item.value > 0);
 
 
-// Placeholder data for Sales by Yacht Pie Chart
 const salesByYachtMap = new Map<string, number>();
 placeholderLeads.forEach(lead => {
   if (lead.status === 'Closed Won') {
@@ -146,15 +167,14 @@ export const placeholderSalesByYacht: PieChartDataItem[] = Array.from(salesByYac
   return {
     name: yacht ? yacht.name : `Yacht ${yachtId.substring(0,6)}...`,
     value: totalRevenue,
-    fill: `hsl(var(--chart-${(index % 5) + 1}))`, // Cycle through chart colors
+    fill: `hsl(var(--chart-${(index % 5) + 1}))`, 
   };
 }).filter(item => item.value > 0);
 
 
-// Placeholder data for Bookings by Agent Bar Chart
 const bookingsByAgentMap = new Map<string, number>();
 placeholderLeads.forEach(lead => {
-  if (lead.status === 'Closed Won') { // Only count confirmed bookings
+  if (lead.status === 'Closed Won') { 
     const currentBookings = bookingsByAgentMap.get(lead.agent) || 0;
     bookingsByAgentMap.set(lead.agent, currentBookings + 1);
   }

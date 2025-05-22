@@ -35,19 +35,22 @@ const getAgentName = (agentId: string): string => {
   return agent ? agent.name : agentId;
 }
 
-const leadColumns: { accessorKey: keyof Lead | 'actions' | 'select', header: string, isCurrency?: boolean, isPercentage?: boolean }[] = [
+// Updated columns to reflect new Lead structure
+const leadColumns: { accessorKey: keyof Lead | 'actions' | 'select', header: string, isCurrency?: boolean, isPercentage?: boolean, isNumeric?: boolean }[] = [
   { accessorKey: 'select', header: '' },
   { accessorKey: 'id', header: 'ID' },
   { accessorKey: 'agent', header: 'Agent' },
   { accessorKey: 'status', header: 'Status' },
   { accessorKey: 'month', header: 'Month' },
   { accessorKey: 'yacht', header: 'Yacht' },
-  { accessorKey: 'type', header: 'Type' },
+  { accessorKey: 'type', header: 'Type' }, // Lead Type
   { accessorKey: 'invoiceId', header: 'Invoice' },
   { accessorKey: 'modeOfPayment', header: 'Payment Mode' },
   { accessorKey: 'clientName', header: 'Client' },
-  { accessorKey: 'dhowChild89', header: 'Dhow Child Qty' },
-  { accessorKey: 'dhowFood99', header: 'Dhow Food Qty' },
+  // Example new package quantity fields:
+  { accessorKey: 'dhowChildQty', header: 'Dhow Child Qty', isNumeric: true },
+  { accessorKey: 'dhowAdultQty', header: 'Dhow Adult Qty', isNumeric: true },
+  // Add more package qty columns here if needed
   { accessorKey: 'totalAmount', header: 'Total Amt', isCurrency: true },
   { accessorKey: 'commissionPercentage', header: 'Agent Disc. %', isPercentage: true },
   { accessorKey: 'commissionAmount', header: 'Comm Amt', isCurrency: true },
@@ -70,7 +73,7 @@ export function LeadsTable({ leads, onEditLead }: LeadsTableProps) {
       case 'Contacted': return 'secondary';
       case 'Qualified': return 'default';
       case 'Proposal Sent': return 'default';
-      case 'Closed Won': return 'default';
+      case 'Closed Won': return 'default'; 
       case 'Closed Lost': return 'destructive';
       default: return 'outline';
     }
@@ -85,6 +88,12 @@ export function LeadsTable({ leads, onEditLead }: LeadsTableProps) {
     if (typeof value !== 'number') return '-';
     return `${value.toFixed(1)}%`;
   }
+  
+  const formatNumeric = (value: number | undefined | null) => {
+    if (typeof value !== 'number') return '0'; // Default to 0 if not a number or undefined
+    return String(value);
+  }
+
 
   return (
     <ScrollArea className="rounded-md border whitespace-nowrap">
@@ -117,7 +126,7 @@ export function LeadsTable({ leads, onEditLead }: LeadsTableProps) {
                   <TableCell key={col.accessorKey}>
                     {col.accessorKey === 'id' ? (
                        <Button variant="link" className="p-0 h-auto font-medium" onClick={() => onEditLead(lead)}>
-                        {lead.id.length > 10 ? lead.id.substring(0,4) + '...' + lead.id.substring(lead.id.length-4) : lead.id}
+                        {lead.id && lead.id.length > 10 ? lead.id.substring(0,4) + '...' + lead.id.substring(lead.id.length-4) : lead.id}
                        </Button>
                     ) : col.accessorKey === 'agent' ? (
                         getAgentName(lead.agent)
@@ -131,6 +140,8 @@ export function LeadsTable({ leads, onEditLead }: LeadsTableProps) {
                       formatCurrency(lead[col.accessorKey as keyof Lead] as number | undefined)
                     ) : col.isPercentage ? (
                         formatPercentage(lead[col.accessorKey as keyof Lead] as number | undefined)
+                    ) : col.isNumeric ? (
+                        formatNumeric(lead[col.accessorKey as keyof Lead] as number | undefined)
                     ) : (
                       lead[col.accessorKey as keyof Lead] !== undefined && lead[col.accessorKey as keyof Lead] !== null ?
                       String(lead[col.accessorKey as keyof Lead]) : '-'

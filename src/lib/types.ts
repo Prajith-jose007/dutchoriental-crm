@@ -24,22 +24,40 @@ export interface Yacht {
   imageUrl?: string;
   capacity: number;
   status: 'Available' | 'Booked' | 'Maintenance';
-  dhowChild89_rate?: number;
-  dhowFood99_rate?: number;
-  dhowDrinks199_rate?: number;
-  dhowVip299_rate?: number;
-  oeChild129_rate?: number;
-  oeFood149_rate?: number;
-  oeDrinks249_rate?: number;
-  oeVip349_rate?: number;
-  sunsetChild179_rate?: number;
-  sunsetFood199_rate?: number;
-  sunsetDrinks299_rate?: number;
-  lotusFood249_rate?: number;
-  lotusDrinks349_rate?: number;
-  lotusVip399_rate?: number;
-  lotusVip499_rate?: number;
-  othersAmtCake_rate?: number;
+
+  // DHOW Package Rates
+  dhowChildRate?: number;
+  dhowAdultRate?: number;
+  dhowVipRate?: number;
+  dhowVipChildRate?: number;
+  dhowVipAlcoholRate?: number;
+
+  // OE Package Rates
+  oeChildRate?: number;
+  oeAdultRate?: number;
+  oeVipRate?: number;
+  oeVipChildRate?: number;
+  oeVipAlcoholRate?: number;
+
+  // SUNSET Package Rates
+  sunsetChildRate?: number;
+  sunsetAdultRate?: number;
+  sunsetVipRate?: number;
+  sunsetVipChildRate?: number;
+  sunsetVipAlcoholRate?: number;
+
+  // LOTUS Package Rates
+  lotusChildRate?: number;
+  lotusAdultRate?: number;
+  lotusVipRate?: number;
+  lotusVipChildRate?: number;
+  lotusVipAlcoholRate?: number;
+
+  // Royal Package Rate (General)
+  royalRate?: number;
+
+  // Other direct charges rate (placeholder if needed, but typically 'othersAmtCake' on Lead is a direct amount)
+  othersAmtCake_rate?: number; // This might be redundant if othersAmtCake is a direct amount on lead
 }
 
 export interface Invoice {
@@ -52,13 +70,6 @@ export interface Invoice {
   createdAt: string;
 }
 
-export interface PackageItem {
-  name: string;
-  quantity: number;
-  rate: number;
-  amount: number;
-}
-
 export type LeadStatus = 'New' | 'Contacted' | 'Qualified' | 'Proposal Sent' | 'Closed Won' | 'Closed Lost';
 export type ModeOfPayment = 'Online' | 'Offline' | 'Credit';
 
@@ -69,29 +80,43 @@ export interface Lead {
   status: LeadStatus;
   month: string; // YYYY-MM
   yacht: string; // Yacht ID
-  type: string;
+  type: string; // Lead type
   invoiceId?: string;
   modeOfPayment: ModeOfPayment;
   clientName: string;
-  dhowChild89?: number;
-  dhowFood99?: number;
-  dhowDrinks199?: number;
-  dhowVip299?: number;
-  oeChild129?: number;
-  oeFood149?: number;
-  oeDrinks249?: number;
-  oeVip349?: number;
-  sunsetChild179?: number;
-  sunsetFood199?: number;
-  sunsetDrinks299?: number;
-  lotusFood249?: number;
-  lotusDrinks349?: number;
-  lotusVip399?: number;
-  lotusVip499?: number;
-  othersAmtCake?: number; // This is a direct amount for other charges
 
-  quantity: number; // General quantity, might be redundant if package items cover all
-  rate: number; // General rate, might be redundant
+  // DHOW Package Quantities
+  dhowChildQty?: number;
+  dhowAdultQty?: number;
+  dhowVipQty?: number;
+  dhowVipChildQty?: number;
+  dhowVipAlcoholQty?: number;
+
+  // OE Package Quantities
+  oeChildQty?: number;
+  oeAdultQty?: number;
+  oeVipQty?: number;
+  oeVipChildQty?: number;
+  oeVipAlcoholQty?: number;
+
+  // SUNSET Package Quantities
+  sunsetChildQty?: number;
+  sunsetAdultQty?: number;
+  sunsetVipQty?: number;
+  sunsetVipChildQty?: number;
+  sunsetVipAlcoholQty?: number;
+
+  // LOTUS Package Quantities
+  lotusChildQty?: number;
+  lotusAdultQty?: number;
+  lotusVipQty?: number;
+  lotusVipChildQty?: number;
+  lotusVipAlcoholQty?: number;
+
+  // Royal Package Quantities
+  royalQty?: number;
+  
+  othersAmtCake?: number; // Direct amount for other charges like cake
 
   totalAmount: number;
   commissionAmount?: number;
@@ -120,7 +145,6 @@ export interface PieChartDataItem {
   fill: string;
 }
 
-// New type for Bookings by Agent Bar Chart
 export interface BookingsByAgentData {
   agentName: string;
   bookings: number;

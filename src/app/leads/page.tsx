@@ -6,35 +6,40 @@ import { PageHeader } from '@/components/PageHeader';
 import { LeadsTable } from './_components/LeadsTable';
 import { ImportExportButtons } from './_components/ImportExportButtons';
 import { LeadFormDialog } from './_components/LeadFormDialog';
-import type { Lead, LeadStatus, ModeOfPayment } from '@/lib/types';
-import { placeholderLeads as initialLeads } from '@/lib/placeholder-data';
+import type { Lead, LeadStatus, ModeOfPayment, ExportedLeadStatus } from '@/lib/types'; // Ensure ExportedLeadStatus is imported
+import { placeholderLeads as initialLeadsData } from '@/lib/placeholder-data';
 import { useToast } from '@/hooks/use-toast';
 
-// Helper function to convert string values to their appropriate types
+// Keep a mutable copy of initial data for in-memory modifications
+let initialLeads: Lead[] = JSON.parse(JSON.stringify(initialLeadsData));
+
+
 const convertValue = (key: keyof Lead, value: string): any => {
   const trimmedValue = value ? value.trim() : '';
 
   if (trimmedValue === '' || value === null || value === undefined) {
     switch (key) {
-        case 'dhowChild89': case 'dhowFood99': case 'dhowDrinks199': case 'dhowVip299':
-        case 'oeChild129': case 'oeFood149': case 'oeDrinks249': case 'oeVip349':
-        case 'sunsetChild179': case 'sunsetFood199': case 'sunsetDrinks299':
-        case 'lotusFood249': case 'lotusDrinks349': case 'lotusVip399': case 'lotusVip499':
-        case 'othersAmtCake': case 'quantity': case 'rate': case 'totalAmount':
+        case 'dhowChildQty': case 'dhowAdultQty': case 'dhowVipQty': case 'dhowVipChildQty': case 'dhowVipAlcoholQty':
+        case 'oeChildQty': case 'oeAdultQty': case 'oeVipQty': case 'oeVipChildQty': case 'oeVipAlcoholQty':
+        case 'sunsetChildQty': case 'sunsetAdultQty': case 'sunsetVipQty': case 'sunsetVipChildQty': case 'sunsetVipAlcoholQty':
+        case 'lotusChildQty': case 'lotusAdultQty': case 'lotusVipQty': case 'lotusVipChildQty': case 'lotusVipAlcoholQty':
+        case 'royalQty':
+        case 'othersAmtCake': case 'totalAmount':
         case 'commissionPercentage': case 'commissionAmount': case 'netAmount':
         case 'paidAmount': case 'balanceAmount':
             return 0;
-        case 'modeOfPayment': return 'Online'; // Default mode of payment
+        case 'modeOfPayment': return 'Online'; 
         default: return undefined;
     }
   }
 
   switch (key) {
-    case 'dhowChild89': case 'dhowFood99': case 'dhowDrinks199': case 'dhowVip299':
-    case 'oeChild129': case 'oeFood149': case 'oeDrinks249': case 'oeVip349':
-    case 'sunsetChild179': case 'sunsetFood199': case 'sunsetDrinks299':
-    case 'lotusFood249': case 'lotusDrinks349': case 'lotusVip399': case 'lotusVip499':
-    case 'othersAmtCake': case 'quantity': case 'rate': case 'totalAmount':
+    case 'dhowChildQty': case 'dhowAdultQty': case 'dhowVipQty': case 'dhowVipChildQty': case 'dhowVipAlcoholQty':
+    case 'oeChildQty': case 'oeAdultQty': case 'oeVipQty': case 'oeVipChildQty': case 'oeVipAlcoholQty':
+    case 'sunsetChildQty': case 'sunsetAdultQty': case 'sunsetVipQty': case 'sunsetVipChildQty': case 'sunsetVipAlcoholQty':
+    case 'lotusChildQty': case 'lotusAdultQty': case 'lotusVipQty': case 'lotusVipChildQty': case 'lotusVipAlcoholQty':
+    case 'royalQty':
+    case 'othersAmtCake': case 'totalAmount':
     case 'commissionPercentage': case 'commissionAmount': case 'netAmount':
     case 'paidAmount': case 'balanceAmount':
       const num = parseFloat(trimmedValue);
@@ -42,8 +47,11 @@ const convertValue = (key: keyof Lead, value: string): any => {
     case 'modeOfPayment':
       const validModes: ModeOfPayment[] = ['Online', 'Offline', 'Credit'];
       return validModes.includes(trimmedValue as ModeOfPayment) ? trimmedValue : 'Online';
+    case 'status':
+        const validStatuses: LeadStatus[] = ['New', 'Contacted', 'Qualified', 'Proposal Sent', 'Closed Won', 'Closed Lost'];
+        return validStatuses.includes(trimmedValue as LeadStatus) ? trimmedValue : 'New';
     default:
-      return trimmedValue; // Return trimmed string for other fields
+      return trimmedValue; 
   }
 };
 
@@ -55,7 +63,8 @@ export default function LeadsPage() {
   const { toast } = useToast();
 
   useEffect(() => {
-    setLeads(initialLeads);
+    // Initialize from the mutable initialLeads array
+    setLeads([...initialLeads]);
   }, []);
 
 
@@ -71,30 +80,33 @@ export default function LeadsPage() {
 
   const handleLeadFormSubmit = (submittedLeadData: Lead) => {
     const existingLeadIndex = initialLeads.findIndex(l => l.id === submittedLeadData.id);
-    if (editingLead && existingLeadIndex !== -1) {
+  
+    if (editingLead && submittedLeadData.id === editingLead.id && existingLeadIndex !== -1) {
+      // Editing an existing lead
       initialLeads[existingLeadIndex] = submittedLeadData;
-      setLeads(prevLeads =>
-        prevLeads.map(l => l.id === submittedLeadData.id ? submittedLeadData : l)
-      );
-    } else if (!editingLead && existingLeadIndex === -1) {
-      if (initialLeads.some(l => l.id === submittedLeadData.id) || leads.some(l => l.id === submittedLeadData.id)) {
+    } else if (!editingLead) {
+      // Adding a new lead - ID should be generated by form logic if not provided
+      // Ensure ID is unique before adding
+      if (initialLeads.some(l => l.id === submittedLeadData.id)) {
         toast({
           title: 'Error Adding Lead',
-          description: `A lead with ID ${submittedLeadData.id} already exists. Please use a unique ID.`,
+          description: `A lead with ID ${submittedLeadData.id} already exists. Please use a unique ID or let the system generate one.`,
           variant: 'destructive',
         });
-        return;
+        return; // Prevent adding duplicate
       }
       initialLeads.push(submittedLeadData);
-      setLeads(prevLeads => [...prevLeads, submittedLeadData]);
-    } else if (!editingLead && existingLeadIndex !== -1) {
-      toast({
-        title: 'Error Adding Lead',
-        description: `A lead with ID ${submittedLeadData.id} already exists. This should not happen if IDs are unique.`,
-        variant: 'destructive',
-      });
-      return;
+    } else {
+        // This case should ideally not happen if IDs are managed correctly (e.g. trying to "add" with an existing ID)
+        toast({
+            title: 'Error Saving Lead',
+            description: `Could not save lead. ID mismatch or unexpected state. ID: ${submittedLeadData.id}`,
+            variant: 'destructive',
+        });
+        return;
     }
+  
+    setLeads([...initialLeads]); // Update state from the single source of truth
     setIsLeadDialogOpen(false);
     setEditingLead(null);
   };
@@ -123,6 +135,8 @@ export default function LeadsPage() {
 
         const newLeadsFromCsv: Lead[] = [];
         let skippedCount = 0;
+        const importedIdsThisSession = new Set<string>();
+
 
         for (let i = 1; i < lines.length; i++) {
           let data = lines[i].split(',');
@@ -158,25 +172,21 @@ export default function LeadsPage() {
             let uniqueIdCounter = 0;
 
             while (initialLeads.some(l => l.id === currentGeneratedId) ||
-                   leads.some(l => l.id === currentGeneratedId) ||
-                   newLeadsFromCsv.some(l => l.id === currentGeneratedId)) {
+                   leads.some(l => l.id === currentGeneratedId) || // Check current state as well
+                   newLeadsFromCsv.some(l => l.id === currentGeneratedId) || // Check within this batch
+                   importedIdsThisSession.has(currentGeneratedId) ) {
                 uniqueIdCounter++;
                 currentGeneratedId = `${baseGeneratedId}-${uniqueIdCounter}`;
             }
             leadId = currentGeneratedId;
-
-            if (uniqueIdCounter > 0) {
-                 toast({ title: 'Import Info', description: `Lead at CSV row ${i+1} generated a duplicate ID. New unique ID assigned: ${leadId}.`, variant: 'default' });
-            } else {
-                 toast({ title: 'Import Info', description: `Lead at CSV row ${i+1} was missing an ID and one was generated: ${leadId}.`, variant: 'default' });
-            }
+             console.log(`Generated ID for CSV row ${i+1}: ${leadId}`);
           }
 
 
           const fullLead: Lead = {
-            id: leadId,
+            id: leadId!, // Assert leadId is defined by this point
             agent: typeof parsedRow.agent === 'string' ? parsedRow.agent : '',
-            status: (parsedRow.status as LeadStatus) || 'New',
+            status: (parsedRow.status as ExportedLeadStatus) || 'New',
             month: typeof parsedRow.month === 'string' && parsedRow.month.match(/^\d{4}-\d{2}$/) ? parsedRow.month : new Date().toISOString().slice(0,7),
             yacht: typeof parsedRow.yacht === 'string' ? parsedRow.yacht : '',
             type: typeof parsedRow.type === 'string' && parsedRow.type.trim() !== '' ? parsedRow.type : 'Imported',
@@ -184,25 +194,33 @@ export default function LeadsPage() {
             clientName: typeof parsedRow.clientName === 'string' && parsedRow.clientName.trim() !== '' ? parsedRow.clientName : 'N/A',
             invoiceId: typeof parsedRow.invoiceId === 'string' ? parsedRow.invoiceId : undefined,
             
-            dhowChild89: typeof parsedRow.dhowChild89 === 'number' ? parsedRow.dhowChild89 : 0,
-            dhowFood99: typeof parsedRow.dhowFood99 === 'number' ? parsedRow.dhowFood99 : 0,
-            dhowDrinks199: typeof parsedRow.dhowDrinks199 === 'number' ? parsedRow.dhowDrinks199 : 0,
-            dhowVip299: typeof parsedRow.dhowVip299 === 'number' ? parsedRow.dhowVip299 : 0,
-            oeChild129: typeof parsedRow.oeChild129 === 'number' ? parsedRow.oeChild129 : 0,
-            oeFood149: typeof parsedRow.oeFood149 === 'number' ? parsedRow.oeFood149 : 0,
-            oeDrinks249: typeof parsedRow.oeDrinks249 === 'number' ? parsedRow.oeDrinks249 : 0,
-            oeVip349: typeof parsedRow.oeVip349 === 'number' ? parsedRow.oeVip349 : 0,
-            sunsetChild179: typeof parsedRow.sunsetChild179 === 'number' ? parsedRow.sunsetChild179 : 0,
-            sunsetFood199: typeof parsedRow.sunsetFood199 === 'number' ? parsedRow.sunsetFood199 : 0,
-            sunsetDrinks299: typeof parsedRow.sunsetDrinks299 === 'number' ? parsedRow.sunsetDrinks299 : 0,
-            lotusFood249: typeof parsedRow.lotusFood249 === 'number' ? parsedRow.lotusFood249 : 0,
-            lotusDrinks349: typeof parsedRow.lotusDrinks349 === 'number' ? parsedRow.lotusDrinks349 : 0,
-            lotusVip399: typeof parsedRow.lotusVip399 === 'number' ? parsedRow.lotusVip399 : 0,
-            lotusVip499: typeof parsedRow.lotusVip499 === 'number' ? parsedRow.lotusVip499 : 0,
-            othersAmtCake: typeof parsedRow.othersAmtCake === 'number' ? parsedRow.othersAmtCake : 0,
+            dhowChildQty: typeof parsedRow.dhowChildQty === 'number' ? parsedRow.dhowChildQty : 0,
+            dhowAdultQty: typeof parsedRow.dhowAdultQty === 'number' ? parsedRow.dhowAdultQty : 0,
+            dhowVipQty: typeof parsedRow.dhowVipQty === 'number' ? parsedRow.dhowVipQty : 0,
+            dhowVipChildQty: typeof parsedRow.dhowVipChildQty === 'number' ? parsedRow.dhowVipChildQty : 0,
+            dhowVipAlcoholQty: typeof parsedRow.dhowVipAlcoholQty === 'number' ? parsedRow.dhowVipAlcoholQty : 0,
 
-            quantity: typeof parsedRow.quantity === 'number' ? parsedRow.quantity : 0,
-            rate: typeof parsedRow.rate === 'number' ? parsedRow.rate : 0,
+            oeChildQty: typeof parsedRow.oeChildQty === 'number' ? parsedRow.oeChildQty : 0,
+            oeAdultQty: typeof parsedRow.oeAdultQty === 'number' ? parsedRow.oeAdultQty : 0,
+            oeVipQty: typeof parsedRow.oeVipQty === 'number' ? parsedRow.oeVipQty : 0,
+            oeVipChildQty: typeof parsedRow.oeVipChildQty === 'number' ? parsedRow.oeVipChildQty : 0,
+            oeVipAlcoholQty: typeof parsedRow.oeVipAlcoholQty === 'number' ? parsedRow.oeVipAlcoholQty : 0,
+
+            sunsetChildQty: typeof parsedRow.sunsetChildQty === 'number' ? parsedRow.sunsetChildQty : 0,
+            sunsetAdultQty: typeof parsedRow.sunsetAdultQty === 'number' ? parsedRow.sunsetAdultQty : 0,
+            sunsetVipQty: typeof parsedRow.sunsetVipQty === 'number' ? parsedRow.sunsetVipQty : 0,
+            sunsetVipChildQty: typeof parsedRow.sunsetVipChildQty === 'number' ? parsedRow.sunsetVipChildQty : 0,
+            sunsetVipAlcoholQty: typeof parsedRow.sunsetVipAlcoholQty === 'number' ? parsedRow.sunsetVipAlcoholQty : 0,
+
+            lotusChildQty: typeof parsedRow.lotusChildQty === 'number' ? parsedRow.lotusChildQty : 0,
+            lotusAdultQty: typeof parsedRow.lotusAdultQty === 'number' ? parsedRow.lotusAdultQty : 0,
+            lotusVipQty: typeof parsedRow.lotusVipQty === 'number' ? parsedRow.lotusVipQty : 0,
+            lotusVipChildQty: typeof parsedRow.lotusVipChildQty === 'number' ? parsedRow.lotusVipChildQty : 0,
+            lotusVipAlcoholQty: typeof parsedRow.lotusVipAlcoholQty === 'number' ? parsedRow.lotusVipAlcoholQty : 0,
+            
+            royalQty: typeof parsedRow.royalQty === 'number' ? parsedRow.royalQty : 0,
+
+            othersAmtCake: typeof parsedRow.othersAmtCake === 'number' ? parsedRow.othersAmtCake : 0,
 
             totalAmount: typeof parsedRow.totalAmount === 'number' ? parsedRow.totalAmount : 0,
             commissionPercentage: typeof parsedRow.commissionPercentage === 'number' ? parsedRow.commissionPercentage : 0,
@@ -219,11 +237,14 @@ export default function LeadsPage() {
           }
 
           const isDuplicateInInitial = initialLeads.some(l => l.id === fullLead.id);
-          const isDuplicateInCurrentState = leads.some(l => l.id === fullLead.id);
+          const isDuplicateInCurrentStateLeads = leads.some(l => l.id === fullLead.id); // Check against current 'leads' state
           const isDuplicateInThisBatch = newLeadsFromCsv.some(l => l.id === fullLead.id);
+          const isDuplicateInSessionIds = importedIdsThisSession.has(fullLead.id);
 
-          if (!isDuplicateInInitial && !isDuplicateInCurrentState && !isDuplicateInThisBatch) {
+
+          if (!isDuplicateInInitial && !isDuplicateInCurrentStateLeads && !isDuplicateInThisBatch && !isDuplicateInSessionIds) {
             newLeadsFromCsv.push(fullLead);
+            importedIdsThisSession.add(fullLead.id);
           } else {
             console.warn(`Skipping import for lead with duplicate ID: ${fullLead.id} at CSV row ${i + 1}. Line: "${lines[i]}"`);
             toast({ title: 'Import Warning', description: `Lead with ID ${fullLead.id} (CSV row ${i + 1}) already exists or is a duplicate in this file. Skipped.`, variant: 'default' });
@@ -231,17 +252,14 @@ export default function LeadsPage() {
           }
         }
 
-        if (skippedCount > 0 && newLeadsFromCsv.length > 0) {
-            toast({ title: 'Import Partially Completed', description: `${newLeadsFromCsv.length} new leads imported, ${skippedCount} CSV rows were skipped. Check console for details.`, variant: 'default' });
-        }
-
-
         if (newLeadsFromCsv.length > 0) {
-          initialLeads.push(...newLeadsFromCsv);
-          setLeads(prevLeads => [...prevLeads, ...newLeadsFromCsv]);
+          initialLeads.push(...newLeadsFromCsv); // Add to the mutable initialLeads
+          setLeads([...initialLeads]);          // Update state from the single source of truth
 
           if (skippedCount === 0) {
             toast({ title: 'Import Successful', description: `${newLeadsFromCsv.length} new leads imported.` });
+          } else {
+             toast({ title: 'Import Partially Completed', description: `${newLeadsFromCsv.length} new leads imported, ${skippedCount} CSV rows were skipped. Check console for details.`, variant: 'default' });
           }
         } else if (skippedCount === lines.length -1 && lines.length > 1) {
            toast({
@@ -277,11 +295,12 @@ export default function LeadsPage() {
 
     const headers: (keyof Lead)[] = [
       'id', 'agent', 'status', 'month', 'yacht', 'type', 'invoiceId', 'modeOfPayment', 'clientName',
-      'dhowChild89', 'dhowFood99', 'dhowDrinks199', 'dhowVip299',
-      'oeChild129', 'oeFood149', 'oeDrinks249', 'oeVip349',
-      'sunsetChild179', 'sunsetFood199', 'sunsetDrinks299',
-      'lotusFood249', 'lotusDrinks349', 'lotusVip399', 'lotusVip499',
-      'othersAmtCake', 'quantity', 'rate', 'totalAmount', 'commissionPercentage',
+      'dhowChildQty', 'dhowAdultQty', 'dhowVipQty', 'dhowVipChildQty', 'dhowVipAlcoholQty',
+      'oeChildQty', 'oeAdultQty', 'oeVipQty', 'oeVipChildQty', 'oeVipAlcoholQty',
+      'sunsetChildQty', 'sunsetAdultQty', 'sunsetVipQty', 'sunsetVipChildQty', 'sunsetVipAlcoholQty',
+      'lotusChildQty', 'lotusAdultQty', 'lotusVipQty', 'lotusVipChildQty', 'lotusVipAlcoholQty',
+      'royalQty',
+      'othersAmtCake', 'totalAmount', 'commissionPercentage',
       'commissionAmount', 'netAmount', 'paidAmount', 'balanceAmount', 'createdAt', 'updatedAt'
     ];
 

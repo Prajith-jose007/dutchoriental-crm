@@ -1,4 +1,5 @@
 
+
 export interface User {
   id: string;
   name: string;
@@ -15,7 +16,7 @@ export interface Agent {
   email: string; 
   discountRate: number; 
   websiteUrl?: string;
-  status: 'Active' | 'Non Active' | 'Dead'; // Updated status types
+  status: 'Active' | 'Non Active' | 'Dead'; 
 }
 
 export interface Yacht {
@@ -59,15 +60,19 @@ export interface PackageItem {
   amount: number;
 }
 
+export type LeadStatus = 'New' | 'Contacted' | 'Qualified' | 'Proposal Sent' | 'Closed Won' | 'Closed Lost';
+export type PackageType = 'DHOW' | 'OE' | 'SUNSET' | 'LOTUS' | 'OTHER' | '';
+
+
 export interface Lead {
   id:string;
   agent: string; 
-  status: 'New' | 'Contacted' | 'Qualified' | 'Proposal Sent' | 'Closed Won' | 'Closed Lost';
+  status: LeadStatus;
   month: string; 
   yacht: string; 
   type: string; 
   invoiceId?: string;
-  packageType: 'DHOW' | 'OE' | 'SUNSET' | 'LOTUS' | 'OTHER' | '';
+  packageType: PackageType;
   clientName: string;
   free?: boolean;
   dhowChild89?: number;
@@ -116,3 +121,4 @@ export interface PieChartDataItem {
   value: number;
   fill: string;
 }
+

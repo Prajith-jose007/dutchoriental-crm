@@ -6,45 +6,42 @@ import { PageHeader } from '@/components/PageHeader';
 import { LeadsTable } from './_components/LeadsTable';
 import { ImportExportButtons } from './_components/ImportExportButtons';
 import { LeadFormDialog } from './_components/LeadFormDialog';
-import type { Lead } from '@/lib/types';
+import type { Lead, LeadStatus, PackageType } from '@/lib/types';
 import { placeholderLeads as initialLeads } from '@/lib/placeholder-data';
 import { useToast } from '@/hooks/use-toast';
 
 // Helper function to convert string values to their appropriate types
-// This is a simplified version and might need more robust error handling/validation
 const convertValue = (key: keyof Lead, value: string): any => {
   if (value === '' || value === null || value === undefined) {
-    return undefined;
+    // For specific keys that are numbers or booleans, return a default if empty,
+    // otherwise return undefined for optional strings or specific handling.
+    switch (key) {
+        case 'free': return false; // Default boolean
+        case 'dhowChild89': case 'dhowFood99': case 'dhowDrinks199': case 'dhowVip299':
+        case 'oeChild129': case 'oeFood149': case 'oeDrinks249': case 'oeVip349':
+        case 'sunsetChild179': case 'sunsetFood199': case 'sunsetDrinks299':
+        case 'lotusFood249': case 'lotusDrinks349': case 'lotusVip399': case 'lotusVip499':
+        case 'othersAmtCake': case 'quantity': case 'rate': case 'totalAmount':
+        case 'commissionPercentage': case 'commissionAmount': case 'netAmount':
+        case 'paidAmount': case 'balanceAmount':
+            const numOrZero = parseFloat(value);
+            return isNaN(numOrZero) ? 0 : numOrZero;
+        default: return undefined; // Let downstream logic handle undefined for optional or string fields
+    }
   }
+  // Explicit conversions
   switch (key) {
     case 'free':
       return value.toLowerCase() === 'true';
-    case 'dhowChild89':
-    case 'dhowFood99':
-    case 'dhowDrinks199':
-    case 'dhowVip299':
-    case 'oeChild129':
-    case 'oeFood149':
-    case 'oeDrinks249':
-    case 'oeVip349':
-    case 'sunsetChild179':
-    case 'sunsetFood199':
-    case 'sunsetDrinks299':
-    case 'lotusFood249':
-    case 'lotusDrinks349':
-    case 'lotusVip399':
-    case 'lotusVip499':
-    case 'othersAmtCake':
-    case 'quantity':
-    case 'rate':
-    case 'totalAmount':
-    case 'commissionPercentage':
-    case 'commissionAmount':
-    case 'netAmount':
-    case 'paidAmount':
-    case 'balanceAmount':
+    case 'dhowChild89': case 'dhowFood99': case 'dhowDrinks199': case 'dhowVip299':
+    case 'oeChild129': case 'oeFood149': case 'oeDrinks249': case 'oeVip349':
+    case 'sunsetChild179': case 'sunsetFood199': case 'sunsetDrinks299':
+    case 'lotusFood249': case 'lotusDrinks349': case 'lotusVip399': case 'lotusVip499':
+    case 'othersAmtCake': case 'quantity': case 'rate': case 'totalAmount':
+    case 'commissionPercentage': case 'commissionAmount': case 'netAmount':
+    case 'paidAmount': case 'balanceAmount':
       const num = parseFloat(value);
-      return isNaN(num) ? 0 : num; // Default to 0 if parsing fails
+      return isNaN(num) ? 0 : num;
     default:
       return value;
   }
@@ -54,11 +51,11 @@ const convertValue = (key: keyof Lead, value: string): any => {
 export default function LeadsPage() {
   const [isLeadDialogOpen, setIsLeadDialogOpen] = useState(false);
   const [editingLead, setEditingLead] = useState<Lead | null>(null);
-  const [leads, setLeads] = useState<Lead[]>(initialLeads);
+  const [leads, setLeads] = useState<Lead[]>([]); // Initialize with empty array, useEffect will populate
   const { toast } = useToast();
 
-  // Effect to update table if initialLeads changes (e.g. hot reload or CSV import)
   useEffect(() => {
+    // Initialize leads from placeholder data on mount
     setLeads(initialLeads);
   }, []);
 
@@ -76,13 +73,11 @@ export default function LeadsPage() {
   const handleLeadFormSubmit = (submittedLeadData: Lead) => {
     const existingLeadIndex = initialLeads.findIndex(l => l.id === submittedLeadData.id);
     if (editingLead && existingLeadIndex !== -1) {
-      // Update existing lead in both state and initialLeads
       initialLeads[existingLeadIndex] = submittedLeadData;
       setLeads(prevLeads => 
         prevLeads.map(l => l.id === submittedLeadData.id ? submittedLeadData : l)
       );
-    } else if (!editingLead && existingLeadIndex === -1) { // Ensure new lead ID doesn't already exist
-      // Add new lead to both state and initialLeads
+    } else if (!editingLead && existingLeadIndex === -1) { 
       initialLeads.push(submittedLeadData);
       setLeads(prevLeads => [...prevLeads, submittedLeadData]);
     } else if (!editingLead && existingLeadIndex !== -1) {
@@ -91,7 +86,7 @@ export default function LeadsPage() {
         description: `A lead with ID ${submittedLeadData.id} already exists. Please use a unique ID.`,
         variant: 'destructive',
       });
-      return; // Prevent adding duplicate ID
+      return; 
     }
     setIsLeadDialogOpen(false);
     setEditingLead(null);
@@ -106,7 +101,7 @@ export default function LeadsPage() {
         return;
       }
       try {
-        const lines = csvText.split(/\r\n|\n/);
+        const lines = csvText.split(/\r\n|\n/).filter(line => line.trim() !== ''); // Filter out empty lines
         if (lines.length < 2) {
           toast({ title: 'Import Error', description: 'CSV file must have a header and at least one data row.', variant: 'destructive' });
           return;
@@ -117,46 +112,68 @@ export default function LeadsPage() {
 
         for (let i = 1; i < lines.length; i++) {
           const data = lines[i].split(',');
-          if (data.length !== headers.length || lines[i].trim() === '') {
-            console.warn(`Skipping malformed or empty CSV line: ${i + 1}`);
+          if (data.length !== headers.length) {
+            console.warn(`Skipping malformed CSV line ${i + 1}: Expected ${headers.length} columns, got ${data.length}. Line: "${lines[i]}"`);
+            toast({ title: 'Import Warning', description: `Skipped row ${i+1} due to incorrect column count.`, variant: 'default'});
             continue;
           }
 
-          const leadObject = {} as Partial<Lead>;
+          const parsedRow = {} as Partial<Lead>;
           headers.forEach((header, index) => {
-            leadObject[header] = convertValue(header, data[index]?.trim());
+            parsedRow[header] = convertValue(header, data[index]?.trim());
           });
           
-          // Basic validation: ensure an ID exists
-          if (!leadObject.id) {
-            leadObject.id = `imported-lead-${Date.now()}-${i}`; // Generate a fallback ID
-             toast({ title: 'Import Warning', description: `Lead at row ${i+1} was missing an ID and one was generated.`, variant: 'default' });
+          // --- Robust fullLead object creation ---
+          let leadId = parsedRow.id || `imported-lead-${Date.now()}-${i}`;
+          if (!parsedRow.id) {
+             toast({ title: 'Import Warning', description: `Lead at row ${i+1} was missing an ID and one was generated: ${leadId}.`, variant: 'default' });
           }
-          
-          // Add default values for any missing required fields (example for status, month, clientName, etc.)
-          // This needs to be comprehensive based on your Lead type definition.
+
           const fullLead: Lead = {
-            id: leadObject.id,
-            agent: leadObject.agent || '',
-            status: leadObject.status || 'New',
-            month: leadObject.month || new Date().toISOString().slice(0,7),
-            yacht: leadObject.yacht || '',
-            type: leadObject.type || 'Imported',
-            clientName: leadObject.clientName || 'N/A',
-            totalAmount: leadObject.totalAmount || 0,
-            commissionPercentage: leadObject.commissionPercentage || 0,
-            netAmount: leadObject.netAmount || 0,
-            paidAmount: leadObject.paidAmount || 0,
-            balanceAmount: leadObject.balanceAmount || 0,
-            createdAt: leadObject.createdAt || new Date().toISOString(),
+            // Required fields with defaults
+            id: leadId,
+            agent: typeof parsedRow.agent === 'string' ? parsedRow.agent : '',
+            status: (parsedRow.status as LeadStatus) || 'New',
+            month: typeof parsedRow.month === 'string' && parsedRow.month.match(/^\d{4}-\d{2}$/) ? parsedRow.month : new Date().toISOString().slice(0,7),
+            yacht: typeof parsedRow.yacht === 'string' ? parsedRow.yacht : '',
+            type: typeof parsedRow.type === 'string' ? parsedRow.type : 'Imported',
+            packageType: (parsedRow.packageType as PackageType) || '',
+            clientName: typeof parsedRow.clientName === 'string' ? parsedRow.clientName : 'N/A',
+            quantity: typeof parsedRow.quantity === 'number' ? parsedRow.quantity : 0,
+            rate: typeof parsedRow.rate === 'number' ? parsedRow.rate : 0,
+            totalAmount: typeof parsedRow.totalAmount === 'number' ? parsedRow.totalAmount : 0,
+            commissionPercentage: typeof parsedRow.commissionPercentage === 'number' ? parsedRow.commissionPercentage : 0,
+            netAmount: typeof parsedRow.netAmount === 'number' ? parsedRow.netAmount : 0,
+            paidAmount: typeof parsedRow.paidAmount === 'number' ? parsedRow.paidAmount : 0,
+            balanceAmount: typeof parsedRow.balanceAmount === 'number' ? parsedRow.balanceAmount : 0,
+            createdAt: typeof parsedRow.createdAt === 'string' ? parsedRow.createdAt : new Date().toISOString(),
             updatedAt: new Date().toISOString(),
-            // Add other fields from leadObject or defaults as necessary
-            ...leadObject, // Spread remaining parsed fields
+
+            // Optional fields - directly from parsedRow or default if undefined
+            invoiceId: parsedRow.invoiceId,
+            free: typeof parsedRow.free === 'boolean' ? parsedRow.free : false,
+            dhowChild89: typeof parsedRow.dhowChild89 === 'number' ? parsedRow.dhowChild89 : 0,
+            dhowFood99: typeof parsedRow.dhowFood99 === 'number' ? parsedRow.dhowFood99 : 0,
+            dhowDrinks199: typeof parsedRow.dhowDrinks199 === 'number' ? parsedRow.dhowDrinks199 : 0,
+            dhowVip299: typeof parsedRow.dhowVip299 === 'number' ? parsedRow.dhowVip299 : 0,
+            oeChild129: typeof parsedRow.oeChild129 === 'number' ? parsedRow.oeChild129 : 0,
+            oeFood149: typeof parsedRow.oeFood149 === 'number' ? parsedRow.oeFood149 : 0,
+            oeDrinks249: typeof parsedRow.oeDrinks249 === 'number' ? parsedRow.oeDrinks249 : 0,
+            oeVip349: typeof parsedRow.oeVip349 === 'number' ? parsedRow.oeVip349 : 0,
+            sunsetChild179: typeof parsedRow.sunsetChild179 === 'number' ? parsedRow.sunsetChild179 : 0,
+            sunsetFood199: typeof parsedRow.sunsetFood199 === 'number' ? parsedRow.sunsetFood199 : 0,
+            sunsetDrinks299: typeof parsedRow.sunsetDrinks299 === 'number' ? parsedRow.sunsetDrinks299 : 0,
+            lotusFood249: typeof parsedRow.lotusFood249 === 'number' ? parsedRow.lotusFood249 : 0,
+            lotusDrinks349: typeof parsedRow.lotusDrinks349 === 'number' ? parsedRow.lotusDrinks349 : 0,
+            lotusVip399: typeof parsedRow.lotusVip399 === 'number' ? parsedRow.lotusVip399 : 0,
+            lotusVip499: typeof parsedRow.lotusVip499 === 'number' ? parsedRow.lotusVip499 : 0,
+            othersAmtCake: typeof parsedRow.othersAmtCake === 'number' ? parsedRow.othersAmtCake : 0,
+            commissionAmount: typeof parsedRow.commissionAmount === 'number' ? parsedRow.commissionAmount : 0,
           };
+          // --- End of robust fullLead object creation ---
 
-
-          // Check if lead with this ID already exists in initialLeads
-          if (!initialLeads.find(l => l.id === fullLead.id)) {
+          // Check if lead with this ID already exists in initialLeads (our mock DB) or current state
+          if (!initialLeads.find(l => l.id === fullLead.id) && !leads.find(l => l.id === fullLead.id)) {
             newLeads.push(fullLead);
           } else {
             console.warn(`Skipping import for lead with duplicate ID: ${fullLead.id}`);
@@ -165,16 +182,20 @@ export default function LeadsPage() {
         }
 
         if (newLeads.length > 0) {
-          initialLeads.push(...newLeads); // Add to the placeholder data source
-          setLeads(prevLeads => [...prevLeads, ...newLeads]); // Update current state
-          toast({ title: 'Import Successful', description: `${newLeads.length} leads imported.` });
+          initialLeads.push(...newLeads); 
+          setLeads(prevLeads => [...prevLeads, ...newLeads]); 
+          toast({ title: 'Import Successful', description: `${newLeads.length} new leads imported.` });
         } else {
-          toast({ title: 'Import Complete', description: 'No new leads were imported (possibly all duplicates or empty file after header).' });
+          toast({ title: 'Import Complete', description: 'No new leads were imported (possibly all duplicates or empty/invalid file after header).' });
         }
 
       } catch (error) {
         console.error("CSV Parsing Error:", error);
-        toast({ title: 'Import Error', description: 'Failed to parse CSV file. Check console for details.', variant: 'destructive' });
+        let message = 'Failed to parse CSV file.';
+        if (error instanceof Error) {
+          message = error.message;
+        }
+        toast({ title: 'Import Error', description: message, variant: 'destructive' });
       }
     };
     reader.onerror = () => {
@@ -202,3 +223,4 @@ export default function LeadsPage() {
     </div>
   );
 }
+

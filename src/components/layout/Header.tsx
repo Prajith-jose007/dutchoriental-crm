@@ -12,7 +12,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { SidebarTrigger } from '@/components/ui/sidebar';
-import { Logo } from '@/components/icons/Logo';
+// Removed Logo import as it's no longer used here
 
 export function Header() {
   return (
@@ -20,9 +20,7 @@ export function Header() {
       <div className="md:hidden">
         <SidebarTrigger />
       </div>
-      <div className="hidden md:flex items-center">
-        <Logo />
-      </div>
+      {/* Logo removed from here */}
       <div className="relative flex-1 md:grow-0 md:ml-4">
         {/* Search for larger screens, could be hidden on mobile if space is an issue */}
       </div>

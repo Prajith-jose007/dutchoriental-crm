@@ -1,6 +1,6 @@
 
 import type { LucideIcon } from 'lucide-react';
-import { LayoutDashboard, ClipboardList, Users, Ship, Settings, Briefcase } from 'lucide-react'; // Changed Anchor to Ship
+import { LayoutDashboard, ClipboardList, Users, Ship, Settings, Briefcase, KanbanSquare } from 'lucide-react';
 
 export interface NavItem {
   title: string;
@@ -22,6 +22,11 @@ export const mainNavItems: NavItem[] = [
     icon: ClipboardList,
   },
   {
+    title: 'Pipeline',
+    href: '/leads/pipeline',
+    icon: KanbanSquare,
+  },
+  {
     title: 'Agents',
     href: '/agents',
     icon: Briefcase,
@@ -34,7 +39,7 @@ export const mainNavItems: NavItem[] = [
   {
     title: 'Yachts',
     href: '/yachts',
-    icon: Ship, // Kept Ship for Yachts section
+    icon: Ship,
   },
   {
     title: 'Settings',
@@ -43,5 +48,5 @@ export const mainNavItems: NavItem[] = [
   },
 ];
 
-export const AppLogo = Ship; // Changed from Anchor to Ship for the main app logo
-export const AppName = "DutchOriental CRM"; // Changed AppName
+export const AppLogo = Ship;
+export const AppName = "DutchOriental CRM";

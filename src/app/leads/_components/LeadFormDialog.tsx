@@ -33,12 +33,9 @@ import {
 } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import type { Lead, Agent, Yacht, ModeOfPayment } from '@/lib/types';
-// Placeholder data will be replaced by API calls
-// import { placeholderAgents, placeholderYachts } from '@/lib/placeholder-data';
 import { useToast } from '@/hooks/use-toast';
 import { useEffect, useState } from 'react';
 
-// Define the Zod schema based on the new Lead type
 const leadFormSchema = z.object({
   id: z.string().optional(),
   agent: z.string().min(1, 'Agent is required'),
@@ -50,37 +47,27 @@ const leadFormSchema = z.object({
   modeOfPayment: z.enum(['Online', 'Offline', 'Credit']),
   clientName: z.string().min(1, 'Client name is required'),
 
-  // DHOW Quantities
   dhowChildQty: z.coerce.number().optional().default(0),
   dhowAdultQty: z.coerce.number().optional().default(0),
   dhowVipQty: z.coerce.number().optional().default(0),
   dhowVipChildQty: z.coerce.number().optional().default(0),
   dhowVipAlcoholQty: z.coerce.number().optional().default(0),
-
-  // OE Quantities
   oeChildQty: z.coerce.number().optional().default(0),
   oeAdultQty: z.coerce.number().optional().default(0),
   oeVipQty: z.coerce.number().optional().default(0),
   oeVipChildQty: z.coerce.number().optional().default(0),
   oeVipAlcoholQty: z.coerce.number().optional().default(0),
-  
-  // SUNSET Quantities
   sunsetChildQty: z.coerce.number().optional().default(0),
   sunsetAdultQty: z.coerce.number().optional().default(0),
   sunsetVipQty: z.coerce.number().optional().default(0),
   sunsetVipChildQty: z.coerce.number().optional().default(0),
   sunsetVipAlcoholQty: z.coerce.number().optional().default(0),
-
-  // LOTUS Quantities
   lotusChildQty: z.coerce.number().optional().default(0),
   lotusAdultQty: z.coerce.number().optional().default(0),
   lotusVipQty: z.coerce.number().optional().default(0),
   lotusVipChildQty: z.coerce.number().optional().default(0),
   lotusVipAlcoholQty: z.coerce.number().optional().default(0),
-
-  // Royal Quantities
   royalQty: z.coerce.number().optional().default(0),
-
   othersAmtCake: z.coerce.number().optional().default(0),
   
   totalAmount: z.coerce.number().min(0).default(0),
@@ -91,6 +78,7 @@ const leadFormSchema = z.object({
   balanceAmount: z.coerce.number().min(0).default(0),
   createdAt: z.string().optional(),
   updatedAt: z.string().optional(),
+  lastModifiedByUserId: z.string().optional(),
 });
 
 export type LeadFormData = z.infer<typeof leadFormSchema>;
@@ -106,30 +94,30 @@ interface PackageFieldConfig {
   qtyKey: keyof LeadFormData;
   rateKey: keyof Yacht; 
   label: string;
-  category: 'DHOW' | 'OE' | 'SUNSET' | 'LOTUS' | 'ROYAL' | 'OTHER';
+  category: 'DHOW' | 'OE' | 'SUNSET' | 'LOTUS' | 'ROYAL';
 }
 
 const allPackageItemConfigs: PackageFieldConfig[] = [
-  { qtyKey: 'dhowChildQty', rateKey: 'dhowChildRate', label: 'DHOW - Child Qty', category: 'DHOW' },
-  { qtyKey: 'dhowAdultQty', rateKey: 'dhowAdultRate', label: 'DHOW - Adult Qty', category: 'DHOW' },
-  { qtyKey: 'dhowVipQty', rateKey: 'dhowVipRate', label: 'DHOW - VIP Qty', category: 'DHOW' },
-  { qtyKey: 'dhowVipChildQty', rateKey: 'dhowVipChildRate', label: 'DHOW - VIP Child Qty', category: 'DHOW' },
-  { qtyKey: 'dhowVipAlcoholQty', rateKey: 'dhowVipAlcoholRate', label: 'DHOW - VIP Alcohol Qty', category: 'DHOW' },
-  { qtyKey: 'oeChildQty', rateKey: 'oeChildRate', label: 'OE - Child Qty', category: 'OE' },
-  { qtyKey: 'oeAdultQty', rateKey: 'oeAdultRate', label: 'OE - Adult Qty', category: 'OE' },
-  { qtyKey: 'oeVipQty', rateKey: 'oeVipRate', label: 'OE - VIP Qty', category: 'OE' },
-  { qtyKey: 'oeVipChildQty', rateKey: 'oeVipChildRate', label: 'OE - VIP Child Qty', category: 'OE' },
-  { qtyKey: 'oeVipAlcoholQty', rateKey: 'oeVipAlcoholRate', label: 'OE - VIP Alcohol Qty', category: 'OE' },
-  { qtyKey: 'sunsetChildQty', rateKey: 'sunsetChildRate', label: 'SUNSET - Child Qty', category: 'SUNSET' },
-  { qtyKey: 'sunsetAdultQty', rateKey: 'sunsetAdultRate', label: 'SUNSET - Adult Qty', category: 'SUNSET' },
-  { qtyKey: 'sunsetVipQty', rateKey: 'sunsetVipRate', label: 'SUNSET - VIP Qty', category: 'SUNSET' },
-  { qtyKey: 'sunsetVipChildQty', rateKey: 'sunsetVipChildRate', label: 'SUNSET - VIP Child Qty', category: 'SUNSET' },
-  { qtyKey: 'sunsetVipAlcoholQty', rateKey: 'sunsetVipAlcoholRate', label: 'SUNSET - VIP Alcohol Qty', category: 'SUNSET' },
-  { qtyKey: 'lotusChildQty', rateKey: 'lotusChildRate', label: 'LOTUS - Child Qty', category: 'LOTUS' },
-  { qtyKey: 'lotusAdultQty', rateKey: 'lotusAdultRate', label: 'LOTUS - Adult Qty', category: 'LOTUS' },
-  { qtyKey: 'lotusVipQty', rateKey: 'lotusVipRate', label: 'LOTUS - VIP Qty', category: 'LOTUS' },
-  { qtyKey: 'lotusVipChildQty', rateKey: 'lotusVipChildRate', label: 'LOTUS - VIP Child Qty', category: 'LOTUS' },
-  { qtyKey: 'lotusVipAlcoholQty', rateKey: 'lotusVipAlcoholRate', label: 'LOTUS - VIP Alcohol Qty', category: 'LOTUS' },
+  { qtyKey: 'dhowChildQty', rateKey: 'dhowChildRate', label: 'Child Qty', category: 'DHOW' },
+  { qtyKey: 'dhowAdultQty', rateKey: 'dhowAdultRate', label: 'Adult Qty', category: 'DHOW' },
+  { qtyKey: 'dhowVipQty', rateKey: 'dhowVipRate', label: 'VIP Qty', category: 'DHOW' },
+  { qtyKey: 'dhowVipChildQty', rateKey: 'dhowVipChildRate', label: 'VIP Child Qty', category: 'DHOW' },
+  { qtyKey: 'dhowVipAlcoholQty', rateKey: 'dhowVipAlcoholRate', label: 'VIP Alcohol Qty', category: 'DHOW' },
+  { qtyKey: 'oeChildQty', rateKey: 'oeChildRate', label: 'Child Qty', category: 'OE' },
+  { qtyKey: 'oeAdultQty', rateKey: 'oeAdultRate', label: 'Adult Qty', category: 'OE' },
+  { qtyKey: 'oeVipQty', rateKey: 'oeVipRate', label: 'VIP Qty', category: 'OE' },
+  { qtyKey: 'oeVipChildQty', rateKey: 'oeVipChildRate', label: 'VIP Child Qty', category: 'OE' },
+  { qtyKey: 'oeVipAlcoholQty', rateKey: 'oeVipAlcoholRate', label: 'VIP Alcohol Qty', category: 'OE' },
+  { qtyKey: 'sunsetChildQty', rateKey: 'sunsetChildRate', label: 'Child Qty', category: 'SUNSET' },
+  { qtyKey: 'sunsetAdultQty', rateKey: 'sunsetAdultRate', label: 'Adult Qty', category: 'SUNSET' },
+  { qtyKey: 'sunsetVipQty', rateKey: 'sunsetVipRate', label: 'VIP Qty', category: 'SUNSET' },
+  { qtyKey: 'sunsetVipChildQty', rateKey: 'sunsetVipChildRate', label: 'VIP Child Qty', category: 'SUNSET' },
+  { qtyKey: 'sunsetVipAlcoholQty', rateKey: 'sunsetVipAlcoholRate', label: 'VIP Alcohol Qty', category: 'SUNSET' },
+  { qtyKey: 'lotusChildQty', rateKey: 'lotusChildRate', label: 'Child Qty', category: 'LOTUS' },
+  { qtyKey: 'lotusAdultQty', rateKey: 'lotusAdultRate', label: 'Adult Qty', category: 'LOTUS' },
+  { qtyKey: 'lotusVipQty', rateKey: 'lotusVipRate', label: 'VIP Qty', category: 'LOTUS' },
+  { qtyKey: 'lotusVipChildQty', rateKey: 'lotusVipChildRate', label: 'VIP Child Qty', category: 'LOTUS' },
+  { qtyKey: 'lotusVipAlcoholQty', rateKey: 'lotusVipAlcoholRate', label: 'VIP Alcohol Qty', category: 'LOTUS' },
   { qtyKey: 'royalQty', rateKey: 'royalRate', label: 'Royal Package Qty', category: 'ROYAL' },
 ];
 
@@ -147,6 +135,7 @@ const getDefaultFormValues = (): LeadFormData => ({
     othersAmtCake: 0,
     totalAmount: 0, commissionPercentage: 0, commissionAmount:0, netAmount: 0,
     paidAmount: 0, balanceAmount: 0,
+    lastModifiedByUserId: undefined, // Will be set on submit
 });
 
 
@@ -233,7 +222,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
     
     const paidAmtValue = form.getValues('paidAmount');
     const paidAmt = typeof paidAmtValue === 'number' ? paidAmtValue : 0;
-    const currentBalanceAmount = currentTotalAmount - paidAmt; // This should be Total - Paid, not Net - Paid
+    const currentBalanceAmount = currentTotalAmount - paidAmt;
     form.setValue('balanceAmount', currentBalanceAmount);
 
   }, [
@@ -248,12 +237,17 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
   }, [lead, form, isOpen]);
 
   function onSubmit(data: LeadFormData) {
+    // Placeholder for actual logged-in user ID
+    const currentUserId = 'DO-user1'; // Replace with actual user ID from auth system
+
     const submittedLead: Lead = {
       ...getDefaultFormValues(), 
       ...data, 
       id: lead?.id || `lead-${Date.now()}-${Math.random().toString(36).substring(2,7)}`,
       createdAt: lead?.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
+      lastModifiedByUserId: currentUserId,
+      // Ensure all quantities default to 0 if not provided or NaN
       dhowChildQty: data.dhowChildQty || 0,
       dhowAdultQty: data.dhowAdultQty || 0,
       dhowVipQty: data.dhowVipQty || 0,
@@ -280,8 +274,6 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
       commissionAmount: data.commissionAmount || 0,
     };
     onSubmitSuccess(submittedLead);
-    // Toast is handled by parent page after successful API call
-    // onOpenChange(false); // Also handled by parent
   }
 
   const packageCategories = ['DHOW', 'OE', 'SUNSET', 'LOTUS', 'ROYAL'] as const;

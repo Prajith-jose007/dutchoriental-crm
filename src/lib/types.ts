@@ -56,8 +56,7 @@ export interface Yacht {
   // Royal Package Rate (General)
   royalRate?: number;
 
-  // Other direct charges rate (placeholder if needed, but typically 'othersAmtCake' on Lead is a direct amount)
-  othersAmtCake_rate?: number; // This might be redundant if othersAmtCake is a direct amount on lead
+  othersAmtCake_rate?: number;
 }
 
 export interface Invoice {
@@ -127,6 +126,7 @@ export interface Lead {
 
   createdAt: string; // ISO Date string
   updatedAt: string; // ISO Date string
+  lastModifiedByUserId?: string; // ID of the user who last created/updated the lead
 }
 
 export interface BookingReportData {
@@ -152,3 +152,4 @@ export interface BookingsByAgentData {
 
 // Re-exporting for easier import in CSV parser
 export type { LeadStatus as ExportedLeadStatus, ModeOfPayment as ExportedModeOfPayment };
+

@@ -21,32 +21,24 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import type { Lead, Yacht, Agent } from '@/lib/types';
-import { placeholderYachts, placeholderAgents } from '@/lib/placeholder-data';
+import type { Lead } from '@/lib/types'; // Removed Yacht, Agent as they are fetched by parent or not directly used here for names
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 
-const getYachtName = (yachtId: string): string => {
-  const yacht = placeholderYachts.find(y => y.id === yachtId);
-  return yacht ? yacht.name : yachtId;
-};
+// Assuming agent and yacht names are resolved by the parent page or context if needed.
+// For this table, we'll primarily display IDs or direct lead properties.
 
-const getAgentName = (agentId: string): string => {
-  const agent = placeholderAgents.find(a => a.id === agentId);
-  return agent ? agent.name : agentId;
-}
-
-// Updated columns to reflect new Lead structure including all package quantities
 const leadColumns: { accessorKey: keyof Lead | 'actions' | 'select', header: string, isCurrency?: boolean, isPercentage?: boolean, isNumeric?: boolean }[] = [
   { accessorKey: 'select', header: '' },
   { accessorKey: 'id', header: 'ID' },
-  { accessorKey: 'agent', header: 'Agent' },
+  { accessorKey: 'clientName', header: 'Client' },
+  { accessorKey: 'agent', header: 'Agent ID' }, // Displaying Agent ID
+  { accessorKey: 'yacht', header: 'Yacht ID' }, // Displaying Yacht ID
   { accessorKey: 'status', header: 'Status' },
   { accessorKey: 'month', header: 'Month' },
-  { accessorKey: 'yacht', header: 'Yacht' },
   { accessorKey: 'type', header: 'Type' },
   { accessorKey: 'invoiceId', header: 'Invoice' },
   { accessorKey: 'modeOfPayment', header: 'Payment Mode' },
-  { accessorKey: 'clientName', header: 'Client' },
+  
   // DHOW Packages
   { accessorKey: 'dhowChildQty', header: 'Dhow Child', isNumeric: true },
   { accessorKey: 'dhowAdultQty', header: 'Dhow Adult', isNumeric: true },
@@ -82,13 +74,16 @@ const leadColumns: { accessorKey: keyof Lead | 'actions' | 'select', header: str
   { accessorKey: 'netAmount', header: 'Net Amt', isCurrency: true },
   { accessorKey: 'paidAmount', header: 'Paid Amt', isCurrency: true },
   { accessorKey: 'balanceAmount', header: 'Balance', isCurrency: true },
+  { accessorKey: 'lastModifiedByUserId', header: 'Modified By'},
+  { accessorKey: 'createdAt', header: 'Created At'},
+  { accessorKey: 'updatedAt', header: 'Updated At'},
   { accessorKey: 'actions', header: 'Actions' },
 ];
 
 interface LeadsTableProps {
   leads: Lead[];
   onEditLead: (lead: Lead) => void;
-  onDeleteLead: (leadId: string) => void; // Added prop for delete handler
+  onDeleteLead: (leadId: string) => void;
 }
 
 export function LeadsTable({ leads, onEditLead, onDeleteLead }: LeadsTableProps) {
@@ -97,9 +92,9 @@ export function LeadsTable({ leads, onEditLead, onDeleteLead }: LeadsTableProps)
     switch (status) {
       case 'New': return 'outline';
       case 'Contacted': return 'secondary';
-      case 'Qualified': return 'default'; // Consider a specific color for Qualified
-      case 'Proposal Sent': return 'default'; // Consider a specific color for Proposal Sent
-      case 'Closed Won': return 'default'; // Previously success, now using default
+      case 'Qualified': return 'default'; 
+      case 'Proposal Sent': return 'default'; 
+      case 'Closed Won': return 'default'; 
       case 'Closed Lost': return 'destructive';
       default: return 'outline';
     }
@@ -116,9 +111,18 @@ export function LeadsTable({ leads, onEditLead, onDeleteLead }: LeadsTableProps)
   }
   
   const formatNumeric = (value: number | undefined | null) => {
-    if (typeof value !== 'number' || isNaN(value)) return '0'; // Default to 0 if not a number or undefined/NaN
+    if (typeof value !== 'number' || isNaN(value)) return '0';
     return String(value);
   }
+
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return '-';
+    try {
+      return new Date(dateString).toLocaleDateString();
+    } catch (e) {
+      return dateString; // if parsing fails, show original
+    }
+  };
 
 
   return (
@@ -154,20 +158,16 @@ export function LeadsTable({ leads, onEditLead, onDeleteLead }: LeadsTableProps)
                        <Button variant="link" className="p-0 h-auto font-medium" onClick={() => onEditLead(lead)}>
                         {lead.id && lead.id.length > 10 ? lead.id.substring(0,4) + '...' + lead.id.substring(lead.id.length-4) : lead.id}
                        </Button>
-                    ) : col.accessorKey === 'agent' ? (
-                        getAgentName(lead.agent)
-                    ) : col.accessorKey === 'yacht' ? (
-                        getYachtName(lead.yacht)
-                    ): col.accessorKey === 'status' ? (
+                    ) : col.accessorKey === 'status' ? (
                       <Badge variant={getStatusVariant(lead.status)}>{lead.status}</Badge>
-                    ) : col.accessorKey === 'modeOfPayment' ? (
-                      lead.modeOfPayment
                     ) : col.isCurrency ? (
                       formatCurrency(lead[col.accessorKey as keyof Lead] as number | undefined)
                     ) : col.isPercentage ? (
                         formatPercentage(lead[col.accessorKey as keyof Lead] as number | undefined)
                     ) : col.isNumeric ? (
                         formatNumeric(lead[col.accessorKey as keyof Lead] as number | undefined)
+                    ) : col.accessorKey === 'createdAt' || col.accessorKey === 'updatedAt' ? (
+                        formatDate(lead[col.accessorKey as keyof Lead] as string | undefined)
                     ) : (
                       lead[col.accessorKey as keyof Lead] !== undefined && lead[col.accessorKey as keyof Lead] !== null ?
                       String(lead[col.accessorKey as keyof Lead]) : '-'
@@ -187,14 +187,7 @@ export function LeadsTable({ leads, onEditLead, onDeleteLead }: LeadsTableProps)
                       <DropdownMenuItem onClick={() => onEditLead(lead)}>
                         Edit Lead
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => console.log('View lead details', lead.id)}>
-                        View Details
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        className="text-destructive"
-                        onClick={() => onDeleteLead(lead.id)} // Use onDeleteLead prop
-                      >
+                      <DropdownMenuItem onClick={() => onDeleteLead(lead.id)}>
                         Delete Lead
                       </DropdownMenuItem>
                     </DropdownMenuContent>

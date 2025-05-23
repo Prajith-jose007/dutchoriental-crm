@@ -103,4 +103,3 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ message: 'Failed to create lead', error: errorMessage }, { status: 500 });
   }
 }
-

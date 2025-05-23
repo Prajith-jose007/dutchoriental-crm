@@ -40,5 +40,3 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ message: 'Failed to create agent', error: (error as Error).message }, { status: 500 });
   }
 }
-
-```

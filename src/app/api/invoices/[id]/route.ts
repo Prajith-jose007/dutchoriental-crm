@@ -69,5 +69,3 @@ export async function DELETE(
     return NextResponse.json({ message: 'Failed to delete invoice', error: (error as Error).message }, { status: 500 });
   }
 }
-
-```

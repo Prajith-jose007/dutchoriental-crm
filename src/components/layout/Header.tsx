@@ -2,7 +2,7 @@
 'use client'; // Added for useRouter and localStorage
 
 import Link from 'next/link';
-import { Bell, UserCircle, Search, Ship } from 'lucide-react'; // Added Ship
+import { Bell, UserCircle, Search } from 'lucide-react'; // Removed Ship
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -14,7 +14,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { SidebarTrigger } from '@/components/ui/sidebar';
-import { Logo } from '@/components/icons/Logo'; // For the header logo
+// import { Logo } from '@/components/icons/Logo'; // Ensure Logo is removed
 import { useRouter } from 'next/navigation'; // Added for redirection
 import { useToast } from '@/hooks/use-toast'; // Added for logout toast
 
@@ -46,9 +46,7 @@ export function Header() {
       <div className="md:hidden">
         <SidebarTrigger />
       </div>
-      <div className="hidden md:flex items-center gap-2"> {/* Logo for wider screens */}
-        <Logo />
-      </div>
+      {/* Logo was here, it has been removed. It's in SidebarNav.tsx */}
       <div className="relative flex-1 md:grow-0 md:ml-4">
         {/* Search for larger screens, could be hidden on mobile if space is an issue */}
       </div>

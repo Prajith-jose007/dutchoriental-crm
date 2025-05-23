@@ -28,9 +28,10 @@ import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 interface UsersTableProps {
   users: User[];
   onEditUser: (user: User) => void;
+  isAdmin: boolean; // New prop
 }
 
-export function UsersTable({ users, onEditUser }: UsersTableProps) {
+export function UsersTable({ users, onEditUser, isAdmin }: UsersTableProps) {
 
   const getStatusBadgeVariant = (status?: User['status']) => {
     switch (status) {
@@ -111,7 +112,10 @@ export function UsersTable({ users, onEditUser }: UsersTableProps) {
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                      <DropdownMenuItem onClick={() => onEditUser(user)}>
+                      <DropdownMenuItem 
+                        onClick={() => onEditUser(user)}
+                        disabled={!isAdmin} // Disable if not admin
+                      >
                         Edit User
                       </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => console.log('View user profile', user.id)}>View Profile</DropdownMenuItem>
@@ -119,6 +123,7 @@ export function UsersTable({ users, onEditUser }: UsersTableProps) {
                       <DropdownMenuItem 
                         className="text-destructive"
                         onClick={() => console.warn('Delete user action (not implemented)', user.id)}
+                        disabled={!isAdmin} // Disable if not admin
                       >
                         Delete User
                       </DropdownMenuItem>

@@ -5,6 +5,7 @@ export const placeholderUsers: User[] = [
   { id: 'DO-user1', name: 'Alice Smith', email: 'alice@dutchoriental.com', designation: 'Sales Manager', avatarUrl: 'https://placehold.co/100x100.png?text=AS', status: 'Active' },
   { id: 'DO-user2', name: 'Bob Johnson', email: 'bob@dutchoriental.com', designation: 'Sales Agent', avatarUrl: 'https://placehold.co/100x100.png?text=BJ', status: 'Active' },
   { id: 'DO-user3', name: 'Carol White', email: 'carol@dutchoriental.com', designation: 'Admin', avatarUrl: 'https://placehold.co/100x100.png?text=CW', status: 'Active' },
+  { id: 'DO-admin', name: 'Admin User', email: 'admin@dutchoriental.com', designation: 'System Administrator', avatarUrl: 'https://placehold.co/100x100.png?text=AU', status: 'Active' },
 ];
 
 export const placeholderAgents: Agent[] = [
@@ -77,14 +78,14 @@ export const placeholderRevenueData: RevenueData[] = [
 ];
 
 // InvoiceStatusPieChart - Remains on placeholderInvoices for now
-const paidInvoices = placeholderInvoices.filter(inv => inv.status === 'Paid').length;
-const pendingInvoices = placeholderInvoices.filter(inv => inv.status === 'Pending').length;
-const overdueInvoices = placeholderInvoices.filter(inv => inv.status === 'Overdue').length;
+const paidInvoicesCount = placeholderInvoices.filter(inv => inv.status === 'Paid').length;
+const pendingInvoicesCount = placeholderInvoices.filter(inv => inv.status === 'Pending').length;
+const overdueInvoicesCount = placeholderInvoices.filter(inv => inv.status === 'Overdue').length;
 
 export const placeholderInvoiceStatusData: PieChartDataItem[] = [
-  { name: 'Paid', value: paidInvoices, fill: 'hsl(var(--chart-1))' },
-  { name: 'Pending', value: pendingInvoices, fill: 'hsl(var(--chart-2))' },
-  { name: 'Overdue', value: overdueInvoices, fill: 'hsl(var(--chart-3))' },
+  { name: 'Paid', value: paidInvoicesCount, fill: 'hsl(var(--chart-1))' },
+  { name: 'Pending', value: pendingInvoicesCount, fill: 'hsl(var(--chart-2))' },
+  { name: 'Overdue', value: overdueInvoicesCount, fill: 'hsl(var(--chart-3))' },
 ].filter(item => item.value > 0);
 
 

@@ -16,15 +16,15 @@ import {
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
-import { useState, useEffect } from 'react'; // Added useState, useEffect
+import { useState, useEffect } from 'react';
 
 export function Header() {
-  const [mounted, setMounted] = useState(false); // State to track if component has mounted
+  const [mounted, setMounted] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
 
   useEffect(() => {
-    setMounted(true); // Set to true after component mounts on client
+    setMounted(true);
   }, []);
 
   const handleLogout = () => {

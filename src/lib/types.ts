@@ -127,6 +127,7 @@ export interface Lead {
   createdAt: string; // ISO Date string
   updatedAt: string; // ISO Date string
   lastModifiedByUserId?: string; // ID of the user who last created/updated the lead
+  ownerUserId?: string; // ID of the user who "owns" this lead
 }
 
 export interface BookingReportData {
@@ -152,4 +153,3 @@ export interface BookingsByAgentData {
 
 // Re-exporting for easier import in CSV parser
 export type { LeadStatus as ExportedLeadStatus, ModeOfPayment as ExportedModeOfPayment };
-

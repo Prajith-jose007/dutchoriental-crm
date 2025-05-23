@@ -79,6 +79,7 @@ const leadFormSchema = z.object({
   createdAt: z.string().optional(),
   updatedAt: z.string().optional(),
   lastModifiedByUserId: z.string().optional(),
+  ownerUserId: z.string().optional(), // Added ownerUserId
 });
 
 export type LeadFormData = z.infer<typeof leadFormSchema>;
@@ -136,6 +137,7 @@ const getDefaultFormValues = (): LeadFormData => ({
     totalAmount: 0, commissionPercentage: 0, commissionAmount:0, netAmount: 0,
     paidAmount: 0, balanceAmount: 0,
     lastModifiedByUserId: undefined, // Will be set on submit
+    ownerUserId: undefined, // Will be set on submit for new leads
 });
 
 
@@ -247,6 +249,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
       createdAt: lead?.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       lastModifiedByUserId: currentUserId,
+      ownerUserId: lead?.ownerUserId || currentUserId, // Set owner if new, otherwise keep existing
       // Ensure all quantities default to 0 if not provided or NaN
       dhowChildQty: data.dhowChildQty || 0,
       dhowAdultQty: data.dhowAdultQty || 0,

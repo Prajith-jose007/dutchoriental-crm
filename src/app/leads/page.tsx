@@ -14,9 +14,10 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { DatePicker } from '@/components/ui/date-picker';
 import { Skeleton } from '@/components/ui/skeleton';
-import { format, parseISO, isWithinInterval, startOfMonth, endOfMonth, startOfYear, endOfYear } from 'date-fns';
+import { format, parseISO, isWithinInterval } from 'date-fns';
 
 const USERS_STORAGE_KEY = 'dutchOrientalCrmUsers';
+const SIMULATED_CURRENT_USER_ID = 'DO-user1'; // Alice Smith
 
 const ensureNumericDefaults = (leadData: Partial<Lead>): Partial<Lead> => {
   const numericQtyFields: (keyof Lead)[] = [
@@ -101,26 +102,36 @@ export default function LeadsPage() {
   const [selectedYachtId, setSelectedYachtId] = useState<string>('all');
   const [selectedAgentId, setSelectedAgentId] = useState<string>('all');
   const [selectedUserId, setSelectedUserId] = useState<string>('all');
-  const [statusFilter, setStatusFilter] = useState<LeadStatus | 'all'>('all'); // Existing status filter
+  const [statusFilter, setStatusFilter] = useState<LeadStatus | 'all'>('all');
 
   const leadStatusOptions: LeadStatus[] = ['New', 'Contacted', 'Qualified', 'Proposal Sent', 'Closed Won', 'Closed Lost'];
 
+  const fetchLeads = async () => {
+    try {
+      const response = await fetch('/api/leads');
+      if (!response.ok) {
+        throw new Error(`Failed to fetch leads: ${response.statusText}`);
+      }
+      const data = await response.json();
+      setAllLeads(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error("Error fetching leads:", error);
+      toast({ title: 'Error Fetching Leads', description: (error as Error).message, variant: 'destructive' });
+      setAllLeads([]); 
+    }
+  };
 
   useEffect(() => {
     const loadInitialData = async () => {
       setIsLoading(true);
       setFetchError(null);
       try {
-        // Fetch Leads, Agents, Yachts
-        const [leadsRes, agentsRes, yachtsRes] = await Promise.all([
-          fetch('/api/leads'),
+        await fetchLeads(); // Fetch leads first
+
+        const [agentsRes, yachtsRes] = await Promise.all([
           fetch('/api/agents'),
           fetch('/api/yachts'),
         ]);
-
-        if (!leadsRes.ok) throw new Error(`Failed to fetch leads: ${leadsRes.statusText}`);
-        const leadsData = await leadsRes.json();
-        setAllLeads(Array.isArray(leadsData) ? leadsData : []);
 
         if (!agentsRes.ok) throw new Error(`Failed to fetch agents: ${agentsRes.statusText}`);
         const agentsData = await agentsRes.json();
@@ -130,9 +141,8 @@ export default function LeadsPage() {
         const yachtsData = await yachtsRes.json();
         setAllYachts(Array.isArray(yachtsData) ? yachtsData : []);
 
-        // Load users from localStorage for userMap
         const storedUsers = localStorage.getItem(USERS_STORAGE_KEY);
-        let usersToMap: User[] = placeholderUsers; // Fallback
+        let usersToMap: User[] = placeholderUsers; 
         if (storedUsers) {
           try {
             const parsedUsers: User[] = JSON.parse(storedUsers);
@@ -151,33 +161,14 @@ export default function LeadsPage() {
         console.error("Error fetching initial data for Leads page:", error);
         setFetchError((error as Error).message);
         toast({ title: 'Error Fetching Data', description: (error as Error).message, variant: 'destructive' });
-        setAllLeads([]); 
         setAllAgents([]);
         setAllYachts([]);
       } finally {
         setIsLoading(false);
       }
     };
-
     loadInitialData();
   }, [toast]);
-
-  const refreshLeads = async () => { // Renamed from fetchLeads to avoid conflict
-    setIsLoading(true); // Optionally set loading true for refresh
-    try {
-      const response = await fetch('/api/leads');
-      if (!response.ok) {
-        throw new Error(`Failed to fetch leads: ${response.statusText}`);
-      }
-      const data = await response.json();
-      setAllLeads(Array.isArray(data) ? data : []);
-    } catch (error) {
-      console.error("Error refreshing leads:", error);
-      toast({ title: 'Error Refreshing Leads', description: (error as Error).message, variant: 'destructive' });
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
 
   const handleAddLeadClick = () => {
@@ -191,25 +182,26 @@ export default function LeadsPage() {
   };
 
   const handleLeadFormSubmit = async (submittedLeadData: Lead) => {
-    const leadPayload = {
+    const payload = {
       ...submittedLeadData,
-      lastModifiedByUserId: 'DO-user1', 
+      lastModifiedByUserId: SIMULATED_CURRENT_USER_ID, 
       updatedAt: new Date().toISOString(),
+      ownerUserId: editingLead ? editingLead.ownerUserId : SIMULATED_CURRENT_USER_ID, // Preserve owner on edit, set on create
     };
 
     try {
       let response;
-      if (editingLead && leadPayload.id === editingLead.id) {
+      if (editingLead && payload.id === editingLead.id) {
         response = await fetch(`/api/leads/${editingLead.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(leadPayload),
+          body: JSON.stringify(payload),
         });
       } else {
         const newLeadWithTimestamps = {
-            ...leadPayload,
+            ...payload,
             createdAt: new Date().toISOString(),
-            id: leadPayload.id || `lead-${Date.now()}-${Math.random().toString(36).substring(2,7)}`
+            id: payload.id || `lead-${Date.now()}-${Math.random().toString(36).substring(2,7)}`
         };
         response = await fetch('/api/leads', {
           method: 'POST',
@@ -228,7 +220,7 @@ export default function LeadsPage() {
         description: `Lead for ${submittedLeadData.clientName} has been saved.`,
       });
       
-      refreshLeads(); 
+      fetchLeads(); 
       setIsLeadDialogOpen(false);
       setEditingLead(null);
 
@@ -251,7 +243,7 @@ export default function LeadsPage() {
         throw new Error(errorData.message || `Failed to delete lead: ${response.statusText}`);
       }
       toast({ title: 'Lead Deleted', description: `Lead ${leadId} has been deleted.` });
-      refreshLeads(); 
+      fetchLeads(); 
     } catch (error) {
       console.error("Error deleting lead:", error);
       toast({ title: 'Error Deleting Lead', description: (error as Error).message, variant: 'destructive' });
@@ -284,7 +276,7 @@ export default function LeadsPage() {
         let skippedCount = 0;
         let successCount = 0;
         
-        const currentApiLeadsResponse = await fetch('/api/leads');
+        const currentApiLeadsResponse = await fetch('/api/leads'); // Fetch current leads from API
         const currentApiLeads: Lead[] = await currentApiLeadsResponse.json();
         const existingLeadIds = new Set(currentApiLeads.map(l => l.id));
 
@@ -315,9 +307,9 @@ export default function LeadsPage() {
           }
 
           let leadId = typeof parsedRow.id === 'string' && parsedRow.id.trim() !== '' ? parsedRow.id.trim() : undefined;
+          const baseGeneratedId = `imported-lead-${Date.now()}-${i}`;
 
           if (!leadId) {
-            const baseGeneratedId = `imported-lead-${Date.now()}-${i}`;
             let currentGeneratedId = baseGeneratedId;
             let uniqueIdCounter = 0;
             while (existingLeadIds.has(currentGeneratedId) || newLeadsFromCsv.some(l => l.id === currentGeneratedId) ) {
@@ -375,7 +367,8 @@ export default function LeadsPage() {
             
             createdAt: typeof numericDefaultsApplied.createdAt === 'string' && numericDefaultsApplied.createdAt.trim() !== '' ? numericDefaultsApplied.createdAt : new Date().toISOString(),
             updatedAt: new Date().toISOString(),
-            lastModifiedByUserId: 'DO-user-importer', 
+            lastModifiedByUserId: SIMULATED_CURRENT_USER_ID, 
+            ownerUserId: SIMULATED_CURRENT_USER_ID,
           };
           if (i === 1) { 
              console.log("First Full Lead Object (after defaults, before API post):", JSON.parse(JSON.stringify(fullLead)));
@@ -414,7 +407,7 @@ export default function LeadsPage() {
             }
           }
           
-          refreshLeads(); 
+          fetchLeads(); // Refresh from API
 
           if (successCount > 0 && skippedCount === 0) {
             toast({ title: 'Import Successful', description: `${successCount} new leads imported.` });
@@ -554,7 +547,7 @@ export default function LeadsPage() {
                             'royalQty',
                             'othersAmtCake', 'totalAmount', 'commissionPercentage',
                             'commissionAmount', 'netAmount', 'paidAmount', 'balanceAmount', 
-                            'createdAt', 'updatedAt', 'lastModifiedByUserId'
+                            'createdAt', 'updatedAt', 'lastModifiedByUserId', 'ownerUserId'
                         ];
                         const escapeCsvCell = (cellData: any): string => {
                             if (cellData === null || cellData === undefined) return '';
@@ -592,15 +585,15 @@ export default function LeadsPage() {
       {/* Filters Section */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-6 p-4 border rounded-lg shadow-sm">
         <div>
-          <Label htmlFor="start-date-leads">Start Date</Label>
+          <Label htmlFor="start-date-leads">Start Date (Created)</Label>
           <DatePicker date={startDate} setDate={setStartDate} placeholder="Start Date" />
         </div>
         <div>
-          <Label htmlFor="end-date-leads">End Date</Label>
+          <Label htmlFor="end-date-leads">End Date (Created)</Label>
           <DatePicker date={endDate} setDate={setEndDate} placeholder="End Date" disabled={(date) => startDate ? date < startDate : false} />
         </div>
         <div>
-          <Label htmlFor="month-filter-leads">Month</Label>
+          <Label htmlFor="month-filter-leads">Lead Month</Label>
           <Select value={selectedMonth} onValueChange={setSelectedMonth} disabled={!!(startDate && endDate)}>
             <SelectTrigger id="month-filter-leads"><SelectValue placeholder="All Months" /></SelectTrigger>
             <SelectContent>
@@ -610,7 +603,7 @@ export default function LeadsPage() {
           </Select>
         </div>
         <div>
-          <Label htmlFor="year-filter-leads">Year</Label>
+          <Label htmlFor="year-filter-leads">Lead Year</Label>
           <Select value={selectedYear} onValueChange={setSelectedYear} disabled={!!(startDate && endDate)}>
             <SelectTrigger id="year-filter-leads"><SelectValue placeholder="All Years" /></SelectTrigger>
             <SelectContent>
@@ -668,7 +661,7 @@ export default function LeadsPage() {
         </div>
       </div>
 
-      <LeadsTable leads={filteredLeads} onEditLead={handleEditLeadClick} onDeleteLead={handleDeleteLead} userMap={userMap} />
+      <LeadsTable leads={filteredLeads} onEditLead={handleEditLeadClick} onDeleteLead={handleDeleteLead} userMap={userMap} currentUserId={SIMULATED_CURRENT_USER_ID} />
       
       {isLeadDialogOpen && (
         <LeadFormDialog

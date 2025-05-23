@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const newLeadData = await request.json() as Omit<Lead, 'createdAt' | 'updatedAt'> & Partial<Pick<Lead, 'createdAt' | 'updatedAt' | 'lastModifiedByUserId'>>;
+    const newLeadData = await request.json() as Omit<Lead, 'createdAt' | 'updatedAt'> & Partial<Pick<Lead, 'createdAt' | 'updatedAt' | 'lastModifiedByUserId' | 'ownerUserId'>>;
 
     if (!newLeadData.id || !newLeadData.clientName || !newLeadData.agent || !newLeadData.yacht) {
       return NextResponse.json({ message: 'Missing required lead fields' }, { status: 400 });
@@ -62,7 +62,8 @@ export async function POST(request: NextRequest) {
       commissionAmount: newLeadData.commissionAmount ?? 0,
       createdAt: newLeadData.createdAt || now,
       updatedAt: now,
-      lastModifiedByUserId: newLeadData.lastModifiedByUserId // Will be set by client
+      lastModifiedByUserId: newLeadData.lastModifiedByUserId, // Will be set by client
+      ownerUserId: newLeadData.ownerUserId || newLeadData.lastModifiedByUserId, // Default owner to creator if not specified
     };
     
     leads_db_placeholder.push(leadToStore);

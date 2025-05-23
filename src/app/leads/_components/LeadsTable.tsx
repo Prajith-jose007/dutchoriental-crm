@@ -73,6 +73,7 @@ const leadColumns: { accessorKey: keyof Lead | 'actions' | 'select', header: str
   { accessorKey: 'paidAmount', header: 'Paid Amt', isCurrency: true },
   { accessorKey: 'balanceAmount', header: 'Balance', isCurrency: true },
   { accessorKey: 'lastModifiedByUserId', header: 'Modified By'},
+  { accessorKey: 'ownerUserId', header: 'Lead Owner'},
   { accessorKey: 'createdAt', header: 'Created At', isDate: true},
   { accessorKey: 'updatedAt', header: 'Updated At', isDate: true},
   { accessorKey: 'actions', header: 'Actions' },
@@ -83,9 +84,10 @@ interface LeadsTableProps {
   onEditLead: (lead: Lead) => void;
   onDeleteLead: (leadId: string) => void;
   userMap: { [id: string]: string }; // User ID to Name map
+  currentUserId?: string; // For simulating logged-in user to restrict edits
 }
 
-export function LeadsTable({ leads, onEditLead, onDeleteLead, userMap }: LeadsTableProps) {
+export function LeadsTable({ leads, onEditLead, onDeleteLead, userMap, currentUserId }: LeadsTableProps) {
 
   const getStatusVariant = (status: Lead['status']) => {
     switch (status) {
@@ -167,8 +169,8 @@ export function LeadsTable({ leads, onEditLead, onDeleteLead, userMap }: LeadsTa
                         formatNumeric(lead[col.accessorKey as keyof Lead] as number | undefined)
                     ) : col.isDate ? (
                         formatDateValue(lead[col.accessorKey as keyof Lead] as string | undefined)
-                    ) : col.accessorKey === 'lastModifiedByUserId' ? (
-                        userMap[lead.lastModifiedByUserId || ''] || lead.lastModifiedByUserId || '-'
+                    ) : col.accessorKey === 'lastModifiedByUserId' || col.accessorKey === 'ownerUserId' ? (
+                        userMap[lead[col.accessorKey as 'lastModifiedByUserId' | 'ownerUserId'] || ''] || lead[col.accessorKey as 'lastModifiedByUserId' | 'ownerUserId'] || '-'
                     ) : (
                       lead[col.accessorKey as keyof Lead] !== undefined && lead[col.accessorKey as keyof Lead] !== null ?
                       String(lead[col.accessorKey as keyof Lead]) : '-'
@@ -185,7 +187,10 @@ export function LeadsTable({ leads, onEditLead, onDeleteLead, userMap }: LeadsTa
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                      <DropdownMenuItem onClick={() => onEditLead(lead)}>
+                      <DropdownMenuItem 
+                        onClick={() => onEditLead(lead)}
+                        disabled={!!currentUserId && !!lead.ownerUserId && lead.ownerUserId !== currentUserId}
+                        >
                         Edit Lead
                       </DropdownMenuItem>
                       <DropdownMenuItem 
@@ -206,4 +211,3 @@ export function LeadsTable({ leads, onEditLead, onDeleteLead, userMap }: LeadsTa
     </ScrollArea>
   );
 }
-

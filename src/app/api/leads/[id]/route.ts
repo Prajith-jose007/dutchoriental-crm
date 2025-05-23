@@ -35,7 +35,7 @@ export async function PUT(
 ) {
   try {
     const id = params.id;
-    const updatedLeadData = await request.json() as Partial<Omit<Lead, 'id' | 'createdAt'>> & { lastModifiedByUserId?: string };
+    const updatedLeadData = await request.json() as Partial<Omit<Lead, 'id' | 'createdAt'>> & { lastModifiedByUserId?: string; ownerUserId?: string };
 
     // TODO: Replace with actual database update operation
     const leadIndex = leads_db_placeholder.findIndex(l => l.id === id);
@@ -52,7 +52,7 @@ export async function PUT(
       id: leadToUpdate.id, // Ensure ID is not changed
       createdAt: leadToUpdate.createdAt, // Ensure createdAt is not changed
       updatedAt: now,
-      // lastModifiedByUserId will come from updatedLeadData
+      // lastModifiedByUserId and ownerUserId will come from updatedLeadData
     };
     
     leads_db_placeholder[leadIndex] = updatedLead;

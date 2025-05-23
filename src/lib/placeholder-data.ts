@@ -32,35 +32,35 @@ export const placeholderLeads: Lead[] = [
     type: 'Corporate Event', invoiceId: 'DO-inv001', modeOfPayment: 'Online', clientName: 'Tech Corp',
     dhowAdultQty: 10, totalAmount: 1200, commissionPercentage: 12, commissionAmount: 144,
     netAmount: 1056, paidAmount: 1200, balanceAmount: 0,
-    createdAt: '2024-06-15T10:00:00Z', updatedAt: '2024-07-01T10:00:00Z', lastModifiedByUserId: 'DO-user1'
+    createdAt: '2024-06-15T10:00:00Z', updatedAt: '2024-07-01T10:00:00Z', lastModifiedByUserId: 'DO-user1', ownerUserId: 'DO-user1'
   },
   {
     id: 'DO-lead2', agent: 'DO-agentB', status: 'Proposal Sent', month: '2024-07', yacht: 'DO-yacht2',
     type: 'Private Party', modeOfPayment: 'Offline', clientName: 'Innovate Ltd',
     oeAdultQty: 10, totalAmount: 1600, commissionPercentage: 15, commissionAmount: 240,
     netAmount: 1360, paidAmount: 500, balanceAmount: 1100,
-    createdAt: '2024-06-20T10:00:00Z', updatedAt: '2024-07-05T10:00:00Z', lastModifiedByUserId: 'DO-user2'
+    createdAt: '2024-06-20T10:00:00Z', updatedAt: '2024-07-05T10:00:00Z', lastModifiedByUserId: 'DO-user2', ownerUserId: 'DO-user2'
   },
   {
     id: 'DO-lead3', agent: 'DO-agentA', status: 'Closed Won', month: '2024-08', yacht: 'DO-yacht3',
     type: 'Tour Group', modeOfPayment: 'Credit', clientName: 'Solutions Inc',
     dhowAdultQty: 10, totalAmount: 1100, commissionPercentage: 12, commissionAmount: 132,
     netAmount: 968, paidAmount: 1100, balanceAmount: 0,
-    createdAt: '2024-07-10T10:00:00Z', updatedAt: '2024-07-12T10:00:00Z', lastModifiedByUserId: 'DO-user1'
+    createdAt: '2024-07-10T10:00:00Z', updatedAt: '2024-07-12T10:00:00Z', lastModifiedByUserId: 'DO-user1', ownerUserId: 'DO-user1'
   },
   {
     id: 'DO-lead4', agent: 'DO-agentC', status: 'New', month: '2024-08', yacht: 'DO-yacht4',
     type: 'Wedding Reception', modeOfPayment: 'Online', clientName: 'Global Co',
     dhowVipQty: 20, othersAmtCake: 100, totalAmount: 4200, commissionPercentage: 10, commissionAmount: 420,
     netAmount: 3780, paidAmount: 0, balanceAmount: 4200,
-    createdAt: '2024-07-20T10:00:00Z', updatedAt: '2024-07-20T10:00:00Z', lastModifiedByUserId: 'DO-user3'
+    createdAt: '2024-07-20T10:00:00Z', updatedAt: '2024-07-20T10:00:00Z', lastModifiedByUserId: 'DO-user3', ownerUserId: 'DO-user3'
   },
   {
     id: 'DO-lead5', agent: 'DO-agentB', status: 'Qualified', month: '2024-09', yacht: 'DO-yacht1',
     type: 'Birthday Celebration', modeOfPayment: 'Offline', clientName: 'Celebrations LLC',
     dhowChildQty: 10, dhowAdultQty: 10, totalAmount: 2090, commissionPercentage: 15, commissionAmount: 313.50,
     netAmount: 1776.50, paidAmount: 2090, balanceAmount: 0,
-    createdAt: '2024-08-10T10:00:00Z', updatedAt: '2024-08-15T10:00:00Z', lastModifiedByUserId: 'DO-user2'
+    createdAt: '2024-08-10T10:00:00Z', updatedAt: '2024-08-15T10:00:00Z', lastModifiedByUserId: 'DO-user2', ownerUserId: 'DO-user2'
   }
 ];
 

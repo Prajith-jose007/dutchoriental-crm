@@ -70,3 +70,5 @@ export async function DELETE(
     return NextResponse.json({ message: 'Failed to delete yacht', error: (error as Error).message }, { status: 500 });
   }
 }
+
+```

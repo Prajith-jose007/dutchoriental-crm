@@ -35,7 +35,6 @@ export async function POST(request: NextRequest) {
 
     const now = new Date().toISOString();
     const leadToStore: Lead = {
-      ...newLeadData,
       // Ensure all package quantity fields have a default of 0 if not provided
       dhowChildQty: newLeadData.dhowChildQty ?? 0,
       dhowAdultQty: newLeadData.dhowAdultQty ?? 0,
@@ -59,10 +58,11 @@ export async function POST(request: NextRequest) {
       lotusVipAlcoholQty: newLeadData.lotusVipAlcoholQty ?? 0,
       royalQty: newLeadData.royalQty ?? 0,
       othersAmtCake: newLeadData.othersAmtCake ?? 0,
-      commissionAmount: newLeadData.commissionAmount ?? 0,
+      commissionAmount: newLeadData.commissionAmount ?? 0, // Ensure this comes through or defaults
+      ...newLeadData, // Spread the rest of the data
       createdAt: newLeadData.createdAt || now,
       updatedAt: now,
-      lastModifiedByUserId: newLeadData.lastModifiedByUserId, // Will be set by client
+      lastModifiedByUserId: newLeadData.lastModifiedByUserId, 
       ownerUserId: newLeadData.ownerUserId || newLeadData.lastModifiedByUserId, // Default owner to creator if not specified
     };
     
@@ -75,3 +75,5 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ message: 'Failed to create lead', error: errorMessage }, { status: 500 });
   }
 }
+
+```

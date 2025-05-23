@@ -72,3 +72,5 @@ export async function DELETE(
     return NextResponse.json({ message: 'Failed to delete agent', error: (error as Error).message }, { status: 500 });
   }
 }
+
+```

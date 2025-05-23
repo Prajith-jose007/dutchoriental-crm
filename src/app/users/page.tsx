@@ -8,13 +8,13 @@ import { PageHeader } from '@/components/PageHeader';
 import { UsersTable } from './_components/UsersTable';
 import { UserFormDialog } from './_components/UserFormDialog';
 import type { User } from '@/lib/types';
-import { placeholderUsers as initialUsersData } from '@/lib/placeholder-data';
+import { placeholderUsers as initialUsersDataSeed } from '@/lib/placeholder-data'; // Renamed for clarity
 import { useToast } from '@/hooks/use-toast';
 
 const USERS_STORAGE_KEY = 'dutchOrientalCrmUsers';
 const USER_ROLE_STORAGE_KEY = 'currentUserRole';
 
-// This mutable array acts as our in-memory database for the session
+// This mutable array acts as our in-memory database for the session, initialized from localStorage or seed
 let sessionUsers: User[] = [];
 
 export default function UsersPage() {
@@ -30,32 +30,27 @@ export default function UsersPage() {
     try {
       const role = localStorage.getItem(USER_ROLE_STORAGE_KEY);
       setIsAdmin(role === 'admin');
-    } catch (error) {
-      console.error("Error accessing localStorage for user role:", error);
-      setIsAdmin(false); 
-    }
-    
-    let currentUsersData: User[];
-    try {
+
       const storedUsers = localStorage.getItem(USERS_STORAGE_KEY);
       if (storedUsers) {
-        currentUsersData = JSON.parse(storedUsers);
+        sessionUsers = JSON.parse(storedUsers);
       } else {
-        currentUsersData = JSON.parse(JSON.stringify(initialUsersData)); 
-        localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(currentUsersData));
+        // Deep clone initialUsersDataSeed to avoid modifying the imported constant
+        sessionUsers = JSON.parse(JSON.stringify(initialUsersDataSeed)); 
+        localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(sessionUsers));
       }
     } catch (error) {
       console.error("Error accessing or parsing users from localStorage:", error);
-      currentUsersData = JSON.parse(JSON.stringify(initialUsersData)); 
+      // Fallback to seed data if localStorage fails
+      sessionUsers = JSON.parse(JSON.stringify(initialUsersDataSeed));
        try {
-        localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(currentUsersData));
+        localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(sessionUsers));
       } catch (storageError) {
         console.error("Failed to save fallback users to localStorage:", storageError);
       }
     }
     
-    sessionUsers = [...currentUsersData]; 
-    setUsers([...sessionUsers]); // Use a new array for React state
+    setUsers([...sessionUsers]); // Use a new array for React state to trigger re-render
     setIsLoading(false);
   }, []);
 
@@ -83,28 +78,31 @@ export default function UsersPage() {
       toast({ title: "Access Denied", description: "You do not have permission to save user data.", variant: "destructive"});
       return;
     }
-
+    
     const userIndex = sessionUsers.findIndex(u => u.id === submittedUserData.id);
 
     if (editingUser && userIndex > -1) { // Editing existing user
-        sessionUsers[userIndex] = submittedUserData;
+        // Preserve existing password if not provided in the form (important for simulation)
+        const existingPassword = sessionUsers[userIndex].password;
+        sessionUsers[userIndex] = {
+            ...submittedUserData,
+            password: submittedUserData.password || existingPassword // Keep old if new is empty
+        };
         toast({ title: "User Updated", description: `${submittedUserData.name} has been updated.` });
-    } else if (!editingUser) { // Adding new user
-        // Ensure ID is unique if it's a new user
+    } else if (!editingUser && submittedUserData.id) { // Adding new user
         const isIdTaken = sessionUsers.some(u => u.id === submittedUserData.id);
         if (isIdTaken) {
             toast({ title: "Error", description: `User with ID ${submittedUserData.id} already exists. Please use a unique ID.`, variant: "destructive" });
             return; 
         }
-        // Ensure ID is provided for new users (though form might enforce this)
-        if (!submittedUserData.id) {
-            submittedUserData.id = `user-${Date.now()}-${Math.random().toString(36).substring(2,7)}`;
-        }
-        sessionUsers.push(submittedUserData);
+        sessionUsers.push(submittedUserData); // Password already part of submittedUserData from form
         toast({ title: "User Added", description: `${submittedUserData.name} has been added.` });
+    } else if (!editingUser && !submittedUserData.id) {
+        // This case should ideally be prevented by form validation requiring ID for new users.
+        toast({ title: "Error", description: "User ID is required to add a new user.", variant: "destructive" });
+        return;
     } else {
-        // This case should not be reached if logic is correct (e.g. editing a non-existent user)
-        console.error("Error in form submission logic: ", submittedUserData);
+        console.error("Error in user form submission logic: ", submittedUserData);
         toast({ title: "Error", description: "Could not save user due to an unknown issue.", variant: "destructive" });
         return;
     }
@@ -113,8 +111,7 @@ export default function UsersPage() {
       localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(sessionUsers));
     } catch (storageError) {
       console.error("Failed to save users to localStorage:", storageError);
-      toast({ title: "Storage Error", description: "Could not save user changes.", variant: "destructive"});
-       // Optionally revert sessionUsers if localStorage fails, or handle differently
+      toast({ title: "Storage Error", description: "Could not save user changes to local storage.", variant: "destructive"});
     }
     setUsers([...sessionUsers]); // Update React state to re-render
     setIsUserDialogOpen(false);
@@ -140,9 +137,7 @@ export default function UsersPage() {
         toast({ title: "User Deleted", description: `User ${userId} has been deleted.` });
       } catch (storageError) {
         console.error("Failed to save users to localStorage after deletion:", storageError);
-        toast({ title: "Storage Error", description: "Could not save user changes after deletion.", variant: "destructive"});
-        // Revert sessionUsers to pre-delete state if critical
-        // For now, we'll assume localStorage update is usually successful or user refreshes.
+        toast({ title: "Storage Error", description: "Could not save user changes after deletion to local storage.", variant: "destructive"});
       }
     } else {
       toast({ title: "Error", description: `User ${userId} not found.`, variant: "destructive"});
@@ -159,13 +154,13 @@ export default function UsersPage() {
         title="User Management"
         description="Manage your team members and their roles."
         actions={
-            <Button onClick={handleAddUserClick} disabled={!isAdmin}>
+            <Button onClick={handleAddUserClick} disabled={!isAdmin && isLoading}> {/* Disable if not admin or still loading admin status */}
               <PlusCircle className="mr-2 h-4 w-4" />
               Add User {isAdmin ? "" : "(Admin Only)"}
             </Button>
         }
       />
-      {!isAdmin && (
+      {!isAdmin && !isLoading && ( // Only show if not admin and admin status has loaded
         <p className="mb-4 text-sm text-destructive">
           Viewing user list. User management (add, edit, delete) is restricted to administrators.
         </p>
@@ -182,3 +177,5 @@ export default function UsersPage() {
     </div>
   );
 }
+
+```

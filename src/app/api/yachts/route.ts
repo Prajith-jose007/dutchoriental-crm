@@ -38,3 +38,5 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ message: 'Failed to create yacht', error: (error as Error).message }, { status: 500 });
   }
 }
+
+```

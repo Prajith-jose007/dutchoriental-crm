@@ -55,21 +55,23 @@ export default function AgentsPage() {
     try {
       let response;
       if (editingAgent && submittedAgentData.id === editingAgent.id) {
+        // Updating an existing agent
         response = await fetch(`/api/agents/${editingAgent.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(submittedAgentData),
         });
       } else {
-        // Check for duplicate ID before creating a new agent via API
+        // Creating a new agent
+        // Check for duplicate ID before POSTing (client-side check for immediate feedback)
         const existingAgent = agents.find(a => a.id === submittedAgentData.id);
-        if (existingAgent && !editingAgent) {
+        if (existingAgent && !editingAgent) { // only check for new agents
              toast({
                 title: 'Error Adding Agent',
                 description: `Agent with ID ${submittedAgentData.id} already exists.`,
                 variant: 'destructive',
             });
-            return;
+            return; // Prevent API call
         }
         response = await fetch('/api/agents', {
           method: 'POST',
@@ -88,7 +90,7 @@ export default function AgentsPage() {
         description: `${submittedAgentData.name} has been saved.`,
       });
       
-      fetchAgents(); // Re-fetch all agents
+      fetchAgents(); // Re-fetch all agents to reflect changes
       setIsAgentDialogOpen(false);
       setEditingAgent(null);
 
@@ -147,3 +149,5 @@ export default function AgentsPage() {
     </div>
   );
 }
+
+```

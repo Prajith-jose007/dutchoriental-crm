@@ -62,14 +62,15 @@ export default function YachtsPage() {
           body: JSON.stringify(submittedYachtData),
         });
       } else {
+        // Client-side check for duplicate ID before POSTing
         const existingYacht = yachts.find(y => y.id === submittedYachtData.id);
-        if (existingYacht && !editingYacht) {
+        if (existingYacht && !editingYacht) { // Only check for new yachts
              toast({
                 title: 'Error Adding Yacht',
                 description: `Yacht with ID ${submittedYachtData.id} already exists.`,
                 variant: 'destructive',
             });
-            return;
+            return; // Prevent API call
         }
         response = await fetch('/api/yachts', {
           method: 'POST',
@@ -88,7 +89,7 @@ export default function YachtsPage() {
         description: `${submittedYachtData.name} has been saved.`,
       });
       
-      fetchYachts(); // Re-fetch all yachts
+      fetchYachts(); // Re-fetch all yachts to reflect changes
       setIsYachtDialogOpen(false);
       setEditingYacht(null);
 
@@ -140,11 +141,13 @@ export default function YachtsPage() {
             <CardHeader>
               <div className="relative aspect-[16/9] w-full overflow-hidden rounded-t-lg">
                 <Image
-                  src={yacht.imageUrl || `https://placehold.co/300x200.png`}
+                  src={yacht.imageUrl || `https://placehold.co/600x400.png`}
                   alt={yacht.name}
-                  layout="fill"
-                  objectFit="cover"
+                  fill
+                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                  className="object-cover"
                   data-ai-hint="yacht boat"
+                  priority={false} // Set to true if these are LCP elements
                 />
               </div>
               <CardTitle className="mt-4">{yacht.name}</CardTitle>
@@ -153,6 +156,7 @@ export default function YachtsPage() {
             <CardContent className="flex-grow space-y-3">
               <p className="text-sm text-muted-foreground">
                 ID: {yacht.id} <br />
+                Status: {yacht.status} <br />
                 Click 'Edit' to view and manage package rates for this yacht.
               </p>
             </CardContent>
@@ -167,7 +171,7 @@ export default function YachtsPage() {
           </Card>
         ))}
       </div>
-      {yachts.length === 0 && (
+      {yachts.length === 0 && !isLoading && (
         <div className="text-center py-10 text-muted-foreground">
           No yachts found. Click "Add Yacht" to get started.
         </div>

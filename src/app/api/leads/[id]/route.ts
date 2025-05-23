@@ -47,12 +47,13 @@ export async function PUT(
     const leadToUpdate = leads_db_placeholder[leadIndex];
     
     const updatedLead: Lead = {
-      ...leadToUpdate,
-      ...updatedLeadData,
+      ...leadToUpdate, // Start with existing lead data
+      ...updatedLeadData, // Overwrite with new data
       id: leadToUpdate.id, // Ensure ID is not changed
       createdAt: leadToUpdate.createdAt, // Ensure createdAt is not changed
-      updatedAt: now,
-      // lastModifiedByUserId and ownerUserId will come from updatedLeadData
+      updatedAt: now, // Always set updatedAt to now
+      // lastModifiedByUserId will come from updatedLeadData (or be preserved if not in payload)
+      // ownerUserId will come from updatedLeadData (or be preserved if not in payload)
     };
     
     leads_db_placeholder[leadIndex] = updatedLead;
@@ -83,3 +84,5 @@ export async function DELETE(
     return NextResponse.json({ message: 'Failed to delete lead', error: (error as Error).message }, { status: 500 });
   }
 }
+
+```

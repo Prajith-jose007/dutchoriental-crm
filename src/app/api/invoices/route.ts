@@ -1,3 +1,4 @@
+
 // src/app/api/invoices/route.ts
 import { NextResponse, type NextRequest } from 'next/server';
 import type { Invoice } from '@/lib/types';

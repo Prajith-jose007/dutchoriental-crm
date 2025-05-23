@@ -1,3 +1,4 @@
+
 import type { Metadata } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
@@ -18,6 +19,11 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: AppName,
   description: `Customer Relationship Management for ${AppName}`,
+  icons: {
+    icon: '/favicon.ico', // Standard path for favicon
+    // You could also specify other icons like apple-touch-icon here
+    // apple: '/apple-icon.png', 
+  },
 };
 
 export default function RootLayout({

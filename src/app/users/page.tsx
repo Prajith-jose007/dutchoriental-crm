@@ -36,7 +36,7 @@ export default function UsersPage() {
         sessionUsers = JSON.parse(storedUsers);
       } else {
         // Deep clone initialUsersDataSeed to avoid modifying the imported constant
-        sessionUsers = JSON.parse(JSON.stringify(initialUsersDataSeed)); 
+        sessionUsers = JSON.parse(JSON.stringify(initialUsersDataSeed));
         localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(sessionUsers));
       }
     } catch (error) {
@@ -93,7 +93,7 @@ export default function UsersPage() {
         const isIdTaken = sessionUsers.some(u => u.id === submittedUserData.id);
         if (isIdTaken) {
             toast({ title: "Error", description: `User with ID ${submittedUserData.id} already exists. Please use a unique ID.`, variant: "destructive" });
-            return; 
+            return;
         }
         sessionUsers.push(submittedUserData); // Password already part of submittedUserData from form
         toast({ title: "User Added", description: `${submittedUserData.name} has been added.` });
@@ -177,5 +177,3 @@ export default function UsersPage() {
     </div>
   );
 }
-
-```

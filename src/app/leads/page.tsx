@@ -11,8 +11,10 @@ import { placeholderUsers } from '@/lib/placeholder-data'; // For fallback userM
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
+import { Skeleton } from '@/components/ui/skeleton';
 
-const USERS_STORAGE_KEY = 'dutchOrientalCrmUsers'; // Same key as in UsersPage
+
+const USERS_STORAGE_KEY = 'dutchOrientalCrmUsers';
 
 // Helper to ensure all numeric package quantities default to 0 if undefined/null
 const ensureNumericDefaults = (leadData: Partial<Lead>): Partial<Lead> => {
@@ -37,7 +39,7 @@ const ensureNumericDefaults = (leadData: Partial<Lead>): Partial<Lead> => {
 
 
 const convertValue = (key: keyof Lead, value: string): any => {
-  const trimmedValue = value ? String(value).trim() : ''; // Ensure value is treated as string before trim
+  const trimmedValue = value ? String(value).trim() : '';
 
   if (trimmedValue === '' || value === null || value === undefined) {
     switch (key) {
@@ -86,15 +88,14 @@ export default function LeadsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
   const [userMap, setUserMap] = useState<{ [id: string]: string }>({});
-  const [statusFilter, setStatusFilter] = useState<LeadStatus | ''>('');
+  const [statusFilter, setStatusFilter] = useState<LeadStatus | 'all'>('all');
 
   const leadStatusOptions: LeadStatus[] = ['New', 'Contacted', 'Qualified', 'Proposal Sent', 'Closed Won', 'Closed Lost'];
 
 
-  // Fetch users from localStorage to build userMap
   useEffect(() => {
     const storedUsers = localStorage.getItem(USERS_STORAGE_KEY);
-    let usersToMap: User[] = placeholderUsers; // Fallback to placeholders
+    let usersToMap: User[] = placeholderUsers;
 
     if (storedUsers) {
       try {
@@ -151,7 +152,7 @@ export default function LeadsPage() {
   const handleLeadFormSubmit = async (submittedLeadData: Lead) => {
     const leadPayload = {
       ...submittedLeadData,
-      lastModifiedByUserId: 'DO-user1', // Placeholder for actual logged-in user
+      lastModifiedByUserId: 'DO-user1', 
       updatedAt: new Date().toISOString(),
     };
 
@@ -167,6 +168,7 @@ export default function LeadsPage() {
         const newLeadWithTimestamps = {
             ...leadPayload,
             createdAt: new Date().toISOString(),
+            id: leadPayload.id || `lead-${Date.now()}-${Math.random().toString(36).substring(2,7)}` // Ensure ID for new leads
         };
         response = await fetch('/api/leads', {
           method: 'POST',
@@ -242,7 +244,6 @@ export default function LeadsPage() {
         let skippedCount = 0;
         let successCount = 0;
         
-        // Fetch current leads from API to check for duplicates by ID
         const currentApiLeadsResponse = await fetch('/api/leads');
         const currentApiLeads: Lead[] = await currentApiLeadsResponse.json();
         const existingLeadIds = new Set(currentApiLeads.map(l => l.id));
@@ -270,7 +271,7 @@ export default function LeadsPage() {
             parsedRow[header] = convertValue(header, data[index]);
           });
           
-          if (i === 1) { // Log first parsed data row
+          if (i === 1) { 
             console.log("First Parsed Data Row (raw values from CSV after convertValue):", JSON.parse(JSON.stringify(parsedRow)));
           }
 
@@ -335,9 +336,9 @@ export default function LeadsPage() {
             
             createdAt: typeof numericDefaultsApplied.createdAt === 'string' && numericDefaultsApplied.createdAt.trim() !== '' ? numericDefaultsApplied.createdAt : new Date().toISOString(),
             updatedAt: new Date().toISOString(),
-            lastModifiedByUserId: 'DO-user-importer', // Placeholder for importer user
+            lastModifiedByUserId: 'DO-user-importer', 
           };
-          if (i === 1) { // Log first full lead object
+          if (i === 1) { 
              console.log("First Full Lead Object (after defaults, before API post):", JSON.parse(JSON.stringify(fullLead)));
           }
 
@@ -386,7 +387,7 @@ export default function LeadsPage() {
                 description: `All ${skippedCount} valid data rows from CSV were skipped during API submission or due to duplicates. Check console for details.`,
                 variant: 'destructive'
             });
-          } else { // successCount === 0 && skippedCount === 0
+          } else { 
              toast({ title: 'Import Complete', description: 'No new leads were imported (file had no valid data rows or all were duplicates of existing leads). Check console for details on any parsing issues.' });
           }
 
@@ -396,7 +397,7 @@ export default function LeadsPage() {
             description: `All ${lines.length - 1} data rows were skipped during parsing or due to duplicate IDs. Please check your CSV file. Common issues: column count mismatch, incorrect delimiter, or duplicate IDs. Ensure IDs in CSV are unique if provided. Check console for details on skipped rows.`,
             variant: 'destructive'
           });
-        } else { // No new leads and no rows skipped that weren't already duplicates
+        } else { 
           toast({ title: 'Import Complete', description: 'No new leads were imported. The file may have contained only duplicates or no valid data rows after the header. Check console for details.' });
         }
 
@@ -416,7 +417,7 @@ export default function LeadsPage() {
   };
 
   const filteredLeads = useMemo(() => {
-    if (!statusFilter) {
+    if (statusFilter === 'all') {
       return leads;
     }
     return leads.filter(lead => lead.status === statusFilter);
@@ -424,7 +425,27 @@ export default function LeadsPage() {
 
 
   if (isLoading) {
-    return <div className="container mx-auto py-2 text-center">Loading leads...</div>;
+    return (
+        <div className="container mx-auto py-2">
+            <PageHeader
+                title="Leads Management"
+                description="Track and manage all your sales leads."
+                actions={
+                    <div className="flex items-center gap-2">
+                        <Skeleton className="h-10 w-32" />
+                        <Skeleton className="h-10 w-32" />
+                        <Skeleton className="h-10 w-28" />
+                    </div>
+                }
+            />
+            <div className="mb-4">
+                <Skeleton className="h-10 w-48" />
+            </div>
+            <div className="space-y-2">
+                {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}
+            </div>
+        </div>
+    );
   }
 
   return (
@@ -435,7 +456,7 @@ export default function LeadsPage() {
         actions={<ImportExportButtons
                     onAddLeadClick={handleAddLeadClick}
                     onCsvImport={handleCsvImport}
-                    onCsvExport={() => { // Simplified direct export handler
+                    onCsvExport={() => { 
                         if (leads.length === 0) {
                             toast({ title: 'No Data', description: 'There are no leads to export.', variant: 'default' });
                             return;
@@ -466,7 +487,7 @@ export default function LeadsPage() {
                             )
                         ];
                         const csvString = csvRows.join('\n');
-                        const blob = new Blob(["\uFEFF" + csvString], { type: 'text/csv;charset=utf-8;' }); // Added BOM for Excel
+                        const blob = new Blob(["\uFEFF" + csvString], { type: 'text/csv;charset=utf-8;' }); 
                         const link = document.createElement('a');
                         if (link.download !== undefined) {
                             const url = URL.createObjectURL(blob);
@@ -487,19 +508,18 @@ export default function LeadsPage() {
       <div className="mb-4 flex items-center gap-4">
         <div className="flex items-center gap-2">
             <Label htmlFor="status-filter" className="text-sm font-medium">Filter by Status:</Label>
-            <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as LeadStatus | '')}>
+            <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as LeadStatus | 'all')}>
                 <SelectTrigger id="status-filter" className="w-[180px]">
                     <SelectValue placeholder="All Statuses" />
                 </SelectTrigger>
                 <SelectContent>
-                    <SelectItem value="">All Statuses</SelectItem>
+                    <SelectItem value="all">All Statuses</SelectItem>
                     {leadStatusOptions.map(status => (
                         <SelectItem key={status} value={status}>{status}</SelectItem>
                     ))}
                 </SelectContent>
             </Select>
         </div>
-        {/* Add more filters here as needed */}
       </div>
 
       <LeadsTable leads={filteredLeads} onEditLead={handleEditLeadClick} onDeleteLead={handleDeleteLead} userMap={userMap} />

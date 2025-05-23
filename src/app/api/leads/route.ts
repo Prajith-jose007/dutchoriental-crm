@@ -9,13 +9,28 @@ let leads_db_placeholder: Lead[] = [...placeholderLeads]; // Initialize with pla
 
 export async function GET(request: NextRequest) {
   try {
-    // TODO: Replace with actual database query: SELECT * FROM leads ORDER BY createdAt DESC
-    // For now, returning the in-memory store, sorted by createdAt for consistency
-    const sortedLeads = [...leads_db_placeholder].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    // Filter for leads with valid createdAt dates before sorting
+    const validLeads = leads_db_placeholder.filter(lead => {
+      if (!lead.createdAt || typeof lead.createdAt !== 'string') {
+        console.warn(`Lead with ID ${lead.id} has missing or invalid createdAt type. Excluding from sort.`);
+        return false;
+      }
+      const date = new Date(lead.createdAt);
+      const isValidDate = !isNaN(date.getTime());
+      if (!isValidDate) {
+        console.warn(`Lead with ID ${lead.id} has invalid createdAt value: ${lead.createdAt}. Excluding from sort.`);
+      }
+      return isValidDate;
+    });
+
+    const sortedLeads = [...validLeads].sort((a, b) => {
+      // At this point, a.createdAt and b.createdAt are known to be valid date strings from valid Lead objects
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
     return NextResponse.json(sortedLeads, { status: 200 });
   } catch (error) {
-    console.error('Failed to fetch leads:', error);
-    return NextResponse.json({ message: 'Failed to fetch leads', error: (error as Error).message }, { status: 500 });
+    console.error('Error in GET /api/leads:', error);
+    return NextResponse.json({ message: 'Failed to fetch leads from API', error: (error as Error).message }, { status: 500 });
   }
 }
 
@@ -24,7 +39,7 @@ export async function POST(request: NextRequest) {
     const newLeadData = await request.json() as Omit<Lead, 'createdAt' | 'updatedAt'> & Partial<Pick<Lead, 'createdAt' | 'updatedAt' | 'lastModifiedByUserId' | 'ownerUserId'>>;
 
     if (!newLeadData.id || !newLeadData.clientName || !newLeadData.agent || !newLeadData.yacht) {
-      return NextResponse.json({ message: 'Missing required lead fields' }, { status: 400 });
+      return NextResponse.json({ message: 'Missing required lead fields (id, clientName, agent, yacht)' }, { status: 400 });
     }
 
     // TODO: Replace with actual database insert operation
@@ -34,6 +49,19 @@ export async function POST(request: NextRequest) {
     }
 
     const now = new Date().toISOString();
+    
+    // Validate or default createdAt
+    let validCreatedAt = now;
+    if (newLeadData.createdAt && typeof newLeadData.createdAt === 'string') {
+        const parsedDate = new Date(newLeadData.createdAt);
+        if (!isNaN(parsedDate.getTime())) {
+            validCreatedAt = newLeadData.createdAt;
+        } else {
+            console.warn(`Invalid createdAt received for new lead ${newLeadData.id}: ${newLeadData.createdAt}. Defaulting to current time.`);
+        }
+    }
+
+
     const leadToStore: Lead = {
       // Ensure all package quantity fields have a default of 0 if not provided
       dhowChildQty: newLeadData.dhowChildQty ?? 0,
@@ -58,22 +86,21 @@ export async function POST(request: NextRequest) {
       lotusVipAlcoholQty: newLeadData.lotusVipAlcoholQty ?? 0,
       royalQty: newLeadData.royalQty ?? 0,
       othersAmtCake: newLeadData.othersAmtCake ?? 0,
-      commissionAmount: newLeadData.commissionAmount ?? 0, // Ensure this comes through or defaults
-      ...newLeadData, // Spread the rest of the data
-      createdAt: newLeadData.createdAt || now,
+      commissionAmount: newLeadData.commissionAmount ?? 0, 
+      ...newLeadData, 
+      createdAt: validCreatedAt,
       updatedAt: now,
       lastModifiedByUserId: newLeadData.lastModifiedByUserId, 
-      ownerUserId: newLeadData.ownerUserId || newLeadData.lastModifiedByUserId, // Default owner to creator if not specified
+      ownerUserId: newLeadData.ownerUserId || newLeadData.lastModifiedByUserId, 
     };
     
     leads_db_placeholder.push(leadToStore);
     
     return NextResponse.json(leadToStore, { status: 201 });
   } catch (error) {
-    console.error('Failed to create lead:', error);
+    console.error('Failed to create lead in POST /api/leads:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json({ message: 'Failed to create lead', error: errorMessage }, { status: 500 });
   }
 }
 
-```

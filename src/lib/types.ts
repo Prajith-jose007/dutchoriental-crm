@@ -70,15 +70,17 @@ export interface Invoice {
   createdAt: string;
 }
 
-export type LeadStatus = 'New' | 'Contacted' | 'Qualified' | 'Proposal Sent' | 'Closed Won' | 'Closed Lost';
-export type ModeOfPayment = 'Online' | 'Offline' | 'Credit';
+export type LeadStatus = 'New' | 'Connected' | 'Qualified' | 'Proposal Sent' | 'Closed Won' | 'Closed Lost';
+export type ModeOfPayment = 'Online' | 'Credit' | 'Cash/Card';
 
 
 export interface Lead {
   id:string;
   agent: string; // Agent ID
   status: LeadStatus;
-  month: string; // YYYY-MM
+  month: string; // YYYY-MM for reporting/event month
+  eventDate?: string; // Optional specific date for the event/booking (ISO date string)
+  notes?: string; // For user feed/notes about the lead
   yacht: string; // Yacht ID
   type: string; // Lead type
   invoiceId?: string;
@@ -154,3 +156,4 @@ export interface BookingsByAgentData {
 
 // Re-exporting for easier import in CSV parser
 export type { LeadStatus as ExportedLeadStatus, ModeOfPayment as ExportedModeOfPayment };
+

@@ -14,10 +14,10 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { DatePicker } from '@/components/ui/date-picker';
 import { Skeleton } from '@/components/ui/skeleton';
-import { format, parseISO, isWithinInterval } from 'date-fns';
+import { format, parseISO, isWithinInterval, isValid } from 'date-fns';
 
 const USERS_STORAGE_KEY = 'dutchOrientalCrmUsers';
-const SIMULATED_CURRENT_USER_ID = 'DO-user1'; // Alice Smith
+const SIMULATED_CURRENT_USER_ID = 'DO-user1'; 
 
 const ensureNumericDefaults = (leadData: Partial<Lead>): Partial<Lead> => {
   const numericQtyFields: (keyof Lead)[] = [
@@ -55,6 +55,8 @@ const convertValue = (key: keyof Lead, value: string): any => {
             return 0;
         case 'modeOfPayment': return 'Online'; 
         case 'status': return 'New'; 
+        case 'notes': return '';
+        case 'eventDate': return undefined;
         default: return undefined;
     }
   }
@@ -71,11 +73,14 @@ const convertValue = (key: keyof Lead, value: string): any => {
       const num = parseFloat(trimmedValue);
       return isNaN(num) ? 0 : num;
     case 'modeOfPayment':
-      const validModes: ModeOfPayment[] = ['Online', 'Offline', 'Credit'];
+      const validModes: ModeOfPayment[] = ['Online', 'Credit', 'Cash/Card'];
       return validModes.includes(trimmedValue as ModeOfPayment) ? trimmedValue : 'Online';
     case 'status':
-        const validStatuses: LeadStatus[] = ['New', 'Contacted', 'Qualified', 'Proposal Sent', 'Closed Won', 'Closed Lost'];
+        const validStatuses: LeadStatus[] = ['New', 'Connected', 'Qualified', 'Proposal Sent', 'Closed Won', 'Closed Lost'];
         return validStatuses.includes(trimmedValue as LeadStatus) ? trimmedValue : 'New';
+    case 'eventDate':
+        const parsedEventDate = parseISO(trimmedValue);
+        return isValid(parsedEventDate) ? trimmedValue : undefined; // store as ISO string if valid
     default:
       return trimmedValue;
   }
@@ -94,7 +99,6 @@ export default function LeadsPage() {
   const [allYachts, setAllYachts] = useState<Yacht[]>([]);
   const [fetchError, setFetchError] = useState<string | null>(null);
 
-  // Filter states
   const [startDate, setStartDate] = useState<Date | undefined>(undefined);
   const [endDate, setEndDate] = useState<Date | undefined>(undefined);
   const [selectedMonth, setSelectedMonth] = useState<string>('all');
@@ -104,7 +108,7 @@ export default function LeadsPage() {
   const [selectedUserId, setSelectedUserId] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<LeadStatus | 'all'>('all');
 
-  const leadStatusOptions: LeadStatus[] = ['New', 'Contacted', 'Qualified', 'Proposal Sent', 'Closed Won', 'Closed Lost'];
+  const leadStatusOptions: LeadStatus[] = ['New', 'Connected', 'Qualified', 'Proposal Sent', 'Closed Won', 'Closed Lost'];
 
   const fetchLeads = async () => {
     try {
@@ -126,7 +130,7 @@ export default function LeadsPage() {
       setIsLoading(true);
       setFetchError(null);
       try {
-        await fetchLeads(); // Fetch leads first
+        await fetchLeads(); 
 
         const [agentsRes, yachtsRes] = await Promise.all([
           fetch('/api/agents'),
@@ -186,7 +190,8 @@ export default function LeadsPage() {
       ...submittedLeadData,
       lastModifiedByUserId: SIMULATED_CURRENT_USER_ID, 
       updatedAt: new Date().toISOString(),
-      ownerUserId: editingLead ? editingLead.ownerUserId : SIMULATED_CURRENT_USER_ID, // Preserve owner on edit, set on create
+      ownerUserId: editingLead ? editingLead.ownerUserId : SIMULATED_CURRENT_USER_ID, 
+      eventDate: submittedLeadData.eventDate ? new Date(submittedLeadData.eventDate).toISOString() : undefined,
     };
 
     try {
@@ -276,7 +281,7 @@ export default function LeadsPage() {
         let skippedCount = 0;
         let successCount = 0;
         
-        const currentApiLeadsResponse = await fetch('/api/leads'); // Fetch current leads from API
+        const currentApiLeadsResponse = await fetch('/api/leads'); 
         const currentApiLeads: Lead[] = await currentApiLeadsResponse.json();
         const existingLeadIds = new Set(currentApiLeads.map(l => l.id));
 
@@ -326,36 +331,33 @@ export default function LeadsPage() {
             agent: typeof numericDefaultsApplied.agent === 'string' ? numericDefaultsApplied.agent : '',
             status: (numericDefaultsApplied.status as LeadStatus) || 'New',
             month: typeof numericDefaultsApplied.month === 'string' && numericDefaultsApplied.month.match(/^\d{4}-\d{2}$/) ? numericDefaultsApplied.month : new Date().toISOString().slice(0,7),
+            eventDate: typeof numericDefaultsApplied.eventDate === 'string' ? numericDefaultsApplied.eventDate : undefined,
+            notes: typeof numericDefaultsApplied.notes === 'string' ? numericDefaultsApplied.notes : '',
             yacht: typeof numericDefaultsApplied.yacht === 'string' ? numericDefaultsApplied.yacht : '',
             type: typeof numericDefaultsApplied.type === 'string' && numericDefaultsApplied.type.trim() !== '' ? numericDefaultsApplied.type : 'Imported',
             modeOfPayment: (numericDefaultsApplied.modeOfPayment as ModeOfPayment) || 'Online',
             clientName: typeof numericDefaultsApplied.clientName === 'string' && numericDefaultsApplied.clientName.trim() !== '' ? numericDefaultsApplied.clientName : 'N/A',
             invoiceId: typeof numericDefaultsApplied.invoiceId === 'string' ? numericDefaultsApplied.invoiceId : undefined,
-
             dhowChildQty: numericDefaultsApplied.dhowChildQty,
             dhowAdultQty: numericDefaultsApplied.dhowAdultQty,
             dhowVipQty: numericDefaultsApplied.dhowVipQty,
             dhowVipChildQty: numericDefaultsApplied.dhowVipChildQty,
             dhowVipAlcoholQty: numericDefaultsApplied.dhowVipAlcoholQty,
-
             oeChildQty: numericDefaultsApplied.oeChildQty,
             oeAdultQty: numericDefaultsApplied.oeAdultQty,
             oeVipQty: numericDefaultsApplied.oeVipQty,
             oeVipChildQty: numericDefaultsApplied.oeVipChildQty,
             oeVipAlcoholQty: numericDefaultsApplied.oeVipAlcoholQty,
-
             sunsetChildQty: numericDefaultsApplied.sunsetChildQty,
             sunsetAdultQty: numericDefaultsApplied.sunsetAdultQty,
             sunsetVipQty: numericDefaultsApplied.sunsetVipQty,
             sunsetVipChildQty: numericDefaultsApplied.sunsetVipChildQty,
             sunsetVipAlcoholQty: numericDefaultsApplied.sunsetVipAlcoholQty,
-
             lotusChildQty: numericDefaultsApplied.lotusChildQty,
             lotusAdultQty: numericDefaultsApplied.lotusAdultQty,
             lotusVipQty: numericDefaultsApplied.lotusVipQty,
             lotusVipChildQty: numericDefaultsApplied.lotusVipChildQty,
             lotusVipAlcoholQty: numericDefaultsApplied.lotusVipAlcoholQty,
-
             royalQty: numericDefaultsApplied.royalQty,
             othersAmtCake: numericDefaultsApplied.othersAmtCake,
             totalAmount: numericDefaultsApplied.totalAmount,
@@ -364,7 +366,6 @@ export default function LeadsPage() {
             netAmount: numericDefaultsApplied.netAmount,
             paidAmount: numericDefaultsApplied.paidAmount,
             balanceAmount: numericDefaultsApplied.balanceAmount,
-            
             createdAt: typeof numericDefaultsApplied.createdAt === 'string' && numericDefaultsApplied.createdAt.trim() !== '' ? numericDefaultsApplied.createdAt : new Date().toISOString(),
             updatedAt: new Date().toISOString(),
             lastModifiedByUserId: SIMULATED_CURRENT_USER_ID, 
@@ -407,7 +408,7 @@ export default function LeadsPage() {
             }
           }
           
-          fetchLeads(); // Refresh from API
+          fetchLeads(); 
 
           if (successCount > 0 && skippedCount === 0) {
             toast({ title: 'Import Successful', description: `${successCount} new leads imported.` });
@@ -464,14 +465,18 @@ export default function LeadsPage() {
 
   const filteredLeads = useMemo(() => {
     return allLeads.filter(lead => {
-      const leadDate = parseISO(lead.createdAt);
-      const leadMonthYear = lead.month; 
+      const leadCreationDate = parseISO(lead.createdAt); // Filter by creation date
+      const leadEventMonthYear = lead.month; // YYYY-MM
 
-      if (startDate && endDate && !isWithinInterval(leadDate, { start: startDate, end: endDate })) return false;
-      if (!startDate && !endDate) { // Only apply month/year if no date range
-        if (selectedMonth !== 'all' && leadMonthYear.substring(5,7) !== selectedMonth) return false;
-        if (selectedYear !== 'all' && leadMonthYear.substring(0,4) !== selectedYear) return false;
+      // Date Range Filter (based on createdAt)
+      if (startDate && endDate && !isWithinInterval(leadCreationDate, { start: startDate, end: endDate })) return false;
+      
+      // Month/Year Filter (based on lead.month which is event/lead month) - only if no date range
+      if (!startDate && !endDate) { 
+        if (selectedMonth !== 'all' && leadEventMonthYear.substring(5,7) !== selectedMonth) return false;
+        if (selectedYear !== 'all' && leadEventMonthYear.substring(0,4) !== selectedYear) return false;
       }
+
       if (selectedYachtId !== 'all' && lead.yacht !== selectedYachtId) return false;
       if (selectedAgentId !== 'all' && lead.agent !== selectedAgentId) return false;
       if (selectedUserId !== 'all' && lead.lastModifiedByUserId !== selectedUserId) return false;
@@ -539,7 +544,7 @@ export default function LeadsPage() {
                             return;
                         }
                         const headers: (keyof Lead)[] = [
-                            'id', 'agent', 'status', 'month', 'yacht', 'type', 'invoiceId', 'modeOfPayment', 'clientName',
+                            'id', 'clientName', 'agent', 'yacht', 'status', 'month', 'eventDate', 'type', 'invoiceId', 'modeOfPayment', 'notes',
                             'dhowChildQty', 'dhowAdultQty', 'dhowVipQty', 'dhowVipChildQty', 'dhowVipAlcoholQty',
                             'oeChildQty', 'oeAdultQty', 'oeVipQty', 'oeVipChildQty', 'oeVipAlcoholQty',
                             'sunsetChildQty', 'sunsetAdultQty', 'sunsetVipQty', 'sunsetVipChildQty', 'sunsetVipAlcoholQty',
@@ -582,7 +587,6 @@ export default function LeadsPage() {
                     }}
                   />}
       />
-      {/* Filters Section */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-6 p-4 border rounded-lg shadow-sm">
         <div>
           <Label htmlFor="start-date-leads">Start Date (Created)</Label>
@@ -593,7 +597,7 @@ export default function LeadsPage() {
           <DatePicker date={endDate} setDate={setEndDate} placeholder="End Date" disabled={(date) => startDate ? date < startDate : false} />
         </div>
         <div>
-          <Label htmlFor="month-filter-leads">Lead Month</Label>
+          <Label htmlFor="month-filter-leads">Lead/Event Month</Label>
           <Select value={selectedMonth} onValueChange={setSelectedMonth} disabled={!!(startDate && endDate)}>
             <SelectTrigger id="month-filter-leads"><SelectValue placeholder="All Months" /></SelectTrigger>
             <SelectContent>
@@ -603,7 +607,7 @@ export default function LeadsPage() {
           </Select>
         </div>
         <div>
-          <Label htmlFor="year-filter-leads">Lead Year</Label>
+          <Label htmlFor="year-filter-leads">Lead/Event Year</Label>
           <Select value={selectedYear} onValueChange={setSelectedYear} disabled={!!(startDate && endDate)}>
             <SelectTrigger id="year-filter-leads"><SelectValue placeholder="All Years" /></SelectTrigger>
             <SelectContent>
@@ -656,7 +660,7 @@ export default function LeadsPage() {
             </SelectContent>
           </Select>
         </div>
-        <div className="flex items-end xl:col-span-1"> {/* Ensure button aligns well */}
+        <div className="flex items-end xl:col-span-1"> 
             <Button onClick={resetFilters} variant="outline" className="w-full">Reset Filters</Button>
         </div>
       </div>
@@ -674,3 +678,4 @@ export default function LeadsPage() {
     </div>
   );
 }
+

@@ -2,10 +2,10 @@
 // src/app/api/leads/route.ts
 import { NextResponse, type NextRequest } from 'next/server';
 import type { Lead } from '@/lib/types';
-import { placeholderLeads } from '@/lib/placeholder-data'; // Used for initial data if DB is empty
+import { placeholderLeads as initialLeads } from '@/lib/placeholder-data'; // Used for initial data if DB is empty
 
 // In-memory store (replace with actual database calls)
-let leads_db_placeholder: Lead[] = [...placeholderLeads]; // Initialize with placeholder data
+let leads_db_placeholder: Lead[] = [...initialLeads]; // Initialize with placeholder data
 
 export async function GET(request: NextRequest) {
   try {
@@ -24,7 +24,6 @@ export async function GET(request: NextRequest) {
     });
 
     const sortedLeads = [...validLeads].sort((a, b) => {
-      // At this point, a.createdAt and b.createdAt are known to be valid date strings from valid Lead objects
       return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     });
     return NextResponse.json(sortedLeads, { status: 200 });
@@ -36,13 +35,12 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const newLeadData = await request.json() as Omit<Lead, 'createdAt' | 'updatedAt'> & Partial<Pick<Lead, 'createdAt' | 'updatedAt' | 'lastModifiedByUserId' | 'ownerUserId'>>;
+    const newLeadData = await request.json() as Omit<Lead, 'createdAt' | 'updatedAt'> & Partial<Pick<Lead, 'createdAt' | 'updatedAt' | 'lastModifiedByUserId' | 'ownerUserId' | 'eventDate' | 'notes'>>;
 
     if (!newLeadData.id || !newLeadData.clientName || !newLeadData.agent || !newLeadData.yacht) {
       return NextResponse.json({ message: 'Missing required lead fields (id, clientName, agent, yacht)' }, { status: 400 });
     }
 
-    // TODO: Replace with actual database insert operation
     const existingLead = leads_db_placeholder.find(l => l.id === newLeadData.id);
     if (existingLead) {
       return NextResponse.json({ message: `Lead with ID ${newLeadData.id} already exists.` }, { status: 409 });
@@ -50,7 +48,6 @@ export async function POST(request: NextRequest) {
 
     const now = new Date().toISOString();
     
-    // Validate or default createdAt
     let validCreatedAt = now;
     if (newLeadData.createdAt && typeof newLeadData.createdAt === 'string') {
         const parsedDate = new Date(newLeadData.createdAt);
@@ -61,9 +58,7 @@ export async function POST(request: NextRequest) {
         }
     }
 
-
     const leadToStore: Lead = {
-      // Ensure all package quantity fields have a default of 0 if not provided
       dhowChildQty: newLeadData.dhowChildQty ?? 0,
       dhowAdultQty: newLeadData.dhowAdultQty ?? 0,
       dhowVipQty: newLeadData.dhowVipQty ?? 0,
@@ -87,6 +82,8 @@ export async function POST(request: NextRequest) {
       royalQty: newLeadData.royalQty ?? 0,
       othersAmtCake: newLeadData.othersAmtCake ?? 0,
       commissionAmount: newLeadData.commissionAmount ?? 0, 
+      eventDate: newLeadData.eventDate,
+      notes: newLeadData.notes,
       ...newLeadData, 
       createdAt: validCreatedAt,
       updatedAt: now,
@@ -103,3 +100,4 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ message: 'Failed to create lead', error: errorMessage }, { status: 500 });
   }
 }
+

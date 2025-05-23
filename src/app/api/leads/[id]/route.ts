@@ -2,11 +2,8 @@
 // src/app/api/leads/[id]/route.ts
 import { NextResponse, type NextRequest } from 'next/server';
 import type { Lead } from '@/lib/types';
-// In a real app, this would all interact with the same database.
-// For this example, placeholder data is managed in the main route file.
-// This is a simplified mock.
-import { placeholderLeads } from '@/lib/placeholder-data';
-let leads_db_placeholder: Lead[] = [...placeholderLeads]; // Use the same instance or connect to DB
+import { placeholderLeads as initialLeads } from '@/lib/placeholder-data';
+let leads_db_placeholder: Lead[] = [...initialLeads]; 
 
 
 export async function GET(
@@ -15,7 +12,6 @@ export async function GET(
 ) {
   try {
     const id = params.id;
-    // TODO: Replace with actual database query
     const lead = leads_db_placeholder.find(l => l.id === id);
 
     if (lead) {
@@ -35,9 +31,8 @@ export async function PUT(
 ) {
   try {
     const id = params.id;
-    const updatedLeadData = await request.json() as Partial<Omit<Lead, 'id' | 'createdAt'>> & { lastModifiedByUserId?: string; ownerUserId?: string };
+    const updatedLeadData = await request.json() as Partial<Omit<Lead, 'id' | 'createdAt'>> & { lastModifiedByUserId?: string; ownerUserId?: string; eventDate?: string; notes?: string };
 
-    // TODO: Replace with actual database update operation
     const leadIndex = leads_db_placeholder.findIndex(l => l.id === id);
     if (leadIndex === -1) {
       return NextResponse.json({ message: 'Lead not found' }, { status: 404 });
@@ -47,13 +42,13 @@ export async function PUT(
     const leadToUpdate = leads_db_placeholder[leadIndex];
     
     const updatedLead: Lead = {
-      ...leadToUpdate, // Start with existing lead data
-      ...updatedLeadData, // Overwrite with new data
-      id: leadToUpdate.id, // Ensure ID is not changed
-      createdAt: leadToUpdate.createdAt, // Ensure createdAt is not changed
-      updatedAt: now, // Always set updatedAt to now
-      // lastModifiedByUserId will come from updatedLeadData (or be preserved if not in payload)
-      // ownerUserId will come from updatedLeadData (or be preserved if not in payload)
+      ...leadToUpdate, 
+      ...updatedLeadData, 
+      id: leadToUpdate.id, 
+      createdAt: leadToUpdate.createdAt, 
+      updatedAt: now, 
+      eventDate: updatedLeadData.eventDate !== undefined ? updatedLeadData.eventDate : leadToUpdate.eventDate,
+      notes: updatedLeadData.notes !== undefined ? updatedLeadData.notes : leadToUpdate.notes,
     };
     
     leads_db_placeholder[leadIndex] = updatedLead;
@@ -71,7 +66,6 @@ export async function DELETE(
 ) {
   try {
     const id = params.id;
-    // TODO: Replace with actual database delete operation
     const leadIndex = leads_db_placeholder.findIndex(l => l.id === id);
     if (leadIndex === -1) {
       return NextResponse.json({ message: 'Lead not found' }, { status: 404 });
@@ -84,3 +78,4 @@ export async function DELETE(
     return NextResponse.json({ message: 'Failed to delete lead', error: (error as Error).message }, { status: 500 });
   }
 }
+

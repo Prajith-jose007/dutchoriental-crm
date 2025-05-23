@@ -32,19 +32,24 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import type { Lead, Agent, Yacht, ModeOfPayment } from '@/lib/types';
+import { Textarea } from '@/components/ui/textarea';
+import { DatePicker } from '@/components/ui/date-picker';
+import type { Lead, Agent, Yacht, ModeOfPayment, LeadStatus } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { useEffect, useState } from 'react';
+import { format, parseISO } from 'date-fns';
 
 const leadFormSchema = z.object({
   id: z.string().optional(),
   agent: z.string().min(1, 'Agent is required'),
-  status: z.enum(['New', 'Contacted', 'Qualified', 'Proposal Sent', 'Closed Won', 'Closed Lost']),
+  status: z.enum(['New', 'Connected', 'Qualified', 'Proposal Sent', 'Closed Won', 'Closed Lost']),
   month: z.string().regex(/^\d{4}-\d{2}$/, 'Month must be in YYYY-MM format'),
+  eventDate: z.date().optional(), // Changed to z.date() for DatePicker
+  notes: z.string().optional(),
   yacht: z.string().min(1, 'Yacht selection is required'),
   type: z.string().min(1, 'Lead type is required'),
   invoiceId: z.string().optional(),
-  modeOfPayment: z.enum(['Online', 'Offline', 'Credit']),
+  modeOfPayment: z.enum(['Online', 'Credit', 'Cash/Card']),
   clientName: z.string().min(1, 'Client name is required'),
 
   dhowChildQty: z.coerce.number().optional().default(0),
@@ -79,7 +84,7 @@ const leadFormSchema = z.object({
   createdAt: z.string().optional(),
   updatedAt: z.string().optional(),
   lastModifiedByUserId: z.string().optional(),
-  ownerUserId: z.string().optional(), // Added ownerUserId
+  ownerUserId: z.string().optional(),
 });
 
 export type LeadFormData = z.infer<typeof leadFormSchema>;
@@ -122,12 +127,14 @@ const allPackageItemConfigs: PackageFieldConfig[] = [
   { qtyKey: 'royalQty', rateKey: 'royalRate', label: 'Royal Package Qty', category: 'ROYAL' },
 ];
 
-const leadStatusOptions: Lead['status'][] = ['New', 'Contacted', 'Qualified', 'Proposal Sent', 'Closed Won', 'Closed Lost'];
-const modeOfPaymentOptions: ModeOfPayment[] = ['Online', 'Offline', 'Credit'];
+const leadStatusOptions: LeadStatus[] = ['New', 'Connected', 'Qualified', 'Proposal Sent', 'Closed Won', 'Closed Lost'];
+const modeOfPaymentOptions: ModeOfPayment[] = ['Online', 'Credit', 'Cash/Card'];
 
 const getDefaultFormValues = (): LeadFormData => ({
     agent: '', status: 'New', month: new Date().toISOString().slice(0,7), yacht: '',
     type: '', modeOfPayment: 'Online', clientName: '',
+    eventDate: undefined,
+    notes: '',
     dhowChildQty: 0, dhowAdultQty: 0, dhowVipQty: 0, dhowVipChildQty: 0, dhowVipAlcoholQty: 0,
     oeChildQty: 0, oeAdultQty: 0, oeVipQty: 0, oeVipChildQty: 0, oeVipAlcoholQty: 0,
     sunsetChildQty: 0, sunsetAdultQty: 0, sunsetVipQty: 0, sunsetVipChildQty: 0, sunsetVipAlcoholQty: 0,
@@ -136,8 +143,8 @@ const getDefaultFormValues = (): LeadFormData => ({
     othersAmtCake: 0,
     totalAmount: 0, commissionPercentage: 0, commissionAmount:0, netAmount: 0,
     paidAmount: 0, balanceAmount: 0,
-    lastModifiedByUserId: undefined, // Will be set on submit
-    ownerUserId: undefined, // Will be set on submit for new leads
+    lastModifiedByUserId: undefined, 
+    ownerUserId: undefined, 
 });
 
 
@@ -149,7 +156,9 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
 
   const form = useForm<LeadFormData>({
     resolver: zodResolver(leadFormSchema),
-    defaultValues: lead ? lead as LeadFormData : getDefaultFormValues(),
+    defaultValues: lead 
+      ? { ...lead, eventDate: lead.eventDate ? parseISO(lead.eventDate) : undefined } as LeadFormData
+      : getDefaultFormValues(),
   });
 
   useEffect(() => {
@@ -224,7 +233,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
     
     const paidAmtValue = form.getValues('paidAmount');
     const paidAmt = typeof paidAmtValue === 'number' ? paidAmtValue : 0;
-    const currentBalanceAmount = currentTotalAmount - paidAmt;
+    const currentBalanceAmount = currentTotalAmount - paidAmt; // Balance based on Total Amount
     form.setValue('balanceAmount', currentBalanceAmount);
 
   }, [
@@ -234,23 +243,25 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
 
   useEffect(() => {
     if (isOpen) {
-      form.reset(lead ? lead as LeadFormData : getDefaultFormValues());
+      form.reset(lead 
+        ? { ...lead, eventDate: lead.eventDate ? parseISO(lead.eventDate) : undefined } as LeadFormData 
+        : getDefaultFormValues()
+      );
     }
   }, [lead, form, isOpen]);
 
   function onSubmit(data: LeadFormData) {
-    // Placeholder for actual logged-in user ID
-    const currentUserId = 'DO-user1'; // Replace with actual user ID from auth system
+    const currentUserId = 'DO-user1'; // Placeholder for actual logged-in user ID
 
     const submittedLead: Lead = {
       ...getDefaultFormValues(), 
       ...data, 
+      eventDate: data.eventDate ? data.eventDate.toISOString() : undefined,
       id: lead?.id || `lead-${Date.now()}-${Math.random().toString(36).substring(2,7)}`,
       createdAt: lead?.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       lastModifiedByUserId: currentUserId,
-      ownerUserId: lead?.ownerUserId || currentUserId, // Set owner if new, otherwise keep existing
-      // Ensure all quantities default to 0 if not provided or NaN
+      ownerUserId: lead?.ownerUserId || currentUserId, 
       dhowChildQty: data.dhowChildQty || 0,
       dhowAdultQty: data.dhowAdultQty || 0,
       dhowVipQty: data.dhowVipQty || 0,
@@ -355,8 +366,23 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
                 name="month"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Month (YYYY-MM)</FormLabel>
+                    <FormLabel>Lead/Event Month (YYYY-MM)</FormLabel>
                     <FormControl><Input placeholder="e.g., 2024-08" {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+               <FormField
+                control={form.control}
+                name="eventDate"
+                render={({ field }) => (
+                  <FormItem className="flex flex-col">
+                    <FormLabel>Event Date (Optional)</FormLabel>
+                    <DatePicker 
+                        date={field.value} 
+                        setDate={field.onChange}
+                        placeholder="Pick event date"
+                    />
                     <FormMessage />
                   </FormItem>
                 )}
@@ -416,6 +442,25 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
                 )}
               />
             </div>
+
+             <FormField
+                control={form.control}
+                name="notes"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Notes / User Feed</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        placeholder="Add any notes or updates about this lead..."
+                        className="resize-y min-h-[100px]"
+                        {...field}
+                        value={field.value || ''}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
             <h3 className="text-lg font-medium pt-4 border-t mt-6">Package Item Quantities</h3>
             {packageCategories.map(category => (
@@ -546,3 +591,4 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
     </Dialog>
   );
 }
+

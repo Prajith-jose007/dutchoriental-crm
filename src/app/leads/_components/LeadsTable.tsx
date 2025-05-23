@@ -23,20 +23,22 @@ import {
 } from '@/components/ui/table';
 import type { Lead } from '@/lib/types'; 
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 
 
-const leadColumns: { accessorKey: keyof Lead | 'actions' | 'select', header: string, isCurrency?: boolean, isPercentage?: boolean, isNumeric?: boolean, isDate?: boolean }[] = [
+const leadColumns: { accessorKey: keyof Lead | 'actions' | 'select', header: string, isCurrency?: boolean, isPercentage?: boolean, isNumeric?: boolean, isDate?: boolean, isNotes?: boolean }[] = [
   { accessorKey: 'select', header: '' },
   { accessorKey: 'id', header: 'ID' },
   { accessorKey: 'clientName', header: 'Client' },
   { accessorKey: 'agent', header: 'Agent ID' }, 
   { accessorKey: 'yacht', header: 'Yacht ID' }, 
   { accessorKey: 'status', header: 'Status' },
-  { accessorKey: 'month', header: 'Month' },
+  { accessorKey: 'month', header: 'Lead/Event Month' },
+  { accessorKey: 'eventDate', header: 'Event Date', isDate: true },
   { accessorKey: 'type', header: 'Type' },
   { accessorKey: 'invoiceId', header: 'Invoice' },
   { accessorKey: 'modeOfPayment', header: 'Payment Mode' },
+  { accessorKey: 'notes', header: 'Notes', isNotes: true },
   
   { accessorKey: 'dhowChildQty', header: 'Dhow Child', isNumeric: true },
   { accessorKey: 'dhowAdultQty', header: 'Dhow Adult', isNumeric: true },
@@ -83,8 +85,8 @@ interface LeadsTableProps {
   leads: Lead[];
   onEditLead: (lead: Lead) => void;
   onDeleteLead: (leadId: string) => void;
-  userMap: { [id: string]: string }; // User ID to Name map
-  currentUserId?: string; // For simulating logged-in user to restrict edits
+  userMap: { [id: string]: string }; 
+  currentUserId?: string; 
 }
 
 export function LeadsTable({ leads, onEditLead, onDeleteLead, userMap, currentUserId }: LeadsTableProps) {
@@ -92,7 +94,7 @@ export function LeadsTable({ leads, onEditLead, onDeleteLead, userMap, currentUs
   const getStatusVariant = (status: Lead['status']) => {
     switch (status) {
       case 'New': return 'outline';
-      case 'Contacted': return 'secondary';
+      case 'Connected': return 'secondary';
       case 'Qualified': return 'default'; 
       case 'Proposal Sent': return 'default'; 
       case 'Closed Won': return 'default'; 
@@ -116,14 +118,22 @@ export function LeadsTable({ leads, onEditLead, onDeleteLead, userMap, currentUs
     return String(value);
   }
 
-  const formatDateValue = (dateString?: string) => {
+  const formatDateValue = (dateString?: string, includeTime: boolean = true) => {
     if (!dateString) return '-';
     try {
-      return format(new Date(dateString), 'dd/MM/yyyy HH:mm');
+      const dateFormat = includeTime ? 'dd/MM/yyyy HH:mm' : 'dd/MM/yyyy';
+      return format(parseISO(dateString), dateFormat);
     } catch (e) {
-      return dateString; 
+      // If parsing fails, return the original string or an error indicator
+      console.warn(`Error formatting date string: ${dateString}`, e);
+      return dateString; // or 'Invalid Date'
     }
   };
+
+  const formatNotes = (notes?: string) => {
+    if (!notes) return '-';
+    return notes.length > 30 ? notes.substring(0, 27) + '...' : notes;
+  }
 
 
   return (
@@ -161,14 +171,18 @@ export function LeadsTable({ leads, onEditLead, onDeleteLead, userMap, currentUs
                        </Button>
                     ) : col.accessorKey === 'status' ? (
                       <Badge variant={getStatusVariant(lead.status)}>{lead.status}</Badge>
+                    ) : col.accessorKey === 'eventDate' ? (
+                        formatDateValue(lead[col.accessorKey as keyof Lead] as string | undefined, false) // No time for eventDate
+                    ) : col.isDate ? (
+                        formatDateValue(lead[col.accessorKey as keyof Lead] as string | undefined)
                     ) : col.isCurrency ? (
                       formatCurrency(lead[col.accessorKey as keyof Lead] as number | undefined)
                     ) : col.isPercentage ? (
                         formatPercentage(lead[col.accessorKey as keyof Lead] as number | undefined)
                     ) : col.isNumeric ? (
                         formatNumeric(lead[col.accessorKey as keyof Lead] as number | undefined)
-                    ) : col.isDate ? (
-                        formatDateValue(lead[col.accessorKey as keyof Lead] as string | undefined)
+                    ): col.isNotes ? (
+                        formatNotes(lead[col.accessorKey as keyof Lead] as string | undefined)
                     ) : col.accessorKey === 'lastModifiedByUserId' || col.accessorKey === 'ownerUserId' ? (
                         userMap[lead[col.accessorKey as 'lastModifiedByUserId' | 'ownerUserId'] || ''] || lead[col.accessorKey as 'lastModifiedByUserId' | 'ownerUserId'] || '-'
                     ) : (
@@ -211,3 +225,4 @@ export function LeadsTable({ leads, onEditLead, onDeleteLead, userMap, currentUs
     </ScrollArea>
   );
 }
+

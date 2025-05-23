@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { PageHeader } from '@/components/PageHeader';
 import type { Lead } from '@/lib/types';
 import { LeadPipelineBoard } from './_components/LeadPipelineBoard';
+import { LeadFormDialog } from '../_components/LeadFormDialog'; // Import LeadFormDialog
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -13,27 +14,73 @@ export default function LeadPipelinePage() {
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
-  useEffect(() => {
-    const fetchLeads = async () => {
-      setIsLoading(true);
-      try {
-        const response = await fetch('/api/leads');
-        if (!response.ok) {
-          throw new Error(`Failed to fetch leads: ${response.statusText}`);
-        }
-        const data = await response.json();
-        setLeads(Array.isArray(data) ? data : []);
-      } catch (error) {
-        console.error("Error fetching leads for pipeline:", error);
-        toast({ title: 'Error Fetching Leads', description: (error as Error).message, variant: 'destructive' });
-        setLeads([]);
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  // State for LeadFormDialog
+  const [isLeadDialogOpen, setIsLeadDialogOpen] = useState(false);
+  const [editingLead, setEditingLead] = useState<Lead | null>(null);
 
+  const fetchLeads = async () => {
+    setIsLoading(true);
+    try {
+      const response = await fetch('/api/leads');
+      if (!response.ok) {
+        throw new Error(`Failed to fetch leads: ${response.statusText}`);
+      }
+      const data = await response.json();
+      setLeads(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error("Error fetching leads for pipeline:", error);
+      toast({ title: 'Error Fetching Leads', description: (error as Error).message, variant: 'destructive' });
+      setLeads([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchLeads();
-  }, [toast]);
+  }, [toast]); // Added toast to dependency array as it's used in fetchLeads
+
+  const handleEditLeadClick = (lead: Lead) => {
+    setEditingLead(lead);
+    setIsLeadDialogOpen(true);
+  };
+
+  const handleLeadFormSubmit = async (submittedLeadData: Lead) => {
+    try {
+      let response;
+      // For pipeline view, we'll assume it's always an update since leads are pre-existing
+      if (submittedLeadData.id) { 
+        response = await fetch(`/api/leads/${submittedLeadData.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(submittedLeadData),
+        });
+      } else {
+        // This case should ideally not happen if triggered from pipeline card
+        toast({ title: 'Error', description: 'Lead ID missing for update.', variant: 'destructive' });
+        return;
+      }
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || `Failed to save lead: ${response.statusText}`);
+      }
+      
+      toast({
+        title: 'Lead Updated',
+        description: `Lead for ${submittedLeadData.clientName} has been updated.`,
+      });
+      
+      fetchLeads(); // Re-fetch all leads to update the pipeline
+      setIsLeadDialogOpen(false);
+      setEditingLead(null);
+
+    } catch (error) {
+      console.error("Error saving lead from pipeline:", error);
+      toast({ title: 'Error Saving Lead', description: (error as Error).message, variant: 'destructive' });
+    }
+  };
+
 
   return (
     <div className="container mx-auto py-2 flex flex-col h-full">
@@ -57,7 +104,15 @@ export default function LeadPipelinePage() {
             <p className="text-muted-foreground text-xl">No leads found to display in the pipeline.</p>
          </div>
       ) : (
-        <LeadPipelineBoard leads={leads} />
+        <LeadPipelineBoard leads={leads} onEditLead={handleEditLeadClick} />
+      )}
+      {isLeadDialogOpen && (
+        <LeadFormDialog
+          isOpen={isLeadDialogOpen}
+          onOpenChange={setIsLeadDialogOpen}
+          lead={editingLead}
+          onSubmitSuccess={handleLeadFormSubmit}
+        />
       )}
     </div>
   );

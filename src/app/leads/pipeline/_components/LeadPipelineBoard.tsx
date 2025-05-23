@@ -7,11 +7,12 @@ import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 
 interface LeadPipelineBoardProps {
   leads: Lead[];
+  onEditLead: (lead: Lead) => void; // Added prop for handling edit/view
 }
 
 const leadStatuses: LeadStatus[] = ['New', 'Contacted', 'Qualified', 'Proposal Sent', 'Closed Won', 'Closed Lost'];
 
-export function LeadPipelineBoard({ leads }: LeadPipelineBoardProps) {
+export function LeadPipelineBoard({ leads, onEditLead }: LeadPipelineBoardProps) {
   const leadsByStatus: { [key in LeadStatus]?: Lead[] } = {};
   leadStatuses.forEach(status => leadsByStatus[status] = []);
 
@@ -19,7 +20,6 @@ export function LeadPipelineBoard({ leads }: LeadPipelineBoardProps) {
     if (leadsByStatus[lead.status]) {
       leadsByStatus[lead.status]?.push(lead);
     } else {
-      // Fallback for any unexpected status, though ideally all leads have a valid status
       if (!leadsByStatus['New']) leadsByStatus['New'] = [];
       leadsByStatus['New']?.push(lead); 
     }
@@ -39,7 +39,7 @@ export function LeadPipelineBoard({ leads }: LeadPipelineBoardProps) {
                   <p className="text-sm text-muted-foreground p-4 text-center">No leads in this stage.</p>
                 ) : (
                   leadsByStatus[status]?.map(lead => (
-                    <LeadCard key={lead.id} lead={lead} />
+                    <LeadCard key={lead.id} lead={lead} onEditLead={onEditLead} /> // Pass onEditLead to LeadCard
                   ))
                 )}
               </div>

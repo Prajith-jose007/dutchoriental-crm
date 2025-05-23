@@ -21,6 +21,7 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  FormDescription,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import {
@@ -34,18 +35,51 @@ import { useToast } from '@/hooks/use-toast';
 import type { User } from '@/lib/types';
 import { useEffect } from 'react';
 
-// User ID is now optional in the schema for new users, but will be required by form for submission
-const userFormSchema = z.object({
-  id: z.string().min(1, 'User ID is required').optional(), // Made optional for initial state, but form will handle it
+const userFormSchemaBase = z.object({
+  id: z.string().min(1, 'User ID is required').optional(),
   name: z.string().min(2, 'Name must be at least 2 characters'),
   email: z.string().email('Invalid email address'),
   designation: z.string().min(2, 'Designation is required'),
   avatarUrl: z.string().url().optional().or(z.literal('')),
   websiteUrl: z.string().url({ message: "Invalid URL" }).optional().or(z.literal('')),
   status: z.enum(['Active', 'Inactive', 'Archived']).optional().default('Active'),
+  password: z.string().optional(),
+  confirmPassword: z.string().optional(),
 });
 
-export type UserFormData = z.infer<typeof userFormSchema>;
+// Separate schemas for create and edit to handle password requirements
+const createUserFormSchema = userFormSchemaBase.extend({
+  password: z.string().min(6, 'Password must be at least 6 characters'),
+  confirmPassword: z.string().min(6, 'Confirm password must be at least 6 characters'),
+}).refine(data => data.password === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ['confirmPassword'], // path of error
+});
+
+const editUserFormSchema = userFormSchemaBase.extend({
+  password: z.string().optional(), // Password is optional when editing
+  confirmPassword: z.string().optional(),
+}).refine(data => {
+  // Only validate if new password is being set
+  if (data.password || data.confirmPassword) {
+    return data.password === data.confirmPassword;
+  }
+  return true;
+}, {
+  message: "Passwords don't match",
+  path: ['confirmPassword'],
+}).refine(data => {
+    if (data.password && data.password.length > 0 && data.password.length < 6) {
+        return false;
+    }
+    return true;
+}, {
+    message: "New password must be at least 6 characters if provided",
+    path: ['password'],
+});
+
+
+export type UserFormData = z.infer<typeof userFormSchemaBase>;
 
 interface UserFormDialogProps {
   isOpen: boolean;
@@ -58,20 +92,26 @@ const statusOptions: User['status'][] = ['Active', 'Inactive', 'Archived'];
 
 export function UserFormDialog({ isOpen, onOpenChange, user, onSubmitSuccess }: UserFormDialogProps) {
   const { toast } = useToast();
+  const isEditing = !!user;
+
   const form = useForm<UserFormData>({
-    resolver: zodResolver(userFormSchema),
+    resolver: zodResolver(isEditing ? editUserFormSchema : createUserFormSchema),
     defaultValues: user ? {
       ...user,
       websiteUrl: user.websiteUrl || '',
       status: user.status || 'Active',
+      password: '', // Clear password fields for editing
+      confirmPassword: '',
     } : {
-      id: '', // Default to empty, will be filled by user
+      id: '',
       name: '',
       email: '',
       designation: '',
       avatarUrl: '',
       websiteUrl: '',
       status: 'Active',
+      password: '',
+      confirmPassword: '',
     },
   });
 
@@ -82,9 +122,10 @@ export function UserFormDialog({ isOpen, onOpenChange, user, onSubmitSuccess }: 
           ...user,
           websiteUrl: user.websiteUrl || '',
           status: user.status || 'Active',
+          password: '', // Clear password fields when opening for edit
+          confirmPassword: '',
         });
       } else {
-        // When adding new, explicitly set id to empty string for the input field
         form.reset({
           id: '',
           name: '',
@@ -93,13 +134,14 @@ export function UserFormDialog({ isOpen, onOpenChange, user, onSubmitSuccess }: 
           avatarUrl: '',
           websiteUrl: '',
           status: 'Active',
+          password: '',
+          confirmPassword: '',
         });
       }
     }
   }, [user, form, isOpen]);
 
   function onSubmit(data: UserFormData) {
-    // Ensure ID is present, especially for new users
     if (!data.id && !user) {
         toast({ title: "Error", description: "User ID is required for new users.", variant: "destructive" });
         form.setError("id", { type: "manual", message: "User ID is required." });
@@ -107,14 +149,19 @@ export function UserFormDialog({ isOpen, onOpenChange, user, onSubmitSuccess }: 
     }
     
     const submittedUser: User = {
-      ...data,
-      id: user?.id || data.id!, // Use existing ID if editing, otherwise use form ID
+      id: user?.id || data.id!,
+      name: data.name,
+      email: data.email,
+      designation: data.designation,
       avatarUrl: data.avatarUrl || undefined,
       websiteUrl: data.websiteUrl || undefined,
       status: data.status || 'Active',
+      // IMPORTANT: In a real app, password would be hashed server-side.
+      // For this simulation, we just pass it along if provided.
+      // Do NOT store plaintext passwords in a real system.
+      password: data.password && data.password.length > 0 ? data.password : undefined,
     };
     onSubmitSuccess(submittedUser);
-    // Toast is handled by the parent page
     onOpenChange(false);
   }
 
@@ -139,8 +186,8 @@ export function UserFormDialog({ isOpen, onOpenChange, user, onSubmitSuccess }: 
                     <Input 
                       placeholder="e.g., user001" 
                       {...field} 
-                      value={field.value || ''} // Ensure controlled component
-                      readOnly={!!user} // Read-only if editing an existing user
+                      value={field.value || ''}
+                      readOnly={!!user} 
                       className={!!user ? "bg-muted/50" : ""}
                     />
                   </FormControl>
@@ -169,6 +216,33 @@ export function UserFormDialog({ isOpen, onOpenChange, user, onSubmitSuccess }: 
                   <FormLabel>Email</FormLabel>
                   <FormControl>
                     <Input type="email" placeholder="e.g., john@example.com" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+             <FormField
+              control={form.control}
+              name="password"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{isEditing ? 'New Password' : 'Password'}</FormLabel>
+                  <FormControl>
+                    <Input type="password" placeholder={isEditing ? "Leave blank to keep current" : "••••••••"} {...field} />
+                  </FormControl>
+                  {isEditing && <FormDescription>Leave blank to keep the current password.</FormDescription>}
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="confirmPassword"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{isEditing ? 'Confirm New Password' : 'Confirm Password'}</FormLabel>
+                  <FormControl>
+                    <Input type="password" placeholder="••••••••" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

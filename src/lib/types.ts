@@ -7,6 +7,7 @@ export interface User {
   avatarUrl?: string;
   websiteUrl?: string;
   status?: 'Active' | 'Inactive' | 'Archived';
+  password?: string; // Added for form handling, not secure storage
 }
 
 export interface Agent {

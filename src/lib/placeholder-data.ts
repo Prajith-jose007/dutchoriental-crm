@@ -1,5 +1,6 @@
 
-import type { Lead, User, Yacht, Invoice, BookingReportData, RevenueData, Agent, PieChartDataItem, BookingsByAgentData } from './types';
+import type { Lead, User, Yacht, Invoice, Agent } from './types';
+import { formatISO } from 'date-fns';
 
 export const placeholderUsers: User[] = [
   { id: 'DO-user1', name: 'Alice Smith', email: 'alice@dutchoriental.com', designation: 'Sales Manager', avatarUrl: 'https://placehold.co/100x100.png?text=AS', status: 'Active' },
@@ -41,35 +42,35 @@ export const placeholderYachts: Yacht[] = [
 
 export let placeholderLeads: Lead[] = [
   {
-    id: 'DO-lead1', agent: 'DO-agentA', status: 'Closed Won', month: '2024-07', eventDate: '2024-07-15T00:00:00.000Z', notes: 'Confirmed booking, client very happy.', yacht: 'DO-yacht1',
+    id: 'DO-lead1', agent: 'DO-agentA', status: 'Closed Won', month: formatISO(new Date('2024-07-15')), notes: 'Confirmed booking, client very happy.', yacht: 'DO-yacht1',
     type: 'Corporate Event', invoiceId: 'DO-inv001', modeOfPayment: 'Online', clientName: 'Tech Corp',
     dhowAdultQty: 10, totalAmount: 1290, commissionPercentage: 12, commissionAmount: 154.8,
     netAmount: 1135.2, paidAmount: 1290, balanceAmount: 0,
     createdAt: '2024-06-15T10:00:00Z', updatedAt: '2024-07-01T10:00:00Z', lastModifiedByUserId: 'DO-user1', ownerUserId: 'DO-user1'
   },
   {
-    id: 'DO-lead2', agent: 'DO-agentB', status: 'Proposal Sent', month: '2024-07', eventDate: '2024-07-25T00:00:00.000Z', notes: 'Follow up next week.', yacht: 'DO-yacht2',
+    id: 'DO-lead2', agent: 'DO-agentB', status: 'Proposal Sent', month: formatISO(new Date('2024-07-25')), notes: 'Follow up next week.', yacht: 'DO-yacht2',
     type: 'Private Party', modeOfPayment: 'Credit', clientName: 'Innovate Ltd',
     oeAdultQty: 10, totalAmount: 1550, commissionPercentage: 15, commissionAmount: 232.5,
     netAmount: 1317.5, paidAmount: 500, balanceAmount: 1050,
     createdAt: '2024-06-20T10:00:00Z', updatedAt: '2024-07-05T10:00:00Z', lastModifiedByUserId: 'DO-user2', ownerUserId: 'DO-user2'
   },
   {
-    id: 'DO-lead3', agent: 'DO-agentA', status: 'Closed Won', month: '2024-08', eventDate: '2024-08-10T00:00:00.000Z', yacht: 'DO-yacht3',
+    id: 'DO-lead3', agent: 'DO-agentA', status: 'Closed Won', month: formatISO(new Date('2024-08-10')), yacht: 'DO-yacht3',
     type: 'Tour Group', modeOfPayment: 'Cash/Card', clientName: 'Solutions Inc',
     dhowAdultQty: 10, totalAmount: 1200, commissionPercentage: 12, commissionAmount: 144,
     netAmount: 1056, paidAmount: 1200, balanceAmount: 0,
     createdAt: '2024-07-10T10:00:00Z', updatedAt: '2024-07-12T10:00:00Z', lastModifiedByUserId: 'DO-user1', ownerUserId: 'DO-user1'
   },
   {
-    id: 'DO-lead4', agent: 'DO-agentC', status: 'New', month: '2024-08', yacht: 'DO-yacht1',
+    id: 'DO-lead4', agent: 'DO-agentC', status: 'New', month: formatISO(new Date('2024-08-20')), yacht: 'DO-yacht1',
     type: 'Wedding Reception', modeOfPayment: 'Online', clientName: 'Global Co',
     dhowVipQty: 20, othersAmtCake: 100, totalAmount: 3880, commissionPercentage: 10, commissionAmount: 388,
     netAmount: 3492, paidAmount: 0, balanceAmount: 3880,
     createdAt: '2024-07-20T10:00:00Z', updatedAt: '2024-07-20T10:00:00Z', lastModifiedByUserId: 'DO-user3', ownerUserId: 'DO-user3'
   },
   {
-    id: 'DO-lead5', agent: 'DO-agentB', status: 'Qualified', month: '2024-09', yacht: 'DO-yacht1',
+    id: 'DO-lead5', agent: 'DO-agentB', status: 'Qualified', month: formatISO(new Date('2024-09-05')), yacht: 'DO-yacht1',
     type: 'Birthday Celebration', modeOfPayment: 'Credit', clientName: 'Celebrations LLC',
     dhowChildQty: 10, dhowAdultQty: 10, totalAmount: 2180, commissionPercentage: 15, commissionAmount: 327,
     netAmount: 1853, paidAmount: 2180, balanceAmount: 0,
@@ -84,46 +85,3 @@ export let placeholderInvoices: Invoice[] = [
   { id: 'DO-inv004', leadId: 'DO-lead4', clientName: 'Global Co', amount: 3880, dueDate: '2024-09-01', status: 'Pending', createdAt: '2024-07-15' },
   { id: 'DO-inv005', leadId: 'DO-lead5', clientName: 'Alpha LLC (Repeat)', amount: 2180, dueDate: '2024-09-10', status: 'Paid', createdAt: '2024-08-01' },
 ];
-
-// Dashboard related placeholder data - some of these will become dynamic
-// BookingReportChart - Will use live leads
-export const placeholderBookingReport: BookingReportData[] = [
-  // Data will be fetched from API/calculated from live leads
-];
-
-// RevenueSummary - Will use live leads
-export const placeholderRevenueData: RevenueData[] = [
-    // Data will be fetched from API/calculated from live leads
-];
-
-// InvoiceStatusPieChart - Remains on placeholderInvoices for now
-const paidInvoicesCount = placeholderInvoices.filter(inv => inv.status === 'Paid').length;
-const pendingInvoicesCount = placeholderInvoices.filter(inv => inv.status === 'Pending').length;
-const overdueInvoicesCount = placeholderInvoices.filter(inv => inv.status === 'Overdue').length;
-
-export const placeholderInvoiceStatusData: PieChartDataItem[] = [
-  { name: 'Paid', value: paidInvoicesCount, fill: 'hsl(var(--chart-1))' },
-  { name: 'Pending', value: pendingInvoicesCount, fill: 'hsl(var(--chart-2))' },
-  { name: 'Overdue', value: overdueInvoicesCount, fill: 'hsl(var(--chart-3))' },
-].filter(item => item.value > 0);
-
-
-// SalesByYachtPieChart - Will use live leads and yachts
-export const placeholderSalesByYacht: PieChartDataItem[] = [
-    // Data will be fetched from API/calculated from live leads & yachts
-];
-
-
-// BookingsByAgentBarChart - Will use live leads and agents
-export const placeholderBookingsByAgent: BookingsByAgentData[] = [
-    // Data will be fetched from API/calculated from live leads & agents
-];
-
-// Function to allow tests or other modules to re-initialize the in-memory store
-export const _setPlaceholderLeads = (newLeads: Lead[]) => {
-  placeholderLeads = newLeads;
-};
-export const _setPlaceholderInvoices = (newInvoices: Invoice[]) => {
-  placeholderInvoices = newInvoices;
-};
-

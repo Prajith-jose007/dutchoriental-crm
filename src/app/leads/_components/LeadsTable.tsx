@@ -26,15 +26,14 @@ import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { format, parseISO } from 'date-fns';
 
 
-const leadColumns: { accessorKey: keyof Lead | 'actions' | 'select', header: string, isCurrency?: boolean, isPercentage?: boolean, isNumeric?: boolean, isDate?: boolean, isNotes?: boolean }[] = [
+const leadColumns: { accessorKey: keyof Lead | 'actions' | 'select', header: string, isCurrency?: boolean, isPercentage?: boolean, isNumeric?: boolean, isDate?: boolean, isShortDate?: boolean, isNotes?: boolean }[] = [
   { accessorKey: 'select', header: '' },
   { accessorKey: 'id', header: 'ID' },
   { accessorKey: 'clientName', header: 'Client' },
   { accessorKey: 'agent', header: 'Agent ID' }, 
   { accessorKey: 'yacht', header: 'Yacht ID' }, 
   { accessorKey: 'status', header: 'Status' },
-  { accessorKey: 'month', header: 'Lead/Event Month' },
-  { accessorKey: 'eventDate', header: 'Event Date', isDate: true },
+  { accessorKey: 'month', header: 'Lead/Event Date', isShortDate: true }, // Changed to isShortDate
   { accessorKey: 'type', header: 'Type' },
   { accessorKey: 'invoiceId', header: 'Invoice' },
   { accessorKey: 'modeOfPayment', header: 'Payment Mode' },
@@ -124,9 +123,8 @@ export function LeadsTable({ leads, onEditLead, onDeleteLead, userMap, currentUs
       const dateFormat = includeTime ? 'dd/MM/yyyy HH:mm' : 'dd/MM/yyyy';
       return format(parseISO(dateString), dateFormat);
     } catch (e) {
-      // If parsing fails, return the original string or an error indicator
       console.warn(`Error formatting date string: ${dateString}`, e);
-      return dateString; // or 'Invalid Date'
+      return dateString; 
     }
   };
 
@@ -171,8 +169,8 @@ export function LeadsTable({ leads, onEditLead, onDeleteLead, userMap, currentUs
                        </Button>
                     ) : col.accessorKey === 'status' ? (
                       <Badge variant={getStatusVariant(lead.status)}>{lead.status}</Badge>
-                    ) : col.accessorKey === 'eventDate' ? (
-                        formatDateValue(lead[col.accessorKey as keyof Lead] as string | undefined, false) // No time for eventDate
+                    ) : col.isShortDate ? ( // Handle the new lead/event date
+                        formatDateValue(lead[col.accessorKey as keyof Lead] as string | undefined, false) 
                     ) : col.isDate ? (
                         formatDateValue(lead[col.accessorKey as keyof Lead] as string | undefined)
                     ) : col.isCurrency ? (
@@ -225,4 +223,3 @@ export function LeadsTable({ leads, onEditLead, onDeleteLead, userMap, currentUs
     </ScrollArea>
   );
 }
-

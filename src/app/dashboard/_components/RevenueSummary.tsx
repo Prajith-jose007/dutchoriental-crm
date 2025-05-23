@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/card';
 import type { Lead } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
-import { format, getMonth, getYear, isToday, parseISO } from 'date-fns';
+import { format, getMonth, getYear, isToday, parseISO, isValid, startOfMonth, endOfMonth, startOfYear, endOfYear, isWithinInterval } from 'date-fns';
 
 interface RevenueCardProps {
   title: string;
@@ -54,8 +54,11 @@ interface RevenueSummaryProps {
 export function RevenueSummary({ leads, isLoading, error }: RevenueSummaryProps) {
   const revenueData = useMemo(() => {
     const now = new Date();
-    const currentMonthYearStr = format(now, 'yyyy-MM');
-    const currentYearStr = format(now, 'yyyy');
+    
+    const currentMonthStart = startOfMonth(now);
+    const currentMonthEnd = endOfMonth(now);
+    const currentYearStart = startOfYear(now);
+    const currentYearEnd = endOfYear(now);
 
     let todaysRevenue = 0;
     let thisMonthsRevenue = 0;
@@ -64,12 +67,22 @@ export function RevenueSummary({ leads, isLoading, error }: RevenueSummaryProps)
     leads.forEach(lead => {
       if (lead.status === 'Closed Won' && typeof lead.netAmount === 'number') {
         try {
-          if (lead.month && lead.month.startsWith(currentYearStr)) {
-            thisYearsRevenue += lead.netAmount;
+          // lead.month now stores the full event date as an ISO string
+          let eventDate: Date | null = null;
+          if (lead.month && isValid(parseISO(lead.month))) {
+            eventDate = parseISO(lead.month);
           }
-          if (lead.month === currentMonthYearStr) {
-            thisMonthsRevenue += lead.netAmount;
+
+          if (eventDate) {
+            if (isWithinInterval(eventDate, { start: currentYearStart, end: currentYearEnd })) {
+              thisYearsRevenue += lead.netAmount;
+            }
+            if (isWithinInterval(eventDate, { start: currentMonthStart, end: currentMonthEnd })) {
+              thisMonthsRevenue += lead.netAmount;
+            }
           }
+          
+          // Today's revenue is still based on lead creation date
           if (lead.createdAt) {
             const leadCreationDate = parseISO(lead.createdAt);
             if (isToday(leadCreationDate)) {
@@ -84,12 +97,12 @@ export function RevenueSummary({ leads, isLoading, error }: RevenueSummaryProps)
 
     return [
       { period: "Today's Revenue", amount: todaysRevenue, icon: <DollarSign className="h-5 w-5 text-muted-foreground" />, description: "Based on 'Closed Won' leads created today" },
-      { period: "This Month's Revenue", amount: thisMonthsRevenue, icon: <CalendarDays className="h-5 w-5 text-muted-foreground" />, description: "Based on 'Closed Won' leads this month" },
-      { period: "This Year's Revenue", amount: thisYearsRevenue, icon: <TrendingUp className="h-5 w-5 text-muted-foreground" />, description: "Based on 'Closed Won' leads this year" },
+      { period: "This Month's Revenue", amount: thisMonthsRevenue, icon: <CalendarDays className="h-5 w-5 text-muted-foreground" />, description: "Based on 'Closed Won' leads with event date this month" },
+      { period: "This Year's Revenue", amount: thisYearsRevenue, icon: <TrendingUp className="h-5 w-5 text-muted-foreground" />, description: "Based on 'Closed Won' leads with event date this year" },
     ];
   }, [leads]);
 
-  if (error) { // If error is present, show error state for all cards
+  if (error) { 
     return (
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {revenueData.map(item => (

@@ -31,7 +31,7 @@ export async function PUT(
 ) {
   try {
     const id = params.id;
-    const updatedLeadData = await request.json() as Partial<Omit<Lead, 'id' | 'createdAt'>> & { lastModifiedByUserId?: string; ownerUserId?: string; eventDate?: string; notes?: string };
+    const updatedLeadData = await request.json() as Partial<Omit<Lead, 'id' | 'createdAt'>> & { lastModifiedByUserId?: string; ownerUserId?: string; notes?: string; month?: string };
 
     const leadIndex = leads_db_placeholder.findIndex(l => l.id === id);
     if (leadIndex === -1) {
@@ -47,7 +47,7 @@ export async function PUT(
       id: leadToUpdate.id, 
       createdAt: leadToUpdate.createdAt, 
       updatedAt: now, 
-      eventDate: updatedLeadData.eventDate !== undefined ? updatedLeadData.eventDate : leadToUpdate.eventDate,
+      month: updatedLeadData.month !== undefined ? updatedLeadData.month : leadToUpdate.month, // Ensure month is ISO string
       notes: updatedLeadData.notes !== undefined ? updatedLeadData.notes : leadToUpdate.notes,
     };
     
@@ -78,4 +78,3 @@ export async function DELETE(
     return NextResponse.json({ message: 'Failed to delete lead', error: (error as Error).message }, { status: 500 });
   }
 }
-

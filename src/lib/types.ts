@@ -7,7 +7,7 @@ export interface User {
   avatarUrl?: string;
   websiteUrl?: string;
   status?: 'Active' | 'Inactive' | 'Archived';
-  password?: string; // Added for form handling, not secure storage
+  password?: string; 
 }
 
 export interface Agent {
@@ -78,8 +78,7 @@ export interface Lead {
   id:string;
   agent: string; // Agent ID
   status: LeadStatus;
-  month: string; // YYYY-MM for reporting/event month
-  eventDate?: string; // Optional specific date for the event/booking (ISO date string)
+  month: string; // Primary Lead/Event Date as ISO string (YYYY-MM-DDTHH:mm:ss.sssZ)
   notes?: string; // For user feed/notes about the lead
   yacht: string; // Yacht ID
   type: string; // Lead type
@@ -129,12 +128,12 @@ export interface Lead {
 
   createdAt: string; // ISO Date string
   updatedAt: string; // ISO Date string
-  lastModifiedByUserId?: string; // ID of the user who last created/updated the lead
-  ownerUserId?: string; // ID of the user who "owns" this lead
+  lastModifiedByUserId?: string; 
+  ownerUserId?: string; 
 }
 
 export interface BookingReportData {
-  month: string;
+  month: string; // YYYY-MM format
   bookings: number;
 }
 
@@ -156,4 +155,3 @@ export interface BookingsByAgentData {
 
 // Re-exporting for easier import in CSV parser
 export type { LeadStatus as ExportedLeadStatus, ModeOfPayment as ExportedModeOfPayment };
-

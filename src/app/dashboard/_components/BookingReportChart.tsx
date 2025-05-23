@@ -16,7 +16,7 @@ import {
 } from '@/components/ui/chart';
 import type { BookingReportData, Lead } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
-import { format, subMonths } from 'date-fns';
+import { format, subMonths, parseISO, isValid } from 'date-fns';
 
 const chartConfig = {
   bookings: {
@@ -36,22 +36,36 @@ export function BookingReportChart({ leads, isLoading, error }: BookingReportCha
     const monthlyBookings: { [monthYear: string]: number } = {};
     const today = new Date();
 
+    // Initialize the last 7 months in monthlyBookings
     for (let i = 6; i >= 0; i--) {
       const date = subMonths(today, i);
-      const monthYearKey = format(date, 'yyyy-MM');
+      const monthYearKey = format(date, 'yyyy-MM'); // Key format for aggregation
       monthlyBookings[monthYearKey] = 0;
     }
     
     leads.forEach(lead => {
-        const leadMonthYear = lead.month; 
-        if (monthlyBookings.hasOwnProperty(leadMonthYear)) {
-            monthlyBookings[leadMonthYear]++;
+      // The lead.month field now stores the full event date as an ISO string
+      // We need to parse it and format to 'yyyy-MM' for grouping
+      if (lead.month) {
+        try {
+          const eventDate = parseISO(lead.month);
+          if (isValid(eventDate)) {
+            const leadMonthYear = format(eventDate, 'yyyy-MM');
+            if (monthlyBookings.hasOwnProperty(leadMonthYear)) {
+                monthlyBookings[leadMonthYear]++;
+            }
+          } else {
+            console.warn(`Invalid event date found for lead ${lead.id}: ${lead.month}`);
+          }
+        } catch (e) {
+          console.warn(`Error parsing event date for lead ${lead.id}: ${lead.month}`, e);
         }
+      }
     });
 
     return Object.entries(monthlyBookings)
       .map(([monthYear, bookings]) => ({
-        month: format(new Date(monthYear + '-01'), 'MMM yyyy'),
+        month: format(parseISO(monthYear + '-01'), 'MMM yyyy'), // Display format
         bookings,
       }))
       .sort((a, b) => new Date(a.month).getTime() - new Date(b.month).getTime());

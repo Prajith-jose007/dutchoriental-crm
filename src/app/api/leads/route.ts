@@ -3,6 +3,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import type { Lead } from '@/lib/types';
 import { placeholderLeads as initialLeads } from '@/lib/placeholder-data'; // Used for initial data if DB is empty
+import { formatISO } from 'date-fns';
 
 // In-memory store (replace with actual database calls)
 let leads_db_placeholder: Lead[] = [...initialLeads]; // Initialize with placeholder data
@@ -35,10 +36,12 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const newLeadData = await request.json() as Omit<Lead, 'createdAt' | 'updatedAt'> & Partial<Pick<Lead, 'createdAt' | 'updatedAt' | 'lastModifiedByUserId' | 'ownerUserId' | 'eventDate' | 'notes'>>;
+    const newLeadData = await request.json() as Omit<Lead, 'createdAt' | 'updatedAt' | 'month'> & 
+      Partial<Pick<Lead, 'createdAt' | 'updatedAt' | 'lastModifiedByUserId' | 'ownerUserId' | 'notes'>> & 
+      { month: string }; // month is expected as ISO string from client
 
-    if (!newLeadData.id || !newLeadData.clientName || !newLeadData.agent || !newLeadData.yacht) {
-      return NextResponse.json({ message: 'Missing required lead fields (id, clientName, agent, yacht)' }, { status: 400 });
+    if (!newLeadData.id || !newLeadData.clientName || !newLeadData.agent || !newLeadData.yacht || !newLeadData.month) {
+      return NextResponse.json({ message: 'Missing required lead fields (id, clientName, agent, yacht, month)' }, { status: 400 });
     }
 
     const existingLead = leads_db_placeholder.find(l => l.id === newLeadData.id);
@@ -82,9 +85,9 @@ export async function POST(request: NextRequest) {
       royalQty: newLeadData.royalQty ?? 0,
       othersAmtCake: newLeadData.othersAmtCake ?? 0,
       commissionAmount: newLeadData.commissionAmount ?? 0, 
-      eventDate: newLeadData.eventDate,
       notes: newLeadData.notes,
       ...newLeadData, 
+      month: newLeadData.month, // Should be an ISO string
       createdAt: validCreatedAt,
       updatedAt: now,
       lastModifiedByUserId: newLeadData.lastModifiedByUserId, 
@@ -100,4 +103,3 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ message: 'Failed to create lead', error: errorMessage }, { status: 500 });
   }
 }
-

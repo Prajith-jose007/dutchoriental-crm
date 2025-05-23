@@ -14,7 +14,7 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { DatePicker } from '@/components/ui/date-picker';
 import { Skeleton } from '@/components/ui/skeleton';
-import { format, parseISO, isWithinInterval, isValid } from 'date-fns';
+import { format, parseISO, isWithinInterval, isValid, formatISO } from 'date-fns';
 
 const USERS_STORAGE_KEY = 'dutchOrientalCrmUsers';
 const SIMULATED_CURRENT_USER_ID = 'DO-user1'; 
@@ -56,7 +56,7 @@ const convertValue = (key: keyof Lead, value: string): any => {
         case 'modeOfPayment': return 'Online'; 
         case 'status': return 'New'; 
         case 'notes': return '';
-        case 'eventDate': return undefined;
+        case 'month': return formatISO(new Date()); // Default to current date as ISO string
         default: return undefined;
     }
   }
@@ -78,9 +78,18 @@ const convertValue = (key: keyof Lead, value: string): any => {
     case 'status':
         const validStatuses: LeadStatus[] = ['New', 'Connected', 'Qualified', 'Proposal Sent', 'Closed Won', 'Closed Lost'];
         return validStatuses.includes(trimmedValue as LeadStatus) ? trimmedValue : 'New';
-    case 'eventDate':
-        const parsedEventDate = parseISO(trimmedValue);
-        return isValid(parsedEventDate) ? trimmedValue : undefined; // store as ISO string if valid
+    case 'month': // Handles the lead/event date
+        const parsedEventDate = parseISO(trimmedValue); // Attempt to parse as ISO
+        if (isValid(parsedEventDate)) return formatISO(parsedEventDate);
+        // Attempt to parse common date formats like dd/MM/yyyy or MM/dd/yyyy
+        const commonFormats = ['dd/MM/yyyy', 'MM/dd/yyyy', 'yyyy-MM-dd'];
+        for (const fmt of commonFormats) {
+            try {
+                const d = new Date(trimmedValue.replace(/(\d{2})\/(\d{2})\/(\d{4})/, '$2/$1/$3')); // try MM/dd/yyyy if dd/MM fails
+                if (isValid(d)) return formatISO(d);
+            } catch (e) {/* ignore */}
+        }
+        return formatISO(new Date()); // Default if parsing fails
     default:
       return trimmedValue;
   }
@@ -101,8 +110,7 @@ export default function LeadsPage() {
 
   const [startDate, setStartDate] = useState<Date | undefined>(undefined);
   const [endDate, setEndDate] = useState<Date | undefined>(undefined);
-  const [selectedMonth, setSelectedMonth] = useState<string>('all');
-  const [selectedYear, setSelectedYear] = useState<string>('all');
+  // Removed selectedMonth and selectedYear as primary date filter is now by range
   const [selectedYachtId, setSelectedYachtId] = useState<string>('all');
   const [selectedAgentId, setSelectedAgentId] = useState<string>('all');
   const [selectedUserId, setSelectedUserId] = useState<string>('all');
@@ -191,7 +199,7 @@ export default function LeadsPage() {
       lastModifiedByUserId: SIMULATED_CURRENT_USER_ID, 
       updatedAt: new Date().toISOString(),
       ownerUserId: editingLead ? editingLead.ownerUserId : SIMULATED_CURRENT_USER_ID, 
-      eventDate: submittedLeadData.eventDate ? new Date(submittedLeadData.eventDate).toISOString() : undefined,
+      month: submittedLeadData.month, // Already an ISO string from form dialog
     };
 
     try {
@@ -330,8 +338,7 @@ export default function LeadsPage() {
             id: leadId!,
             agent: typeof numericDefaultsApplied.agent === 'string' ? numericDefaultsApplied.agent : '',
             status: (numericDefaultsApplied.status as LeadStatus) || 'New',
-            month: typeof numericDefaultsApplied.month === 'string' && numericDefaultsApplied.month.match(/^\d{4}-\d{2}$/) ? numericDefaultsApplied.month : new Date().toISOString().slice(0,7),
-            eventDate: typeof numericDefaultsApplied.eventDate === 'string' ? numericDefaultsApplied.eventDate : undefined,
+            month: typeof numericDefaultsApplied.month === 'string' && isValid(parseISO(numericDefaultsApplied.month)) ? numericDefaultsApplied.month : formatISO(new Date()), // Ensure month is valid ISO
             notes: typeof numericDefaultsApplied.notes === 'string' ? numericDefaultsApplied.notes : '',
             yacht: typeof numericDefaultsApplied.yacht === 'string' ? numericDefaultsApplied.yacht : '',
             type: typeof numericDefaultsApplied.type === 'string' && numericDefaultsApplied.type.trim() !== '' ? numericDefaultsApplied.type : 'Imported',
@@ -449,47 +456,28 @@ export default function LeadsPage() {
     reader.readAsText(file);
   };
 
-
-  const availableMonths = useMemo(() => {
-    const months = new Set<string>();
-    allLeads.forEach(lead => months.add(lead.month.substring(5, 7)));
-    return Array.from(months).sort().map(m => ({ value: m, label: format(new Date(2000, parseInt(m)-1, 1), 'MMMM') }));
-  }, [allLeads]);
-
-  const availableYears = useMemo(() => {
-    const years = new Set<string>();
-    allLeads.forEach(lead => years.add(lead.month.substring(0, 4)));
-    return Array.from(years).sort((a,b) => parseInt(b) - parseInt(a));
-  }, [allLeads]);
-
-
   const filteredLeads = useMemo(() => {
     return allLeads.filter(lead => {
-      const leadCreationDate = parseISO(lead.createdAt); // Filter by creation date
-      const leadEventMonthYear = lead.month; // YYYY-MM
+      const leadCreationDate = parseISO(lead.createdAt); 
+      // const leadEventDate = lead.month ? parseISO(lead.month) : null; // For filtering by event date if needed
 
       // Date Range Filter (based on createdAt)
       if (startDate && endDate && !isWithinInterval(leadCreationDate, { start: startDate, end: endDate })) return false;
       
-      // Month/Year Filter (based on lead.month which is event/lead month) - only if no date range
-      if (!startDate && !endDate) { 
-        if (selectedMonth !== 'all' && leadEventMonthYear.substring(5,7) !== selectedMonth) return false;
-        if (selectedYear !== 'all' && leadEventMonthYear.substring(0,4) !== selectedYear) return false;
-      }
-
+      // Other filters
       if (selectedYachtId !== 'all' && lead.yacht !== selectedYachtId) return false;
       if (selectedAgentId !== 'all' && lead.agent !== selectedAgentId) return false;
       if (selectedUserId !== 'all' && lead.lastModifiedByUserId !== selectedUserId) return false;
       if (statusFilter !== 'all' && lead.status !== statusFilter) return false;
       return true;
     });
-  }, [allLeads, startDate, endDate, selectedMonth, selectedYear, selectedYachtId, selectedAgentId, selectedUserId, statusFilter]);
+  }, [allLeads, startDate, endDate, selectedYachtId, selectedAgentId, selectedUserId, statusFilter]);
 
   const resetFilters = () => {
     setStartDate(undefined);
     setEndDate(undefined);
-    setSelectedMonth('all');
-    setSelectedYear('all');
+    // setSelectedMonth('all'); // Removed
+    // setSelectedYear('all'); // Removed
     setSelectedYachtId('all');
     setSelectedAgentId('all');
     setSelectedUserId('all');
@@ -512,7 +500,7 @@ export default function LeadsPage() {
                 }
             />
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-6 p-4 border rounded-lg shadow-sm">
-                 {[...Array(8)].map((_,i) => <Skeleton key={i} className="h-10 w-full" />)}
+                 {[...Array(6)].map((_,i) => <Skeleton key={i} className="h-10 w-full" />)} 
             </div>
             <div className="space-y-2">
                 {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}
@@ -544,7 +532,7 @@ export default function LeadsPage() {
                             return;
                         }
                         const headers: (keyof Lead)[] = [
-                            'id', 'clientName', 'agent', 'yacht', 'status', 'month', 'eventDate', 'type', 'invoiceId', 'modeOfPayment', 'notes',
+                            'id', 'clientName', 'agent', 'yacht', 'status', 'month', 'type', 'invoiceId', 'modeOfPayment', 'notes',
                             'dhowChildQty', 'dhowAdultQty', 'dhowVipQty', 'dhowVipChildQty', 'dhowVipAlcoholQty',
                             'oeChildQty', 'oeAdultQty', 'oeVipQty', 'oeVipChildQty', 'oeVipAlcoholQty',
                             'sunsetChildQty', 'sunsetAdultQty', 'sunsetVipQty', 'sunsetVipChildQty', 'sunsetVipAlcoholQty',
@@ -556,7 +544,15 @@ export default function LeadsPage() {
                         ];
                         const escapeCsvCell = (cellData: any): string => {
                             if (cellData === null || cellData === undefined) return '';
-                            const stringValue = String(cellData);
+                            let stringValue = String(cellData);
+                            if (headers.includes('month' as keyof Lead) && cellData instanceof Date) { // Check if it's the month field and a Date object
+                                stringValue = format(cellData, 'dd/MM/yyyy');
+                            } else if (typeof cellData === 'string' && cellData.match(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/)) {
+                                try { // Attempt to format if it's an ISO string date
+                                    stringValue = format(parseISO(cellData), 'dd/MM/yyyy');
+                                } catch (e) { /* ignore, use original string */ }
+                            }
+                            
                             if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n')) {
                             return `"${stringValue.replace(/"/g, '""')}"`;
                             }
@@ -595,26 +591,6 @@ export default function LeadsPage() {
         <div>
           <Label htmlFor="end-date-leads">End Date (Created)</Label>
           <DatePicker date={endDate} setDate={setEndDate} placeholder="End Date" disabled={(date) => startDate ? date < startDate : false} />
-        </div>
-        <div>
-          <Label htmlFor="month-filter-leads">Lead/Event Month</Label>
-          <Select value={selectedMonth} onValueChange={setSelectedMonth} disabled={!!(startDate && endDate)}>
-            <SelectTrigger id="month-filter-leads"><SelectValue placeholder="All Months" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Months</SelectItem>
-              {availableMonths.map(m => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        </div>
-        <div>
-          <Label htmlFor="year-filter-leads">Lead/Event Year</Label>
-          <Select value={selectedYear} onValueChange={setSelectedYear} disabled={!!(startDate && endDate)}>
-            <SelectTrigger id="year-filter-leads"><SelectValue placeholder="All Years" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Years</SelectItem>
-              {availableYears.map(year => <SelectItem key={year} value={year}>{year}</SelectItem>)}
-            </SelectContent>
-          </Select>
         </div>
         <div>
           <Label htmlFor="status-filter-leads">Status</Label>
@@ -660,7 +636,7 @@ export default function LeadsPage() {
             </SelectContent>
           </Select>
         </div>
-        <div className="flex items-end xl:col-span-1"> 
+        <div className="flex items-end md:col-span-2 lg:col-span-1 xl:col-span-1"> 
             <Button onClick={resetFilters} variant="outline" className="w-full">Reset Filters</Button>
         </div>
       </div>
@@ -678,4 +654,3 @@ export default function LeadsPage() {
     </div>
   );
 }
-

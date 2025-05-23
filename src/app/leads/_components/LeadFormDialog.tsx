@@ -37,14 +37,13 @@ import { DatePicker } from '@/components/ui/date-picker';
 import type { Lead, Agent, Yacht, ModeOfPayment, LeadStatus } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { useEffect, useState } from 'react';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, formatISO } from 'date-fns';
 
 const leadFormSchema = z.object({
   id: z.string().optional(),
   agent: z.string().min(1, 'Agent is required'),
   status: z.enum(['New', 'Connected', 'Qualified', 'Proposal Sent', 'Closed Won', 'Closed Lost']),
-  month: z.string().regex(/^\d{4}-\d{2}$/, 'Month must be in YYYY-MM format'), // Required for reporting
-  eventDate: z.date().optional(), // Optional specific event date
+  month: z.date({ required_error: "Lead/Event Date is required." }), // Now a date object for the picker
   notes: z.string().optional(),
   yacht: z.string().min(1, 'Yacht selection is required'),
   type: z.string().min(1, 'Lead type is required'),
@@ -79,7 +78,7 @@ const leadFormSchema = z.object({
   commissionPercentage: z.coerce.number().min(0).max(100).default(0),
   commissionAmount: z.coerce.number().optional().default(0),
   netAmount: z.coerce.number().min(0).default(0),
-  paidAmount: z.coerce.number().min(0).default(0), // Manual entry
+  paidAmount: z.coerce.number().min(0).default(0), 
   balanceAmount: z.coerce.number().min(0).default(0),
   createdAt: z.string().optional(),
   updatedAt: z.string().optional(),
@@ -131,9 +130,8 @@ const leadStatusOptions: LeadStatus[] = ['New', 'Connected', 'Qualified', 'Propo
 const modeOfPaymentOptions: ModeOfPayment[] = ['Online', 'Credit', 'Cash/Card'];
 
 const getDefaultFormValues = (): LeadFormData => ({
-    agent: '', status: 'New', month: format(new Date(), 'yyyy-MM'), yacht: '',
+    agent: '', status: 'New', month: new Date(), yacht: '', // month now defaults to new Date()
     type: '', modeOfPayment: 'Online', clientName: '',
-    eventDate: undefined,
     notes: '',
     dhowChildQty: 0, dhowAdultQty: 0, dhowVipQty: 0, dhowVipChildQty: 0, dhowVipAlcoholQty: 0,
     oeChildQty: 0, oeAdultQty: 0, oeVipQty: 0, oeVipChildQty: 0, oeVipAlcoholQty: 0,
@@ -158,13 +156,9 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
     resolver: zodResolver(leadFormSchema),
     defaultValues: lead 
       ? { 
-          ...getDefaultFormValues(), // Ensure all defaults are present
+          ...getDefaultFormValues(), 
           ...lead, 
-          eventDate: lead.eventDate ? parseISO(lead.eventDate) : undefined,
-          // Ensure numeric fields that might be undefined in lead are defaulted to 0
-          dhowChildQty: lead.dhowChildQty || 0,
-          dhowAdultQty: lead.dhowAdultQty || 0,
-          // ... (repeat for all qty and financial fields if necessary)
+          month: lead.month ? parseISO(lead.month) : new Date(), // Parse ISO string to Date
           othersAmtCake: lead.othersAmtCake || 0,
           totalAmount: lead.totalAmount || 0,
           commissionPercentage: lead.commissionPercentage || 0,
@@ -212,14 +206,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
   const watchedQuantities = allPackageItemConfigs.map(config => form.watch(config.qtyKey));
   const watchedOthersAmtCake = form.watch('othersAmtCake');
   const watchedPaidAmount = form.watch('paidAmount');
-  const watchedEventDate = form.watch('eventDate');
-
-  useEffect(() => {
-    if (watchedEventDate) {
-      form.setValue('month', format(watchedEventDate, 'yyyy-MM'));
-    }
-  }, [watchedEventDate, form]);
-
+  
   useEffect(() => {
     const selectedAgent = agents.find(a => a.id === watchedAgentId);
     const agentDiscountRate = selectedAgent?.discountRate ?? 0;
@@ -254,7 +241,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
     
     const paidAmtValue = form.getValues('paidAmount');
     const paidAmt = typeof paidAmtValue === 'number' ? paidAmtValue : 0;
-    const currentBalanceAmount = currentTotalAmount - paidAmt; // Balance based on Total Amount
+    const currentBalanceAmount = currentTotalAmount - paidAmt; 
     form.setValue('balanceAmount', currentBalanceAmount);
 
   }, [
@@ -268,7 +255,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
         ? { 
             ...getDefaultFormValues(),
             ...lead, 
-            eventDate: lead.eventDate ? parseISO(lead.eventDate) : undefined,
+            month: lead.month ? parseISO(lead.month) : new Date(),
             dhowChildQty: lead.dhowChildQty || 0, dhowAdultQty: lead.dhowAdultQty || 0, dhowVipQty: lead.dhowVipQty || 0, dhowVipChildQty: lead.dhowVipChildQty || 0, dhowVipAlcoholQty: lead.dhowVipAlcoholQty || 0,
             oeChildQty: lead.oeChildQty || 0, oeAdultQty: lead.oeAdultQty || 0, oeVipQty: lead.oeVipQty || 0, oeVipChildQty: lead.oeVipChildQty || 0, oeVipAlcoholQty: lead.oeVipAlcoholQty || 0,
             sunsetChildQty: lead.sunsetChildQty || 0, sunsetAdultQty: lead.sunsetAdultQty || 0, sunsetVipQty: lead.sunsetVipQty || 0, sunsetVipChildQty: lead.sunsetVipChildQty || 0, sunsetVipAlcoholQty: lead.sunsetVipAlcoholQty || 0,
@@ -288,13 +275,12 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
   }, [lead, form, isOpen]);
 
   function onSubmit(data: LeadFormData) {
-    const currentUserId = 'DO-user1'; // Placeholder for actual logged-in user ID
+    const currentUserId = 'DO-user1'; 
 
     const submittedLead: Lead = {
       ...getDefaultFormValues(), 
       ...data, 
-      eventDate: data.eventDate ? data.eventDate.toISOString() : undefined,
-      month: data.eventDate ? format(data.eventDate, 'yyyy-MM') : data.month, // Ensure month is consistent
+      month: data.month ? formatISO(data.month) : formatISO(new Date()), // Convert Date to ISO string
       id: lead?.id || `lead-${Date.now()}-${Math.random().toString(36).substring(2,7)}`,
       createdAt: lead?.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -399,32 +385,15 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
                   </FormItem>
                 )}
               />
-              <FormField
-                control={form.control}
-                name="month"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Lead/Event Month (YYYY-MM)</FormLabel>
-                    <FormControl><Input placeholder="e.g., 2024-08" {...field} /></FormControl>
-                    <FormDescription>Auto-updates if Event Date is set.</FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
                <FormField
                 control={form.control}
-                name="eventDate"
+                name="month" 
                 render={({ field }) => (
                   <FormItem className="flex flex-col">
-                    <FormLabel>Event Date (Optional)</FormLabel>
+                    <FormLabel>Lead/Event Date</FormLabel>
                     <DatePicker 
                         date={field.value} 
-                        setDate={(date) => {
-                            field.onChange(date);
-                            if (date) {
-                                form.setValue('month', format(date, 'yyyy-MM'));
-                            }
-                        }}
+                        setDate={(date) => field.onChange(date)}
                         placeholder="Pick event date"
                     />
                     <FormMessage />
@@ -505,11 +474,10 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
                   </FormItem>
                 )}
               />
-
-            <h3 className="text-lg font-medium pt-4 border-t mt-6">Package Item Quantities</h3>
+            
             {packageCategories.map(category => (
               <div key={category}>
-                <h4 className="text-md font-semibold mt-4 mb-2">{category} Packages</h4>
+                <h4 className="text-md font-semibold mt-4 mb-2">{category} Package Quantities</h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {allPackageItemConfigs.filter(p => p.category === category).map(pkgFieldConfig => (
                       <FormField
@@ -635,4 +603,3 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
     </Dialog>
   );
 }
-

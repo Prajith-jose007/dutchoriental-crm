@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useMemo } from 'react';
 import { PieChart, Pie, Cell, Tooltip as RechartsTooltip, Legend, ResponsiveContainer } from 'recharts';
 import {
   Card,
@@ -23,66 +23,33 @@ const chartConfigBase = {
   },
 };
 
-export function SalesByYachtPieChart() {
-  const [leads, setLeads] = useState<Lead[]>([]);
-  const [yachts, setYachts] = useState<Yacht[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+interface SalesByYachtPieChartProps {
+  leads: Lead[];
+  allYachts: Yacht[]; // Changed from 'yachts' to 'allYachts' for clarity
+  isLoading?: boolean;
+  error?: string | null;
+}
 
-  useEffect(() => {
-    const fetchData = async () => {
-      setIsLoading(true);
-      setError(null);
-      try {
-        const [leadsResponse, yachtsResponse] = await Promise.all([
-          fetch('/api/leads'),
-          fetch('/api/yachts'),
-        ]);
-
-        if (!leadsResponse.ok) {
-          throw new Error(`Failed to fetch leads for chart: ${leadsResponse.statusText}`);
-        }
-         if (!yachtsResponse.ok) {
-          throw new Error(`Failed to fetch yachts for chart: ${yachtsResponse.statusText}`);
-        }
-        
-        const leadsData = await leadsResponse.json();
-        const yachtsData = await yachtsResponse.json();
-
-        setLeads(Array.isArray(leadsData) ? leadsData : []);
-        setYachts(Array.isArray(yachtsData) ? yachtsData : []);
-
-      } catch (err) {
-        console.error("Error fetching data for SalesByYachtPieChart:", err);
-        setError((err as Error).message);
-        setLeads([]);
-        setYachts([]);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchData();
-  }, []);
-
+export function SalesByYachtPieChart({ leads, allYachts, isLoading, error }: SalesByYachtPieChartProps) {
   const chartData: PieChartDataItem[] = useMemo(() => {
     const salesByYachtMap = new Map<string, number>();
     leads.forEach(lead => {
-      if (lead.status === 'Closed Won' && lead.netAmount) { // Use netAmount for consistency
+      if (lead.status === 'Closed Won' && typeof lead.netAmount === 'number') {
         const currentSales = salesByYachtMap.get(lead.yacht) || 0;
         salesByYachtMap.set(lead.yacht, currentSales + lead.netAmount);
       }
     });
 
     return Array.from(salesByYachtMap.entries()).map(([yachtId, totalRevenue], index) => {
-      const yacht = yachts.find(y => y.id === yachtId);
+      const yacht = allYachts.find(y => y.id === yachtId);
       return {
         name: yacht ? yacht.name : `Yacht ID: ${yachtId.substring(0,6)}...`,
         value: totalRevenue,
-        fill: `hsl(var(--chart-${(index % 5) + 1}))`,
+        fill: `hsl(var(--chart-${(index % 5) + 1}))`, // Ensure colors cycle
       };
     }).filter(item => item.value > 0)
-      .sort((a,b) => b.value - a.value); // Sort by revenue desc
-  }, [leads, yachts]);
+      .sort((a,b) => b.value - a.value);
+  }, [leads, allYachts]);
   
   const dynamicChartConfig = useMemo(() => 
     chartData.reduce((acc, item) => {
@@ -92,7 +59,6 @@ export function SalesByYachtPieChart() {
       return acc;
     }, { ...chartConfigBase })
   , [chartData]);
-
 
   if (isLoading) {
     return (
@@ -134,7 +100,7 @@ export function SalesByYachtPieChart() {
                 <CardDescription>Breakdown of 'Closed Won' lead revenue by yacht (Net Amount in AED).</CardDescription>
             </CardHeader>
             <CardContent className="flex items-center justify-center h-[300px]">
-                <p className="text-muted-foreground">No 'Closed Won' sales data available to display.</p>
+                <p className="text-muted-foreground">No 'Closed Won' sales data for selected filters.</p>
             </CardContent>
         </Card>
     );
@@ -171,7 +137,7 @@ export function SalesByYachtPieChart() {
                   const x = cx + radius * Math.cos(-midAngle * RADIAN);
                   const y = cy + radius * Math.sin(-midAngle * RADIAN);
                   const displayName = name.length > 15 ? name.substring(0, 12) + '...' : name;
-                  if (percent < 0.05) return null; // Hide label for small slices
+                  if (percent < 0.05) return null;
                   return (
                     <text x={x} y={y} fill="white" textAnchor="middle" dominantBaseline="central" fontSize="10px">
                       {`${displayName} (${(percent * 100).toFixed(0)}%)`}

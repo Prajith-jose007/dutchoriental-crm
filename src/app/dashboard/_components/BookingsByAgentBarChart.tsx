@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useMemo } from 'react';
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Tooltip as RechartsTooltip } from 'recharts';
 import {
   Card,
@@ -25,47 +25,14 @@ const chartConfig = {
   },
 };
 
-export function BookingsByAgentBarChart() {
-  const [leads, setLeads] = useState<Lead[]>([]);
-  const [agents, setAgents] = useState<Agent[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+interface BookingsByAgentBarChartProps {
+  leads: Lead[];
+  allAgents: Agent[]; // Changed from 'agents' to 'allAgents'
+  isLoading?: boolean;
+  error?: string | null;
+}
 
-  useEffect(() => {
-    const fetchData = async () => {
-      setIsLoading(true);
-      setError(null);
-      try {
-        const [leadsResponse, agentsResponse] = await Promise.all([
-          fetch('/api/leads'),
-          fetch('/api/agents'),
-        ]);
-
-        if (!leadsResponse.ok) {
-          throw new Error(`Failed to fetch leads for chart: ${leadsResponse.statusText}`);
-        }
-        if (!agentsResponse.ok) {
-          throw new Error(`Failed to fetch agents for chart: ${agentsResponse.statusText}`);
-        }
-        
-        const leadsData = await leadsResponse.json();
-        const agentsData = await agentsResponse.json();
-
-        setLeads(Array.isArray(leadsData) ? leadsData : []);
-        setAgents(Array.isArray(agentsData) ? agentsData : []);
-
-      } catch (err) {
-        console.error("Error fetching data for BookingsByAgentBarChart:", err);
-        setError((err as Error).message);
-        setLeads([]);
-        setAgents([]);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchData();
-  }, []);
-
+export function BookingsByAgentBarChart({ leads, allAgents, isLoading, error }: BookingsByAgentBarChartProps) {
   const chartData: BookingsByAgentData[] = useMemo(() => {
     const bookingsByAgentMap = new Map<string, number>();
     leads.forEach(lead => {
@@ -76,15 +43,14 @@ export function BookingsByAgentBarChart() {
     });
 
     return Array.from(bookingsByAgentMap.entries()).map(([agentId, bookingsCount]) => {
-      const agent = agents.find(a => a.id === agentId);
+      const agent = allAgents.find(a => a.id === agentId);
       return {
         agentName: agent ? agent.name.substring(0,15) + (agent.name.length > 15 ? '...' : '') : `Agent ID: ${agentId.substring(0,6)}...`,
         bookings: bookingsCount,
       };
     }).filter(item => item.bookings > 0)
-      .sort((a,b) => b.bookings - a.bookings); // Sort by bookings desc
-  }, [leads, agents]);
-
+      .sort((a,b) => b.bookings - a.bookings);
+  }, [leads, allAgents]);
 
   if (isLoading) {
     return (
@@ -126,7 +92,7 @@ export function BookingsByAgentBarChart() {
                 <CardDescription>'Closed Won' leads by agent.</CardDescription>
             </CardHeader>
             <CardContent className="flex items-center justify-center h-[300px]">
-                <p className="text-muted-foreground">No 'Closed Won' booking data by agent available.</p>
+                <p className="text-muted-foreground">No 'Closed Won' booking data by agent for selected filters.</p>
             </CardContent>
         </Card>
     );
@@ -147,7 +113,7 @@ export function BookingsByAgentBarChart() {
             layout="vertical"
           >
             <CartesianGrid horizontal={false} strokeDasharray="3 3" />
-            <XAxis type="number" />
+            <XAxis type="number" allowDecimals={false} />
             <YAxis
               dataKey="agentName"
               type="category"

@@ -1,15 +1,15 @@
 
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
-import { DollarSign, TrendingUp, CalendarDays, Banknote } from 'lucide-react'; // Added Banknote for consistency
+import { useMemo } from 'react';
+import { DollarSign, TrendingUp, CalendarDays } from 'lucide-react';
 import {
   Card,
   CardContent,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import type { Lead, RevenueData } from '@/lib/types';
+import type { Lead } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format, getMonth, getYear, isToday, parseISO } from 'date-fns';
 
@@ -45,58 +45,31 @@ function RevenueCard({ title, value, description, icon, isLoading }: RevenueCard
   );
 }
 
+interface RevenueSummaryProps {
+  leads: Lead[];
+  isLoading?: boolean;
+  error?: string | null;
+}
 
-export function RevenueSummary() {
-  const [leads, setLeads] = useState<Lead[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const fetchLeadsData = async () => {
-      setIsLoading(true);
-      setError(null);
-      try {
-        const response = await fetch('/api/leads');
-        if (!response.ok) {
-          throw new Error(`Failed to fetch leads for revenue: ${response.statusText}`);
-        }
-        const data = await response.json();
-        setLeads(Array.isArray(data) ? data : []);
-      } catch (err) {
-        console.error("Error fetching leads for RevenueSummary:", err);
-        setError((err as Error).message);
-        setLeads([]);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchLeadsData();
-  }, []);
-
+export function RevenueSummary({ leads, isLoading, error }: RevenueSummaryProps) {
   const revenueData = useMemo(() => {
     const now = new Date();
-    const currentMonth = getMonth(now); // 0-indexed
-    const currentYear = getYear(now);
     const currentMonthYearStr = format(now, 'yyyy-MM');
+    const currentYearStr = format(now, 'yyyy');
 
     let todaysRevenue = 0;
     let thisMonthsRevenue = 0;
     let thisYearsRevenue = 0;
 
     leads.forEach(lead => {
-      if (lead.status === 'Closed Won' && lead.netAmount) {
+      if (lead.status === 'Closed Won' && typeof lead.netAmount === 'number') {
         try {
-          // This Year's Revenue
-          if (lead.month && lead.month.startsWith(String(currentYear))) {
+          if (lead.month && lead.month.startsWith(currentYearStr)) {
             thisYearsRevenue += lead.netAmount;
           }
-
-          // This Month's Revenue
           if (lead.month === currentMonthYearStr) {
             thisMonthsRevenue += lead.netAmount;
           }
-          
-          // Today's Revenue
           if (lead.createdAt) {
             const leadCreationDate = parseISO(lead.createdAt);
             if (isToday(leadCreationDate)) {
@@ -116,7 +89,7 @@ export function RevenueSummary() {
     ];
   }, [leads]);
 
-  if (error) {
+  if (error) { // If error is present, show error state for all cards
     return (
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {revenueData.map(item => (
@@ -125,7 +98,7 @@ export function RevenueSummary() {
                 <CardTitle className="text-sm font-medium">{item.period}</CardTitle>
                 {item.icon}
             </CardHeader>
-            <CardContent><p className="text-destructive pt-2">Error loading data.</p></CardContent>
+            <CardContent><p className="text-destructive pt-2">Error: {error}</p></CardContent>
            </Card>
         ))}
       </div>

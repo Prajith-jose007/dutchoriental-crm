@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useMemo } from 'react';
 import { PieChart, Pie, Cell, Tooltip as RechartsTooltip, Legend, ResponsiveContainer } from 'recharts';
 import {
   Card,
@@ -24,33 +24,13 @@ const chartConfigBase = {
   Overdue: { label: 'Overdue', color: 'hsl(var(--chart-3))' },
 };
 
-export function InvoiceStatusPieChart() {
-  const [invoices, setInvoices] = useState<Invoice[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+interface InvoiceStatusPieChartProps {
+  invoices: Invoice[];
+  isLoading?: boolean;
+  error?: string | null;
+}
 
-  useEffect(() => {
-    const fetchInvoices = async () => {
-      setIsLoading(true);
-      setError(null);
-      try {
-        const response = await fetch('/api/invoices');
-        if (!response.ok) {
-          throw new Error(`Failed to fetch invoices: ${response.statusText}`);
-        }
-        const data = await response.json();
-        setInvoices(Array.isArray(data) ? data : []);
-      } catch (err) {
-        console.error("Error fetching invoices for InvoiceStatusPieChart:", err);
-        setError((err as Error).message);
-        setInvoices([]);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchInvoices();
-  }, []);
-
+export function InvoiceStatusPieChart({ invoices, isLoading, error }: InvoiceStatusPieChartProps) {
   const chartData: PieChartDataItem[] = useMemo(() => {
     const statusCounts: { [key in Invoice['status']]: number } = {
       Paid: 0,
@@ -77,7 +57,6 @@ export function InvoiceStatusPieChart() {
       return acc;
     }, { ...chartConfigBase })
   , [chartData]);
-
 
   if (isLoading) {
     return (
@@ -118,7 +97,7 @@ export function InvoiceStatusPieChart() {
           <CardDescription>Breakdown of invoices by status.</CardDescription>
         </CardHeader>
         <CardContent className="flex items-center justify-center h-[300px]">
-          <p className="text-muted-foreground">No invoice data available to display.</p>
+          <p className="text-muted-foreground">No invoice data available for selected filters.</p>
         </CardContent>
       </Card>
     );
@@ -151,7 +130,7 @@ export function InvoiceStatusPieChart() {
                   const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
                   const x = cx + radius * Math.cos(-midAngle * RADIAN);
                   const y = cy + radius * Math.sin(-midAngle * RADIAN);
-                  if (percent < 0.05) return null; // Hide label for small slices
+                  if (percent < 0.05) return null;
                   return (
                     <text x={x} y={y} fill="white" textAnchor={x > cx ? 'start' : 'end'} dominantBaseline="central" fontSize="12px">
                       {`${name} (${(percent * 100).toFixed(0)}%)`}

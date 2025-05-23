@@ -21,53 +21,51 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import type { Lead } from '@/lib/types'; // Removed Yacht, Agent as they are fetched by parent or not directly used here for names
+import type { Lead } from '@/lib/types'; 
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import { format } from 'date-fns';
 
-// Assuming agent and yacht names are resolved by the parent page or context if needed.
-// For this table, we'll primarily display IDs or direct lead properties.
 
-const leadColumns: { accessorKey: keyof Lead | 'actions' | 'select', header: string, isCurrency?: boolean, isPercentage?: boolean, isNumeric?: boolean }[] = [
+const leadColumns: { accessorKey: keyof Lead | 'actions' | 'select', header: string, isCurrency?: boolean, isPercentage?: boolean, isNumeric?: boolean, isDate?: boolean }[] = [
   { accessorKey: 'select', header: '' },
   { accessorKey: 'id', header: 'ID' },
   { accessorKey: 'clientName', header: 'Client' },
-  { accessorKey: 'agent', header: 'Agent ID' }, // Displaying Agent ID
-  { accessorKey: 'yacht', header: 'Yacht ID' }, // Displaying Yacht ID
+  { accessorKey: 'agent', header: 'Agent ID' }, 
+  { accessorKey: 'yacht', header: 'Yacht ID' }, 
   { accessorKey: 'status', header: 'Status' },
   { accessorKey: 'month', header: 'Month' },
   { accessorKey: 'type', header: 'Type' },
   { accessorKey: 'invoiceId', header: 'Invoice' },
   { accessorKey: 'modeOfPayment', header: 'Payment Mode' },
   
-  // DHOW Packages
   { accessorKey: 'dhowChildQty', header: 'Dhow Child', isNumeric: true },
   { accessorKey: 'dhowAdultQty', header: 'Dhow Adult', isNumeric: true },
   { accessorKey: 'dhowVipQty', header: 'Dhow VIP', isNumeric: true },
   { accessorKey: 'dhowVipChildQty', header: 'Dhow VIP Child', isNumeric: true },
   { accessorKey: 'dhowVipAlcoholQty', header: 'Dhow VIP Alcohol', isNumeric: true },
-  // OE Packages
+  
   { accessorKey: 'oeChildQty', header: 'OE Child', isNumeric: true },
   { accessorKey: 'oeAdultQty', header: 'OE Adult', isNumeric: true },
   { accessorKey: 'oeVipQty', header: 'OE VIP', isNumeric: true },
   { accessorKey: 'oeVipChildQty', header: 'OE VIP Child', isNumeric: true },
   { accessorKey: 'oeVipAlcoholQty', header: 'OE VIP Alcohol', isNumeric: true },
-  // SUNSET Packages
+  
   { accessorKey: 'sunsetChildQty', header: 'Sunset Child', isNumeric: true },
   { accessorKey: 'sunsetAdultQty', header: 'Sunset Adult', isNumeric: true },
   { accessorKey: 'sunsetVipQty', header: 'Sunset VIP', isNumeric: true },
   { accessorKey: 'sunsetVipChildQty', header: 'Sunset VIP Child', isNumeric: true },
   { accessorKey: 'sunsetVipAlcoholQty', header: 'Sunset VIP Alcohol', isNumeric: true },
-  // LOTUS Packages
+  
   { accessorKey: 'lotusChildQty', header: 'Lotus Child', isNumeric: true },
   { accessorKey: 'lotusAdultQty', header: 'Lotus Adult', isNumeric: true },
   { accessorKey: 'lotusVipQty', header: 'Lotus VIP', isNumeric: true },
   { accessorKey: 'lotusVipChildQty', header: 'Lotus VIP Child', isNumeric: true },
   { accessorKey: 'lotusVipAlcoholQty', header: 'Lotus VIP Alcohol', isNumeric: true },
-  // ROYAL Package
+  
   { accessorKey: 'royalQty', header: 'Royal Pkg', isNumeric: true },
-  // Other Charges
+  
   { accessorKey: 'othersAmtCake', header: 'Other Charges', isCurrency: true },
-  // Financials
+  
   { accessorKey: 'totalAmount', header: 'Total Amt', isCurrency: true },
   { accessorKey: 'commissionPercentage', header: 'Agent Disc. %', isPercentage: true },
   { accessorKey: 'commissionAmount', header: 'Comm Amt', isCurrency: true },
@@ -75,8 +73,8 @@ const leadColumns: { accessorKey: keyof Lead | 'actions' | 'select', header: str
   { accessorKey: 'paidAmount', header: 'Paid Amt', isCurrency: true },
   { accessorKey: 'balanceAmount', header: 'Balance', isCurrency: true },
   { accessorKey: 'lastModifiedByUserId', header: 'Modified By'},
-  { accessorKey: 'createdAt', header: 'Created At'},
-  { accessorKey: 'updatedAt', header: 'Updated At'},
+  { accessorKey: 'createdAt', header: 'Created At', isDate: true},
+  { accessorKey: 'updatedAt', header: 'Updated At', isDate: true},
   { accessorKey: 'actions', header: 'Actions' },
 ];
 
@@ -84,9 +82,10 @@ interface LeadsTableProps {
   leads: Lead[];
   onEditLead: (lead: Lead) => void;
   onDeleteLead: (leadId: string) => void;
+  userMap: { [id: string]: string }; // User ID to Name map
 }
 
-export function LeadsTable({ leads, onEditLead, onDeleteLead }: LeadsTableProps) {
+export function LeadsTable({ leads, onEditLead, onDeleteLead, userMap }: LeadsTableProps) {
 
   const getStatusVariant = (status: Lead['status']) => {
     switch (status) {
@@ -115,12 +114,12 @@ export function LeadsTable({ leads, onEditLead, onDeleteLead }: LeadsTableProps)
     return String(value);
   }
 
-  const formatDate = (dateString?: string) => {
+  const formatDateValue = (dateString?: string) => {
     if (!dateString) return '-';
     try {
-      return new Date(dateString).toLocaleDateString();
+      return format(new Date(dateString), 'dd/MM/yyyy HH:mm');
     } catch (e) {
-      return dateString; // if parsing fails, show original
+      return dateString; 
     }
   };
 
@@ -166,8 +165,10 @@ export function LeadsTable({ leads, onEditLead, onDeleteLead }: LeadsTableProps)
                         formatPercentage(lead[col.accessorKey as keyof Lead] as number | undefined)
                     ) : col.isNumeric ? (
                         formatNumeric(lead[col.accessorKey as keyof Lead] as number | undefined)
-                    ) : col.accessorKey === 'createdAt' || col.accessorKey === 'updatedAt' ? (
-                        formatDate(lead[col.accessorKey as keyof Lead] as string | undefined)
+                    ) : col.isDate ? (
+                        formatDateValue(lead[col.accessorKey as keyof Lead] as string | undefined)
+                    ) : col.accessorKey === 'lastModifiedByUserId' ? (
+                        userMap[lead.lastModifiedByUserId || ''] || lead.lastModifiedByUserId || '-'
                     ) : (
                       lead[col.accessorKey as keyof Lead] !== undefined && lead[col.accessorKey as keyof Lead] !== null ?
                       String(lead[col.accessorKey as keyof Lead]) : '-'
@@ -187,7 +188,10 @@ export function LeadsTable({ leads, onEditLead, onDeleteLead }: LeadsTableProps)
                       <DropdownMenuItem onClick={() => onEditLead(lead)}>
                         Edit Lead
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => onDeleteLead(lead.id)}>
+                      <DropdownMenuItem 
+                        className="text-destructive"
+                        onClick={() => onDeleteLead(lead.id)}
+                       >
                         Delete Lead
                       </DropdownMenuItem>
                     </DropdownMenuContent>
@@ -202,3 +206,4 @@ export function LeadsTable({ leads, onEditLead, onDeleteLead }: LeadsTableProps)
     </ScrollArea>
   );
 }
+

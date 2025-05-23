@@ -1,24 +1,43 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { PageHeader } from '@/components/PageHeader';
 import { LeadsTable } from './_components/LeadsTable';
 import { ImportExportButtons } from './_components/ImportExportButtons';
 import { LeadFormDialog } from './_components/LeadFormDialog';
-import type { Lead, LeadStatus, ModeOfPayment, ExportedLeadStatus } from '@/lib/types';
-// placeholderLeads will now serve as an initial seed if the backend is empty or for examples.
-import { placeholderLeads as initialLeadsData } from '@/lib/placeholder-data';
+import type { Lead, LeadStatus, ModeOfPayment, ExportedLeadStatus, User } from '@/lib/types';
+import { placeholderUsers } from '@/lib/placeholder-data'; // For fallback userMap
 import { useToast } from '@/hooks/use-toast';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
 
-// const LEADS_STORAGE_KEY = 'dutchOrientalCrmLeads'; // No longer using localStorage
+const USERS_STORAGE_KEY = 'dutchOrientalCrmUsers'; // Same key as in UsersPage
 
-// Keep a mutable copy of initial data for in-memory modifications if API fails or for seeding
-// let initialLeads: Lead[] = JSON.parse(JSON.stringify(initialLeadsData));
+// Helper to ensure all numeric package quantities default to 0 if undefined/null
+const ensureNumericDefaults = (leadData: Partial<Lead>): Partial<Lead> => {
+  const numericQtyFields: (keyof Lead)[] = [
+    'dhowChildQty', 'dhowAdultQty', 'dhowVipQty', 'dhowVipChildQty', 'dhowVipAlcoholQty',
+    'oeChildQty', 'oeAdultQty', 'oeVipQty', 'oeVipChildQty', 'oeVipAlcoholQty',
+    'sunsetChildQty', 'sunsetAdultQty', 'sunsetVipQty', 'sunsetVipChildQty', 'sunsetVipAlcoholQty',
+    'lotusChildQty', 'lotusAdultQty', 'lotusVipQty', 'lotusVipChildQty', 'lotusVipAlcoholQty',
+    'royalQty', 'othersAmtCake',
+    'totalAmount', 'commissionPercentage', 'commissionAmount', 'netAmount', 'paidAmount', 'balanceAmount',
+  ];
+  const result = { ...leadData };
+  numericQtyFields.forEach(field => {
+    if (result[field] === undefined || result[field] === null || isNaN(Number(result[field]))) {
+      result[field] = 0 as any;
+    } else {
+      result[field] = Number(result[field]) as any;
+    }
+  });
+  return result;
+};
 
 
 const convertValue = (key: keyof Lead, value: string): any => {
-  const trimmedValue = value ? value.trim() : '';
+  const trimmedValue = value ? String(value).trim() : ''; // Ensure value is treated as string before trim
 
   if (trimmedValue === '' || value === null || value === undefined) {
     switch (key) {
@@ -32,6 +51,7 @@ const convertValue = (key: keyof Lead, value: string): any => {
         case 'paidAmount': case 'balanceAmount':
             return 0;
         case 'modeOfPayment': return 'Online'; // Default mode of payment
+        case 'status': return 'New'; // Default status
         default: return undefined;
     }
   }
@@ -65,6 +85,35 @@ export default function LeadsPage() {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
+  const [userMap, setUserMap] = useState<{ [id: string]: string }>({});
+  const [statusFilter, setStatusFilter] = useState<LeadStatus | ''>('');
+
+  const leadStatusOptions: LeadStatus[] = ['New', 'Contacted', 'Qualified', 'Proposal Sent', 'Closed Won', 'Closed Lost'];
+
+
+  // Fetch users from localStorage to build userMap
+  useEffect(() => {
+    const storedUsers = localStorage.getItem(USERS_STORAGE_KEY);
+    let usersToMap: User[] = placeholderUsers; // Fallback to placeholders
+
+    if (storedUsers) {
+      try {
+        const parsedUsers: User[] = JSON.parse(storedUsers);
+        if (Array.isArray(parsedUsers)) {
+          usersToMap = parsedUsers;
+        }
+      } catch (e) {
+        console.error("Error parsing users from localStorage for map:", e);
+      }
+    }
+    
+    const map: { [id: string]: string } = {};
+    usersToMap.forEach(user => {
+      map[user.id] = user.name;
+    });
+    setUserMap(map);
+  }, []);
+
 
   const fetchLeads = async () => {
     setIsLoading(true);
@@ -78,7 +127,7 @@ export default function LeadsPage() {
     } catch (error) {
       console.error("Error fetching leads:", error);
       toast({ title: 'Error Fetching Leads', description: (error as Error).message, variant: 'destructive' });
-      setLeads(JSON.parse(JSON.stringify(initialLeadsData))); // Fallback to placeholder if API fails
+      setLeads([]); 
     } finally {
       setIsLoading(false);
     }
@@ -100,29 +149,29 @@ export default function LeadsPage() {
   };
 
   const handleLeadFormSubmit = async (submittedLeadData: Lead) => {
+    const leadPayload = {
+      ...submittedLeadData,
+      lastModifiedByUserId: 'DO-user1', // Placeholder for actual logged-in user
+      updatedAt: new Date().toISOString(),
+    };
+
     try {
       let response;
-      if (editingLead && submittedLeadData.id === editingLead.id) {
-        // Update existing lead
+      if (editingLead && leadPayload.id === editingLead.id) {
         response = await fetch(`/api/leads/${editingLead.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(submittedLeadData),
+          body: JSON.stringify(leadPayload),
         });
       } else {
-        // Add new lead
-         if (leads.some(l => l.id === submittedLeadData.id)) {
-            toast({
-            title: 'Error Adding Lead',
-            description: `A lead with ID ${submittedLeadData.id} already exists. Please use a unique ID or let the system generate one.`,
-            variant: 'destructive',
-            });
-            return;
-        }
+        const newLeadWithTimestamps = {
+            ...leadPayload,
+            createdAt: new Date().toISOString(),
+        };
         response = await fetch('/api/leads', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(submittedLeadData),
+          body: JSON.stringify(newLeadWithTimestamps),
         });
       }
 
@@ -131,13 +180,12 @@ export default function LeadsPage() {
         throw new Error(errorData.message || `Failed to save lead: ${response.statusText}`);
       }
       
-      // const savedLead = await response.json(); // The API returns the saved/updated lead
       toast({
         title: editingLead ? 'Lead Updated' : 'Lead Added',
         description: `Lead for ${submittedLeadData.clientName} has been saved.`,
       });
       
-      fetchLeads(); // Re-fetch all leads to update the table
+      fetchLeads(); 
       setIsLeadDialogOpen(false);
       setEditingLead(null);
 
@@ -160,7 +208,7 @@ export default function LeadsPage() {
         throw new Error(errorData.message || `Failed to delete lead: ${response.statusText}`);
       }
       toast({ title: 'Lead Deleted', description: `Lead ${leadId} has been deleted.` });
-      fetchLeads(); // Re-fetch leads
+      fetchLeads(); 
     } catch (error) {
       console.error("Error deleting lead:", error);
       toast({ title: 'Error Deleting Lead', description: (error as Error).message, variant: 'destructive' });
@@ -194,7 +242,10 @@ export default function LeadsPage() {
         let skippedCount = 0;
         let successCount = 0;
         
-        const existingLeadIds = new Set(leads.map(l => l.id));
+        // Fetch current leads from API to check for duplicates by ID
+        const currentApiLeadsResponse = await fetch('/api/leads');
+        const currentApiLeads: Lead[] = await currentApiLeadsResponse.json();
+        const existingLeadIds = new Set(currentApiLeads.map(l => l.id));
 
 
         for (let i = 1; i < lines.length; i++) {
@@ -219,7 +270,7 @@ export default function LeadsPage() {
             parsedRow[header] = convertValue(header, data[index]);
           });
           
-          if (i === 1) {
+          if (i === 1) { // Log first parsed data row
             console.log("First Parsed Data Row (raw values from CSV after convertValue):", JSON.parse(JSON.stringify(parsedRow)));
           }
 
@@ -229,7 +280,6 @@ export default function LeadsPage() {
             const baseGeneratedId = `imported-lead-${Date.now()}-${i}`;
             let currentGeneratedId = baseGeneratedId;
             let uniqueIdCounter = 0;
-
             while (existingLeadIds.has(currentGeneratedId) || newLeadsFromCsv.some(l => l.id === currentGeneratedId) ) {
                 uniqueIdCounter++;
                 currentGeneratedId = `${baseGeneratedId}-${uniqueIdCounter}`;
@@ -237,58 +287,58 @@ export default function LeadsPage() {
             leadId = currentGeneratedId;
           }
 
+          const numericDefaultsApplied = ensureNumericDefaults(parsedRow);
 
           const fullLead: Lead = {
             id: leadId!,
-            agent: typeof parsedRow.agent === 'string' ? parsedRow.agent : '',
-            status: (parsedRow.status as ExportedLeadStatus) || 'New',
-            month: typeof parsedRow.month === 'string' && parsedRow.month.match(/^\d{4}-\d{2}$/) ? parsedRow.month : new Date().toISOString().slice(0,7),
-            yacht: typeof parsedRow.yacht === 'string' ? parsedRow.yacht : '',
-            type: typeof parsedRow.type === 'string' && parsedRow.type.trim() !== '' ? parsedRow.type : 'Imported',
-            modeOfPayment: (parsedRow.modeOfPayment as ModeOfPayment) || 'Online',
-            clientName: typeof parsedRow.clientName === 'string' && parsedRow.clientName.trim() !== '' ? parsedRow.clientName : 'N/A',
-            invoiceId: typeof parsedRow.invoiceId === 'string' ? parsedRow.invoiceId : undefined,
+            agent: typeof numericDefaultsApplied.agent === 'string' ? numericDefaultsApplied.agent : '',
+            status: (numericDefaultsApplied.status as ExportedLeadStatus) || 'New',
+            month: typeof numericDefaultsApplied.month === 'string' && numericDefaultsApplied.month.match(/^\d{4}-\d{2}$/) ? numericDefaultsApplied.month : new Date().toISOString().slice(0,7),
+            yacht: typeof numericDefaultsApplied.yacht === 'string' ? numericDefaultsApplied.yacht : '',
+            type: typeof numericDefaultsApplied.type === 'string' && numericDefaultsApplied.type.trim() !== '' ? numericDefaultsApplied.type : 'Imported',
+            modeOfPayment: (numericDefaultsApplied.modeOfPayment as ModeOfPayment) || 'Online',
+            clientName: typeof numericDefaultsApplied.clientName === 'string' && numericDefaultsApplied.clientName.trim() !== '' ? numericDefaultsApplied.clientName : 'N/A',
+            invoiceId: typeof numericDefaultsApplied.invoiceId === 'string' ? numericDefaultsApplied.invoiceId : undefined,
 
-            dhowChildQty: typeof parsedRow.dhowChildQty === 'number' ? parsedRow.dhowChildQty : 0,
-            dhowAdultQty: typeof parsedRow.dhowAdultQty === 'number' ? parsedRow.dhowAdultQty : 0,
-            dhowVipQty: typeof parsedRow.dhowVipQty === 'number' ? parsedRow.dhowVipQty : 0,
-            dhowVipChildQty: typeof parsedRow.dhowVipChildQty === 'number' ? parsedRow.dhowVipChildQty : 0,
-            dhowVipAlcoholQty: typeof parsedRow.dhowVipAlcoholQty === 'number' ? parsedRow.dhowVipAlcoholQty : 0,
+            dhowChildQty: numericDefaultsApplied.dhowChildQty,
+            dhowAdultQty: numericDefaultsApplied.dhowAdultQty,
+            dhowVipQty: numericDefaultsApplied.dhowVipQty,
+            dhowVipChildQty: numericDefaultsApplied.dhowVipChildQty,
+            dhowVipAlcoholQty: numericDefaultsApplied.dhowVipAlcoholQty,
 
-            oeChildQty: typeof parsedRow.oeChildQty === 'number' ? parsedRow.oeChildQty : 0,
-            oeAdultQty: typeof parsedRow.oeAdultQty === 'number' ? parsedRow.oeAdultQty : 0,
-            oeVipQty: typeof parsedRow.oeVipQty === 'number' ? parsedRow.oeVipQty : 0,
-            oeVipChildQty: typeof parsedRow.oeVipChildQty === 'number' ? parsedRow.oeVipChildQty : 0,
-            oeVipAlcoholQty: typeof parsedRow.oeVipAlcoholQty === 'number' ? parsedRow.oeVipAlcoholQty : 0,
+            oeChildQty: numericDefaultsApplied.oeChildQty,
+            oeAdultQty: numericDefaultsApplied.oeAdultQty,
+            oeVipQty: numericDefaultsApplied.oeVipQty,
+            oeVipChildQty: numericDefaultsApplied.oeVipChildQty,
+            oeVipAlcoholQty: numericDefaultsApplied.oeVipAlcoholQty,
 
-            sunsetChildQty: typeof parsedRow.sunsetChildQty === 'number' ? parsedRow.sunsetChildQty : 0,
-            sunsetAdultQty: typeof parsedRow.sunsetAdultQty === 'number' ? parsedRow.sunsetAdultQty : 0,
-            sunsetVipQty: typeof parsedRow.sunsetVipQty === 'number' ? parsedRow.sunsetVipQty : 0,
-            sunsetVipChildQty: typeof parsedRow.sunsetVipChildQty === 'number' ? parsedRow.sunsetVipChildQty : 0,
-            sunsetVipAlcoholQty: typeof parsedRow.sunsetVipAlcoholQty === 'number' ? parsedRow.sunsetVipAlcoholQty : 0,
+            sunsetChildQty: numericDefaultsApplied.sunsetChildQty,
+            sunsetAdultQty: numericDefaultsApplied.sunsetAdultQty,
+            sunsetVipQty: numericDefaultsApplied.sunsetVipQty,
+            sunsetVipChildQty: numericDefaultsApplied.sunsetVipChildQty,
+            sunsetVipAlcoholQty: numericDefaultsApplied.sunsetVipAlcoholQty,
 
-            lotusChildQty: typeof parsedRow.lotusChildQty === 'number' ? parsedRow.lotusChildQty : 0,
-            lotusAdultQty: typeof parsedRow.lotusAdultQty === 'number' ? parsedRow.lotusAdultQty : 0,
-            lotusVipQty: typeof parsedRow.lotusVipQty === 'number' ? parsedRow.lotusVipQty : 0,
-            lotusVipChildQty: typeof parsedRow.lotusVipChildQty === 'number' ? parsedRow.lotusVipChildQty : 0,
-            lotusVipAlcoholQty: typeof parsedRow.lotusVipAlcoholQty === 'number' ? parsedRow.lotusVipAlcoholQty : 0,
+            lotusChildQty: numericDefaultsApplied.lotusChildQty,
+            lotusAdultQty: numericDefaultsApplied.lotusAdultQty,
+            lotusVipQty: numericDefaultsApplied.lotusVipQty,
+            lotusVipChildQty: numericDefaultsApplied.lotusVipChildQty,
+            lotusVipAlcoholQty: numericDefaultsApplied.lotusVipAlcoholQty,
 
-            royalQty: typeof parsedRow.royalQty === 'number' ? parsedRow.royalQty : 0,
-
-            othersAmtCake: typeof parsedRow.othersAmtCake === 'number' ? parsedRow.othersAmtCake : 0,
-
-            totalAmount: typeof parsedRow.totalAmount === 'number' ? parsedRow.totalAmount : 0,
-            commissionPercentage: typeof parsedRow.commissionPercentage === 'number' ? parsedRow.commissionPercentage : 0,
-            commissionAmount: typeof parsedRow.commissionAmount === 'number' ? parsedRow.commissionAmount : 0,
-            netAmount: typeof parsedRow.netAmount === 'number' ? parsedRow.netAmount : 0,
-            paidAmount: typeof parsedRow.paidAmount === 'number' ? parsedRow.paidAmount : 0,
-            balanceAmount: typeof parsedRow.balanceAmount === 'number' ? parsedRow.balanceAmount : 0,
-
-            createdAt: typeof parsedRow.createdAt === 'string' && parsedRow.createdAt.trim() !== '' ? parsedRow.createdAt : new Date().toISOString(),
+            royalQty: numericDefaultsApplied.royalQty,
+            othersAmtCake: numericDefaultsApplied.othersAmtCake,
+            totalAmount: numericDefaultsApplied.totalAmount,
+            commissionPercentage: numericDefaultsApplied.commissionPercentage,
+            commissionAmount: numericDefaultsApplied.commissionAmount,
+            netAmount: numericDefaultsApplied.netAmount,
+            paidAmount: numericDefaultsApplied.paidAmount,
+            balanceAmount: numericDefaultsApplied.balanceAmount,
+            
+            createdAt: typeof numericDefaultsApplied.createdAt === 'string' && numericDefaultsApplied.createdAt.trim() !== '' ? numericDefaultsApplied.createdAt : new Date().toISOString(),
             updatedAt: new Date().toISOString(),
+            lastModifiedByUserId: 'DO-user-importer', // Placeholder for importer user
           };
-          if (i === 1) {
-             console.log("First Full Lead Object (after defaults):", JSON.parse(JSON.stringify(fullLead)));
+          if (i === 1) { // Log first full lead object
+             console.log("First Full Lead Object (after defaults, before API post):", JSON.parse(JSON.stringify(fullLead)));
           }
 
           const isDuplicateInExisting = existingLeadIds.has(fullLead.id);
@@ -296,7 +346,7 @@ export default function LeadsPage() {
 
           if (!isDuplicateInExisting && !isDuplicateInThisBatch) {
             newLeadsFromCsv.push(fullLead);
-            existingLeadIds.add(fullLead.id); // Add to set to check against within this batch
+            existingLeadIds.add(fullLead.id); 
           } else {
             console.warn(`Skipping import for lead with duplicate ID: ${fullLead.id} at CSV row ${i + 1}. Line: "${lines[i]}"`);
             skippedCount++;
@@ -304,7 +354,6 @@ export default function LeadsPage() {
         }
 
         if (newLeadsFromCsv.length > 0) {
-          // Post each new lead to the backend
           for (const leadToImport of newLeadsFromCsv) {
             try {
               const response = await fetch('/api/leads', {
@@ -316,40 +365,39 @@ export default function LeadsPage() {
                 successCount++;
               } else {
                 const errorData = await response.json();
-                console.warn(`Failed to import lead ${leadToImport.id}: ${errorData.message || response.statusText}`);
+                console.warn(`Failed to import lead ${leadToImport.id} via API: ${errorData.message || response.statusText}. Payload:`, JSON.stringify(leadToImport));
                 skippedCount++;
               }
             } catch (apiError) {
-                console.warn(`API error importing lead ${leadToImport.id}:`, apiError);
+                console.warn(`API error importing lead ${leadToImport.id}:`, apiError, "Payload:", JSON.stringify(leadToImport));
                 skippedCount++;
             }
           }
           
-          fetchLeads(); // Re-fetch all leads after import attempts
+          fetchLeads(); 
 
           if (successCount > 0 && skippedCount === 0) {
             toast({ title: 'Import Successful', description: `${successCount} new leads imported.` });
           } else if (successCount > 0 && skippedCount > 0) {
-             toast({ title: 'Import Partially Completed', description: `${successCount} new leads imported, ${skippedCount} CSV rows/leads were skipped. Check console.`, variant: 'default' });
+             toast({ title: 'Import Partially Completed', description: `${successCount} new leads imported, ${skippedCount} CSV rows/leads were skipped. Check console for details.`, variant: 'default' });
           } else if (successCount === 0 && skippedCount > 0) {
              toast({
                 title: 'Import Failed',
                 description: `All ${skippedCount} valid data rows from CSV were skipped during API submission or due to duplicates. Check console for details.`,
                 variant: 'destructive'
             });
-          } else {
-             toast({ title: 'Import Complete', description: 'No new leads were imported (file had no valid data rows or all were duplicates). Check console.' });
+          } else { // successCount === 0 && skippedCount === 0
+             toast({ title: 'Import Complete', description: 'No new leads were imported (file had no valid data rows or all were duplicates of existing leads). Check console for details on any parsing issues.' });
           }
 
-        } else if (skippedCount === lines.length -1 && lines.length > 1) {
+        } else if (skippedCount > 0 && skippedCount === (lines.length -1) && lines.length > 1) {
            toast({
             title: 'Import Failed',
-            description: `All ${lines.length - 1} data rows were skipped during parsing. Please check your CSV file. Common issues: column count mismatch with header, or incorrect delimiter (must be comma). Ensure IDs in CSV are unique if provided. Check console for details on skipped rows.`,
+            description: `All ${lines.length - 1} data rows were skipped during parsing or due to duplicate IDs. Please check your CSV file. Common issues: column count mismatch, incorrect delimiter, or duplicate IDs. Ensure IDs in CSV are unique if provided. Check console for details on skipped rows.`,
             variant: 'destructive'
           });
-        }
-         else {
-          toast({ title: 'Import Complete', description: 'No new leads were imported (possibly all duplicates or file had no valid data rows after header). Check console for details.' });
+        } else { // No new leads and no rows skipped that weren't already duplicates
+          toast({ title: 'Import Complete', description: 'No new leads were imported. The file may have contained only duplicates or no valid data rows after the header. Check console for details.' });
         }
 
       } catch (error) {
@@ -367,58 +415,13 @@ export default function LeadsPage() {
     reader.readAsText(file);
   };
 
-  const handleCsvExport = () => {
-    if (leads.length === 0) {
-      toast({ title: 'No Data', description: 'There are no leads to export.', variant: 'default' });
-      return;
+  const filteredLeads = useMemo(() => {
+    if (!statusFilter) {
+      return leads;
     }
+    return leads.filter(lead => lead.status === statusFilter);
+  }, [leads, statusFilter]);
 
-    const headers: (keyof Lead)[] = [
-      'id', 'agent', 'status', 'month', 'yacht', 'type', 'invoiceId', 'modeOfPayment', 'clientName',
-      'dhowChildQty', 'dhowAdultQty', 'dhowVipQty', 'dhowVipChildQty', 'dhowVipAlcoholQty',
-      'oeChildQty', 'oeAdultQty', 'oeVipQty', 'oeVipChildQty', 'oeVipAlcoholQty',
-      'sunsetChildQty', 'sunsetAdultQty', 'sunsetVipQty', 'sunsetVipChildQty', 'sunsetVipAlcoholQty',
-      'lotusChildQty', 'lotusAdultQty', 'lotusVipQty', 'lotusVipChildQty', 'lotusVipAlcoholQty',
-      'royalQty',
-      'othersAmtCake', 'totalAmount', 'commissionPercentage',
-      'commissionAmount', 'netAmount', 'paidAmount', 'balanceAmount', 'createdAt', 'updatedAt'
-    ];
-
-    const escapeCsvCell = (cellData: any): string => {
-      if (cellData === null || cellData === undefined) {
-        return '';
-      }
-      const stringValue = String(cellData);
-      if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n')) {
-        return `"${stringValue.replace(/"/g, '""')}"`;
-      }
-      return stringValue;
-    };
-
-    const csvRows = [
-      headers.join(','),
-      ...leads.map(lead =>
-        headers.map(header => escapeCsvCell(lead[header])).join(',')
-      )
-    ];
-    const csvString = csvRows.join('\n');
-
-    const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    if (link.download !== undefined) {
-      const url = URL.createObjectURL(blob);
-      link.setAttribute('href', url);
-      link.setAttribute('download', 'dutchoriental_leads_export.csv');
-      link.style.visibility = 'hidden';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-      toast({ title: 'Export Successful', description: 'Leads have been exported to CSV.' });
-    } else {
-      toast({ title: 'Export Failed', description: 'Your browser does not support this feature.', variant: 'destructive' });
-    }
-  };
 
   if (isLoading) {
     return <div className="container mx-auto py-2 text-center">Loading leads...</div>;
@@ -432,10 +435,74 @@ export default function LeadsPage() {
         actions={<ImportExportButtons
                     onAddLeadClick={handleAddLeadClick}
                     onCsvImport={handleCsvImport}
-                    onCsvExport={handleCsvExport} // Added prop for export handler
+                    onCsvExport={() => { // Simplified direct export handler
+                        if (leads.length === 0) {
+                            toast({ title: 'No Data', description: 'There are no leads to export.', variant: 'default' });
+                            return;
+                        }
+                        const headers: (keyof Lead)[] = [
+                            'id', 'agent', 'status', 'month', 'yacht', 'type', 'invoiceId', 'modeOfPayment', 'clientName',
+                            'dhowChildQty', 'dhowAdultQty', 'dhowVipQty', 'dhowVipChildQty', 'dhowVipAlcoholQty',
+                            'oeChildQty', 'oeAdultQty', 'oeVipQty', 'oeVipChildQty', 'oeVipAlcoholQty',
+                            'sunsetChildQty', 'sunsetAdultQty', 'sunsetVipQty', 'sunsetVipChildQty', 'sunsetVipAlcoholQty',
+                            'lotusChildQty', 'lotusAdultQty', 'lotusVipQty', 'lotusVipChildQty', 'lotusVipAlcoholQty',
+                            'royalQty',
+                            'othersAmtCake', 'totalAmount', 'commissionPercentage',
+                            'commissionAmount', 'netAmount', 'paidAmount', 'balanceAmount', 
+                            'createdAt', 'updatedAt', 'lastModifiedByUserId'
+                        ];
+                        const escapeCsvCell = (cellData: any): string => {
+                            if (cellData === null || cellData === undefined) return '';
+                            const stringValue = String(cellData);
+                            if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n')) {
+                            return `"${stringValue.replace(/"/g, '""')}"`;
+                            }
+                            return stringValue;
+                        };
+                        const csvRows = [
+                            headers.join(','),
+                            ...leads.map(lead =>
+                            headers.map(header => escapeCsvCell(lead[header])).join(',')
+                            )
+                        ];
+                        const csvString = csvRows.join('\n');
+                        const blob = new Blob(["\uFEFF" + csvString], { type: 'text/csv;charset=utf-8;' }); // Added BOM for Excel
+                        const link = document.createElement('a');
+                        if (link.download !== undefined) {
+                            const url = URL.createObjectURL(blob);
+                            link.setAttribute('href', url);
+                            link.setAttribute('download', 'dutchoriental_leads_export.csv');
+                            link.style.visibility = 'hidden';
+                            document.body.appendChild(link);
+                            link.click();
+                            document.body.removeChild(link);
+                            URL.revokeObjectURL(url);
+                            toast({ title: 'Export Successful', description: 'Leads have been exported to CSV.' });
+                        } else {
+                            toast({ title: 'Export Failed', description: 'Your browser does not support this feature.', variant: 'destructive' });
+                        }
+                    }}
                   />}
       />
-      <LeadsTable leads={leads} onEditLead={handleEditLeadClick} onDeleteLead={handleDeleteLead} />
+      <div className="mb-4 flex items-center gap-4">
+        <div className="flex items-center gap-2">
+            <Label htmlFor="status-filter" className="text-sm font-medium">Filter by Status:</Label>
+            <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as LeadStatus | '')}>
+                <SelectTrigger id="status-filter" className="w-[180px]">
+                    <SelectValue placeholder="All Statuses" />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="">All Statuses</SelectItem>
+                    {leadStatusOptions.map(status => (
+                        <SelectItem key={status} value={status}>{status}</SelectItem>
+                    ))}
+                </SelectContent>
+            </Select>
+        </div>
+        {/* Add more filters here as needed */}
+      </div>
+
+      <LeadsTable leads={filteredLeads} onEditLead={handleEditLeadClick} onDeleteLead={handleDeleteLead} userMap={userMap} />
       {isLeadDialogOpen && (
         <LeadFormDialog
           isOpen={isLeadDialogOpen}
@@ -447,3 +514,4 @@ export default function LeadsPage() {
     </div>
   );
 }
+

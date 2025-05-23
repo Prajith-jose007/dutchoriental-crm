@@ -22,32 +22,31 @@ export default function UsersPage() {
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [users, setUsers] = useState<User[]>([]);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
   useEffect(() => {
-    // Check user role from localStorage
+    setIsLoading(true);
     try {
       const role = localStorage.getItem(USER_ROLE_STORAGE_KEY);
       setIsAdmin(role === 'admin');
     } catch (error) {
       console.error("Error accessing localStorage for user role:", error);
-      setIsAdmin(false); // Default to non-admin if localStorage is inaccessible
+      setIsAdmin(false); 
     }
     
-
-    // Load users from localStorage or initialize with placeholder data
     let currentUsersData: User[];
     try {
       const storedUsers = localStorage.getItem(USERS_STORAGE_KEY);
       if (storedUsers) {
         currentUsersData = JSON.parse(storedUsers);
       } else {
-        currentUsersData = JSON.parse(JSON.stringify(initialUsersData)); // Deep copy
+        currentUsersData = JSON.parse(JSON.stringify(initialUsersData)); 
         localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(currentUsersData));
       }
     } catch (error) {
       console.error("Error accessing or parsing users from localStorage:", error);
-      currentUsersData = JSON.parse(JSON.stringify(initialUsersData)); // Fallback on error
+      currentUsersData = JSON.parse(JSON.stringify(initialUsersData)); 
        try {
         localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(currentUsersData));
       } catch (storageError) {
@@ -55,8 +54,9 @@ export default function UsersPage() {
       }
     }
     
-    sessionUsers = [...currentUsersData]; // Update the session-level store
-    setUsers(currentUsersData);
+    sessionUsers = [...currentUsersData]; 
+    setUsers([...sessionUsers]); // Use a new array for React state
+    setIsLoading(false);
   }, []);
 
 
@@ -85,18 +85,27 @@ export default function UsersPage() {
     }
 
     const userIndex = sessionUsers.findIndex(u => u.id === submittedUserData.id);
-    if (editingUser && userIndex > -1) {
+
+    if (editingUser && userIndex > -1) { // Editing existing user
         sessionUsers[userIndex] = submittedUserData;
-         toast({ title: "User Updated", description: `${submittedUserData.name} has been updated.` });
-    } else if (!editingUser && !sessionUsers.some(u => u.id === submittedUserData.id)) {
+        toast({ title: "User Updated", description: `${submittedUserData.name} has been updated.` });
+    } else if (!editingUser) { // Adding new user
+        // Ensure ID is unique if it's a new user
+        const isIdTaken = sessionUsers.some(u => u.id === submittedUserData.id);
+        if (isIdTaken) {
+            toast({ title: "Error", description: `User with ID ${submittedUserData.id} already exists. Please use a unique ID.`, variant: "destructive" });
+            return; 
+        }
+        // Ensure ID is provided for new users (though form might enforce this)
+        if (!submittedUserData.id) {
+            submittedUserData.id = `user-${Date.now()}-${Math.random().toString(36).substring(2,7)}`;
+        }
         sessionUsers.push(submittedUserData);
-         toast({ title: "User Added", description: `${submittedUserData.name} has been added.` });
-    } else if (!editingUser && sessionUsers.some(u => u.id === submittedUserData.id)) {
-        toast({ title: "Error", description: `User with ID ${submittedUserData.id} already exists.`, variant: "destructive" });
-        return; 
+        toast({ title: "User Added", description: `${submittedUserData.name} has been added.` });
     } else {
-        console.error("ID issue or trying to add user with existing ID:", submittedUserData.id);
-        toast({ title: "Error", description: "Could not save user due to an ID conflict or unknown issue.", variant: "destructive" });
+        // This case should not be reached if logic is correct (e.g. editing a non-existent user)
+        console.error("Error in form submission logic: ", submittedUserData);
+        toast({ title: "Error", description: "Could not save user due to an unknown issue.", variant: "destructive" });
         return;
     }
 
@@ -105,11 +114,44 @@ export default function UsersPage() {
     } catch (storageError) {
       console.error("Failed to save users to localStorage:", storageError);
       toast({ title: "Storage Error", description: "Could not save user changes.", variant: "destructive"});
+       // Optionally revert sessionUsers if localStorage fails, or handle differently
     }
     setUsers([...sessionUsers]); // Update React state to re-render
     setIsUserDialogOpen(false);
     setEditingUser(null);
   };
+
+  const handleDeleteUser = (userId: string) => {
+    if (!isAdmin) {
+      toast({ title: "Access Denied", description: "Only admins can delete users.", variant: "destructive"});
+      return;
+    }
+    if (!confirm(`Are you sure you want to delete user ${userId}? This action cannot be undone.`)) {
+      return;
+    }
+    
+    const initialLength = sessionUsers.length;
+    sessionUsers = sessionUsers.filter(user => user.id !== userId);
+
+    if (sessionUsers.length < initialLength) {
+      try {
+        localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(sessionUsers));
+        setUsers([...sessionUsers]);
+        toast({ title: "User Deleted", description: `User ${userId} has been deleted.` });
+      } catch (storageError) {
+        console.error("Failed to save users to localStorage after deletion:", storageError);
+        toast({ title: "Storage Error", description: "Could not save user changes after deletion.", variant: "destructive"});
+        // Revert sessionUsers to pre-delete state if critical
+        // For now, we'll assume localStorage update is usually successful or user refreshes.
+      }
+    } else {
+      toast({ title: "Error", description: `User ${userId} not found.`, variant: "destructive"});
+    }
+  };
+  
+  if (isLoading) {
+    return <div className="container mx-auto py-2 text-center">Loading users...</div>;
+  }
 
   return (
     <div className="container mx-auto py-2">
@@ -117,25 +159,18 @@ export default function UsersPage() {
         title="User Management"
         description="Manage your team members and their roles."
         actions={
-          isAdmin ? (
-            <Button onClick={handleAddUserClick}>
+            <Button onClick={handleAddUserClick} disabled={!isAdmin}>
               <PlusCircle className="mr-2 h-4 w-4" />
-              Add User
+              Add User {isAdmin ? "" : "(Admin Only)"}
             </Button>
-          ) : (
-            <Button onClick={handleAddUserClick} disabled>
-              <PlusCircle className="mr-2 h-4 w-4" />
-              Add User (Admin Only)
-            </Button>
-          )
         }
       />
       {!isAdmin && (
         <p className="mb-4 text-sm text-destructive">
-          User management is restricted to administrators.
+          Viewing user list. User management (add, edit, delete) is restricted to administrators.
         </p>
       )}
-      <UsersTable users={users} onEditUser={handleEditUserClick} isAdmin={isAdmin} />
+      <UsersTable users={users} onEditUser={handleEditUserClick} onDeleteUser={handleDeleteUser} isAdmin={isAdmin} />
       {isUserDialogOpen && (
         <UserFormDialog
           isOpen={isUserDialogOpen}

@@ -1,6 +1,8 @@
 
+'use client'; // Added for useRouter and localStorage
+
 import Link from 'next/link';
-import { Bell, UserCircle, Search } from 'lucide-react';
+import { Bell, UserCircle, Search, Ship } from 'lucide-react'; // Added Ship
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -12,15 +14,41 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { SidebarTrigger } from '@/components/ui/sidebar';
-// Removed Logo import as it's no longer used here
+import { Logo } from '@/components/icons/Logo'; // For the header logo
+import { useRouter } from 'next/navigation'; // Added for redirection
+import { useToast } from '@/hooks/use-toast'; // Added for logout toast
 
 export function Header() {
+  const router = useRouter();
+  const { toast } = useToast();
+
+  const handleLogout = () => {
+    try {
+      localStorage.removeItem('currentUserRole');
+      localStorage.removeItem('currentUserEmail');
+      toast({
+        title: 'Logged Out',
+        description: 'You have been successfully logged out.',
+      });
+      router.push('/login');
+    } catch (error) {
+      console.error("Error during logout:", error);
+      toast({
+        title: 'Logout Error',
+        description: 'Could not clear session. Please try again.',
+        variant: 'destructive',
+      });
+    }
+  };
+
   return (
     <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
       <div className="md:hidden">
         <SidebarTrigger />
       </div>
-      {/* Logo removed from here */}
+      <div className="hidden md:flex items-center gap-2"> {/* Logo for wider screens */}
+        <Logo />
+      </div>
       <div className="relative flex-1 md:grow-0 md:ml-4">
         {/* Search for larger screens, could be hidden on mobile if space is an issue */}
       </div>
@@ -52,7 +80,7 @@ export function Header() {
             </DropdownMenuItem>
             <DropdownMenuItem>Support</DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>Logout</DropdownMenuItem>
+            <DropdownMenuItem onClick={handleLogout}>Logout</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>

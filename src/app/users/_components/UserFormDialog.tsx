@@ -34,8 +34,9 @@ import { useToast } from '@/hooks/use-toast';
 import type { User } from '@/lib/types';
 import { useEffect } from 'react';
 
+// User ID is now optional in the schema for new users, but will be required by form for submission
 const userFormSchema = z.object({
-  id: z.string().optional(),
+  id: z.string().min(1, 'User ID is required').optional(), // Made optional for initial state, but form will handle it
   name: z.string().min(2, 'Name must be at least 2 characters'),
   email: z.string().email('Invalid email address'),
   designation: z.string().min(2, 'Designation is required'),
@@ -64,6 +65,7 @@ export function UserFormDialog({ isOpen, onOpenChange, user, onSubmitSuccess }: 
       websiteUrl: user.websiteUrl || '',
       status: user.status || 'Active',
     } : {
+      id: '', // Default to empty, will be filled by user
       name: '',
       email: '',
       designation: '',
@@ -75,35 +77,44 @@ export function UserFormDialog({ isOpen, onOpenChange, user, onSubmitSuccess }: 
 
   useEffect(() => {
     if (isOpen) {
-      form.reset(user ? {
-        ...user,
-        websiteUrl: user.websiteUrl || '',
-        status: user.status || 'Active',
-      } : {
-        id: undefined,
-        name: '',
-        email: '',
-        designation: '',
-        avatarUrl: '',
-        websiteUrl: '',
-        status: 'Active',
-      });
+      if (user) {
+        form.reset({
+          ...user,
+          websiteUrl: user.websiteUrl || '',
+          status: user.status || 'Active',
+        });
+      } else {
+        // When adding new, explicitly set id to empty string for the input field
+        form.reset({
+          id: '',
+          name: '',
+          email: '',
+          designation: '',
+          avatarUrl: '',
+          websiteUrl: '',
+          status: 'Active',
+        });
+      }
     }
   }, [user, form, isOpen]);
 
   function onSubmit(data: UserFormData) {
+    // Ensure ID is present, especially for new users
+    if (!data.id && !user) {
+        toast({ title: "Error", description: "User ID is required for new users.", variant: "destructive" });
+        form.setError("id", { type: "manual", message: "User ID is required." });
+        return;
+    }
+    
     const submittedUser: User = {
       ...data,
-      id: user?.id || `user-${Date.now()}`,
+      id: user?.id || data.id!, // Use existing ID if editing, otherwise use form ID
       avatarUrl: data.avatarUrl || undefined,
       websiteUrl: data.websiteUrl || undefined,
       status: data.status || 'Active',
     };
     onSubmitSuccess(submittedUser);
-    toast({
-      title: user ? 'User Updated' : 'User Added',
-      description: `${data.name} has been ${user ? 'updated' : 'added'}.`,
-    });
+    // Toast is handled by the parent page
     onOpenChange(false);
   }
 
@@ -118,6 +129,25 @@ export function UserFormDialog({ isOpen, onOpenChange, user, onSubmitSuccess }: 
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
+            <FormField
+              control={form.control}
+              name="id"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>User ID</FormLabel>
+                  <FormControl>
+                    <Input 
+                      placeholder="e.g., user001" 
+                      {...field} 
+                      value={field.value || ''} // Ensure controlled component
+                      readOnly={!!user} // Read-only if editing an existing user
+                      className={!!user ? "bg-muted/50" : ""}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
             <FormField
               control={form.control}
               name="name"
@@ -164,7 +194,7 @@ export function UserFormDialog({ isOpen, onOpenChange, user, onSubmitSuccess }: 
                 <FormItem>
                   <FormLabel>Avatar URL (Optional)</FormLabel>
                   <FormControl>
-                    <Input placeholder="https://placehold.co/100x100.png" {...field} />
+                    <Input placeholder="https://placehold.co/100x100.png" {...field} value={field.value || ''} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -177,7 +207,7 @@ export function UserFormDialog({ isOpen, onOpenChange, user, onSubmitSuccess }: 
                 <FormItem>
                   <FormLabel>Website URL (Optional)</FormLabel>
                   <FormControl>
-                    <Input placeholder="https://example.com" {...field} />
+                    <Input placeholder="https://example.com" {...field} value={field.value || ''}/>
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -189,7 +219,7 @@ export function UserFormDialog({ isOpen, onOpenChange, user, onSubmitSuccess }: 
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Status</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value || undefined}>
+                  <Select onValueChange={field.onChange} value={field.value || undefined} defaultValue={field.value}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Select status" />

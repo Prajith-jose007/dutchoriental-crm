@@ -6,17 +6,18 @@ import { PageHeader } from '@/components/PageHeader';
 import { LeadsTable } from './_components/LeadsTable';
 import { ImportExportButtons } from './_components/ImportExportButtons';
 import { LeadFormDialog } from './_components/LeadFormDialog';
-import type { Lead, LeadStatus, ModeOfPayment, ExportedLeadStatus, User } from '@/lib/types';
-import { placeholderUsers } from '@/lib/placeholder-data'; // For fallback userMap
+import type { Lead, LeadStatus, ModeOfPayment, User, Agent, Yacht } from '@/lib/types';
+import { placeholderUsers } from '@/lib/placeholder-data';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
+import { DatePicker } from '@/components/ui/date-picker';
 import { Skeleton } from '@/components/ui/skeleton';
-
+import { format, parseISO, isWithinInterval, startOfMonth, endOfMonth, startOfYear, endOfYear } from 'date-fns';
 
 const USERS_STORAGE_KEY = 'dutchOrientalCrmUsers';
 
-// Helper to ensure all numeric package quantities default to 0 if undefined/null
 const ensureNumericDefaults = (leadData: Partial<Lead>): Partial<Lead> => {
   const numericQtyFields: (keyof Lead)[] = [
     'dhowChildQty', 'dhowAdultQty', 'dhowVipQty', 'dhowVipChildQty', 'dhowVipAlcoholQty',
@@ -37,7 +38,6 @@ const ensureNumericDefaults = (leadData: Partial<Lead>): Partial<Lead> => {
   return result;
 };
 
-
 const convertValue = (key: keyof Lead, value: string): any => {
   const trimmedValue = value ? String(value).trim() : '';
 
@@ -52,8 +52,8 @@ const convertValue = (key: keyof Lead, value: string): any => {
         case 'commissionPercentage': case 'commissionAmount': case 'netAmount':
         case 'paidAmount': case 'balanceAmount':
             return 0;
-        case 'modeOfPayment': return 'Online'; // Default mode of payment
-        case 'status': return 'New'; // Default status
+        case 'modeOfPayment': return 'Online'; 
+        case 'status': return 'New'; 
         default: return undefined;
     }
   }
@@ -84,59 +84,100 @@ const convertValue = (key: keyof Lead, value: string): any => {
 export default function LeadsPage() {
   const [isLeadDialogOpen, setIsLeadDialogOpen] = useState(false);
   const [editingLead, setEditingLead] = useState<Lead | null>(null);
-  const [leads, setLeads] = useState<Lead[]>([]);
+  const [allLeads, setAllLeads] = useState<Lead[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
   const [userMap, setUserMap] = useState<{ [id: string]: string }>({});
-  const [statusFilter, setStatusFilter] = useState<LeadStatus | 'all'>('all');
+  
+  const [allAgents, setAllAgents] = useState<Agent[]>([]);
+  const [allYachts, setAllYachts] = useState<Yacht[]>([]);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+
+  // Filter states
+  const [startDate, setStartDate] = useState<Date | undefined>(undefined);
+  const [endDate, setEndDate] = useState<Date | undefined>(undefined);
+  const [selectedMonth, setSelectedMonth] = useState<string>('all');
+  const [selectedYear, setSelectedYear] = useState<string>('all');
+  const [selectedYachtId, setSelectedYachtId] = useState<string>('all');
+  const [selectedAgentId, setSelectedAgentId] = useState<string>('all');
+  const [selectedUserId, setSelectedUserId] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<LeadStatus | 'all'>('all'); // Existing status filter
 
   const leadStatusOptions: LeadStatus[] = ['New', 'Contacted', 'Qualified', 'Proposal Sent', 'Closed Won', 'Closed Lost'];
 
 
   useEffect(() => {
-    const storedUsers = localStorage.getItem(USERS_STORAGE_KEY);
-    let usersToMap: User[] = placeholderUsers;
-
-    if (storedUsers) {
+    const loadInitialData = async () => {
+      setIsLoading(true);
+      setFetchError(null);
       try {
-        const parsedUsers: User[] = JSON.parse(storedUsers);
-        if (Array.isArray(parsedUsers)) {
-          usersToMap = parsedUsers;
+        // Fetch Leads, Agents, Yachts
+        const [leadsRes, agentsRes, yachtsRes] = await Promise.all([
+          fetch('/api/leads'),
+          fetch('/api/agents'),
+          fetch('/api/yachts'),
+        ]);
+
+        if (!leadsRes.ok) throw new Error(`Failed to fetch leads: ${leadsRes.statusText}`);
+        const leadsData = await leadsRes.json();
+        setAllLeads(Array.isArray(leadsData) ? leadsData : []);
+
+        if (!agentsRes.ok) throw new Error(`Failed to fetch agents: ${agentsRes.statusText}`);
+        const agentsData = await agentsRes.json();
+        setAllAgents(Array.isArray(agentsData) ? agentsData : []);
+
+        if (!yachtsRes.ok) throw new Error(`Failed to fetch yachts: ${yachtsRes.statusText}`);
+        const yachtsData = await yachtsRes.json();
+        setAllYachts(Array.isArray(yachtsData) ? yachtsData : []);
+
+        // Load users from localStorage for userMap
+        const storedUsers = localStorage.getItem(USERS_STORAGE_KEY);
+        let usersToMap: User[] = placeholderUsers; // Fallback
+        if (storedUsers) {
+          try {
+            const parsedUsers: User[] = JSON.parse(storedUsers);
+            if (Array.isArray(parsedUsers) && parsedUsers.length > 0) {
+              usersToMap = parsedUsers;
+            }
+          } catch (e) {
+            console.error("Error parsing users from localStorage for map:", e);
+          }
         }
-      } catch (e) {
-        console.error("Error parsing users from localStorage for map:", e);
+        const map: { [id: string]: string } = {};
+        usersToMap.forEach(user => { map[user.id] = user.name; });
+        setUserMap(map);
+
+      } catch (error) {
+        console.error("Error fetching initial data for Leads page:", error);
+        setFetchError((error as Error).message);
+        toast({ title: 'Error Fetching Data', description: (error as Error).message, variant: 'destructive' });
+        setAllLeads([]); 
+        setAllAgents([]);
+        setAllYachts([]);
+      } finally {
+        setIsLoading(false);
       }
-    }
-    
-    const map: { [id: string]: string } = {};
-    usersToMap.forEach(user => {
-      map[user.id] = user.name;
-    });
-    setUserMap(map);
-  }, []);
+    };
 
+    loadInitialData();
+  }, [toast]);
 
-  const fetchLeads = async () => {
-    setIsLoading(true);
+  const refreshLeads = async () => { // Renamed from fetchLeads to avoid conflict
+    setIsLoading(true); // Optionally set loading true for refresh
     try {
       const response = await fetch('/api/leads');
       if (!response.ok) {
         throw new Error(`Failed to fetch leads: ${response.statusText}`);
       }
       const data = await response.json();
-      setLeads(Array.isArray(data) ? data : []);
+      setAllLeads(Array.isArray(data) ? data : []);
     } catch (error) {
-      console.error("Error fetching leads:", error);
-      toast({ title: 'Error Fetching Leads', description: (error as Error).message, variant: 'destructive' });
-      setLeads([]); 
+      console.error("Error refreshing leads:", error);
+      toast({ title: 'Error Refreshing Leads', description: (error as Error).message, variant: 'destructive' });
     } finally {
       setIsLoading(false);
     }
   };
-
-  useEffect(() => {
-    fetchLeads();
-  }, []);
 
 
   const handleAddLeadClick = () => {
@@ -168,7 +209,7 @@ export default function LeadsPage() {
         const newLeadWithTimestamps = {
             ...leadPayload,
             createdAt: new Date().toISOString(),
-            id: leadPayload.id || `lead-${Date.now()}-${Math.random().toString(36).substring(2,7)}` // Ensure ID for new leads
+            id: leadPayload.id || `lead-${Date.now()}-${Math.random().toString(36).substring(2,7)}`
         };
         response = await fetch('/api/leads', {
           method: 'POST',
@@ -187,7 +228,7 @@ export default function LeadsPage() {
         description: `Lead for ${submittedLeadData.clientName} has been saved.`,
       });
       
-      fetchLeads(); 
+      refreshLeads(); 
       setIsLeadDialogOpen(false);
       setEditingLead(null);
 
@@ -210,13 +251,12 @@ export default function LeadsPage() {
         throw new Error(errorData.message || `Failed to delete lead: ${response.statusText}`);
       }
       toast({ title: 'Lead Deleted', description: `Lead ${leadId} has been deleted.` });
-      fetchLeads(); 
+      refreshLeads(); 
     } catch (error) {
       console.error("Error deleting lead:", error);
       toast({ title: 'Error Deleting Lead', description: (error as Error).message, variant: 'destructive' });
     }
   };
-
 
   const handleCsvImport = async (file: File) => {
     const reader = new FileReader();
@@ -247,7 +287,6 @@ export default function LeadsPage() {
         const currentApiLeadsResponse = await fetch('/api/leads');
         const currentApiLeads: Lead[] = await currentApiLeadsResponse.json();
         const existingLeadIds = new Set(currentApiLeads.map(l => l.id));
-
 
         for (let i = 1; i < lines.length; i++) {
           let data = lines[i].split(',');
@@ -293,7 +332,7 @@ export default function LeadsPage() {
           const fullLead: Lead = {
             id: leadId!,
             agent: typeof numericDefaultsApplied.agent === 'string' ? numericDefaultsApplied.agent : '',
-            status: (numericDefaultsApplied.status as ExportedLeadStatus) || 'New',
+            status: (numericDefaultsApplied.status as LeadStatus) || 'New',
             month: typeof numericDefaultsApplied.month === 'string' && numericDefaultsApplied.month.match(/^\d{4}-\d{2}$/) ? numericDefaultsApplied.month : new Date().toISOString().slice(0,7),
             yacht: typeof numericDefaultsApplied.yacht === 'string' ? numericDefaultsApplied.yacht : '',
             type: typeof numericDefaultsApplied.type === 'string' && numericDefaultsApplied.type.trim() !== '' ? numericDefaultsApplied.type : 'Imported',
@@ -375,7 +414,7 @@ export default function LeadsPage() {
             }
           }
           
-          fetchLeads(); 
+          refreshLeads(); 
 
           if (successCount > 0 && skippedCount === 0) {
             toast({ title: 'Import Successful', description: `${successCount} new leads imported.` });
@@ -416,12 +455,48 @@ export default function LeadsPage() {
     reader.readAsText(file);
   };
 
+
+  const availableMonths = useMemo(() => {
+    const months = new Set<string>();
+    allLeads.forEach(lead => months.add(lead.month.substring(5, 7)));
+    return Array.from(months).sort().map(m => ({ value: m, label: format(new Date(2000, parseInt(m)-1, 1), 'MMMM') }));
+  }, [allLeads]);
+
+  const availableYears = useMemo(() => {
+    const years = new Set<string>();
+    allLeads.forEach(lead => years.add(lead.month.substring(0, 4)));
+    return Array.from(years).sort((a,b) => parseInt(b) - parseInt(a));
+  }, [allLeads]);
+
+
   const filteredLeads = useMemo(() => {
-    if (statusFilter === 'all') {
-      return leads;
-    }
-    return leads.filter(lead => lead.status === statusFilter);
-  }, [leads, statusFilter]);
+    return allLeads.filter(lead => {
+      const leadDate = parseISO(lead.createdAt);
+      const leadMonthYear = lead.month; 
+
+      if (startDate && endDate && !isWithinInterval(leadDate, { start: startDate, end: endDate })) return false;
+      if (!startDate && !endDate) { // Only apply month/year if no date range
+        if (selectedMonth !== 'all' && leadMonthYear.substring(5,7) !== selectedMonth) return false;
+        if (selectedYear !== 'all' && leadMonthYear.substring(0,4) !== selectedYear) return false;
+      }
+      if (selectedYachtId !== 'all' && lead.yacht !== selectedYachtId) return false;
+      if (selectedAgentId !== 'all' && lead.agent !== selectedAgentId) return false;
+      if (selectedUserId !== 'all' && lead.lastModifiedByUserId !== selectedUserId) return false;
+      if (statusFilter !== 'all' && lead.status !== statusFilter) return false;
+      return true;
+    });
+  }, [allLeads, startDate, endDate, selectedMonth, selectedYear, selectedYachtId, selectedAgentId, selectedUserId, statusFilter]);
+
+  const resetFilters = () => {
+    setStartDate(undefined);
+    setEndDate(undefined);
+    setSelectedMonth('all');
+    setSelectedYear('all');
+    setSelectedYachtId('all');
+    setSelectedAgentId('all');
+    setSelectedUserId('all');
+    setStatusFilter('all');
+  };
 
 
   if (isLoading) {
@@ -438,13 +513,22 @@ export default function LeadsPage() {
                     </div>
                 }
             />
-            <div className="mb-4">
-                <Skeleton className="h-10 w-48" />
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-6 p-4 border rounded-lg shadow-sm">
+                 {[...Array(8)].map((_,i) => <Skeleton key={i} className="h-10 w-full" />)}
             </div>
             <div className="space-y-2">
                 {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}
             </div>
         </div>
+    );
+  }
+
+  if (fetchError) {
+     return (
+      <div className="container mx-auto py-2">
+        <PageHeader title="Leads Management" description="Error loading data." />
+        <p className="text-destructive text-center py-10">Failed to load lead data: {fetchError}</p>
+      </div>
     );
   }
 
@@ -457,7 +541,7 @@ export default function LeadsPage() {
                     onAddLeadClick={handleAddLeadClick}
                     onCsvImport={handleCsvImport}
                     onCsvExport={() => { 
-                        if (leads.length === 0) {
+                        if (allLeads.length === 0) {
                             toast({ title: 'No Data', description: 'There are no leads to export.', variant: 'default' });
                             return;
                         }
@@ -482,7 +566,7 @@ export default function LeadsPage() {
                         };
                         const csvRows = [
                             headers.join(','),
-                            ...leads.map(lead =>
+                            ...allLeads.map(lead =>
                             headers.map(header => escapeCsvCell(lead[header])).join(',')
                             )
                         ];
@@ -505,24 +589,87 @@ export default function LeadsPage() {
                     }}
                   />}
       />
-      <div className="mb-4 flex items-center gap-4">
-        <div className="flex items-center gap-2">
-            <Label htmlFor="status-filter" className="text-sm font-medium">Filter by Status:</Label>
-            <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as LeadStatus | 'all')}>
-                <SelectTrigger id="status-filter" className="w-[180px]">
-                    <SelectValue placeholder="All Statuses" />
-                </SelectTrigger>
-                <SelectContent>
-                    <SelectItem value="all">All Statuses</SelectItem>
-                    {leadStatusOptions.map(status => (
-                        <SelectItem key={status} value={status}>{status}</SelectItem>
-                    ))}
-                </SelectContent>
-            </Select>
+      {/* Filters Section */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-6 p-4 border rounded-lg shadow-sm">
+        <div>
+          <Label htmlFor="start-date-leads">Start Date</Label>
+          <DatePicker date={startDate} setDate={setStartDate} placeholder="Start Date" />
+        </div>
+        <div>
+          <Label htmlFor="end-date-leads">End Date</Label>
+          <DatePicker date={endDate} setDate={setEndDate} placeholder="End Date" disabled={(date) => startDate ? date < startDate : false} />
+        </div>
+        <div>
+          <Label htmlFor="month-filter-leads">Month</Label>
+          <Select value={selectedMonth} onValueChange={setSelectedMonth} disabled={!!(startDate && endDate)}>
+            <SelectTrigger id="month-filter-leads"><SelectValue placeholder="All Months" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Months</SelectItem>
+              {availableMonths.map(m => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label htmlFor="year-filter-leads">Year</Label>
+          <Select value={selectedYear} onValueChange={setSelectedYear} disabled={!!(startDate && endDate)}>
+            <SelectTrigger id="year-filter-leads"><SelectValue placeholder="All Years" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Years</SelectItem>
+              {availableYears.map(year => <SelectItem key={year} value={year}>{year}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label htmlFor="status-filter-leads">Status</Label>
+          <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as LeadStatus | 'all')}>
+              <SelectTrigger id="status-filter-leads" className="w-full">
+                  <SelectValue placeholder="All Statuses" />
+              </SelectTrigger>
+              <SelectContent>
+                  <SelectItem value="all">All Statuses</SelectItem>
+                  {leadStatusOptions.map(status => (
+                      <SelectItem key={status} value={status}>{status}</SelectItem>
+                  ))}
+              </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label htmlFor="yacht-filter-leads">Yacht</Label>
+          <Select value={selectedYachtId} onValueChange={setSelectedYachtId}>
+            <SelectTrigger id="yacht-filter-leads"><SelectValue placeholder="All Yachts" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Yachts</SelectItem>
+              {allYachts.map(yacht => <SelectItem key={yacht.id} value={yacht.id}>{yacht.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label htmlFor="agent-filter-leads">Agent</Label>
+          <Select value={selectedAgentId} onValueChange={setSelectedAgentId}>
+            <SelectTrigger id="agent-filter-leads"><SelectValue placeholder="All Agents" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Agents</SelectItem>
+              {allAgents.map(agent => <SelectItem key={agent.id} value={agent.id}>{agent.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label htmlFor="user-filter-leads">User (Modified Lead)</Label>
+          <Select value={selectedUserId} onValueChange={setSelectedUserId}>
+            <SelectTrigger id="user-filter-leads"><SelectValue placeholder="All Users" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Users</SelectItem>
+              {Object.entries(userMap).map(([id, name]) => <SelectItem key={id} value={id}>{name}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="flex items-end xl:col-span-1"> {/* Ensure button aligns well */}
+            <Button onClick={resetFilters} variant="outline" className="w-full">Reset Filters</Button>
         </div>
       </div>
 
       <LeadsTable leads={filteredLeads} onEditLead={handleEditLeadClick} onDeleteLead={handleDeleteLead} userMap={userMap} />
+      
       {isLeadDialogOpen && (
         <LeadFormDialog
           isOpen={isLeadDialogOpen}
@@ -534,4 +681,3 @@ export default function LeadsPage() {
     </div>
   );
 }
-

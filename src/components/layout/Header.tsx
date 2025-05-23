@@ -1,8 +1,8 @@
 
-'use client'; // Added for useRouter and localStorage
+'use client';
 
 import Link from 'next/link';
-import { Bell, UserCircle, Search } from 'lucide-react'; // Removed Ship
+import { Bell, UserCircle, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -14,13 +14,18 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { SidebarTrigger } from '@/components/ui/sidebar';
-// import { Logo } from '@/components/icons/Logo'; // Ensure Logo is removed
-import { useRouter } from 'next/navigation'; // Added for redirection
-import { useToast } from '@/hooks/use-toast'; // Added for logout toast
+import { useRouter } from 'next/navigation';
+import { useToast } from '@/hooks/use-toast';
+import { useState, useEffect } from 'react'; // Added useState, useEffect
 
 export function Header() {
+  const [mounted, setMounted] = useState(false); // State to track if component has mounted
   const router = useRouter();
   const { toast } = useToast();
+
+  useEffect(() => {
+    setMounted(true); // Set to true after component mounts on client
+  }, []);
 
   const handleLogout = () => {
     try {
@@ -46,10 +51,22 @@ export function Header() {
       <div className="md:hidden">
         <SidebarTrigger />
       </div>
-      {/* Logo was here, it has been removed. It's in SidebarNav.tsx */}
-      <div className="relative flex-1 md:grow-0 md:ml-4">
-        {/* Search for larger screens, could be hidden on mobile if space is an issue */}
-      </div>
+      
+      {/* This div was identified as the source of hydration mismatch */}
+      {/* Conditionally render to ensure server and initial client render match */}
+      {mounted ? (
+        <div className="relative flex-1 md:grow-0 md:ml-4">
+          {/* Content for this div, if any, can be placed here */}
+          {/* E.g., Search for larger screens, could be hidden on mobile if space is an issue */}
+        </div>
+      ) : (
+        // Render a consistent placeholder that matches what the server would output for this structure,
+        // or simply a div with the correct classes if the content itself isn't the issue.
+        // Given the diff, the server renders an old structure. The client expects the new one.
+        // By rendering the new structure's div shell, we align the initial client render.
+        <div className="relative flex-1 md:grow-0 md:ml-4" />
+      )}
+
       <div className="flex flex-1 items-center justify-end gap-4">
         <div className="relative ml-auto flex-1 md:grow-0">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />

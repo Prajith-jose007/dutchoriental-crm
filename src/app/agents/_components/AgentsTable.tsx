@@ -27,7 +27,7 @@ import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 interface AgentsTableProps {
   agents: Agent[];
   onEditAgent: (agent: Agent) => void;
-  onDeleteAgent: (agentId: string) => void; // Added for delete functionality
+  onDeleteAgent: (agentId: string) => void;
 }
 
 export function AgentsTable({ agents, onEditAgent, onDeleteAgent }: AgentsTableProps) {
@@ -39,11 +39,17 @@ export function AgentsTable({ agents, onEditAgent, onDeleteAgent }: AgentsTableP
       case 'Non Active':
         return 'secondary';
       case 'Dead':
-        return 'outline'; // 'destructive' might be too strong, outline is more neutral for 'Dead'
+        return 'outline'; 
       default:
         return 'outline';
     }
   };
+
+  const truncateText = (text?: string, maxLength: number = 20) => {
+    if (!text) return '-';
+    return text.length > maxLength ? text.substring(0, maxLength - 3) + '...' : text;
+  };
+
 
   return (
     <ScrollArea className="rounded-md border whitespace-nowrap">
@@ -55,7 +61,11 @@ export function AgentsTable({ agents, onEditAgent, onDeleteAgent }: AgentsTableP
             </TableHead>
             <TableHead>Name</TableHead>
             <TableHead>ID</TableHead>
+            <TableHead>Agency Code</TableHead>
+            <TableHead>Address</TableHead>
+            <TableHead>Phone No</TableHead>
             <TableHead>Email</TableHead>
+            <TableHead>TRN Number</TableHead>
             <TableHead>Discount (%)</TableHead>
             <TableHead>Website</TableHead>
             <TableHead>Status</TableHead>
@@ -65,7 +75,7 @@ export function AgentsTable({ agents, onEditAgent, onDeleteAgent }: AgentsTableP
         <TableBody>
           {agents.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={8} className="h-24 text-center">
+              <TableCell colSpan={12} className="h-24 text-center">
                 No agents found.
               </TableCell>
             </TableRow>
@@ -78,11 +88,15 @@ export function AgentsTable({ agents, onEditAgent, onDeleteAgent }: AgentsTableP
                 <TableCell className="font-medium">{agent.name}</TableCell>
                 <TableCell>
                     <Button variant="link" className="p-0 h-auto font-normal" onClick={() => onEditAgent(agent)}>
-                        {agent.id.length > 10 ? agent.id.substring(0,4) + '...' + agent.id.substring(agent.id.length-4) : agent.id}
+                        {truncateText(agent.id, 10)}
                     </Button>
                 </TableCell>
+                <TableCell>{agent.agency_code || '-'}</TableCell>
+                <TableCell>{truncateText(agent.address, 25)}</TableCell>
+                <TableCell>{agent.phone_no || '-'}</TableCell>
                 <TableCell>{agent.email}</TableCell>
-                <TableCell>{agent.discountRate.toFixed(1)}%</TableCell>
+                <TableCell>{agent.TRN_number || '-'}</TableCell>
+                <TableCell>{agent.discount.toFixed(1)}%</TableCell>
                 <TableCell>
                   {agent.websiteUrl ? (
                     <a href={agent.websiteUrl} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
@@ -112,7 +126,7 @@ export function AgentsTable({ agents, onEditAgent, onDeleteAgent }: AgentsTableP
                       <DropdownMenuSeparator />
                       <DropdownMenuItem 
                         className="text-destructive"
-                        onClick={() => onDeleteAgent(agent.id)} // Use onDeleteAgent prop
+                        onClick={() => onDeleteAgent(agent.id)}
                       >
                         Delete Agent
                       </DropdownMenuItem>

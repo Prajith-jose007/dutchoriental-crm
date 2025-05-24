@@ -10,9 +10,41 @@ export const placeholderUsers: User[] = [
 ];
 
 export const placeholderAgents: Agent[] = [
-  { id: 'DO-agentA', name: 'Prime Charters Agency', email: 'contact@primecharters.com', discountRate: 12, websiteUrl: 'https://primecharters.com', status: 'Active' },
-  { id: 'DO-agentB', name: 'Luxury Yacht Bookings Co.', email: 'bookings@luxuryyachtbookings.com', discountRate: 15, websiteUrl: 'https://luxuryyachtbookings.com', status: 'Active' },
-  { id: 'DO-agentC', name: 'Seven Seas Agents', email: 'info@sevenseasagents.com', discountRate: 10, status: 'Non Active' },
+  { 
+    id: 'DO-agentA', 
+    name: 'Prime Charters Agency', 
+    agency_code: 'PCA001',
+    address: '123 Marina Drive, Dubai',
+    phone_no: '+971501234567',
+    email: 'contact@primecharters.com', 
+    discount: 12, 
+    websiteUrl: 'https://primecharters.com', 
+    status: 'Active',
+    TRN_number: '100298765400003'
+  },
+  { 
+    id: 'DO-agentB', 
+    name: 'Luxury Yacht Bookings Co.', 
+    agency_code: 'LYB002',
+    address: '456 Ocean View Rd, Dubai',
+    phone_no: '+971559876543',
+    email: 'bookings@luxuryyachtbookings.com', 
+    discount: 15, 
+    websiteUrl: 'https://luxuryyachtbookings.com', 
+    status: 'Active',
+    TRN_number: '100300012300003'
+  },
+  { 
+    id: 'DO-agentC', 
+    name: 'Seven Seas Agents', 
+    agency_code: 'SSA003',
+    address: '789 Palm Jumeirah, Dubai',
+    phone_no: '+971522468135',
+    email: 'info@sevenseasagents.com', 
+    discount: 10, 
+    status: 'Non Active',
+    TRN_number: '100200055500003'
+  },
 ];
 
 export const placeholderYachts: Yacht[] = [
@@ -42,46 +74,46 @@ export const placeholderYachts: Yacht[] = [
 
 export let placeholderLeads: Lead[] = [
   {
-    id: 'DO-lead1', agent: 'DO-agentA', status: 'Closed Won', month: formatISO(new Date('2024-07-15')), notes: 'Confirmed booking, client very happy.', yacht: 'DO-yacht1',
+    id: 'DO-lead1', agent: 'DO-agentA', status: 'Closed Won', month: formatISO(new Date('2024-07-15T10:00:00Z')), notes: 'Confirmed booking, client very happy.', yacht: 'DO-yacht1',
     type: 'Corporate Event', invoiceId: 'DO-inv001', modeOfPayment: 'Online', clientName: 'Tech Corp',
     dhowAdultQty: 10, totalAmount: 1290, commissionPercentage: 12, commissionAmount: 154.8,
     netAmount: 1135.2, paidAmount: 1290, balanceAmount: 0,
     createdAt: '2024-06-15T10:00:00Z', updatedAt: '2024-07-01T10:00:00Z', lastModifiedByUserId: 'DO-user1', ownerUserId: 'DO-user1'
   },
   {
-    id: 'DO-lead2', agent: 'DO-agentB', status: 'Proposal Sent', month: formatISO(new Date('2024-07-25')), notes: 'Follow up next week.', yacht: 'DO-yacht2',
+    id: 'DO-lead2', agent: 'DO-agentB', status: 'Proposal Sent', month: formatISO(new Date('2024-07-25T14:30:00Z')), notes: 'Follow up next week.', yacht: 'DO-yacht2',
     type: 'Private Party', modeOfPayment: 'Credit', clientName: 'Innovate Ltd',
     oeAdultQty: 10, totalAmount: 1550, commissionPercentage: 15, commissionAmount: 232.5,
     netAmount: 1317.5, paidAmount: 500, balanceAmount: 1050,
     createdAt: '2024-06-20T10:00:00Z', updatedAt: '2024-07-05T10:00:00Z', lastModifiedByUserId: 'DO-user2', ownerUserId: 'DO-user2'
   },
   {
-    id: 'DO-lead3', agent: 'DO-agentA', status: 'Closed Won', month: formatISO(new Date('2024-08-10')), yacht: 'DO-yacht3',
+    id: 'DO-lead3', agent: 'DO-agentA', status: 'Closed Won', month: formatISO(new Date('2024-08-10T12:00:00Z')), yacht: 'DO-yacht3',
     type: 'Tour Group', modeOfPayment: 'Cash/Card', clientName: 'Solutions Inc',
     dhowAdultQty: 10, totalAmount: 1200, commissionPercentage: 12, commissionAmount: 144,
     netAmount: 1056, paidAmount: 1200, balanceAmount: 0,
     createdAt: '2024-07-10T10:00:00Z', updatedAt: '2024-07-12T10:00:00Z', lastModifiedByUserId: 'DO-user1', ownerUserId: 'DO-user1'
   },
   {
-    id: 'DO-lead4', agent: 'DO-agentC', status: 'New', month: formatISO(new Date('2024-08-20')), yacht: 'DO-yacht1',
+    id: 'DO-lead4', agent: 'DO-agentC', status: 'New', month: formatISO(new Date('2024-08-20T18:00:00Z')), yacht: 'DO-yacht1',
     type: 'Wedding Reception', modeOfPayment: 'Online', clientName: 'Global Co',
-    dhowVipQty: 20, othersAmtCake: 100, totalAmount: 3880, commissionPercentage: 10, commissionAmount: 388,
-    netAmount: 3492, paidAmount: 0, balanceAmount: 3880,
+    dhowVipQty: 20, othersAmtCake: 100, totalAmount: (20 * 189) + 100, commissionPercentage: 10, commissionAmount: ((20 * 189) + 100) * 0.10,
+    netAmount: ((20 * 189) + 100) * 0.90, paidAmount: 0, balanceAmount: (20 * 189) + 100,
     createdAt: '2024-07-20T10:00:00Z', updatedAt: '2024-07-20T10:00:00Z', lastModifiedByUserId: 'DO-user3', ownerUserId: 'DO-user3'
   },
   {
-    id: 'DO-lead5', agent: 'DO-agentB', status: 'Qualified', month: formatISO(new Date('2024-09-05')), yacht: 'DO-yacht1',
+    id: 'DO-lead5', agent: 'DO-agentB', status: 'Qualified', month: formatISO(new Date('2024-09-05T16:00:00Z')), yacht: 'DO-yacht1',
     type: 'Birthday Celebration', modeOfPayment: 'Credit', clientName: 'Celebrations LLC',
-    dhowChildQty: 10, dhowAdultQty: 10, totalAmount: 2180, commissionPercentage: 15, commissionAmount: 327,
-    netAmount: 1853, paidAmount: 2180, balanceAmount: 0,
+    dhowChildQty: 10, dhowAdultQty: 10, totalAmount: (10 * 89) + (10 * 129), commissionPercentage: 15, commissionAmount: ((10 * 89) + (10 * 129)) * 0.15,
+    netAmount: ((10 * 89) + (10 * 129)) * 0.85, paidAmount: (10 * 89) + (10 * 129), balanceAmount: 0,
     createdAt: '2024-08-10T10:00:00Z', updatedAt: '2024-08-15T10:00:00Z', lastModifiedByUserId: 'DO-user2', ownerUserId: 'DO-user2'
   }
 ];
 
 export let placeholderInvoices: Invoice[] = [
-  { id: 'DO-inv001', leadId: 'DO-lead1', clientName: 'Tech Corp', amount: 1290, dueDate: '2024-08-15', status: 'Paid', createdAt: '2024-07-01' },
-  { id: 'DO-inv002', leadId: 'DO-lead2', clientName: 'Innovate Ltd', amount: 1550, dueDate: '2024-08-20', status: 'Pending', createdAt: '2024-07-05' },
-  { id: 'DO-inv003', leadId: 'DO-lead3', clientName: 'Solutions Inc', amount: 1200, dueDate: '2024-07-25', status: 'Overdue', createdAt: '2024-06-10' },
-  { id: 'DO-inv004', leadId: 'DO-lead4', clientName: 'Global Co', amount: 3880, dueDate: '2024-09-01', status: 'Pending', createdAt: '2024-07-15' },
-  { id: 'DO-inv005', leadId: 'DO-lead5', clientName: 'Alpha LLC (Repeat)', amount: 2180, dueDate: '2024-09-10', status: 'Paid', createdAt: '2024-08-01' },
+  { id: 'DO-inv001', leadId: 'DO-lead1', clientName: 'Tech Corp', amount: 1290, dueDate: '2024-08-15', status: 'Paid', createdAt: formatISO(new Date('2024-07-01')) },
+  { id: 'DO-inv002', leadId: 'DO-lead2', clientName: 'Innovate Ltd', amount: 1550, dueDate: '2024-08-20', status: 'Pending', createdAt: formatISO(new Date('2024-07-05')) },
+  { id: 'DO-inv003', leadId: 'DO-lead3', clientName: 'Solutions Inc', amount: 1200, dueDate: '2024-07-25', status: 'Overdue', createdAt: formatISO(new Date('2024-06-10')) },
+  { id: 'DO-inv004', leadId: 'DO-lead4', clientName: 'Global Co', amount: 3880, dueDate: '2024-09-01', status: 'Pending', createdAt: formatISO(new Date('2024-07-15')) },
+  { id: 'DO-inv005', leadId: 'DO-lead5', clientName: 'Alpha LLC (Repeat)', amount: 2180, dueDate: '2024-09-10', status: 'Paid', createdAt: formatISO(new Date('2024-08-01')) },
 ];

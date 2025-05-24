@@ -7,16 +7,20 @@ export interface User {
   avatarUrl?: string;
   websiteUrl?: string;
   status?: 'Active' | 'Inactive' | 'Archived';
-  password?: string; 
+  password?: string;
 }
 
 export interface Agent {
   id: string;
   name: string;
+  agency_code?: string; // New
+  address?: string; // New
+  phone_no?: string; // New
   email: string;
-  discountRate: number;
-  websiteUrl?: string;
   status: 'Active' | 'Non Active' | 'Dead';
+  TRN_number?: string; // New
+  discount: number; // Renamed from discountRate
+  websiteUrl?: string;
 }
 
 export interface Yacht {

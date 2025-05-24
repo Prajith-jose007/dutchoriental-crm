@@ -28,9 +28,10 @@ interface AgentsTableProps {
   agents: Agent[];
   onEditAgent: (agent: Agent) => void;
   onDeleteAgent: (agentId: string) => void;
+  isAdmin: boolean; // New prop
 }
 
-export function AgentsTable({ agents, onEditAgent, onDeleteAgent }: AgentsTableProps) {
+export function AgentsTable({ agents, onEditAgent, onDeleteAgent, isAdmin }: AgentsTableProps) {
 
   const getStatusBadgeVariant = (status: Agent['status']) => {
     switch (status) {
@@ -39,7 +40,7 @@ export function AgentsTable({ agents, onEditAgent, onDeleteAgent }: AgentsTableP
       case 'Non Active':
         return 'secondary';
       case 'Dead':
-        return 'outline'; 
+        return 'outline';
       default:
         return 'outline';
     }
@@ -57,7 +58,7 @@ export function AgentsTable({ agents, onEditAgent, onDeleteAgent }: AgentsTableP
         <TableHeader>
           <TableRow>
             <TableHead className="w-[40px]">
-              <Checkbox aria-label="Select all agents" />
+              <Checkbox aria-label="Select all agents" disabled={!isAdmin} />
             </TableHead>
             <TableHead>Name</TableHead>
             <TableHead>ID</TableHead>
@@ -83,11 +84,16 @@ export function AgentsTable({ agents, onEditAgent, onDeleteAgent }: AgentsTableP
             agents.map((agent) => (
               <TableRow key={agent.id}>
                 <TableCell>
-                  <Checkbox aria-label={`Select agent ${agent.name}`} />
+                  <Checkbox aria-label={`Select agent ${agent.name}`} disabled={!isAdmin} />
                 </TableCell>
                 <TableCell className="font-medium">{agent.name}</TableCell>
                 <TableCell>
-                    <Button variant="link" className="p-0 h-auto font-normal" onClick={() => onEditAgent(agent)}>
+                    <Button 
+                        variant="link" 
+                        className="p-0 h-auto font-normal" 
+                        onClick={() => isAdmin && onEditAgent(agent)}
+                        disabled={!isAdmin}
+                    >
                         {truncateText(agent.id, 10)}
                     </Button>
                 </TableCell>
@@ -112,21 +118,22 @@ export function AgentsTable({ agents, onEditAgent, onDeleteAgent }: AgentsTableP
                 <TableCell>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" className="h-8 w-8 p-0">
+                      <Button variant="ghost" className="h-8 w-8 p-0" disabled={!isAdmin}>
                         <span className="sr-only">Open menu</span>
                         <MoreHorizontal className="h-4 w-4" />
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                      <DropdownMenuItem onClick={() => onEditAgent(agent)}>
+                      <DropdownMenuItem onClick={() => onEditAgent(agent)} disabled={!isAdmin}>
                         Edit Agent
                       </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => console.log('View agent details (not implemented)', agent.id)}>View Details</DropdownMenuItem>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem 
+                      <DropdownMenuItem
                         className="text-destructive"
                         onClick={() => onDeleteAgent(agent.id)}
+                        disabled={!isAdmin}
                       >
                         Delete Agent
                       </DropdownMenuItem>

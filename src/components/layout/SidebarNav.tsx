@@ -13,16 +13,32 @@ import {
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
-  SidebarMenuBadge,
   useSidebar,
 } from '@/components/ui/sidebar';
 import { Logo } from '@/components/icons/Logo';
 import { Button } from '@/components/ui/button';
 import { LogOut, UserCircle } from 'lucide-react';
+import { useEffect, useState } from 'react'; // Import useEffect and useState
+
+const USER_ROLE_STORAGE_KEY = 'currentUserRole';
 
 export function SidebarNav() {
   const pathname = usePathname();
-  const { state } = useSidebar(); // Removed 'open' as it wasn't used
+  const { state } = useSidebar();
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    // This effect runs only on the client-side
+    setMounted(true);
+    try {
+      const role = localStorage.getItem(USER_ROLE_STORAGE_KEY);
+      setIsAdmin(role === 'admin');
+    } catch (error) {
+      console.error("Error accessing localStorage for user role in SidebarNav:", error);
+      setIsAdmin(false);
+    }
+  }, []);
 
   return (
     <Sidebar collapsible="icon" variant="sidebar" side="left">
@@ -32,6 +48,14 @@ export function SidebarNav() {
       <SidebarContent>
         <SidebarMenu>
           {mainNavItems.map((item) => {
+            // Client-side check for admin-only items
+            if (item.title === 'Agents' && mounted && !isAdmin) {
+              return null; // Don't render Agents link if not admin and component is mounted
+            }
+            if (item.title === 'Agents' && !mounted) {
+                return null; // Avoid rendering on server / initial client render if role not yet checked
+            }
+
             const isActive = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href));
             return (
               <SidebarMenuItem key={item.title}>
@@ -46,8 +70,6 @@ export function SidebarNav() {
                     <span>{item.title}</span>
                   </Link>
                 </SidebarMenuButton>
-                {/* Example badge, can be dynamic */}
-                {/* {item.title === 'Leads' && <SidebarMenuBadge>12</SidebarMenuBadge>} */}
               </SidebarMenuItem>
             );
           })}

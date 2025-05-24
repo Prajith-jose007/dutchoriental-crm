@@ -10,6 +10,8 @@ import { AgentFormDialog } from './_components/AgentFormDialog';
 import type { Agent } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 
+const USER_ROLE_STORAGE_KEY = 'currentUserRole';
+
 // Helper to convert CSV row values to correct Agent types
 const convertAgentValue = (key: keyof Agent, value: string): any => {
   const trimmedValue = value ? String(value).trim() : '';
@@ -46,8 +48,21 @@ export default function AgentsPage() {
   const [editingAgent, setEditingAgent] = useState<Agent | null>(null);
   const [agents, setAgents] = useState<Agent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    try {
+      const role = localStorage.getItem(USER_ROLE_STORAGE_KEY);
+      setIsAdmin(role === 'admin');
+    } catch (error) {
+      console.error("Error accessing localStorage for user role:", error);
+      setIsAdmin(false);
+    }
+    fetchAgents();
+  }, []);
+
 
   const fetchAgents = async () => {
     setIsLoading(true);
@@ -61,27 +76,35 @@ export default function AgentsPage() {
     } catch (error) {
       console.error("Error fetching agents:", error);
       toast({ title: 'Error Fetching Agents', description: (error as Error).message, variant: 'destructive' });
-      setAgents([]); 
+      setAgents([]);
     } finally {
       setIsLoading(false);
     }
   };
 
-  useEffect(() => {
-    fetchAgents();
-  }, []);
-
   const handleAddAgentClick = () => {
+    if (!isAdmin) {
+      toast({ title: "Access Denied", description: "Only administrators can add agents.", variant: "destructive" });
+      return;
+    }
     setEditingAgent(null);
     setIsAgentDialogOpen(true);
   };
 
   const handleEditAgentClick = (agent: Agent) => {
+    if (!isAdmin) {
+      toast({ title: "Access Denied", description: "Only administrators can edit agents.", variant: "destructive" });
+      return;
+    }
     setEditingAgent(agent);
     setIsAgentDialogOpen(true);
   };
 
   const handleAgentFormSubmit = async (submittedAgentData: Agent) => {
+    if (!isAdmin) {
+      toast({ title: "Access Denied", description: "You do not have permission to save agent data.", variant: "destructive" });
+      return;
+    }
     try {
       let response;
       if (editingAgent && submittedAgentData.id === editingAgent.id) {
@@ -92,18 +115,18 @@ export default function AgentsPage() {
         });
       } else {
         const existingAgentById = agents.find(a => a.id === submittedAgentData.id);
-        if (existingAgentById && !editingAgent) { 
+        if (existingAgentById && !editingAgent) {
              toast({
                 title: 'Error Adding Agent',
                 description: `Agent with ID ${submittedAgentData.id} already exists.`,
                 variant: 'destructive',
             });
-            return; 
+            return;
         }
         const existingAgentByEmail = agents.find(a => a.email.toLowerCase() === submittedAgentData.email.toLowerCase() && a.id !== submittedAgentData.id);
-         if (existingAgentByEmail && !editingAgent) {
+         if (existingAgentByEmail && (!editingAgent || (editingAgent && editingAgent.email.toLowerCase() !== submittedAgentData.email.toLowerCase()))) {
              toast({
-                title: 'Error Adding Agent',
+                title: 'Error Saving Agent',
                 description: `Agent with email ${submittedAgentData.email} already exists.`,
                 variant: 'destructive',
             });
@@ -120,13 +143,13 @@ export default function AgentsPage() {
         const errorData = await response.json();
         throw new Error(errorData.message || `Failed to save agent: ${response.statusText}`);
       }
-      
+
       toast({
         title: editingAgent ? 'Agent Updated' : 'Agent Added',
         description: `${submittedAgentData.name} has been saved.`,
       });
-      
-      fetchAgents(); 
+
+      fetchAgents();
       setIsAgentDialogOpen(false);
       setEditingAgent(null);
 
@@ -137,6 +160,10 @@ export default function AgentsPage() {
   };
 
   const handleDeleteAgent = async (agentId: string) => {
+    if (!isAdmin) {
+      toast({ title: "Access Denied", description: "Only administrators can delete agents.", variant: "destructive" });
+      return;
+    }
     if (!confirm(`Are you sure you want to delete agent ${agentId}? This action cannot be undone.`)) {
       return;
     }
@@ -149,7 +176,7 @@ export default function AgentsPage() {
         throw new Error(errorData.message || `Failed to delete agent: ${response.statusText}`);
       }
       toast({ title: 'Agent Deleted', description: `Agent ${agentId} has been deleted.` });
-      fetchAgents(); 
+      fetchAgents();
     } catch (error) {
       console.error("Error deleting agent:", error);
       toast({ title: 'Error Deleting Agent', description: (error as Error).message, variant: 'destructive' });
@@ -157,6 +184,10 @@ export default function AgentsPage() {
   };
 
   const handleImportClick = () => {
+    if (!isAdmin) {
+      toast({ title: "Access Denied", description: "Only administrators can import agents.", variant: "destructive" });
+      return;
+    }
     fileInputRef.current?.click();
   };
 
@@ -179,6 +210,10 @@ export default function AgentsPage() {
   };
 
   const handleCsvImport = async (file: File) => {
+    if (!isAdmin) {
+        toast({ title: "Access Denied", description: "Only administrators can import agents.", variant: "destructive" });
+        return;
+    }
     const reader = new FileReader();
     reader.onload = async (event) => {
       const csvText = event.target?.result as string;
@@ -198,12 +233,13 @@ export default function AgentsPage() {
             headerLine = headerLine.substring(1);
         }
         const headers = headerLine.split(',').map(h => h.trim() as keyof Agent);
-        
+
         const newAgentsFromCsv: Agent[] = [];
         let skippedCount = 0;
         let successCount = 0;
-        
-        const currentAgents = await (await fetch('/api/agents')).json() as Agent[];
+
+        const currentAgentsResponse = await fetch('/api/agents');
+        const currentAgents: Agent[] = await currentAgentsResponse.json();
         const existingAgentIds = new Set(currentAgents.map(a => a.id));
         const existingAgentEmails = new Set(currentAgents.map(a => a.email.toLowerCase()));
 
@@ -221,7 +257,7 @@ export default function AgentsPage() {
           });
 
           let agentId = typeof parsedRow.id === 'string' && parsedRow.id.trim() !== '' ? parsedRow.id.trim() : `DO-agent-csv-${Date.now()}-${i}`;
-          
+
           if (existingAgentIds.has(agentId) || newAgentsFromCsv.some(a => a.id === agentId)) {
             console.warn(`Skipping agent with duplicate ID: ${agentId} from CSV row ${i+1}.`);
             skippedCount++;
@@ -278,7 +314,7 @@ export default function AgentsPage() {
                 skippedCount++;
             }
           }
-          fetchAgents(); 
+          fetchAgents();
           toast({ title: 'Import Processed', description: `${successCount} agents imported. ${skippedCount} rows skipped. Check console for details.` });
         } else {
           toast({ title: 'Import Complete', description: `No new agents were imported. ${skippedCount > 0 ? `${skippedCount} rows skipped. ` : ''}Check console for details.` });
@@ -295,12 +331,16 @@ export default function AgentsPage() {
   };
 
   const handleCsvExport = () => {
+    if (!isAdmin) {
+      toast({ title: "Access Denied", description: "Only administrators can export agents.", variant: "destructive" });
+      return;
+    }
     if (agents.length === 0) {
       toast({ title: 'No Data', description: 'There are no agents to export.', variant: 'default' });
       return;
     }
     const headers: (keyof Agent)[] = ['id', 'name', 'agency_code', 'address', 'phone_no', 'email', 'status', 'TRN_number', 'discount', 'websiteUrl'];
-    
+
     const escapeCsvCell = (cellData: any): string => {
       if (cellData === null || cellData === undefined) return '';
       let stringValue = String(cellData);
@@ -335,6 +375,25 @@ export default function AgentsPage() {
   };
 
 
+  if (isLoading && !isAdmin) { // Show minimal loading if not admin and still checking role
+    return <div className="container mx-auto py-2 text-center">Loading...</div>;
+  }
+
+  if (!isAdmin && !isLoading) { // If role check complete and not admin
+    return (
+      <div className="container mx-auto py-2">
+        <PageHeader
+          title="Agent Management"
+          description="Access Denied. This page is for administrators only."
+        />
+        <p className="text-destructive text-center py-10">
+          You do not have permission to view or manage agent data.
+        </p>
+      </div>
+    );
+  }
+
+  // Admin view
   if (isLoading) {
     return <div className="container mx-auto py-2 text-center">Loading agents...</div>;
   }
@@ -345,31 +404,33 @@ export default function AgentsPage() {
         title="Agent Management"
         description="Manage your external sales agents and their details."
         actions={
-          <div className="flex items-center gap-2">
-            <input
-              type="file"
-              ref={fileInputRef}
-              accept=".csv"
-              style={{ display: 'none' }}
-              onChange={handleFileChange}
-            />
-            <Button variant="outline" onClick={handleImportClick}>
-              <Upload className="mr-2 h-4 w-4" />
-              Import CSV
-            </Button>
-            <Button variant="outline" onClick={handleCsvExport}>
-              <Download className="mr-2 h-4 w-4" />
-              Export CSV
-            </Button>
-            <Button onClick={handleAddAgentClick}>
-              <PlusCircle className="mr-2 h-4 w-4" />
-              Add Agent
-            </Button>
-          </div>
+          isAdmin && (
+            <div className="flex items-center gap-2">
+              <input
+                type="file"
+                ref={fileInputRef}
+                accept=".csv"
+                style={{ display: 'none' }}
+                onChange={handleFileChange}
+              />
+              <Button variant="outline" onClick={handleImportClick}>
+                <Upload className="mr-2 h-4 w-4" />
+                Import CSV
+              </Button>
+              <Button variant="outline" onClick={handleCsvExport}>
+                <Download className="mr-2 h-4 w-4" />
+                Export CSV
+              </Button>
+              <Button onClick={handleAddAgentClick}>
+                <PlusCircle className="mr-2 h-4 w-4" />
+                Add Agent
+              </Button>
+            </div>
+          )
         }
       />
-      <AgentsTable agents={agents} onEditAgent={handleEditAgentClick} onDeleteAgent={handleDeleteAgent} />
-      {isAgentDialogOpen && (
+      <AgentsTable agents={agents} onEditAgent={handleEditAgentClick} onDeleteAgent={handleDeleteAgent} isAdmin={isAdmin} />
+      {isAgentDialogOpen && isAdmin && (
         <AgentFormDialog
           isOpen={isAgentDialogOpen}
           onOpenChange={setIsAgentDialogOpen}

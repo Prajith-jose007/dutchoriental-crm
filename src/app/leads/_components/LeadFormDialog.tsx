@@ -37,7 +37,7 @@ import { DatePicker } from '@/components/ui/date-picker';
 import type { Lead, Agent, Yacht, ModeOfPayment, LeadStatus } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { useEffect, useState } from 'react';
-import { format, parseISO, formatISO } from 'date-fns';
+import { format, parseISO, formatISO, isValid } from 'date-fns';
 
 const leadFormSchema = z.object({
   id: z.string().optional(),
@@ -73,12 +73,12 @@ const leadFormSchema = z.object({
   lotusVipAlcoholQty: z.coerce.number().optional().default(0),
   royalQty: z.coerce.number().optional().default(0),
   othersAmtCake: z.coerce.number().optional().default(0),
-  
+
   totalAmount: z.coerce.number().min(0).default(0),
   commissionPercentage: z.coerce.number().min(0).max(100).default(0),
   commissionAmount: z.coerce.number().optional().default(0),
   netAmount: z.coerce.number().min(0).default(0),
-  paidAmount: z.coerce.number().min(0).default(0), 
+  paidAmount: z.coerce.number().min(0).default(0),
   balanceAmount: z.coerce.number().min(0).default(0),
   createdAt: z.string().optional(),
   updatedAt: z.string().optional(),
@@ -97,7 +97,7 @@ interface LeadFormDialogProps {
 
 interface PackageFieldConfig {
   qtyKey: keyof LeadFormData;
-  rateKey: keyof Yacht; 
+  rateKey: keyof Yacht;
   label: string;
   category: 'DHOW' | 'OE' | 'SUNSET' | 'LOTUS' | 'ROYAL';
 }
@@ -130,7 +130,7 @@ const leadStatusOptions: LeadStatus[] = ['New', 'Connected', 'Qualified', 'Propo
 const modeOfPaymentOptions: ModeOfPayment[] = ['Online', 'Credit', 'Cash/Card'];
 
 const getDefaultFormValues = (): LeadFormData => ({
-    agent: '', status: 'New', month: new Date(), yacht: '', // month now defaults to new Date()
+    agent: '', status: 'New', month: new Date(), yacht: '',
     type: '', modeOfPayment: 'Online', clientName: '',
     notes: '',
     dhowChildQty: 0, dhowAdultQty: 0, dhowVipQty: 0, dhowVipChildQty: 0, dhowVipAlcoholQty: 0,
@@ -141,8 +141,8 @@ const getDefaultFormValues = (): LeadFormData => ({
     othersAmtCake: 0,
     totalAmount: 0, commissionPercentage: 0, commissionAmount:0, netAmount: 0,
     paidAmount: 0, balanceAmount: 0,
-    lastModifiedByUserId: undefined, 
-    ownerUserId: undefined, 
+    lastModifiedByUserId: undefined,
+    ownerUserId: undefined,
 });
 
 
@@ -154,11 +154,11 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
 
   const form = useForm<LeadFormData>({
     resolver: zodResolver(leadFormSchema),
-    defaultValues: lead 
-      ? { 
-          ...getDefaultFormValues(), 
-          ...lead, 
-          month: lead.month ? parseISO(lead.month) : new Date(), // Parse ISO string to Date
+    defaultValues: lead
+      ? {
+          ...getDefaultFormValues(),
+          ...lead,
+          month: lead.month && isValid(parseISO(lead.month)) ? parseISO(lead.month) : new Date(), // Parse ISO string to Date
           othersAmtCake: lead.othersAmtCake || 0,
           totalAmount: lead.totalAmount || 0,
           commissionPercentage: lead.commissionPercentage || 0,
@@ -180,10 +180,10 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
         ]);
         if (!agentsRes.ok) throw new Error('Failed to fetch agents');
         if (!yachtsRes.ok) throw new Error('Failed to fetch yachts');
-        
+
         const agentsData = await agentsRes.json();
         const yachtsData = await yachtsRes.json();
-        
+
         setAgents(Array.isArray(agentsData) ? agentsData : []);
         setYachts(Array.isArray(yachtsData) ? yachtsData : []);
 
@@ -206,14 +206,17 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
   const watchedQuantities = allPackageItemConfigs.map(config => form.watch(config.qtyKey));
   const watchedOthersAmtCake = form.watch('othersAmtCake');
   const watchedPaidAmount = form.watch('paidAmount');
-  
+  const watchedEventDate = form.watch('month'); // Watch the event date picker
+
   useEffect(() => {
+    // Auto-update commission percentage when agent changes
     const selectedAgent = agents.find(a => a.id === watchedAgentId);
-    const agentDiscountRate = selectedAgent?.discountRate ?? 0;
+    const agentDiscountRate = selectedAgent?.discount || 0; // Use 'discount' field from Agent
     form.setValue('commissionPercentage', agentDiscountRate);
 
+    // Recalculate financials
     const selectedYacht = yachts.find(y => y.id === watchedYachtId);
-    
+
     let currentTotalAmount = 0;
     if (selectedYacht) {
       allPackageItemConfigs.forEach(pkgConfig => {
@@ -224,7 +227,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
         }
       });
     }
-    
+
     const othersCakeAmtValue = form.getValues('othersAmtCake');
     const othersCakeAmt = typeof othersCakeAmtValue === 'number' ? othersCakeAmtValue : 0;
     if (othersCakeAmt > 0) {
@@ -238,24 +241,24 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
 
     const currentNetAmount = currentTotalAmount - currentCommissionAmount;
     form.setValue('netAmount', currentNetAmount);
-    
+
     const paidAmtValue = form.getValues('paidAmount');
     const paidAmt = typeof paidAmtValue === 'number' ? paidAmtValue : 0;
-    const currentBalanceAmount = currentTotalAmount - paidAmt; 
+    const currentBalanceAmount = currentTotalAmount - paidAmt; // Recalculate balance based on total, not net
     form.setValue('balanceAmount', currentBalanceAmount);
 
   }, [
-    watchedAgentId, watchedYachtId, ...watchedQuantities, 
+    watchedAgentId, watchedYachtId, ...watchedQuantities,
     watchedOthersAmtCake, watchedPaidAmount, form, agents, yachts
   ]);
 
   useEffect(() => {
     if (isOpen) {
-      form.reset(lead 
-        ? { 
+      form.reset(lead
+        ? {
             ...getDefaultFormValues(),
-            ...lead, 
-            month: lead.month ? parseISO(lead.month) : new Date(),
+            ...lead,
+            month: lead.month && isValid(parseISO(lead.month)) ? parseISO(lead.month) : new Date(),
             dhowChildQty: lead.dhowChildQty || 0, dhowAdultQty: lead.dhowAdultQty || 0, dhowVipQty: lead.dhowVipQty || 0, dhowVipChildQty: lead.dhowVipChildQty || 0, dhowVipAlcoholQty: lead.dhowVipAlcoholQty || 0,
             oeChildQty: lead.oeChildQty || 0, oeAdultQty: lead.oeAdultQty || 0, oeVipQty: lead.oeVipQty || 0, oeVipChildQty: lead.oeVipChildQty || 0, oeVipAlcoholQty: lead.oeVipAlcoholQty || 0,
             sunsetChildQty: lead.sunsetChildQty || 0, sunsetAdultQty: lead.sunsetAdultQty || 0, sunsetVipQty: lead.sunsetVipQty || 0, sunsetVipChildQty: lead.sunsetVipChildQty || 0, sunsetVipAlcoholQty: lead.sunsetVipAlcoholQty || 0,
@@ -268,24 +271,24 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
             netAmount: lead.netAmount || 0,
             paidAmount: lead.paidAmount || 0,
             balanceAmount: lead.balanceAmount || 0,
-          } as LeadFormData 
+          } as LeadFormData
         : getDefaultFormValues()
       );
     }
   }, [lead, form, isOpen]);
 
   function onSubmit(data: LeadFormData) {
-    const currentUserId = 'DO-user1'; 
+    const currentUserId = 'DO-user1'; // Placeholder for actual logged-in user ID
 
     const submittedLead: Lead = {
-      ...getDefaultFormValues(), 
-      ...data, 
+      ...getDefaultFormValues(),
+      ...data,
       month: data.month ? formatISO(data.month) : formatISO(new Date()), // Convert Date to ISO string
       id: lead?.id || `lead-${Date.now()}-${Math.random().toString(36).substring(2,7)}`,
       createdAt: lead?.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       lastModifiedByUserId: currentUserId,
-      ownerUserId: lead?.ownerUserId || currentUserId, 
+      ownerUserId: lead?.ownerUserId || currentUserId,
       dhowChildQty: data.dhowChildQty || 0,
       dhowAdultQty: data.dhowAdultQty || 0,
       dhowVipQty: data.dhowVipQty || 0,
@@ -308,7 +311,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
       lotusVipAlcoholQty: data.lotusVipAlcoholQty || 0,
       royalQty: data.royalQty || 0,
       othersAmtCake: data.othersAmtCake || 0,
-      commissionPercentage: data.commissionPercentage || 0,
+      commissionPercentage: data.commissionPercentage || 0, // Ensure this comes from form.watch or selected agent
       commissionAmount: data.commissionAmount || 0,
     };
     onSubmitSuccess(submittedLead);
@@ -387,12 +390,12 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
               />
                <FormField
                 control={form.control}
-                name="month" 
+                name="month"
                 render={({ field }) => (
                   <FormItem className="flex flex-col">
                     <FormLabel>Lead/Event Date</FormLabel>
-                    <DatePicker 
-                        date={field.value} 
+                    <DatePicker
+                        date={field.value}
                         setDate={(date) => field.onChange(date)}
                         placeholder="Pick event date"
                     />
@@ -474,7 +477,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
                   </FormItem>
                 )}
               />
-            
+
             {packageCategories.map(category => (
               <div key={category}>
                 <h4 className="text-md font-semibold mt-4 mb-2">{category} Package Quantities</h4>
@@ -498,7 +501,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
                 </div>
               </div>
             ))}
-            
+
             <h3 className="text-lg font-medium pt-4 border-t mt-6">Additional Charges</h3>
              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 <FormField
@@ -534,7 +537,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
                   name="commissionPercentage"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Agent Discount Rate (%)</FormLabel>
+                      <FormLabel>Agent Discount (%)</FormLabel>
                       <FormControl><Input type="number" placeholder="0" {...field} readOnly className="bg-muted/50" /></FormControl>
                       <FormDescription>From selected agent</FormDescription>
                       <FormMessage />

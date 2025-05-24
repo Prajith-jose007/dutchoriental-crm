@@ -10,11 +10,11 @@ import { BookingsByAgentBarChart } from '../dashboard/_components/BookingsByAgen
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { DatePicker } from '@/components/ui/date-picker'; // New import
+import { DatePicker } from '@/components/ui/date-picker'; 
 import { Skeleton } from '@/components/ui/skeleton';
 import type { Lead, Invoice, Yacht, Agent, User } from '@/lib/types';
 import { placeholderUsers } from '@/lib/placeholder-data';
-import { getMonth, getYear, format, parseISO, isWithinInterval, startOfMonth, endOfMonth, startOfYear, endOfYear } from 'date-fns';
+import { getMonth, getYear, format, parseISO, isWithinInterval, startOfMonth, endOfMonth, startOfYear, endOfYear, isValid } from 'date-fns';
 
 const USERS_STORAGE_KEY = 'dutchOrientalCrmUsers';
 
@@ -28,11 +28,9 @@ export default function ReportsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Filter states
+  
   const [startDate, setStartDate] = useState<Date | undefined>(undefined);
   const [endDate, setEndDate] = useState<Date | undefined>(undefined);
-  const [selectedMonth, setSelectedMonth] = useState<string>('all'); // MM (01-12) or 'all'
-  const [selectedYear, setSelectedYear] = useState<string>('all'); // YYYY or 'all'
   const [selectedYachtId, setSelectedYachtId] = useState<string>('all');
   const [selectedAgentId, setSelectedAgentId] = useState<string>('all');
   const [selectedUserId, setSelectedUserId] = useState<string>('all');
@@ -64,15 +62,16 @@ export default function ReportsPage() {
         setAllYachts(Array.isArray(yachtsData) ? yachtsData : []);
         setAllAgents(Array.isArray(agentsData) ? agentsData : []);
 
-        // Load users from localStorage for userMap (as before)
-        const storedUsers = localStorage.getItem(USERS_STORAGE_KEY);
+        
         let usersToMap: User[] = placeholderUsers;
-        if (storedUsers) {
-          try {
-            const parsedUsers: User[] = JSON.parse(storedUsers);
-            if (Array.isArray(parsedUsers)) usersToMap = parsedUsers;
-          } catch (e) { console.error("Error parsing users from localStorage for map:", e); }
-        }
+        try {
+            const storedUsers = localStorage.getItem(USERS_STORAGE_KEY);
+            if (storedUsers) {
+                const parsedUsers: User[] = JSON.parse(storedUsers);
+                if (Array.isArray(parsedUsers)) usersToMap = parsedUsers;
+            }
+        } catch (e) { console.error("Error parsing users from localStorage for map:", e); }
+        
         const map: { [id: string]: string } = {};
         usersToMap.forEach(user => { map[user.id] = user.name; });
         setUserMap(map);
@@ -87,55 +86,43 @@ export default function ReportsPage() {
     fetchData();
   }, []);
 
-  const availableMonths = useMemo(() => {
-    const months = new Set<string>();
-    allLeads.forEach(lead => months.add(lead.month.substring(5, 7))); // Extract MM
-    allInvoices.forEach(invoice => months.add(format(parseISO(invoice.createdAt), 'MM')));
-    return Array.from(months).sort().map(m => ({ value: m, label: format(new Date(2000, parseInt(m)-1, 1), 'MMMM') }));
-  }, [allLeads, allInvoices]);
-
-  const availableYears = useMemo(() => {
-    const years = new Set<string>();
-    allLeads.forEach(lead => years.add(lead.month.substring(0, 4))); // Extract YYYY
-    allInvoices.forEach(invoice => years.add(format(parseISO(invoice.createdAt), 'yyyy')));
-    return Array.from(years).sort((a,b) => parseInt(b) - parseInt(a)); // Descending
-  }, [allLeads, allInvoices]);
 
   const filteredLeads = useMemo(() => {
     return allLeads.filter(lead => {
-      const leadDate = parseISO(lead.createdAt);
-      const leadMonthYear = lead.month; // YYYY-MM
+      let leadEventDate: Date | null = null;
+      try {
+        if(lead.month && isValid(parseISO(lead.month))) {
+          leadEventDate = parseISO(lead.month);
+        }
+      } catch(e) { console.warn(`Invalid event date for lead ${lead.id}: ${lead.month}`); }
 
-      if (startDate && endDate && !isWithinInterval(leadDate, { start: startDate, end: endDate })) return false;
-      if (!startDate && !endDate) { // Only apply month/year if no date range
-        if (selectedMonth !== 'all' && leadMonthYear.substring(5,7) !== selectedMonth) return false;
-        if (selectedYear !== 'all' && leadMonthYear.substring(0,4) !== selectedYear) return false;
-      }
+      if (startDate && endDate && leadEventDate && !isWithinInterval(leadEventDate, { start: startDate, end: endDate })) return false;
+      
       if (selectedYachtId !== 'all' && lead.yacht !== selectedYachtId) return false;
       if (selectedAgentId !== 'all' && lead.agent !== selectedAgentId) return false;
       if (selectedUserId !== 'all' && lead.lastModifiedByUserId !== selectedUserId) return false;
       return true;
     });
-  }, [allLeads, startDate, endDate, selectedMonth, selectedYear, selectedYachtId, selectedAgentId, selectedUserId]);
+  }, [allLeads, startDate, endDate, selectedYachtId, selectedAgentId, selectedUserId]);
 
   const filteredInvoices = useMemo(() => {
     return allInvoices.filter(invoice => {
-      const invoiceDate = parseISO(invoice.createdAt);
-       if (startDate && endDate && !isWithinInterval(invoiceDate, { start: startDate, end: endDate })) return false;
-       if (!startDate && !endDate) {
-        if (selectedMonth !== 'all' && format(invoiceDate, 'MM') !== selectedMonth) return false;
-        if (selectedYear !== 'all' && format(invoiceDate, 'yyyy') !== selectedYear) return false;
-      }
-      // Invoice specific filters can be added here if needed (e.g. client name, etc.)
+      let invoiceCreationDate: Date | null = null;
+       try {
+          if(invoice.createdAt && isValid(parseISO(invoice.createdAt))) {
+            invoiceCreationDate = parseISO(invoice.createdAt);
+          }
+        } catch(e) { console.warn(`Invalid creation date for invoice ${invoice.id}: ${invoice.createdAt}`); }
+
+       if (startDate && endDate && invoiceCreationDate && !isWithinInterval(invoiceCreationDate, { start: startDate, end: endDate })) return false;
+       
       return true;
     });
-  }, [allInvoices, startDate, endDate, selectedMonth, selectedYear]);
+  }, [allInvoices, startDate, endDate]);
 
   const resetFilters = () => {
     setStartDate(undefined);
     setEndDate(undefined);
-    setSelectedMonth('all');
-    setSelectedYear('all');
     setSelectedYachtId('all');
     setSelectedAgentId('all');
     setSelectedUserId('all');
@@ -145,8 +132,8 @@ export default function ReportsPage() {
     return (
       <div className="container mx-auto py-2">
         <PageHeader title="CRM Reports" description="Loading report data..." />
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          {[...Array(7)].map((_,i) => <Skeleton key={i} className="h-10 w-full" />)}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 p-4 border rounded-lg shadow-sm">
+          {[...Array(5)].map((_,i) => <Skeleton key={i} className="h-10 w-full" />)}
           <Skeleton className="h-10 w-full bg-primary/20" />
         </div>
         <div className="grid gap-6">
@@ -165,7 +152,7 @@ export default function ReportsPage() {
     return (
       <div className="container mx-auto py-2">
         <PageHeader title="CRM Reports" description="Error loading data." />
-        <p className="text-destructive">Failed to load report data: {error}</p>
+        <p className="text-destructive text-center py-10">Failed to load report data: {error}</p>
       </div>
     );
   }
@@ -177,40 +164,21 @@ export default function ReportsPage() {
         description="A consolidated view of key metrics and performance indicators." 
       />
       
-      {/* Filters Section */}
+      
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-6 p-4 border rounded-lg shadow-sm">
         <div>
-          <Label htmlFor="start-date">Start Date</Label>
+          <Label htmlFor="start-date-report">Start Date (Event/Invoice)</Label>
           <DatePicker date={startDate} setDate={setStartDate} placeholder="Start Date" />
         </div>
         <div>
-          <Label htmlFor="end-date">End Date</Label>
+          <Label htmlFor="end-date-report">End Date (Event/Invoice)</Label>
           <DatePicker date={endDate} setDate={setEndDate} placeholder="End Date" disabled={(date) => startDate ? date < startDate : false} />
         </div>
+        
         <div>
-          <Label htmlFor="month-filter">Month</Label>
-          <Select value={selectedMonth} onValueChange={setSelectedMonth} disabled={!!(startDate && endDate)}>
-            <SelectTrigger id="month-filter"><SelectValue placeholder="All Months" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Months</SelectItem>
-              {availableMonths.map(m => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        </div>
-        <div>
-          <Label htmlFor="year-filter">Year</Label>
-          <Select value={selectedYear} onValueChange={setSelectedYear} disabled={!!(startDate && endDate)}>
-            <SelectTrigger id="year-filter"><SelectValue placeholder="All Years" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Years</SelectItem>
-              {availableYears.map(year => <SelectItem key={year} value={year}>{year}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        </div>
-        <div>
-          <Label htmlFor="yacht-filter">Yacht</Label>
+          <Label htmlFor="yacht-filter-report">Yacht</Label>
           <Select value={selectedYachtId} onValueChange={setSelectedYachtId}>
-            <SelectTrigger id="yacht-filter"><SelectValue placeholder="All Yachts" /></SelectTrigger>
+            <SelectTrigger id="yacht-filter-report"><SelectValue placeholder="All Yachts" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Yachts</SelectItem>
               {allYachts.map(yacht => <SelectItem key={yacht.id} value={yacht.id}>{yacht.name}</SelectItem>)}
@@ -218,9 +186,9 @@ export default function ReportsPage() {
           </Select>
         </div>
         <div>
-          <Label htmlFor="agent-filter">Agent</Label>
+          <Label htmlFor="agent-filter-report">Agent</Label>
           <Select value={selectedAgentId} onValueChange={setSelectedAgentId}>
-            <SelectTrigger id="agent-filter"><SelectValue placeholder="All Agents" /></SelectTrigger>
+            <SelectTrigger id="agent-filter-report"><SelectValue placeholder="All Agents" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Agents</SelectItem>
               {allAgents.map(agent => <SelectItem key={agent.id} value={agent.id}>{agent.name}</SelectItem>)}
@@ -228,9 +196,9 @@ export default function ReportsPage() {
           </Select>
         </div>
         <div>
-          <Label htmlFor="user-filter">User (Modified Lead)</Label>
+          <Label htmlFor="user-filter-report">User (Modified Lead)</Label>
           <Select value={selectedUserId} onValueChange={setSelectedUserId}>
-            <SelectTrigger id="user-filter"><SelectValue placeholder="All Users" /></SelectTrigger>
+            <SelectTrigger id="user-filter-report"><SelectValue placeholder="All Users" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Users</SelectItem>
               {Object.entries(userMap).map(([id, name]) => <SelectItem key={id} value={id}>{name}</SelectItem>)}
@@ -257,3 +225,5 @@ export default function ReportsPage() {
     </div>
   );
 }
+
+    

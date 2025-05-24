@@ -52,18 +52,6 @@ export default function AgentsPage() {
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    try {
-      const role = localStorage.getItem(USER_ROLE_STORAGE_KEY);
-      setIsAdmin(role === 'admin');
-    } catch (error) {
-      console.error("Error accessing localStorage for user role:", error);
-      setIsAdmin(false);
-    }
-    fetchAgents();
-  }, []);
-
-
   const fetchAgents = async () => {
     setIsLoading(true);
     try {
@@ -81,6 +69,18 @@ export default function AgentsPage() {
       setIsLoading(false);
     }
   };
+
+  useEffect(() => {
+    try {
+      const role = localStorage.getItem(USER_ROLE_STORAGE_KEY);
+      setIsAdmin(role === 'admin');
+    } catch (error) {
+      console.error("Error accessing localStorage for user role:", error);
+      setIsAdmin(false);
+    }
+    fetchAgents();
+  }, []);
+
 
   const handleAddAgentClick = () => {
     if (!isAdmin) {
@@ -290,7 +290,7 @@ export default function AgentsPage() {
           }
 
           newAgentsFromCsv.push(fullAgent);
-          existingAgentIds.add(fullAgent.id); // Add to set to prevent duplicates within the same batch
+          existingAgentIds.add(fullAgent.id); 
           if(fullAgent.email) existingAgentEmails.add(fullAgent.email.toLowerCase());
         }
 
@@ -375,11 +375,11 @@ export default function AgentsPage() {
   };
 
 
-  if (isLoading && !isAdmin) { // Show minimal loading if not admin and still checking role
+  if (isLoading && !isAdmin) { 
     return <div className="container mx-auto py-2 text-center">Loading...</div>;
   }
 
-  if (!isAdmin && !isLoading) { // If role check complete and not admin
+  if (!isAdmin && !isLoading) { 
     return (
       <div className="container mx-auto py-2">
         <PageHeader
@@ -441,3 +441,5 @@ export default function AgentsPage() {
     </div>
   );
 }
+
+    

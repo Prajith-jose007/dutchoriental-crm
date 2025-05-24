@@ -56,7 +56,7 @@ const convertValue = (key: keyof Lead, value: string): any => {
         case 'modeOfPayment': return 'Online'; 
         case 'status': return 'New'; 
         case 'notes': return '';
-        case 'month': return formatISO(new Date()); // Default to current date as ISO string
+        case 'month': return formatISO(new Date()); 
         default: return undefined;
     }
   }
@@ -78,18 +78,17 @@ const convertValue = (key: keyof Lead, value: string): any => {
     case 'status':
         const validStatuses: LeadStatus[] = ['New', 'Connected', 'Qualified', 'Proposal Sent', 'Closed Won', 'Closed Lost'];
         return validStatuses.includes(trimmedValue as LeadStatus) ? trimmedValue : 'New';
-    case 'month': // Handles the lead/event date
-        const parsedEventDate = parseISO(trimmedValue); // Attempt to parse as ISO
+    case 'month': 
+        const parsedEventDate = parseISO(trimmedValue); 
         if (isValid(parsedEventDate)) return formatISO(parsedEventDate);
-        // Attempt to parse common date formats like dd/MM/yyyy or MM/dd/yyyy
         const commonFormats = ['dd/MM/yyyy', 'MM/dd/yyyy', 'yyyy-MM-dd'];
         for (const fmt of commonFormats) {
             try {
-                const d = new Date(trimmedValue.replace(/(\d{2})\/(\d{2})\/(\d{4})/, '$2/$1/$3')); // try MM/dd/yyyy if dd/MM fails
+                const d = new Date(trimmedValue.replace(/(\d{2})\/(\d{2})\/(\d{4})/, '$2/$1/$3')); 
                 if (isValid(d)) return formatISO(d);
             } catch (e) {/* ignore */}
         }
-        return formatISO(new Date()); // Default if parsing fails
+        return formatISO(new Date()); 
     default:
       return trimmedValue;
   }
@@ -110,7 +109,6 @@ export default function LeadsPage() {
 
   const [startDate, setStartDate] = useState<Date | undefined>(undefined);
   const [endDate, setEndDate] = useState<Date | undefined>(undefined);
-  // Removed selectedMonth and selectedYear as primary date filter is now by range
   const [selectedYachtId, setSelectedYachtId] = useState<string>('all');
   const [selectedAgentId, setSelectedAgentId] = useState<string>('all');
   const [selectedUserId, setSelectedUserId] = useState<string>('all');
@@ -153,17 +151,17 @@ export default function LeadsPage() {
         const yachtsData = await yachtsRes.json();
         setAllYachts(Array.isArray(yachtsData) ? yachtsData : []);
 
-        const storedUsers = localStorage.getItem(USERS_STORAGE_KEY);
         let usersToMap: User[] = placeholderUsers; 
-        if (storedUsers) {
-          try {
-            const parsedUsers: User[] = JSON.parse(storedUsers);
-            if (Array.isArray(parsedUsers) && parsedUsers.length > 0) {
-              usersToMap = parsedUsers;
+        try {
+            const storedUsers = localStorage.getItem(USERS_STORAGE_KEY);
+            if (storedUsers) {
+                const parsedUsers: User[] = JSON.parse(storedUsers);
+                if (Array.isArray(parsedUsers) && parsedUsers.length > 0) {
+                usersToMap = parsedUsers;
+                }
             }
-          } catch (e) {
+        } catch (e) {
             console.error("Error parsing users from localStorage for map:", e);
-          }
         }
         const map: { [id: string]: string } = {};
         usersToMap.forEach(user => { map[user.id] = user.name; });
@@ -180,7 +178,7 @@ export default function LeadsPage() {
       }
     };
     loadInitialData();
-  }, [toast]);
+  }, []);
 
 
   const handleAddLeadClick = () => {
@@ -199,7 +197,7 @@ export default function LeadsPage() {
       lastModifiedByUserId: SIMULATED_CURRENT_USER_ID, 
       updatedAt: new Date().toISOString(),
       ownerUserId: editingLead ? editingLead.ownerUserId : SIMULATED_CURRENT_USER_ID, 
-      month: submittedLeadData.month, // Already an ISO string from form dialog
+      month: submittedLeadData.month, 
     };
 
     try {
@@ -338,41 +336,41 @@ export default function LeadsPage() {
             id: leadId!,
             agent: typeof numericDefaultsApplied.agent === 'string' ? numericDefaultsApplied.agent : '',
             status: (numericDefaultsApplied.status as LeadStatus) || 'New',
-            month: typeof numericDefaultsApplied.month === 'string' && isValid(parseISO(numericDefaultsApplied.month)) ? numericDefaultsApplied.month : formatISO(new Date()), // Ensure month is valid ISO
+            month: typeof numericDefaultsApplied.month === 'string' && isValid(parseISO(numericDefaultsApplied.month)) ? numericDefaultsApplied.month : formatISO(new Date()),
             notes: typeof numericDefaultsApplied.notes === 'string' ? numericDefaultsApplied.notes : '',
             yacht: typeof numericDefaultsApplied.yacht === 'string' ? numericDefaultsApplied.yacht : '',
             type: typeof numericDefaultsApplied.type === 'string' && numericDefaultsApplied.type.trim() !== '' ? numericDefaultsApplied.type : 'Imported',
             modeOfPayment: (numericDefaultsApplied.modeOfPayment as ModeOfPayment) || 'Online',
             clientName: typeof numericDefaultsApplied.clientName === 'string' && numericDefaultsApplied.clientName.trim() !== '' ? numericDefaultsApplied.clientName : 'N/A',
             invoiceId: typeof numericDefaultsApplied.invoiceId === 'string' ? numericDefaultsApplied.invoiceId : undefined,
-            dhowChildQty: numericDefaultsApplied.dhowChildQty,
-            dhowAdultQty: numericDefaultsApplied.dhowAdultQty,
-            dhowVipQty: numericDefaultsApplied.dhowVipQty,
-            dhowVipChildQty: numericDefaultsApplied.dhowVipChildQty,
-            dhowVipAlcoholQty: numericDefaultsApplied.dhowVipAlcoholQty,
-            oeChildQty: numericDefaultsApplied.oeChildQty,
-            oeAdultQty: numericDefaultsApplied.oeAdultQty,
-            oeVipQty: numericDefaultsApplied.oeVipQty,
-            oeVipChildQty: numericDefaultsApplied.oeVipChildQty,
-            oeVipAlcoholQty: numericDefaultsApplied.oeVipAlcoholQty,
-            sunsetChildQty: numericDefaultsApplied.sunsetChildQty,
-            sunsetAdultQty: numericDefaultsApplied.sunsetAdultQty,
-            sunsetVipQty: numericDefaultsApplied.sunsetVipQty,
-            sunsetVipChildQty: numericDefaultsApplied.sunsetVipChildQty,
-            sunsetVipAlcoholQty: numericDefaultsApplied.sunsetVipAlcoholQty,
-            lotusChildQty: numericDefaultsApplied.lotusChildQty,
-            lotusAdultQty: numericDefaultsApplied.lotusAdultQty,
-            lotusVipQty: numericDefaultsApplied.lotusVipQty,
-            lotusVipChildQty: numericDefaultsApplied.lotusVipChildQty,
-            lotusVipAlcoholQty: numericDefaultsApplied.lotusVipAlcoholQty,
-            royalQty: numericDefaultsApplied.royalQty,
-            othersAmtCake: numericDefaultsApplied.othersAmtCake,
-            totalAmount: numericDefaultsApplied.totalAmount,
-            commissionPercentage: numericDefaultsApplied.commissionPercentage,
-            commissionAmount: numericDefaultsApplied.commissionAmount,
-            netAmount: numericDefaultsApplied.netAmount,
-            paidAmount: numericDefaultsApplied.paidAmount,
-            balanceAmount: numericDefaultsApplied.balanceAmount,
+            dhowChildQty: numericDefaultsApplied.dhowChildQty ?? 0,
+            dhowAdultQty: numericDefaultsApplied.dhowAdultQty ?? 0,
+            dhowVipQty: numericDefaultsApplied.dhowVipQty ?? 0,
+            dhowVipChildQty: numericDefaultsApplied.dhowVipChildQty ?? 0,
+            dhowVipAlcoholQty: numericDefaultsApplied.dhowVipAlcoholQty ?? 0,
+            oeChildQty: numericDefaultsApplied.oeChildQty ?? 0,
+            oeAdultQty: numericDefaultsApplied.oeAdultQty ?? 0,
+            oeVipQty: numericDefaultsApplied.oeVipQty ?? 0,
+            oeVipChildQty: numericDefaultsApplied.oeVipChildQty ?? 0,
+            oeVipAlcoholQty: numericDefaultsApplied.oeVipAlcoholQty ?? 0,
+            sunsetChildQty: numericDefaultsApplied.sunsetChildQty ?? 0,
+            sunsetAdultQty: numericDefaultsApplied.sunsetAdultQty ?? 0,
+            sunsetVipQty: numericDefaultsApplied.sunsetVipQty ?? 0,
+            sunsetVipChildQty: numericDefaultsApplied.sunsetVipChildQty ?? 0,
+            sunsetVipAlcoholQty: numericDefaultsApplied.sunsetVipAlcoholQty ?? 0,
+            lotusChildQty: numericDefaultsApplied.lotusChildQty ?? 0,
+            lotusAdultQty: numericDefaultsApplied.lotusAdultQty ?? 0,
+            lotusVipQty: numericDefaultsApplied.lotusVipQty ?? 0,
+            lotusVipChildQty: numericDefaultsApplied.lotusVipChildQty ?? 0,
+            lotusVipAlcoholQty: numericDefaultsApplied.lotusVipAlcoholQty ?? 0,
+            royalQty: numericDefaultsApplied.royalQty ?? 0,
+            othersAmtCake: numericDefaultsApplied.othersAmtCake ?? 0,
+            totalAmount: numericDefaultsApplied.totalAmount ?? 0,
+            commissionPercentage: numericDefaultsApplied.commissionPercentage ?? 0,
+            commissionAmount: numericDefaultsApplied.commissionAmount ?? 0,
+            netAmount: numericDefaultsApplied.netAmount ?? 0,
+            paidAmount: numericDefaultsApplied.paidAmount ?? 0,
+            balanceAmount: numericDefaultsApplied.balanceAmount ?? 0,
             createdAt: typeof numericDefaultsApplied.createdAt === 'string' && numericDefaultsApplied.createdAt.trim() !== '' ? numericDefaultsApplied.createdAt : new Date().toISOString(),
             updatedAt: new Date().toISOString(),
             lastModifiedByUserId: SIMULATED_CURRENT_USER_ID, 
@@ -458,13 +456,15 @@ export default function LeadsPage() {
 
   const filteredLeads = useMemo(() => {
     return allLeads.filter(lead => {
-      const leadCreationDate = parseISO(lead.createdAt); 
-      // const leadEventDate = lead.month ? parseISO(lead.month) : null; // For filtering by event date if needed
-
-      // Date Range Filter (based on createdAt)
-      if (startDate && endDate && !isWithinInterval(leadCreationDate, { start: startDate, end: endDate })) return false;
+      let leadCreationDate: Date | null = null;
+      try {
+        if (lead.createdAt && isValid(parseISO(lead.createdAt))) {
+          leadCreationDate = parseISO(lead.createdAt);
+        }
+      } catch(e) { console.warn(`Invalid createdAt date for lead ${lead.id}: ${lead.createdAt}`); }
       
-      // Other filters
+      if (startDate && endDate && leadCreationDate && !isWithinInterval(leadCreationDate, { start: startDate, end: endDate })) return false;
+      
       if (selectedYachtId !== 'all' && lead.yacht !== selectedYachtId) return false;
       if (selectedAgentId !== 'all' && lead.agent !== selectedAgentId) return false;
       if (selectedUserId !== 'all' && lead.lastModifiedByUserId !== selectedUserId) return false;
@@ -476,8 +476,6 @@ export default function LeadsPage() {
   const resetFilters = () => {
     setStartDate(undefined);
     setEndDate(undefined);
-    // setSelectedMonth('all'); // Removed
-    // setSelectedYear('all'); // Removed
     setSelectedYachtId('all');
     setSelectedAgentId('all');
     setSelectedUserId('all');
@@ -545,10 +543,9 @@ export default function LeadsPage() {
                         const escapeCsvCell = (cellData: any): string => {
                             if (cellData === null || cellData === undefined) return '';
                             let stringValue = String(cellData);
-                            if (headers.includes('month' as keyof Lead) && cellData instanceof Date) { // Check if it's the month field and a Date object
-                                stringValue = format(cellData, 'dd/MM/yyyy');
-                            } else if (typeof cellData === 'string' && cellData.match(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/)) {
-                                try { // Attempt to format if it's an ISO string date
+                            
+                            if (typeof cellData === 'string' && (cellData.includes('/') || cellData.includes('-')) && isValid(parseISO(cellData))) {
+                                try { 
                                     stringValue = format(parseISO(cellData), 'dd/MM/yyyy');
                                 } catch (e) { /* ignore, use original string */ }
                             }
@@ -654,3 +651,5 @@ export default function LeadsPage() {
     </div>
   );
 }
+
+    

@@ -12,8 +12,6 @@ import { SalesByYachtPieChart } from './_components/SalesByYachtPieChart';
 import { BookingsByAgentBarChart } from './_components/BookingsByAgentBarChart';
 import type { Lead, Invoice, Yacht, Agent } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
-// placeholderInvoices is removed as invoices are now fetched via API
-// import { placeholderInvoices } from '@/lib/placeholder-data'; 
 
 export default function DashboardPage() {
   const [leads, setLeads] = useState<Lead[]>([]);
@@ -28,7 +26,7 @@ export default function DashboardPage() {
       setIsLoading(true);
       setError(null);
       try {
-        // Fetch data that has API endpoints
+        
         const [leadsRes, yachtsRes, agentsRes, invoicesRes] = await Promise.all([
           fetch('/api/leads'),
           fetch('/api/yachts'),
@@ -55,11 +53,11 @@ export default function DashboardPage() {
       } catch (err) {
         console.error("Error fetching dashboard data:", err);
         setError((err as Error).message);
-        // Fallback for API driven data if fetch fails
+        
         setLeads([]);
         setYachts([]);
         setAgents([]);
-        setInvoices([]); // Fallback to empty if invoice API fails
+        setInvoices([]); 
       } finally {
         setIsLoading(false);
       }
@@ -75,8 +73,8 @@ export default function DashboardPage() {
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {[...Array(3)].map((_,i) => <Skeleton key={i} className="h-[120px] w-full" />)}
           </div>
-           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            {[...Array(4)].map((_,i) => <Skeleton key={i} className="h-[120px] w-full" />)}
+           <div className="grid gap-4 md:grid-cols-1 lg:grid-cols-3">
+            {[...Array(3)].map((_,i) => <Skeleton key={i} className="h-[120px] w-full" />)}
           </div>
           <div className="grid gap-6 lg:grid-cols-2 xl:grid-cols-5">
             <Skeleton className="h-[350px] w-full xl:col-span-3" />
@@ -92,7 +90,7 @@ export default function DashboardPage() {
     );
   }
 
-  if (error && leads.length === 0 && yachts.length === 0 && agents.length === 0 && invoices.length === 0) { // Show main error if all primary data fails
+  if (error && leads.length === 0 && yachts.length === 0 && agents.length === 0 && invoices.length === 0) { 
      return (
       <div className="container mx-auto py-2">
         <PageHeader title="Dashboard" description="Error loading data." />
@@ -133,3 +131,5 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+    

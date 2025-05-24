@@ -10,8 +10,6 @@ import type { Yacht } from '@/lib/types';
 import { PlusCircle, Edit, Trash2 } from 'lucide-react';
 import { YachtFormDialog } from './_components/YachtFormDialog';
 import { useToast } from '@/hooks/use-toast';
-// Placeholder data is no longer the primary source after API integration
-// import { placeholderYachts as initialYachtsData } from '@/lib/placeholder-data';
 
 export default function YachtsPage() {
   const [yachts, setYachts] = useState<Yacht[]>([]);
@@ -32,7 +30,7 @@ export default function YachtsPage() {
     } catch (error) {
       console.error("Error fetching yachts:", error);
       toast({ title: 'Error Fetching Yachts', description: (error as Error).message, variant: 'destructive' });
-      setYachts([]); // Fallback to empty
+      setYachts([]); 
     } finally {
       setIsLoading(false);
     }
@@ -62,15 +60,15 @@ export default function YachtsPage() {
           body: JSON.stringify(submittedYachtData),
         });
       } else {
-        // Client-side check for duplicate ID before POSTing
+        
         const existingYacht = yachts.find(y => y.id === submittedYachtData.id);
-        if (existingYacht && !editingYacht) { // Only check for new yachts
+        if (existingYacht && !editingYacht) { 
              toast({
                 title: 'Error Adding Yacht',
                 description: `Yacht with ID ${submittedYachtData.id} already exists.`,
                 variant: 'destructive',
             });
-            return; // Prevent API call
+            return; 
         }
         response = await fetch('/api/yachts', {
           method: 'POST',
@@ -89,7 +87,7 @@ export default function YachtsPage() {
         description: `${submittedYachtData.name} has been saved.`,
       });
       
-      fetchYachts(); // Re-fetch all yachts to reflect changes
+      fetchYachts(); 
       setIsYachtDialogOpen(false);
       setEditingYacht(null);
 
@@ -112,7 +110,7 @@ export default function YachtsPage() {
         throw new Error(errorData.message || `Failed to delete yacht: ${response.statusText}`);
       }
       toast({ title: 'Yacht Deleted', description: `Yacht ${yachtId} has been deleted.` });
-      fetchYachts(); // Re-fetch yachts
+      fetchYachts(); 
     } catch (error) {
       console.error("Error deleting yacht:", error);
       toast({ title: 'Error Deleting Yacht', description: (error as Error).message, variant: 'destructive' });
@@ -147,7 +145,7 @@ export default function YachtsPage() {
                   sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                   className="object-cover"
                   data-ai-hint="yacht boat"
-                  priority={false} // Set to true if these are LCP elements
+                  priority={false} 
                 />
               </div>
               <CardTitle className="mt-4">{yacht.name}</CardTitle>
@@ -187,3 +185,5 @@ export default function YachtsPage() {
     </div>
   );
 }
+
+    

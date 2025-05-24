@@ -43,7 +43,7 @@ const leadFormSchema = z.object({
   id: z.string().optional(),
   agent: z.string().min(1, 'Agent is required'),
   status: z.enum(['New', 'Connected', 'Qualified', 'Proposal Sent', 'Closed Won', 'Closed Lost']),
-  month: z.date({ required_error: "Lead/Event Date is required." }), // Now a date object for the picker
+  month: z.date({ required_error: "Lead/Event Date is required." }), 
   notes: z.string().optional(),
   yacht: z.string().min(1, 'Yacht selection is required'),
   type: z.string().min(1, 'Lead type is required'),
@@ -158,7 +158,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
       ? {
           ...getDefaultFormValues(),
           ...lead,
-          month: lead.month && isValid(parseISO(lead.month)) ? parseISO(lead.month) : new Date(), // Parse ISO string to Date
+          month: lead.month && isValid(parseISO(lead.month)) ? parseISO(lead.month) : new Date(), 
           othersAmtCake: lead.othersAmtCake || 0,
           totalAmount: lead.totalAmount || 0,
           commissionPercentage: lead.commissionPercentage || 0,
@@ -198,7 +198,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
     if (isOpen) {
       fetchDropdownData();
     }
-  }, [isOpen, toast]);
+  }, [isOpen]);
 
 
   const watchedAgentId = form.watch('agent');
@@ -206,15 +206,15 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
   const watchedQuantities = allPackageItemConfigs.map(config => form.watch(config.qtyKey));
   const watchedOthersAmtCake = form.watch('othersAmtCake');
   const watchedPaidAmount = form.watch('paidAmount');
-  const watchedEventDate = form.watch('month'); // Watch the event date picker
+  const watchedEventDate = form.watch('month'); 
 
   useEffect(() => {
-    // Auto-update commission percentage when agent changes
+    
     const selectedAgent = agents.find(a => a.id === watchedAgentId);
-    const agentDiscountRate = selectedAgent?.discount || 0; // Use 'discount' field from Agent
+    const agentDiscountRate = selectedAgent?.discount || 0; 
     form.setValue('commissionPercentage', agentDiscountRate);
 
-    // Recalculate financials
+    
     const selectedYacht = yachts.find(y => y.id === watchedYachtId);
 
     let currentTotalAmount = 0;
@@ -244,7 +244,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
 
     const paidAmtValue = form.getValues('paidAmount');
     const paidAmt = typeof paidAmtValue === 'number' ? paidAmtValue : 0;
-    const currentBalanceAmount = currentTotalAmount - paidAmt; // Recalculate balance based on total, not net
+    const currentBalanceAmount = currentTotalAmount - paidAmt; 
     form.setValue('balanceAmount', currentBalanceAmount);
 
   }, [
@@ -278,12 +278,12 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
   }, [lead, form, isOpen]);
 
   function onSubmit(data: LeadFormData) {
-    const currentUserId = 'DO-user1'; // Placeholder for actual logged-in user ID
+    const currentUserId = 'DO-user1'; 
 
     const submittedLead: Lead = {
       ...getDefaultFormValues(),
       ...data,
-      month: data.month ? formatISO(data.month) : formatISO(new Date()), // Convert Date to ISO string
+      month: data.month ? formatISO(data.month) : formatISO(new Date()), 
       id: lead?.id || `lead-${Date.now()}-${Math.random().toString(36).substring(2,7)}`,
       createdAt: lead?.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -311,7 +311,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
       lotusVipAlcoholQty: data.lotusVipAlcoholQty || 0,
       royalQty: data.royalQty || 0,
       othersAmtCake: data.othersAmtCake || 0,
-      commissionPercentage: data.commissionPercentage || 0, // Ensure this comes from form.watch or selected agent
+      commissionPercentage: data.commissionPercentage || 0, 
       commissionAmount: data.commissionAmount || 0,
     };
     onSubmitSuccess(submittedLead);
@@ -606,3 +606,5 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
     </Dialog>
   );
 }
+
+    

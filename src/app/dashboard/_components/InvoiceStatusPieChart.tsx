@@ -21,7 +21,7 @@ const chartConfigBase = {
   value: { label: 'Invoices' },
   Paid: { label: 'Paid', color: 'hsl(var(--chart-1))' },
   Pending: { label: 'Pending', color: 'hsl(var(--chart-2))' },
-  Overdue: { label: 'Overdue', color: 'hsl(var(--chart-3))' },
+  // Overdue entry removed
 };
 
 interface InvoiceStatusPieChartProps {
@@ -32,14 +32,15 @@ interface InvoiceStatusPieChartProps {
 
 export function InvoiceStatusPieChart({ invoices, isLoading, error }: InvoiceStatusPieChartProps) {
   const chartData: PieChartDataItem[] = useMemo(() => {
-    const statusCounts: { [key in Invoice['status']]: number } = {
+    const statusCounts: { Paid: number; Pending: number } = {
       Paid: 0,
       Pending: 0,
-      Overdue: 0,
     };
     invoices.forEach(invoice => {
-      if (statusCounts.hasOwnProperty(invoice.status)) {
-        statusCounts[invoice.status]++;
+      if (invoice.status === 'Paid') {
+        statusCounts.Paid++;
+      } else { // Group 'Pending' and 'Overdue' into 'Pending'
+        statusCounts.Pending++;
       }
     });
     return Object.entries(statusCounts).map(([name, value]) => ({

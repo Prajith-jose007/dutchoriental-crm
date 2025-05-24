@@ -29,9 +29,6 @@ interface LatestInvoicesTableProps {
 
 export function LatestInvoicesTable({ invoices, isLoading, error }: LatestInvoicesTableProps) {
   const latestFiveInvoices = useMemo(() => {
-    // Assuming invoices are already sorted by createdAt descending from API
-    // or sort here if needed:
-    // const sorted = [...invoices].sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     return invoices.slice(0, 5);
   }, [invoices]);
 
@@ -39,9 +36,14 @@ export function LatestInvoicesTable({ invoices, isLoading, error }: LatestInvoic
     switch (status) {
       case 'Paid': return 'default';
       case 'Pending': return 'secondary';
-      case 'Overdue': return 'destructive';
+      case 'Overdue': return 'secondary'; // Treat Overdue as Pending for badge variant
       default: return 'outline';
     }
+  };
+
+  const getDisplayStatusText = (status: Invoice['status']) => {
+    if (status === 'Overdue') return 'Pending';
+    return status;
   };
 
   if (isLoading) {
@@ -115,7 +117,7 @@ export function LatestInvoicesTable({ invoices, isLoading, error }: LatestInvoic
                 <TableCell>{invoice.amount.toLocaleString()} AED</TableCell>
                 <TableCell>{new Date(invoice.createdAt).toLocaleDateString()}</TableCell>
                 <TableCell>
-                  <Badge variant={getStatusBadgeVariant(invoice.status)}>{invoice.status}</Badge>
+                  <Badge variant={getStatusBadgeVariant(invoice.status)}>{getDisplayStatusText(invoice.status)}</Badge>
                 </TableCell>
               </TableRow>
             ))}

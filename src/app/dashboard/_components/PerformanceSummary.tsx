@@ -2,7 +2,7 @@
 'use client';
 
 import { useMemo } from 'react';
-import { BookOpenCheck, Banknote, FileWarning, CircleDollarSign } from 'lucide-react';
+import { BookOpenCheck, Banknote, CircleDollarSign } from 'lucide-react'; // Removed FileWarning
 import {
   Card,
   CardContent,
@@ -62,19 +62,17 @@ export function PerformanceSummary({ leads, invoices, isLoading, error }: Perfor
     };
   }, [leads]);
 
-  const { overdueInvoicesCount, totalPendingPayments } = useMemo(() => {
-    const overdue = invoices.filter(invoice => invoice.status === 'Overdue').length;
+  const { totalPendingPayments } = useMemo(() => { // Removed overdueInvoicesCount
     const pending = invoices
       .filter(invoice => invoice.status === 'Pending' || invoice.status === 'Overdue')
       .reduce((sum, invoice) => sum + invoice.amount, 0);
     return {
-      overdueInvoicesCount: overdue,
       totalPendingPayments: pending,
     };
   }, [invoices]);
 
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+    <div className="grid gap-4 md:grid-cols-1 lg:grid-cols-3"> {/* Adjusted grid for 3 cards */}
       <SummaryCard
         title="Total Confirmed Bookings"
         value={error ? 'Error' : totalConfirmedBookings}
@@ -89,13 +87,7 @@ export function PerformanceSummary({ leads, invoices, isLoading, error }: Perfor
         description={error ? error : "Sum of net amounts for 'Closed Won' leads"}
         isLoading={isLoading}
       />
-      <SummaryCard
-        title="Overdue Invoices"
-        value={error ? 'Error' : overdueInvoicesCount}
-        icon={<FileWarning className="h-5 w-5 text-muted-foreground" />}
-        description={error ? error : "Number of invoices past due date"}
-        isLoading={isLoading}
-      />
+      {/* Overdue Invoices card removed */}
       <SummaryCard
         title="Pending Payments"
         value={error ? 'Error' : `${totalPendingPayments.toLocaleString()} AED`}

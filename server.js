@@ -1,4 +1,7 @@
+
 // server.js
+console.log('Attempting to start DutchOriental CRM server.js...'); // Added for debugging
+
 const { createServer } = require('node:http');
 const { parse } = require('node:url');
 const next = require('next');
@@ -32,6 +35,7 @@ app.prepare().then(() => {
       process.exit(1);
     })
     .listen(port, () => {
-      console.log(`> Ready on http://${hostname}:${port}`);
+      console.log(`> DutchOriental CRM server ready on http://${hostname}:${port}`); // Modified log
+      console.log(`> NODE_ENV: ${process.env.NODE_ENV}`); // Added to check env
     });
 });

@@ -20,7 +20,8 @@ export const placeholderAgents: Agent[] = [
     discount: 12, 
     websiteUrl: 'https://primecharters.com', 
     status: 'Active',
-    TRN_number: '100298765400003'
+    TRN_number: '100298765400003',
+    customer_type_id: 'CT-CORP-01'
   },
   { 
     id: 'DO-agentB', 
@@ -32,7 +33,8 @@ export const placeholderAgents: Agent[] = [
     discount: 15, 
     websiteUrl: 'https://luxuryyachtbookings.com', 
     status: 'Active',
-    TRN_number: '100300012300003'
+    TRN_number: '100300012300003',
+    customer_type_id: 'CT-VIP-02'
   },
   { 
     id: 'DO-agentC', 
@@ -43,7 +45,8 @@ export const placeholderAgents: Agent[] = [
     email: 'info@sevenseasagents.com', 
     discount: 10, 
     status: 'Non Active',
-    TRN_number: '100200055500003'
+    TRN_number: '100200055500003',
+    customer_type_id: 'CT-REG-03'
   },
 ];
 
@@ -73,8 +76,7 @@ export const placeholderYachts: Yacht[] = [
   },
 ];
 
-// Initial lead data with new statuses
-export let placeholderLeads: Lead[] = [
+export const placeholderLeads: Lead[] = [
   {
     id: 'DO-lead1', agent: 'DO-agentA', status: 'Conformed', month: formatISO(new Date('2024-07-15T10:00:00Z')), notes: 'Confirmed booking, client very happy.', yacht: 'DO-yacht1',
     type: 'Corporate Event', invoiceId: 'DO-inv001', modeOfPayment: 'Online', clientName: 'Tech Corp',
@@ -119,10 +121,10 @@ export let placeholderLeads: Lead[] = [
   }
 ];
 
-export let placeholderInvoices: Invoice[] = [
-  { id: 'DO-inv001', leadId: 'DO-lead1', clientName: 'Tech Corp', amount: 1290, dueDate: '2024-08-15', status: 'Paid', createdAt: formatISO(new Date('2024-07-01')) },
-  { id: 'DO-inv002', leadId: 'DO-lead2', clientName: 'Innovate Ltd', amount: 1550, dueDate: '2024-08-20', status: 'Pending', createdAt: formatISO(new Date('2024-07-05')) },
-  { id: 'DO-inv003', leadId: 'DO-lead3', clientName: 'Solutions Inc', amount: 1200, dueDate: '2024-07-25', status: 'Overdue', createdAt: formatISO(new Date('2024-06-10')) },
-  { id: 'DO-inv004', leadId: 'DO-lead4', clientName: 'Global Co', amount: 3880, dueDate: '2024-09-01', status: 'Pending', createdAt: formatISO(new Date('2024-07-15')) },
-  { id: 'DO-inv005', leadId: 'DO-lead5', clientName: 'Celebrations LLC', amount: 2180, dueDate: '2024-09-10', status: 'Pending', createdAt: formatISO(new Date('2024-08-01')) },
+export const placeholderInvoices: Invoice[] = [
+  { id: 'DO-inv001', leadId: 'DO-lead1', clientName: 'Tech Corp', amount: 1290, dueDate: formatISO(new Date('2024-08-15')), status: 'Paid', createdAt: formatISO(new Date('2024-07-01')) },
+  { id: 'DO-inv002', leadId: 'DO-lead2', clientName: 'Innovate Ltd', amount: 1550, dueDate: formatISO(new Date('2024-08-20')), status: 'Pending', createdAt: formatISO(new Date('2024-07-05')) },
+  { id: 'DO-inv003', leadId: 'DO-lead3', clientName: 'Solutions Inc', amount: 1200, dueDate: formatISO(new Date('2024-07-25')), status: 'Overdue', createdAt: formatISO(new Date('2024-06-10')) },
+  { id: 'DO-inv004', leadId: 'DO-lead4', clientName: 'Global Co', amount: 3880, dueDate: formatISO(new Date('2024-09-01')), status: 'Pending', createdAt: formatISO(new Date('2024-07-15')) },
+  { id: 'DO-inv005', leadId: 'DO-lead5', clientName: 'Celebrations LLC', amount: 2180, dueDate: formatISO(new Date('2024-09-10')), status: 'Pending', createdAt: formatISO(new Date('2024-08-01')) },
 ];

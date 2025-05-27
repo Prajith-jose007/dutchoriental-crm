@@ -46,6 +46,7 @@ const agentFormSchema = z.object({
   websiteUrl: z.string().url({ message: "Invalid URL format" }).optional().or(z.literal('')),
   status: z.enum(['Active', 'Non Active', 'Dead']),
   TRN_number: z.string().optional(),
+  customer_type_id: z.string().optional(), // Added
 });
 
 export type AgentFormData = z.infer<typeof agentFormSchema>;
@@ -74,6 +75,7 @@ export function AgentFormDialog({ isOpen, onOpenChange, agent, onSubmitSuccess }
       websiteUrl: '',
       status: 'Active',
       TRN_number: '',
+      customer_type_id: '', // Added
     },
   });
 
@@ -87,6 +89,7 @@ export function AgentFormDialog({ isOpen, onOpenChange, agent, onSubmitSuccess }
           address: agent.address || '',
           phone_no: agent.phone_no || '',
           TRN_number: agent.TRN_number || '',
+          customer_type_id: agent.customer_type_id || '', // Added
         });
       } else {
         form.reset({
@@ -100,6 +103,7 @@ export function AgentFormDialog({ isOpen, onOpenChange, agent, onSubmitSuccess }
           websiteUrl: '',
           status: 'Active',
           TRN_number: '',
+          customer_type_id: '', // Added
         });
       }
     }
@@ -113,6 +117,7 @@ export function AgentFormDialog({ isOpen, onOpenChange, agent, onSubmitSuccess }
       address: data.address || undefined,
       phone_no: data.phone_no || undefined,
       TRN_number: data.TRN_number || undefined,
+      customer_type_id: data.customer_type_id || undefined, // Added
     };
     onSubmitSuccess(submittedAgent);
     // Toast handled by parent page now
@@ -257,6 +262,19 @@ export function AgentFormDialog({ isOpen, onOpenChange, agent, onSubmitSuccess }
                     <FormLabel>TRN Number (Optional)</FormLabel>
                     <FormControl>
                       <Input placeholder="e.g., 100XXXXXXXXXX03" {...field} value={field.value || ''} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="customer_type_id"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Customer Type ID (Optional)</FormLabel>
+                    <FormControl>
+                      <Input placeholder="e.g., CUST-TYPE-001" {...field} value={field.value || ''} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

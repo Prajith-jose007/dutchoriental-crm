@@ -24,6 +24,7 @@ const convertAgentValue = (key: keyof Agent, value: string): any => {
       case 'address':
       case 'phone_no':
       case 'TRN_number':
+      case 'customer_type_id':
       case 'websiteUrl':
         return undefined; // Optional fields can be undefined
       default: return ''; // For required strings like name, email
@@ -279,6 +280,7 @@ export default function AgentsPage() {
             email: parsedRow.email || `error${i}@example.com`,
             status: parsedRow.status || 'Active',
             TRN_number: parsedRow.TRN_number,
+            customer_type_id: parsedRow.customer_type_id,
             discount: typeof parsedRow.discount === 'number' ? parsedRow.discount : 0,
             websiteUrl: parsedRow.websiteUrl,
           };
@@ -339,7 +341,7 @@ export default function AgentsPage() {
       toast({ title: 'No Data', description: 'There are no agents to export.', variant: 'default' });
       return;
     }
-    const headers: (keyof Agent)[] = ['id', 'name', 'agency_code', 'address', 'phone_no', 'email', 'status', 'TRN_number', 'discount', 'websiteUrl'];
+    const headers: (keyof Agent)[] = ['id', 'name', 'agency_code', 'address', 'phone_no', 'email', 'status', 'TRN_number', 'customer_type_id', 'discount', 'websiteUrl'];
 
     const escapeCsvCell = (cellData: any): string => {
       if (cellData === null || cellData === undefined) return '';
@@ -441,5 +443,3 @@ export default function AgentsPage() {
     </div>
   );
 }
-
-    

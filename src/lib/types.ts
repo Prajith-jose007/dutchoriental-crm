@@ -19,6 +19,7 @@ export interface Agent {
   email: string;
   status: 'Active' | 'Non Active' | 'Dead';
   TRN_number?: string;
+  customer_type_id?: string; // Added
   discount: number;
   websiteUrl?: string;
 }
@@ -69,9 +70,9 @@ export interface Invoice {
   leadId: string;
   clientName: string;
   amount: number;
-  dueDate: string;
+  dueDate: string; // ISO Date string
   status: 'Paid' | 'Pending' | 'Overdue';
-  createdAt: string;
+  createdAt: string; // ISO Date string
 }
 
 export type LeadStatus = 'Balance' | 'Closed' | 'Conformed' | 'Upcoming';
@@ -159,4 +160,3 @@ export interface BookingsByAgentData {
 
 // Re-exporting for easier import in CSV parser
 export type { LeadStatus as ExportedLeadStatus, ModeOfPayment as ExportedModeOfPayment };
-

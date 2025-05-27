@@ -60,13 +60,14 @@ export function AgentsTable({ agents, onEditAgent, onDeleteAgent, isAdmin }: Age
             <TableHead className="w-[40px]">
               <Checkbox aria-label="Select all agents" disabled={!isAdmin} />
             </TableHead>
-            <TableHead>Name</TableHead>
             <TableHead>ID</TableHead>
+            <TableHead>Name</TableHead>
             <TableHead>Agency Code</TableHead>
             <TableHead>Address</TableHead>
             <TableHead>Phone No</TableHead>
             <TableHead>Email</TableHead>
             <TableHead>TRN Number</TableHead>
+            <TableHead>Customer Type ID</TableHead>
             <TableHead>Discount (%)</TableHead>
             <TableHead>Website</TableHead>
             <TableHead>Status</TableHead>
@@ -76,7 +77,7 @@ export function AgentsTable({ agents, onEditAgent, onDeleteAgent, isAdmin }: Age
         <TableBody>
           {agents.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={12} className="h-24 text-center">
+              <TableCell colSpan={13} className="h-24 text-center">
                 No agents found.
               </TableCell>
             </TableRow>
@@ -86,7 +87,6 @@ export function AgentsTable({ agents, onEditAgent, onDeleteAgent, isAdmin }: Age
                 <TableCell>
                   <Checkbox aria-label={`Select agent ${agent.name}`} disabled={!isAdmin} />
                 </TableCell>
-                <TableCell className="font-medium">{agent.name}</TableCell>
                 <TableCell>
                     <Button 
                         variant="link" 
@@ -97,11 +97,13 @@ export function AgentsTable({ agents, onEditAgent, onDeleteAgent, isAdmin }: Age
                         {truncateText(agent.id, 10)}
                     </Button>
                 </TableCell>
+                <TableCell className="font-medium">{agent.name}</TableCell>
                 <TableCell>{agent.agency_code || '-'}</TableCell>
                 <TableCell>{truncateText(agent.address, 25)}</TableCell>
                 <TableCell>{agent.phone_no || '-'}</TableCell>
                 <TableCell>{agent.email}</TableCell>
                 <TableCell>{agent.TRN_number || '-'}</TableCell>
+                <TableCell>{agent.customer_type_id || '-'}</TableCell>
                 <TableCell>{agent.discount.toFixed(1)}%</TableCell>
                 <TableCell>
                   {agent.websiteUrl ? (

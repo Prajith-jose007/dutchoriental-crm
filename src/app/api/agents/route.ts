@@ -52,6 +52,7 @@ export async function POST(request: NextRequest) {
         email: newAgentData.email,
         status: newAgentData.status,
         TRN_number: newAgentData.TRN_number,
+        customer_type_id: newAgentData.customer_type_id, // Added
         discount: Number(newAgentData.discount), // Ensure discount is a number
         websiteUrl: newAgentData.websiteUrl,
     };

@@ -9,7 +9,7 @@ export const placeholderUsers: User[] = [
   { id: 'DO-admin', name: 'Admin User', email: 'admin@dutchoriental.com', designation: 'System Administrator', avatarUrl: 'https://placehold.co/100x100.png?text=AU', status: 'Active', password: 'DutchOriental@123#' },
 ];
 
-export const placeholderAgents: Agent[] = [
+export let placeholderAgents: Agent[] = [
   { 
     id: 'DO-agentA', 
     name: 'Prime Charters Agency', 
@@ -36,95 +36,95 @@ export const placeholderAgents: Agent[] = [
     TRN_number: '100300012300003',
     customer_type_id: 'CT-VIP-02'
   },
-  { 
-    id: 'DO-agentC', 
-    name: 'Seven Seas Agents', 
-    agency_code: 'SSA003',
-    address: '789 Palm Jumeirah, Dubai',
-    phone_no: '+971522468135',
-    email: 'info@sevenseasagents.com', 
-    discount: 10, 
-    status: 'Non Active',
-    TRN_number: '100200055500003',
-    customer_type_id: 'CT-REG-03'
-  },
 ];
 
 
-export const placeholderYachts: Yacht[] = [
+export let placeholderYachts: Yacht[] = [
   {
     id: 'DO-yacht1', name: 'The Sea Serpent', capacity: 50, status: 'Available', imageUrl: 'https://placehold.co/600x400.png?text=Sea+Serpent',
-    dhowChildRate: 89, dhowAdultRate: 129, dhowVipRate: 189, dhowVipChildRate: 139, dhowVipAlcoholRate: 249,
-    oeChildRate: 99, oeAdultRate: 149, oeVipRate: 209, oeVipChildRate: 159, oeVipAlcoholRate: 269,
-    sunsetChildRate: 79, sunsetAdultRate: 119, sunsetVipRate: 179, sunsetVipChildRate: 129, sunsetVipAlcoholRate: 239,
-    lotusChildRate: 109, lotusAdultRate: 159, lotusVipRate: 219, lotusVipChildRate: 169, lotusVipAlcoholRate: 279,
-    royalRate: 5000, othersAmtCake_rate: 150,
+    childRate: 89,
+    adultStandardRate: 129,
+    adultStandardDrinksRate: 159,
+    vipChildRate: 139,
+    vipAdultRate: 189,
+    vipAdultDrinksRate: 249,
+    royalChildRate: 200,
+    royalAdultRate: 300,
+    royalDrinksRate: 380,
+    othersAmtCake_rate: 150,
   },
   {
     id: 'DO-yacht2', name: 'Ocean Voyager', capacity: 100, status: 'Available', imageUrl: 'https://placehold.co/600x400.png?text=Ocean+Voyager',
-    dhowChildRate: 95, dhowAdultRate: 135, dhowVipRate: 195, dhowVipChildRate: 145, dhowVipAlcoholRate: 255,
-    oeChildRate: 105, oeAdultRate: 155, oeVipRate: 215, oeVipChildRate: 165, oeVipAlcoholRate: 275,
-    sunsetChildRate: 85, sunsetAdultRate: 125, sunsetVipRate: 185, sunsetVipChildRate: 135, sunsetVipAlcoholRate: 245,
-    lotusChildRate: 115, lotusAdultRate: 165, lotusVipRate: 225, lotusVipChildRate: 175, lotusVipAlcoholRate: 285,
-    royalRate: 7500, othersAmtCake_rate: 200,
-  },
-  {
-    id: 'DO-yacht3', name: 'Marina Dream', capacity: 30, status: 'Maintenance', imageUrl: 'https://placehold.co/600x400.png?text=Marina+Dream',
-    dhowChildRate: 80, dhowAdultRate: 120, dhowVipRate: 180, dhowVipChildRate: 130, dhowVipAlcoholRate: 240,
-    oeChildRate: 90, oeAdultRate: 130, oeVipRate: 190, oeVipChildRate: 140, oeVipAlcoholRate: 250,
-    royalRate: 4000, othersAmtCake_rate: 100,
+    childRate: 95,
+    adultStandardRate: 135,
+    adultStandardDrinksRate: 165,
+    vipChildRate: 145,
+    vipAdultRate: 195,
+    vipAdultDrinksRate: 255,
+    royalChildRate: 220,
+    royalAdultRate: 320,
+    royalDrinksRate: 400,
+    othersAmtCake_rate: 200,
   },
 ];
 
-export const placeholderLeads: Lead[] = [
+export let placeholderLeads: Lead[] = [
   {
     id: 'DO-lead1', agent: 'DO-agentA', status: 'Conformed', month: formatISO(new Date('2024-07-15T10:00:00Z')), notes: 'Confirmed booking, client very happy.', yacht: 'DO-yacht1',
     type: 'Corporate Event', invoiceId: 'DO-inv001', modeOfPayment: 'Online', clientName: 'Tech Corp',
-    dhowAdultQty: 10, totalAmount: 1290, commissionPercentage: 12, commissionAmount: 154.8,
+    dhowAdultQty: 10, // Mapped to adultStandardRate (129) = 1290
+    totalAmount: 1290, commissionPercentage: 12, commissionAmount: 154.8,
     netAmount: 1135.2, paidAmount: 1290, balanceAmount: 0,
     createdAt: '2024-06-15T10:00:00Z', updatedAt: '2024-07-01T10:00:00Z', lastModifiedByUserId: 'DO-user1', ownerUserId: 'DO-user1'
   },
   {
     id: 'DO-lead2', agent: 'DO-agentB', status: 'Upcoming', month: formatISO(new Date('2024-07-25T14:30:00Z')), notes: 'Follow up next week.', yacht: 'DO-yacht2',
     type: 'Private Party', modeOfPayment: 'Credit', clientName: 'Innovate Ltd',
-    oeAdultQty: 10, totalAmount: 1550, commissionPercentage: 15, commissionAmount: 232.5,
-    netAmount: 1317.5, paidAmount: 500, balanceAmount: 1050,
+    oeAdultQty: 10, // Mapped to adultStandardRate (135) = 1350
+    totalAmount: 1350, commissionPercentage: 15, commissionAmount: 202.5,
+    netAmount: 1147.5, paidAmount: 500, balanceAmount: 850,
     createdAt: '2024-06-20T10:00:00Z', updatedAt: '2024-07-05T10:00:00Z', lastModifiedByUserId: 'DO-user2', ownerUserId: 'DO-user2'
   },
   {
-    id: 'DO-lead3', agent: 'DO-agentA', status: 'Conformed', month: formatISO(new Date('2024-08-10T12:00:00Z')), yacht: 'DO-yacht3',
+    id: 'DO-lead3', agent: 'DO-agentA', status: 'Conformed', month: formatISO(new Date('2024-08-10T12:00:00Z')), yacht: 'DO-yacht1', // Yacht 1
     type: 'Tour Group', modeOfPayment: 'Cash/Card', clientName: 'Solutions Inc',
-    dhowAdultQty: 10, totalAmount: 1200, commissionPercentage: 12, commissionAmount: 144,
-    netAmount: 1056, paidAmount: 1200, balanceAmount: 0,
+    dhowAdultQty: 10, // Mapped to adultStandardRate (129) = 1290
+    totalAmount: 1290, commissionPercentage: 12, commissionAmount: 154.8,
+    netAmount: 1135.2, paidAmount: 1290, balanceAmount: 0,
     createdAt: '2024-07-10T10:00:00Z', updatedAt: '2024-07-12T10:00:00Z', lastModifiedByUserId: 'DO-user1', ownerUserId: 'DO-user1'
   },
   {
-    id: 'DO-lead4', agent: 'DO-agentC', status: 'Upcoming', month: formatISO(new Date('2024-08-20T18:00:00Z')), yacht: 'DO-yacht1',
+    id: 'DO-lead4', agent: 'DO-agentA', status: 'Upcoming', month: formatISO(new Date('2024-08-20T18:00:00Z')), yacht: 'DO-yacht1',
     type: 'Wedding Reception', modeOfPayment: 'Online', clientName: 'Global Co',
-    dhowVipQty: 20, othersAmtCake: 100, totalAmount: (20 * 189) + 100, commissionPercentage: 10, commissionAmount: ((20 * 189) + 100) * 0.10,
-    netAmount: ((20 * 189) + 100) * 0.90, paidAmount: 0, balanceAmount: (20 * 189) + 100,
+    dhowVipQty: 20, // Mapped to vipAdultRate (189) = 3780
+    othersAmtCake: 100,
+    totalAmount: 3780 + 100, commissionPercentage: 12, commissionAmount: (3780 + 100) * 0.12,
+    netAmount: (3780 + 100) * 0.88, paidAmount: 0, balanceAmount: 3780 + 100,
     createdAt: '2024-07-20T10:00:00Z', updatedAt: '2024-07-20T10:00:00Z', lastModifiedByUserId: 'DO-user3', ownerUserId: 'DO-user3'
   },
   {
     id: 'DO-lead5', agent: 'DO-agentB', status: 'Balance', month: formatISO(new Date('2024-09-05T16:00:00Z')), yacht: 'DO-yacht1',
     type: 'Birthday Celebration', modeOfPayment: 'Credit', clientName: 'Celebrations LLC',
-    dhowChildQty: 10, dhowAdultQty: 10, totalAmount: (10 * 89) + (10 * 129), commissionPercentage: 15, commissionAmount: ((10 * 89) + (10 * 129)) * 0.15,
-    netAmount: ((10 * 89) + (10 * 129)) * 0.85, paidAmount: 1000, balanceAmount: ((10 * 89) + (10 * 129)) - 1000,
+    dhowChildQty: 10, // Mapped to childRate (89) = 890
+    dhowAdultQty: 10, // Mapped to adultStandardRate (129) = 1290
+    totalAmount: 890 + 1290, commissionPercentage: 15, commissionAmount: (890 + 1290) * 0.15,
+    netAmount: (890 + 1290) * 0.85, paidAmount: 1000, balanceAmount: (890 + 1290) - 1000,
     createdAt: '2024-08-10T10:00:00Z', updatedAt: '2024-08-15T10:00:00Z', lastModifiedByUserId: 'DO-user2', ownerUserId: 'DO-user2'
   },
    {
     id: 'DO-lead6', agent: 'DO-agentA', status: 'Closed', month: formatISO(new Date('2024-05-05T16:00:00Z')), yacht: 'DO-yacht2',
     type: 'Anniversary', modeOfPayment: 'Online', clientName: 'Old Ventures',
-    oeVipQty: 5, totalAmount: (5 * 215), commissionPercentage: 12, commissionAmount: (5 * 215) * 0.12,
-    netAmount: (5 * 215) * 0.88, paidAmount: (5 * 215), balanceAmount: 0,
+    oeVipQty: 5, // Mapped to vipAdultRate (195) = 975
+    totalAmount: 975, commissionPercentage: 12, commissionAmount: 975 * 0.12,
+    netAmount: 975 * 0.88, paidAmount: 975, balanceAmount: 0,
     createdAt: '2024-04-10T10:00:00Z', updatedAt: '2024-04-15T10:00:00Z', lastModifiedByUserId: 'DO-user1', ownerUserId: 'DO-user1'
   }
 ];
 
-export const placeholderInvoices: Invoice[] = [
+export let placeholderInvoices: Invoice[] = [
   { id: 'DO-inv001', leadId: 'DO-lead1', clientName: 'Tech Corp', amount: 1290, dueDate: formatISO(new Date('2024-08-15')), status: 'Paid', createdAt: formatISO(new Date('2024-07-01')) },
-  { id: 'DO-inv002', leadId: 'DO-lead2', clientName: 'Innovate Ltd', amount: 1550, dueDate: formatISO(new Date('2024-08-20')), status: 'Pending', createdAt: formatISO(new Date('2024-07-05')) },
-  { id: 'DO-inv003', leadId: 'DO-lead3', clientName: 'Solutions Inc', amount: 1200, dueDate: formatISO(new Date('2024-07-25')), status: 'Overdue', createdAt: formatISO(new Date('2024-06-10')) },
+  { id: 'DO-inv002', leadId: 'DO-lead2', clientName: 'Innovate Ltd', amount: 1350, dueDate: formatISO(new Date('2024-08-20')), status: 'Pending', createdAt: formatISO(new Date('2024-07-05')) },
+  { id: 'DO-inv003', leadId: 'DO-lead3', clientName: 'Solutions Inc', amount: 1290, dueDate: formatISO(new Date('2024-07-25')), status: 'Overdue', createdAt: formatISO(new Date('2024-06-10')) },
   { id: 'DO-inv004', leadId: 'DO-lead4', clientName: 'Global Co', amount: 3880, dueDate: formatISO(new Date('2024-09-01')), status: 'Pending', createdAt: formatISO(new Date('2024-07-15')) },
   { id: 'DO-inv005', leadId: 'DO-lead5', clientName: 'Celebrations LLC', amount: 2180, dueDate: formatISO(new Date('2024-09-10')), status: 'Pending', createdAt: formatISO(new Date('2024-08-01')) },
 ];

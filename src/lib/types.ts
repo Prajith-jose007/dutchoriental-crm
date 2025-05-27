@@ -19,7 +19,7 @@ export interface Agent {
   email: string;
   status: 'Active' | 'Non Active' | 'Dead';
   TRN_number?: string;
-  customer_type_id?: string; // Added
+  customer_type_id?: string;
   discount: number;
   websiteUrl?: string;
 }
@@ -31,38 +31,19 @@ export interface Yacht {
   capacity: number;
   status: 'Available' | 'Booked' | 'Maintenance';
 
-  // DHOW Package Rates
-  dhowChildRate?: number;
-  dhowAdultRate?: number;
-  dhowVipRate?: number;
-  dhowVipChildRate?: number;
-  dhowVipAlcoholRate?: number;
+  // New standardized package rates
+  childRate?: number;
+  adultStandardRate?: number;
+  adultStandardDrinksRate?: number;
+  vipChildRate?: number;
+  vipAdultRate?: number;
+  vipAdultDrinksRate?: number;
+  royalChildRate?: number;
+  royalAdultRate?: number;
+  royalDrinksRate?: number;
 
-  // OE Package Rates
-  oeChildRate?: number;
-  oeAdultRate?: number;
-  oeVipRate?: number;
-  oeVipChildRate?: number;
-  oeVipAlcoholRate?: number;
-
-  // SUNSET Package Rates
-  sunsetChildRate?: number;
-  sunsetAdultRate?: number;
-  sunsetVipRate?: number;
-  sunsetVipChildRate?: number;
-  sunsetVipAlcoholRate?: number;
-
-  // LOTUS Package Rates
-  lotusChildRate?: number;
-  lotusAdultRate?: number;
-  lotusVipRate?: number;
-  lotusVipChildRate?: number;
-  lotusVipAlcoholRate?: number;
-
-  // Royal Package Rate (General)
-  royalRate?: number;
-
-  othersAmtCake_rate?: number;
+  // This field seems like a leftover, decide if it's needed or if it's part of the 9 rates above
+  othersAmtCake_rate?: number; 
 }
 
 export interface Invoice {
@@ -138,7 +119,7 @@ export interface Lead {
 }
 
 export interface BookingReportData {
-  month: string; // YYYY-MM format
+  month: string; 
   bookings: number;
 }
 

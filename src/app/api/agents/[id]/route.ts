@@ -2,12 +2,12 @@
 // src/app/api/agents/[id]/route.ts
 import { NextResponse, type NextRequest } from 'next/server';
 import type { Agent } from '@/lib/types';
-
-// In-memory store (should be consistent with /api/agents/route.ts)
-// In a real app, this would all interact with the same database.
-// For simplicity, we re-declare and use the same placeholder source.
-import { placeholderAgents } from '@/lib/placeholder-data';
-let agents_db: Agent[] = [...placeholderAgents];
+import { 
+  getAgentById, 
+  updateAgent as updateAgentInStore, 
+  deleteAgentById as deleteAgentFromStore,
+  getAllAgents 
+} from '@/lib/db/agent-store';
 
 
 export async function GET(
@@ -16,8 +16,7 @@ export async function GET(
 ) {
   try {
     const id = params.id;
-    // TODO: Replace with actual database query: SELECT * FROM agents WHERE id = ?
-    const agent = agents_db.find(a => a.id === id);
+    const agent = getAgentById(id);
 
     if (agent) {
       return NextResponse.json(agent, { status: 200 });
@@ -38,9 +37,8 @@ export async function PUT(
     const id = params.id;
     const updatedAgentData = await request.json() as Partial<Agent>;
 
-    // TODO: Replace with actual database update operation
-    const agentIndex = agents_db.findIndex(a => a.id === id);
-    if (agentIndex === -1) {
+    const agentToUpdate = getAgentById(id);
+    if (!agentToUpdate) {
       return NextResponse.json({ message: 'Agent not found' }, { status: 404 });
     }
 
@@ -50,16 +48,18 @@ export async function PUT(
     }
 
     // Check if email is being changed and if it's already taken by another agent
-    if (updatedAgentData.email && updatedAgentData.email.toLowerCase() !== agents_db[agentIndex].email.toLowerCase()) {
-        const existingAgentByEmail = agents_db.find(a => a.id !== id && a.email.toLowerCase() === updatedAgentData.email!.toLowerCase());
+    if (updatedAgentData.email && updatedAgentData.email.toLowerCase() !== agentToUpdate.email.toLowerCase()) {
+        const allAgents = getAllAgents();
+        const existingAgentByEmail = allAgents.find(a => a.id !== id && a.email.toLowerCase() === updatedAgentData.email!.toLowerCase());
         if (existingAgentByEmail) {
             return NextResponse.json({ message: `Agent with email ${updatedAgentData.email} already exists.` }, { status: 409 });
         }
     }
-
-
-    agents_db[agentIndex] = { ...agents_db[agentIndex], ...updatedAgentData, id }; // Ensure ID isn't overwritten
-    const updatedAgent = agents_db[agentIndex];
+    
+    const updatedAgent = updateAgentInStore(id, updatedAgentData);
+    if (!updatedAgent) { // Should not happen if agentToUpdate was found, but defensive
+        return NextResponse.json({ message: 'Agent not found during update' }, { status: 404 });
+    }
 
     return NextResponse.json(updatedAgent, { status: 200 });
   } catch (error) {
@@ -74,11 +74,9 @@ export async function DELETE(
 ) {
   try {
     const id = params.id;
-    // TODO: Replace with actual database delete operation
-    const initialLength = agents_db.length;
-    agents_db = agents_db.filter(a => a.id !== id);
+    const wasDeleted = deleteAgentFromStore(id);
     
-    if (agents_db.length === initialLength) {
+    if (!wasDeleted) {
       return NextResponse.json({ message: 'Agent not found' }, { status: 404 });
     }
 

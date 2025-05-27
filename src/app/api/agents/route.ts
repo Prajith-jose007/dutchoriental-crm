@@ -2,16 +2,17 @@
 // src/app/api/agents/route.ts
 import { NextResponse, type NextRequest } from 'next/server';
 import type { Agent } from '@/lib/types';
-import { placeholderAgents } from '@/lib/placeholder-data'; // Used for initial data if DB is empty
-
-// In-memory store (replace with actual database calls)
-let agents_db: Agent[] = [...placeholderAgents]; // Initialize with placeholder data
+import { 
+  getAllAgents, 
+  addAgent as addAgentToStore, 
+  getAgentById,
+  deleteMultipleAgents as deleteMultipleAgentsFromStore 
+} from '@/lib/db/agent-store';
 
 export async function GET(request: NextRequest) {
   try {
-    // TODO: Replace with actual database query: SELECT * FROM agents
-    // For now, returning the in-memory store
-    return NextResponse.json(agents_db, { status: 200 });
+    const agents = getAllAgents();
+    return NextResponse.json(agents, { status: 200 });
   } catch (error) {
     console.error('Failed to fetch agents:', error);
     return NextResponse.json({ message: 'Failed to fetch agents', error: (error as Error).message }, { status: 500 });
@@ -22,29 +23,25 @@ export async function POST(request: NextRequest) {
   try {
     const newAgentData = await request.json() as Omit<Agent, 'id'> & { id?: string };
 
-    // Validate required fields
     if (!newAgentData.name || !newAgentData.email || newAgentData.discount === undefined || !newAgentData.status) {
       return NextResponse.json({ message: 'Missing required agent fields (name, email, discount, status)' }, { status: 400 });
     }
     
     const newAgentId = newAgentData.id || `DO-agent${Date.now()}${Math.random().toString(36).substring(2, 5)}`;
 
-
-    // TODO: Replace with actual database insert operation
-    // For now, adding to our in-memory store
-    const existingAgentById = agents_db.find(a => a.id === newAgentId);
+    const existingAgentById = getAgentById(newAgentId);
     if (existingAgentById) {
       return NextResponse.json({ message: `Agent with ID ${newAgentId} already exists.` }, { status: 409 });
     }
-    // Check for duplicate email
-    const existingAgentByEmail = agents_db.find(a => a.email.toLowerCase() === newAgentData.email.toLowerCase());
+    
+    const allCurrentAgents = getAllAgents(); // Fetch all agents to check email
+    const existingAgentByEmail = allCurrentAgents.find(a => a.email.toLowerCase() === newAgentData.email.toLowerCase());
     if (existingAgentByEmail) {
          return NextResponse.json({ message: `Agent with email ${newAgentData.email} already exists.` }, { status: 409 });
     }
 
-
     const agentToStore: Agent = {
-        id: newAgentId,
+        id: newAgentId, // Use the determined ID
         name: newAgentData.name,
         agency_code: newAgentData.agency_code,
         address: newAgentData.address,
@@ -52,14 +49,14 @@ export async function POST(request: NextRequest) {
         email: newAgentData.email,
         status: newAgentData.status,
         TRN_number: newAgentData.TRN_number,
-        customer_type_id: newAgentData.customer_type_id, // Added
-        discount: Number(newAgentData.discount), // Ensure discount is a number
+        customer_type_id: newAgentData.customer_type_id,
+        discount: Number(newAgentData.discount),
         websiteUrl: newAgentData.websiteUrl,
     };
     
-    agents_db.push(agentToStore);
+    const storedAgent = addAgentToStore(agentToStore); // Use the store function
     
-    return NextResponse.json(agentToStore, { status: 201 });
+    return NextResponse.json(storedAgent, { status: 201 });
   } catch (error) {
     console.error('Failed to create agent:', error);
     return NextResponse.json({ message: 'Failed to create agent', error: (error as Error).message }, { status: 500 });
@@ -74,16 +71,12 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ message: 'Agent IDs are required for bulk delete' }, { status: 400 });
     }
 
-    // TODO: Replace with actual database bulk delete operation
-    const initialLength = agents_db.length;
-    agents_db = agents_db.filter(agent => !ids.includes(agent.id));
+    const deletedCount = deleteMultipleAgentsFromStore(ids);
     
-    if (agents_db.length === initialLength - ids.length) {
-      return NextResponse.json({ message: `${ids.length} agents deleted successfully` }, { status: 200 });
+    if (deletedCount > 0) {
+      return NextResponse.json({ message: `${deletedCount} agents deleted successfully. Requested: ${ids.length}.` }, { status: 200 });
     } else {
-      // This case might indicate some IDs were not found, but we proceed with what was deleted.
-      const actuallyDeletedCount = initialLength - agents_db.length;
-      return NextResponse.json({ message: `${actuallyDeletedCount} agents deleted. Some IDs might not have been found.` }, { status: 200 });
+      return NextResponse.json({ message: 'No matching agents found for deletion based on provided IDs.' }, { status: 404 });
     }
   } catch (error) {
     console.error('Failed to bulk delete agents:', error);

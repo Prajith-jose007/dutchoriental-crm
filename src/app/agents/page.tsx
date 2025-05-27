@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, Upload, Download } from 'lucide-react';
+import { PlusCircle, Upload, Download, Trash2 } from 'lucide-react';
 import { PageHeader } from '@/components/PageHeader';
 import { AgentsTable } from './_components/AgentsTable';
 import { AgentFormDialog } from './_components/AgentFormDialog';
@@ -38,6 +38,8 @@ const convertAgentValue = (key: keyof Agent, value: string): any => {
     case 'status':
       const validStatuses: Agent['status'][] = ['Active', 'Non Active', 'Dead'];
       return validStatuses.includes(trimmedValue as Agent['status']) ? trimmedValue : 'Active';
+    case 'customer_type_id': // Added
+      return trimmedValue;
     default:
       return trimmedValue;
   }
@@ -52,6 +54,7 @@ export default function AgentsPage() {
   const [isAdmin, setIsAdmin] = useState(false);
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [selectedAgentIds, setSelectedAgentIds] = useState<string[]>([]);
 
   const fetchAgents = async () => {
     setIsLoading(true);
@@ -184,6 +187,46 @@ export default function AgentsPage() {
     }
   };
 
+  const handleSelectAgent = (agentId: string, isSelected: boolean) => {
+    if (!isAdmin) return;
+    setSelectedAgentIds(prevSelected => 
+      isSelected ? [...prevSelected, agentId] : prevSelected.filter(id => id !== agentId)
+    );
+  };
+
+  const handleSelectAllAgents = (isSelected: boolean) => {
+    if (!isAdmin) return;
+    setSelectedAgentIds(isSelected ? agents.map(agent => agent.id) : []);
+  };
+
+  const handleDeleteSelectedAgents = async () => {
+    if (!isAdmin || selectedAgentIds.length === 0) {
+      toast({ title: "Action Denied", description: "No agents selected or insufficient permissions.", variant: "destructive" });
+      return;
+    }
+    if (!confirm(`Are you sure you want to delete ${selectedAgentIds.length} selected agents? This action cannot be undone.`)) {
+      return;
+    }
+    try {
+      const response = await fetch('/api/agents', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: selectedAgentIds }),
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to delete selected agents');
+      }
+      toast({ title: 'Agents Deleted', description: `${selectedAgentIds.length} agents have been deleted.` });
+      fetchAgents();
+      setSelectedAgentIds([]);
+    } catch (error) {
+      console.error("Error deleting selected agents:", error);
+      toast({ title: 'Error Deleting Agents', description: (error as Error).message, variant: 'destructive' });
+    }
+  };
+
+
   const handleImportClick = () => {
     if (!isAdmin) {
       toast({ title: "Access Denied", description: "Only administrators can import agents.", variant: "destructive" });
@@ -234,6 +277,7 @@ export default function AgentsPage() {
             headerLine = headerLine.substring(1);
         }
         const headers = headerLine.split(',').map(h => h.trim() as keyof Agent);
+        console.log("[CSV Import] Detected Headers:", headers);
 
         const newAgentsFromCsv: Agent[] = [];
         let skippedCount = 0;
@@ -247,7 +291,7 @@ export default function AgentsPage() {
         for (let i = 1; i < lines.length; i++) {
           let data = lines[i].split(',');
           if (data.length !== headers.length) {
-            console.warn(`Skipping malformed CSV line ${i + 1}: Expected ${headers.length} columns, got ${data.length}. Line: "${lines[i]}"`);
+            console.warn(`[CSV Import] Skipping malformed CSV line ${i + 1}: Expected ${headers.length} columns, got ${data.length}. Line: "${lines[i]}"`);
             skippedCount++;
             continue;
           }
@@ -256,16 +300,18 @@ export default function AgentsPage() {
           headers.forEach((header, index) => {
             parsedRow[header] = convertAgentValue(header, data[index]);
           });
+           if (i === 1) console.log("[CSV Import] Processing Row 1 - Parsed:", parsedRow);
+
 
           let agentId = typeof parsedRow.id === 'string' && parsedRow.id.trim() !== '' ? parsedRow.id.trim() : `DO-agent-csv-${Date.now()}-${i}`;
 
           if (existingAgentIds.has(agentId) || newAgentsFromCsv.some(a => a.id === agentId)) {
-            console.warn(`Skipping agent with duplicate ID: ${agentId} from CSV row ${i+1}.`);
+            console.warn(`[CSV Import] Skipping agent with duplicate ID: ${agentId} from CSV row ${i+1}.`);
             skippedCount++;
             continue;
           }
           if (parsedRow.email && (existingAgentEmails.has(parsedRow.email.toLowerCase()) || newAgentsFromCsv.some(a => a.email.toLowerCase() === parsedRow.email!.toLowerCase()))) {
-            console.warn(`Skipping agent with duplicate email: ${parsedRow.email} from CSV row ${i+1}.`);
+            console.warn(`[CSV Import] Skipping agent with duplicate email: ${parsedRow.email} from CSV row ${i+1}.`);
             skippedCount++;
             continue;
           }
@@ -284,9 +330,10 @@ export default function AgentsPage() {
             discount: typeof parsedRow.discount === 'number' ? parsedRow.discount : 0,
             websiteUrl: parsedRow.websiteUrl,
           };
+          if (i === 1) console.log("[CSV Import] Processing Row 1 - Agent to POST:", fullAgent);
            // Basic validation before adding
           if (!fullAgent.name || !fullAgent.email || fullAgent.discount === undefined || !fullAgent.status) {
-             console.warn(`Skipping agent due to missing required fields (name, email, discount, status) at CSV row ${i+1}. Agent data:`, fullAgent);
+             console.warn(`[CSV Import] Skipping agent due to missing required fields (name, email, discount, status) at CSV row ${i+1}. Agent data:`, fullAgent);
              skippedCount++;
              continue;
           }
@@ -308,15 +355,16 @@ export default function AgentsPage() {
                 successCount++;
               } else {
                 const errorData = await response.json();
-                console.warn(`Failed to import agent ${agentToImport.id} via API: ${errorData.message || response.statusText}`);
+                console.warn(`[CSV Import] API Error for agent ID ${agentToImport.id}: ${errorData.message || response.statusText}. Payload:`, agentToImport);
                 skippedCount++;
               }
             } catch (apiError) {
-                console.warn(`API error importing agent ${agentToImport.id}:`, apiError);
+                console.warn(`[CSV Import] Network/JS Error importing agent ${agentToImport.id}:`, apiError, "Payload:", agentToImport);
                 skippedCount++;
             }
           }
           fetchAgents();
+          setSelectedAgentIds([]); // Clear selection after import
           toast({ title: 'Import Processed', description: `${successCount} agents imported. ${skippedCount} rows skipped. Check console for details.` });
         } else {
           toast({ title: 'Import Complete', description: `No new agents were imported. ${skippedCount > 0 ? `${skippedCount} rows skipped. ` : ''}Check console for details.` });
@@ -408,6 +456,12 @@ export default function AgentsPage() {
         actions={
           isAdmin && (
             <div className="flex items-center gap-2">
+               {selectedAgentIds.length > 0 && (
+                <Button variant="destructive" onClick={handleDeleteSelectedAgents}>
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Delete Selected ({selectedAgentIds.length})
+                </Button>
+              )}
               <input
                 type="file"
                 ref={fileInputRef}
@@ -431,7 +485,15 @@ export default function AgentsPage() {
           )
         }
       />
-      <AgentsTable agents={agents} onEditAgent={handleEditAgentClick} onDeleteAgent={handleDeleteAgent} isAdmin={isAdmin} />
+      <AgentsTable 
+        agents={agents} 
+        onEditAgent={handleEditAgentClick} 
+        onDeleteAgent={handleDeleteAgent} 
+        isAdmin={isAdmin}
+        selectedAgentIds={selectedAgentIds}
+        onSelectAgent={handleSelectAgent}
+        onSelectAllAgents={handleSelectAllAgents}
+      />
       {isAgentDialogOpen && isAdmin && (
         <AgentFormDialog
           isOpen={isAgentDialogOpen}

@@ -65,3 +65,28 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ message: 'Failed to create agent', error: (error as Error).message }, { status: 500 });
   }
 }
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const { ids } = await request.json() as { ids: string[] };
+
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+      return NextResponse.json({ message: 'Agent IDs are required for bulk delete' }, { status: 400 });
+    }
+
+    // TODO: Replace with actual database bulk delete operation
+    const initialLength = agents_db.length;
+    agents_db = agents_db.filter(agent => !ids.includes(agent.id));
+    
+    if (agents_db.length === initialLength - ids.length) {
+      return NextResponse.json({ message: `${ids.length} agents deleted successfully` }, { status: 200 });
+    } else {
+      // This case might indicate some IDs were not found, but we proceed with what was deleted.
+      const actuallyDeletedCount = initialLength - agents_db.length;
+      return NextResponse.json({ message: `${actuallyDeletedCount} agents deleted. Some IDs might not have been found.` }, { status: 200 });
+    }
+  } catch (error) {
+    console.error('Failed to bulk delete agents:', error);
+    return NextResponse.json({ message: 'Failed to bulk delete agents', error: (error as Error).message }, { status: 500 });
+  }
+}

@@ -1,7 +1,7 @@
 
 'use client';
 
-import { MoreHorizontal } from 'lucide-react';
+import { MoreHorizontal, Trash2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -28,10 +28,21 @@ interface AgentsTableProps {
   agents: Agent[];
   onEditAgent: (agent: Agent) => void;
   onDeleteAgent: (agentId: string) => void;
-  isAdmin: boolean; // New prop
+  isAdmin: boolean;
+  selectedAgentIds: string[];
+  onSelectAgent: (agentId: string, isSelected: boolean) => void;
+  onSelectAllAgents: (isSelected: boolean) => void;
 }
 
-export function AgentsTable({ agents, onEditAgent, onDeleteAgent, isAdmin }: AgentsTableProps) {
+export function AgentsTable({ 
+  agents, 
+  onEditAgent, 
+  onDeleteAgent, 
+  isAdmin,
+  selectedAgentIds,
+  onSelectAgent,
+  onSelectAllAgents
+}: AgentsTableProps) {
 
   const getStatusBadgeVariant = (status: Agent['status']) => {
     switch (status) {
@@ -51,6 +62,9 @@ export function AgentsTable({ agents, onEditAgent, onDeleteAgent, isAdmin }: Age
     return text.length > maxLength ? text.substring(0, maxLength - 3) + '...' : text;
   };
 
+  const isAllSelected = agents.length > 0 && selectedAgentIds.length === agents.length;
+  const isSomeSelected = selectedAgentIds.length > 0 && selectedAgentIds.length < agents.length;
+
 
   return (
     <ScrollArea className="rounded-md border whitespace-nowrap">
@@ -58,7 +72,13 @@ export function AgentsTable({ agents, onEditAgent, onDeleteAgent, isAdmin }: Age
         <TableHeader>
           <TableRow>
             <TableHead className="w-[40px]">
-              <Checkbox aria-label="Select all agents" disabled={!isAdmin} />
+              <Checkbox 
+                aria-label="Select all agents" 
+                checked={isAllSelected}
+                onCheckedChange={(checked) => onSelectAllAgents(Boolean(checked))}
+                disabled={!isAdmin || agents.length === 0}
+                data-state={isSomeSelected ? 'indeterminate' : (isAllSelected ? 'checked' : 'unchecked')}
+              />
             </TableHead>
             <TableHead>ID</TableHead>
             <TableHead>Name</TableHead>
@@ -83,9 +103,17 @@ export function AgentsTable({ agents, onEditAgent, onDeleteAgent, isAdmin }: Age
             </TableRow>
           ) : (
             agents.map((agent) => (
-              <TableRow key={agent.id}>
+              <TableRow 
+                key={agent.id}
+                data-state={selectedAgentIds.includes(agent.id) ? "selected" : ""}
+              >
                 <TableCell>
-                  <Checkbox aria-label={`Select agent ${agent.name}`} disabled={!isAdmin} />
+                  <Checkbox 
+                    aria-label={`Select agent ${agent.name}`} 
+                    checked={selectedAgentIds.includes(agent.id)}
+                    onCheckedChange={(checked) => onSelectAgent(agent.id, Boolean(checked))}
+                    disabled={!isAdmin}
+                  />
                 </TableCell>
                 <TableCell>
                     <Button 

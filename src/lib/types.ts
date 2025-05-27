@@ -13,13 +13,13 @@ export interface User {
 export interface Agent {
   id: string;
   name: string;
-  agency_code?: string; // New
-  address?: string; // New
-  phone_no?: string; // New
+  agency_code?: string;
+  address?: string;
+  phone_no?: string;
   email: string;
   status: 'Active' | 'Non Active' | 'Dead';
-  TRN_number?: string; // New
-  discount: number; // Renamed from discountRate
+  TRN_number?: string;
+  discount: number;
   websiteUrl?: string;
 }
 
@@ -74,7 +74,7 @@ export interface Invoice {
   createdAt: string;
 }
 
-export type LeadStatus = 'New' | 'Connected' | 'Qualified' | 'Proposal Sent' | 'Closed Won' | 'Closed Lost';
+export type LeadStatus = 'Balance' | 'Closed' | 'Conformed' | 'Upcoming';
 export type ModeOfPayment = 'Online' | 'Credit' | 'Cash/Card';
 
 
@@ -159,3 +159,4 @@ export interface BookingsByAgentData {
 
 // Re-exporting for easier import in CSV parser
 export type { LeadStatus as ExportedLeadStatus, ModeOfPayment as ExportedModeOfPayment };
+

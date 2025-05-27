@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { DollarSign, TrendingUp, CalendarDays } from 'lucide-react';
 import {
   Card,
@@ -65,9 +65,8 @@ export function RevenueSummary({ leads, isLoading, error }: RevenueSummaryProps)
     let thisYearsRevenue = 0;
 
     leads.forEach(lead => {
-      if (lead.status === 'Closed Won' && typeof lead.netAmount === 'number') {
+      if (lead.status === 'Conformed' && typeof lead.netAmount === 'number') {
         try {
-          // lead.month now stores the full event date as an ISO string
           let eventDate: Date | null = null;
           if (lead.month && isValid(parseISO(lead.month))) {
             eventDate = parseISO(lead.month);
@@ -82,10 +81,9 @@ export function RevenueSummary({ leads, isLoading, error }: RevenueSummaryProps)
             }
           }
           
-          // Today's revenue is still based on lead creation date
           if (lead.createdAt) {
             const leadCreationDate = parseISO(lead.createdAt);
-            if (isToday(leadCreationDate)) {
+            if (isValid(leadCreationDate) && isToday(leadCreationDate)) {
               todaysRevenue += lead.netAmount;
             }
           }
@@ -96,9 +94,9 @@ export function RevenueSummary({ leads, isLoading, error }: RevenueSummaryProps)
     });
 
     return [
-      { period: "Today's Revenue", amount: todaysRevenue, icon: <DollarSign className="h-5 w-5 text-muted-foreground" />, description: "Based on 'Closed Won' leads created today" },
-      { period: "This Month's Revenue", amount: thisMonthsRevenue, icon: <CalendarDays className="h-5 w-5 text-muted-foreground" />, description: "Based on 'Closed Won' leads with event date this month" },
-      { period: "This Year's Revenue", amount: thisYearsRevenue, icon: <TrendingUp className="h-5 w-5 text-muted-foreground" />, description: "Based on 'Closed Won' leads with event date this year" },
+      { period: "Today's Revenue", amount: todaysRevenue, icon: <DollarSign className="h-5 w-5 text-muted-foreground" />, description: "Based on 'Conformed' leads created today" },
+      { period: "This Month's Revenue", amount: thisMonthsRevenue, icon: <CalendarDays className="h-5 w-5 text-muted-foreground" />, description: "Based on 'Conformed' leads with event date this month" },
+      { period: "This Year's Revenue", amount: thisYearsRevenue, icon: <TrendingUp className="h-5 w-5 text-muted-foreground" />, description: "Based on 'Conformed' leads with event date this year" },
     ];
   }, [leads]);
 

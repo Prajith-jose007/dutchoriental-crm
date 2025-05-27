@@ -39,10 +39,12 @@ import { useToast } from '@/hooks/use-toast';
 import { useEffect, useState } from 'react';
 import { format, parseISO, formatISO, isValid } from 'date-fns';
 
+const leadStatusOptions: LeadStatus[] = ['Balance', 'Closed', 'Conformed', 'Upcoming'];
+
 const leadFormSchema = z.object({
   id: z.string().optional(),
   agent: z.string().min(1, 'Agent is required'),
-  status: z.enum(['New', 'Connected', 'Qualified', 'Proposal Sent', 'Closed Won', 'Closed Lost']),
+  status: z.enum(leadStatusOptions),
   month: z.date({ required_error: "Lead/Event Date is required." }), 
   notes: z.string().optional(),
   yacht: z.string().min(1, 'Yacht selection is required'),
@@ -126,11 +128,10 @@ const allPackageItemConfigs: PackageFieldConfig[] = [
   { qtyKey: 'royalQty', rateKey: 'royalRate', label: 'Royal Package Qty', category: 'ROYAL' },
 ];
 
-const leadStatusOptions: LeadStatus[] = ['New', 'Connected', 'Qualified', 'Proposal Sent', 'Closed Won', 'Closed Lost'];
 const modeOfPaymentOptions: ModeOfPayment[] = ['Online', 'Credit', 'Cash/Card'];
 
 const getDefaultFormValues = (): LeadFormData => ({
-    agent: '', status: 'New', month: new Date(), yacht: '',
+    agent: '', status: 'Upcoming', month: new Date(), yacht: '',
     type: '', modeOfPayment: 'Online', clientName: '',
     notes: '',
     dhowChildQty: 0, dhowAdultQty: 0, dhowVipQty: 0, dhowVipChildQty: 0, dhowVipAlcoholQty: 0,
@@ -206,15 +207,12 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
   const watchedQuantities = allPackageItemConfigs.map(config => form.watch(config.qtyKey));
   const watchedOthersAmtCake = form.watch('othersAmtCake');
   const watchedPaidAmount = form.watch('paidAmount');
-  const watchedEventDate = form.watch('month'); 
-
+  
   useEffect(() => {
-    
     const selectedAgent = agents.find(a => a.id === watchedAgentId);
     const agentDiscountRate = selectedAgent?.discount || 0; 
     form.setValue('commissionPercentage', agentDiscountRate);
 
-    
     const selectedYacht = yachts.find(y => y.id === watchedYachtId);
 
     let currentTotalAmount = 0;
@@ -278,7 +276,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
   }, [lead, form, isOpen]);
 
   function onSubmit(data: LeadFormData) {
-    const currentUserId = 'DO-user1'; 
+    const currentUserId = 'DO-user1'; // Placeholder for actual logged-in user ID
 
     const submittedLead: Lead = {
       ...getDefaultFormValues(),
@@ -396,7 +394,9 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
                     <FormLabel>Lead/Event Date</FormLabel>
                     <DatePicker
                         date={field.value}
-                        setDate={(date) => field.onChange(date)}
+                        setDate={(date) => {
+                            field.onChange(date);
+                        }}
                         placeholder="Pick event date"
                     />
                     <FormMessage />
@@ -459,25 +459,26 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
               />
             </div>
 
-             <FormField
-                control={form.control}
-                name="notes"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Notes / User Feed</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        placeholder="Add any notes or updates about this lead..."
-                        className="resize-y min-h-[100px]"
-                        {...field}
-                        value={field.value || ''}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
+            <FormField
+              control={form.control}
+              name="notes"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Notes / User Feed</FormLabel>
+                  <FormControl>
+                    <Textarea
+                      placeholder="Add any notes or updates about this lead..."
+                      className="resize-y min-h-[100px]"
+                      {...field}
+                      value={field.value || ''}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            
+            {/* Removed general h3 for Package Item Quantities */}
             {packageCategories.map(category => (
               <div key={category}>
                 <h4 className="text-md font-semibold mt-4 mb-2">{category} Package Quantities</h4>
@@ -606,5 +607,3 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
     </Dialog>
   );
 }
-
-    

@@ -1,8 +1,8 @@
 
 'use client';
 
-import { useMemo } from 'react';
-import { BookOpenCheck, Banknote, CircleDollarSign } from 'lucide-react'; // Removed FileWarning
+import { useMemo, useState, useEffect } from 'react';
+import { BookOpenCheck, Banknote, CircleDollarSign, AlertTriangle } from 'lucide-react'; 
 import {
   Card,
   CardContent,
@@ -53,7 +53,7 @@ interface PerformanceSummaryProps {
 
 export function PerformanceSummary({ leads, invoices, isLoading, error }: PerformanceSummaryProps) {
   const { totalConfirmedBookings, totalConfirmedEarnings } = useMemo(() => {
-    const confirmedLeads = leads.filter(lead => lead.status === 'Closed Won');
+    const confirmedLeads = leads.filter(lead => lead.status === 'Conformed');
     const totalBookings = confirmedLeads.length;
     const totalEarnings = confirmedLeads.reduce((sum, lead) => sum + (lead.netAmount || 0), 0);
     return {
@@ -62,7 +62,7 @@ export function PerformanceSummary({ leads, invoices, isLoading, error }: Perfor
     };
   }, [leads]);
 
-  const { totalPendingPayments } = useMemo(() => { // Removed overdueInvoicesCount
+  const { totalPendingPayments } = useMemo(() => {
     const pending = invoices
       .filter(invoice => invoice.status === 'Pending' || invoice.status === 'Overdue')
       .reduce((sum, invoice) => sum + invoice.amount, 0);
@@ -72,22 +72,21 @@ export function PerformanceSummary({ leads, invoices, isLoading, error }: Perfor
   }, [invoices]);
 
   return (
-    <div className="grid gap-4 md:grid-cols-1 lg:grid-cols-3"> {/* Adjusted grid for 3 cards */}
+    <div className="grid gap-4 md:grid-cols-1 lg:grid-cols-3">
       <SummaryCard
         title="Total Confirmed Bookings"
         value={error ? 'Error' : totalConfirmedBookings}
         icon={<BookOpenCheck className="h-5 w-5 text-muted-foreground" />}
-        description={error ? error : "Number of 'Closed Won' leads"}
+        description={error ? error : "Number of 'Conformed' leads"}
         isLoading={isLoading}
       />
       <SummaryCard
         title="Total Confirmed Earnings"
         value={error ? 'Error' : `${totalConfirmedEarnings.toLocaleString()} AED`}
         icon={<Banknote className="h-5 w-5 text-muted-foreground" />}
-        description={error ? error : "Sum of net amounts for 'Closed Won' leads"}
+        description={error ? error : "Sum of net amounts for 'Conformed' leads"}
         isLoading={isLoading}
       />
-      {/* Overdue Invoices card removed */}
       <SummaryCard
         title="Pending Payments"
         value={error ? 'Error' : `${totalPendingPayments.toLocaleString()} AED`}

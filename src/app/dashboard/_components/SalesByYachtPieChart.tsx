@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { PieChart, Pie, Cell, Tooltip as RechartsTooltip, Legend, ResponsiveContainer } from 'recharts';
 import {
   Card,
@@ -25,7 +25,7 @@ const chartConfigBase = {
 
 interface SalesByYachtPieChartProps {
   leads: Lead[];
-  allYachts: Yacht[]; // Changed from 'yachts' to 'allYachts' for clarity
+  allYachts: Yacht[]; 
   isLoading?: boolean;
   error?: string | null;
 }
@@ -34,7 +34,7 @@ export function SalesByYachtPieChart({ leads, allYachts, isLoading, error }: Sal
   const chartData: PieChartDataItem[] = useMemo(() => {
     const salesByYachtMap = new Map<string, number>();
     leads.forEach(lead => {
-      if (lead.status === 'Closed Won' && typeof lead.netAmount === 'number') {
+      if (lead.status === 'Conformed' && typeof lead.netAmount === 'number') {
         const currentSales = salesByYachtMap.get(lead.yacht) || 0;
         salesByYachtMap.set(lead.yacht, currentSales + lead.netAmount);
       }
@@ -45,7 +45,7 @@ export function SalesByYachtPieChart({ leads, allYachts, isLoading, error }: Sal
       return {
         name: yacht ? yacht.name : `Yacht ID: ${yachtId.substring(0,6)}...`,
         value: totalRevenue,
-        fill: `hsl(var(--chart-${(index % 5) + 1}))`, // Ensure colors cycle
+        fill: `hsl(var(--chart-${(index % 5) + 1}))`, 
       };
     }).filter(item => item.value > 0)
       .sort((a,b) => b.value - a.value);
@@ -65,7 +65,7 @@ export function SalesByYachtPieChart({ leads, allYachts, isLoading, error }: Sal
       <Card>
         <CardHeader>
           <CardTitle>Sales Revenue by Yacht</CardTitle>
-          <CardDescription>Breakdown of 'Closed Won' lead revenue by yacht (Net Amount in AED).</CardDescription>
+          <CardDescription>Breakdown of 'Conformed' lead revenue by yacht (Net Amount in AED).</CardDescription>
         </CardHeader>
         <CardContent className="flex items-center justify-center h-[300px]">
           <div className="flex flex-col items-center gap-2">
@@ -83,7 +83,7 @@ export function SalesByYachtPieChart({ leads, allYachts, isLoading, error }: Sal
         <Card>
             <CardHeader>
                 <CardTitle>Sales Revenue by Yacht</CardTitle>
-                <CardDescription>Breakdown of 'Closed Won' lead revenue by yacht (Net Amount in AED).</CardDescription>
+                <CardDescription>Breakdown of 'Conformed' lead revenue by yacht (Net Amount in AED).</CardDescription>
             </CardHeader>
             <CardContent className="flex items-center justify-center h-[300px]">
                 <p className="text-destructive">Error loading sales data: {error}</p>
@@ -97,10 +97,10 @@ export function SalesByYachtPieChart({ leads, allYachts, isLoading, error }: Sal
         <Card>
             <CardHeader>
                 <CardTitle>Sales Revenue by Yacht</CardTitle>
-                <CardDescription>Breakdown of 'Closed Won' lead revenue by yacht (Net Amount in AED).</CardDescription>
+                <CardDescription>Breakdown of 'Conformed' lead revenue by yacht (Net Amount in AED).</CardDescription>
             </CardHeader>
             <CardContent className="flex items-center justify-center h-[300px]">
-                <p className="text-muted-foreground">No 'Closed Won' sales data for selected filters.</p>
+                <p className="text-muted-foreground">No 'Conformed' sales data for selected filters.</p>
             </CardContent>
         </Card>
     );
@@ -110,7 +110,7 @@ export function SalesByYachtPieChart({ leads, allYachts, isLoading, error }: Sal
     <Card>
       <CardHeader>
         <CardTitle>Sales Revenue by Yacht</CardTitle>
-        <CardDescription>Breakdown of 'Closed Won' lead revenue by yacht (Net Amount in AED).</CardDescription>
+        <CardDescription>Breakdown of 'Conformed' lead revenue by yacht (Net Amount in AED).</CardDescription>
       </CardHeader>
       <CardContent className="h-[300px] w-full flex items-center justify-center">
         <ChartContainer config={dynamicChartConfig} className="aspect-square h-full">

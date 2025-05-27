@@ -21,9 +21,9 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import type { Lead } from '@/lib/types'; 
+import type { Lead, LeadStatus } from '@/lib/types'; 
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, isValid } from 'date-fns';
 
 
 const leadColumns: { accessorKey: keyof Lead | 'actions' | 'select', header: string, isCurrency?: boolean, isPercentage?: boolean, isNumeric?: boolean, isDate?: boolean, isShortDate?: boolean, isNotes?: boolean }[] = [
@@ -33,7 +33,7 @@ const leadColumns: { accessorKey: keyof Lead | 'actions' | 'select', header: str
   { accessorKey: 'agent', header: 'Agent ID' }, 
   { accessorKey: 'yacht', header: 'Yacht ID' }, 
   { accessorKey: 'status', header: 'Status' },
-  { accessorKey: 'month', header: 'Lead/Event Date', isShortDate: true }, // Changed to isShortDate
+  { accessorKey: 'month', header: 'Lead/Event Date', isShortDate: true },
   { accessorKey: 'type', header: 'Type' },
   { accessorKey: 'invoiceId', header: 'Invoice' },
   { accessorKey: 'modeOfPayment', header: 'Payment Mode' },
@@ -90,14 +90,12 @@ interface LeadsTableProps {
 
 export function LeadsTable({ leads, onEditLead, onDeleteLead, userMap, currentUserId }: LeadsTableProps) {
 
-  const getStatusVariant = (status: Lead['status']) => {
+  const getStatusVariant = (status: LeadStatus) => {
     switch (status) {
-      case 'New': return 'outline';
-      case 'Connected': return 'secondary';
-      case 'Qualified': return 'default'; 
-      case 'Proposal Sent': return 'default'; 
-      case 'Closed Won': return 'default'; 
-      case 'Closed Lost': return 'destructive';
+      case 'Balance': return 'secondary'; // Example: yellow-ish/orange-ish for pending balance
+      case 'Closed': return 'outline'; // Example: grayed out or simple outline for closed (lost/done)
+      case 'Conformed': return 'default'; // Example: green/primary for conformed/won
+      case 'Upcoming': return 'secondary'; // Example: blue-ish for upcoming
       default: return 'outline';
     }
   };
@@ -117,14 +115,16 @@ export function LeadsTable({ leads, onEditLead, onDeleteLead, userMap, currentUs
     return String(value);
   }
 
-  const formatDateValue = (dateString?: string, includeTime: boolean = true) => {
+ const formatDateValue = (dateString?: string, includeTime: boolean = true) => {
     if (!dateString) return '-';
     try {
+      const date = parseISO(dateString);
+      if (!isValid(date)) return dateString; // Return original if not a valid ISO string
       const dateFormat = includeTime ? 'dd/MM/yyyy HH:mm' : 'dd/MM/yyyy';
-      return format(parseISO(dateString), dateFormat);
+      return format(date, dateFormat);
     } catch (e) {
-      console.warn(`Error formatting date string: ${dateString}`, e);
-      return dateString; 
+      // console.warn(`Error formatting date string: ${dateString}`, e);
+      return dateString; // Fallback to original string if parsing or formatting fails
     }
   };
 
@@ -169,7 +169,7 @@ export function LeadsTable({ leads, onEditLead, onDeleteLead, userMap, currentUs
                        </Button>
                     ) : col.accessorKey === 'status' ? (
                       <Badge variant={getStatusVariant(lead.status)}>{lead.status}</Badge>
-                    ) : col.isShortDate ? ( // Handle the new lead/event date
+                    ) : col.isShortDate ? ( 
                         formatDateValue(lead[col.accessorKey as keyof Lead] as string | undefined, false) 
                     ) : col.isDate ? (
                         formatDateValue(lead[col.accessorKey as keyof Lead] as string | undefined)

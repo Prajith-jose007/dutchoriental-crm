@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Tooltip as RechartsTooltip } from 'recharts';
 import {
   Card,
@@ -12,7 +12,6 @@ import {
 } from '@/components/ui/card';
 import {
   ChartContainer,
-  ChartTooltip,
   ChartTooltipContent,
 } from '@/components/ui/chart';
 import type { Lead, Agent, BookingsByAgentData } from '@/lib/types';
@@ -27,7 +26,7 @@ const chartConfig = {
 
 interface BookingsByAgentBarChartProps {
   leads: Lead[];
-  allAgents: Agent[]; // Changed from 'agents' to 'allAgents'
+  allAgents: Agent[];
   isLoading?: boolean;
   error?: string | null;
 }
@@ -36,7 +35,7 @@ export function BookingsByAgentBarChart({ leads, allAgents, isLoading, error }: 
   const chartData: BookingsByAgentData[] = useMemo(() => {
     const bookingsByAgentMap = new Map<string, number>();
     leads.forEach(lead => {
-      if (lead.status === 'Closed Won') { 
+      if (lead.status === 'Conformed') { 
         const currentBookings = bookingsByAgentMap.get(lead.agent) || 0;
         bookingsByAgentMap.set(lead.agent, currentBookings + 1);
       }
@@ -57,7 +56,7 @@ export function BookingsByAgentBarChart({ leads, allAgents, isLoading, error }: 
         <Card>
             <CardHeader>
                 <CardTitle>Bookings by Agent</CardTitle>
-                <CardDescription>'Closed Won' leads by agent.</CardDescription>
+                <CardDescription>'Conformed' leads by agent.</CardDescription>
             </CardHeader>
             <CardContent className="h-[300px] space-y-3 py-2">
                 <Skeleton className="h-8 w-full" />
@@ -75,7 +74,7 @@ export function BookingsByAgentBarChart({ leads, allAgents, isLoading, error }: 
         <Card>
             <CardHeader>
                 <CardTitle>Bookings by Agent</CardTitle>
-                <CardDescription>'Closed Won' leads by agent.</CardDescription>
+                <CardDescription>'Conformed' leads by agent.</CardDescription>
             </CardHeader>
             <CardContent className="flex items-center justify-center h-[300px]">
                 <p className="text-destructive">Error loading booking data: {error}</p>
@@ -89,10 +88,10 @@ export function BookingsByAgentBarChart({ leads, allAgents, isLoading, error }: 
         <Card>
             <CardHeader>
                 <CardTitle>Bookings by Agent</CardTitle>
-                <CardDescription>'Closed Won' leads by agent.</CardDescription>
+                <CardDescription>'Conformed' leads by agent.</CardDescription>
             </CardHeader>
             <CardContent className="flex items-center justify-center h-[300px]">
-                <p className="text-muted-foreground">No 'Closed Won' booking data by agent for selected filters.</p>
+                <p className="text-muted-foreground">No 'Conformed' booking data by agent for selected filters.</p>
             </CardContent>
         </Card>
     );
@@ -102,7 +101,7 @@ export function BookingsByAgentBarChart({ leads, allAgents, isLoading, error }: 
     <Card>
       <CardHeader>
         <CardTitle>Bookings by Agent</CardTitle>
-        <CardDescription>'Closed Won' leads by agent.</CardDescription>
+        <CardDescription>'Conformed' leads by agent.</CardDescription>
       </CardHeader>
       <CardContent>
         <ChartContainer config={chartConfig} className="h-[300px] w-full">

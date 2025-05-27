@@ -39,6 +39,8 @@ const ensureNumericDefaults = (leadData: Partial<Lead>): Partial<Lead> => {
   return result;
 };
 
+const leadStatusOptions: LeadStatus[] = ['Balance', 'Closed', 'Conformed', 'Upcoming'];
+
 const convertValue = (key: keyof Lead, value: string): any => {
   const trimmedValue = value ? String(value).trim() : '';
 
@@ -54,7 +56,7 @@ const convertValue = (key: keyof Lead, value: string): any => {
         case 'paidAmount': case 'balanceAmount':
             return 0;
         case 'modeOfPayment': return 'Online'; 
-        case 'status': return 'New'; 
+        case 'status': return 'Upcoming'; // Default to Upcoming
         case 'notes': return '';
         case 'month': return formatISO(new Date()); 
         default: return undefined;
@@ -76,15 +78,17 @@ const convertValue = (key: keyof Lead, value: string): any => {
       const validModes: ModeOfPayment[] = ['Online', 'Credit', 'Cash/Card'];
       return validModes.includes(trimmedValue as ModeOfPayment) ? trimmedValue : 'Online';
     case 'status':
-        const validStatuses: LeadStatus[] = ['New', 'Connected', 'Qualified', 'Proposal Sent', 'Closed Won', 'Closed Lost'];
-        return validStatuses.includes(trimmedValue as LeadStatus) ? trimmedValue : 'New';
+        const validStatuses: LeadStatus[] = ['Balance', 'Closed', 'Conformed', 'Upcoming'];
+        return validStatuses.includes(trimmedValue as LeadStatus) ? trimmedValue : 'Upcoming'; // Default to Upcoming
     case 'month': 
         const parsedEventDate = parseISO(trimmedValue); 
         if (isValid(parsedEventDate)) return formatISO(parsedEventDate);
+        // Try parsing common date formats if ISO parsing fails
         const commonFormats = ['dd/MM/yyyy', 'MM/dd/yyyy', 'yyyy-MM-dd'];
         for (const fmt of commonFormats) {
             try {
-                const d = new Date(trimmedValue.replace(/(\d{2})\/(\d{2})\/(\d{4})/, '$2/$1/$3')); 
+                // A bit of a hack to handle dd/MM/yyyy by swapping day and month for Date constructor
+                const d = fmt === 'dd/MM/yyyy' ? new Date(trimmedValue.replace(/(\d{2})\/(\d{2})\/(\d{4})/, '$2/$1/$3')) : new Date(trimmedValue);
                 if (isValid(d)) return formatISO(d);
             } catch (e) {/* ignore */}
         }
@@ -114,7 +118,6 @@ export default function LeadsPage() {
   const [selectedUserId, setSelectedUserId] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<LeadStatus | 'all'>('all');
 
-  const leadStatusOptions: LeadStatus[] = ['New', 'Connected', 'Qualified', 'Proposal Sent', 'Closed Won', 'Closed Lost'];
 
   const fetchLeads = async () => {
     try {
@@ -335,7 +338,7 @@ export default function LeadsPage() {
           const fullLead: Lead = {
             id: leadId!,
             agent: typeof numericDefaultsApplied.agent === 'string' ? numericDefaultsApplied.agent : '',
-            status: (numericDefaultsApplied.status as LeadStatus) || 'New',
+            status: (numericDefaultsApplied.status as LeadStatus) || 'Upcoming',
             month: typeof numericDefaultsApplied.month === 'string' && isValid(parseISO(numericDefaultsApplied.month)) ? numericDefaultsApplied.month : formatISO(new Date()),
             notes: typeof numericDefaultsApplied.notes === 'string' ? numericDefaultsApplied.notes : '',
             yacht: typeof numericDefaultsApplied.yacht === 'string' ? numericDefaultsApplied.yacht : '',
@@ -507,11 +510,11 @@ export default function LeadsPage() {
     );
   }
 
-  if (fetchError) {
+  if (fetchError && allLeads.length === 0 && allAgents.length === 0 && allYachts.length === 0) {
      return (
       <div className="container mx-auto py-2">
         <PageHeader title="Leads Management" description="Error loading data." />
-        <p className="text-destructive text-center py-10">Failed to load lead data: {fetchError}</p>
+        <p className="text-destructive text-center py-10">Failed to load essential data for this page: {fetchError}</p>
       </div>
     );
   }
@@ -651,5 +654,3 @@ export default function LeadsPage() {
     </div>
   );
 }
-
-    

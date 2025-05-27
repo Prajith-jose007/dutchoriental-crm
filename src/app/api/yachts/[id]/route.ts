@@ -81,6 +81,7 @@ export async function PUT(
       royalAdultRate: updatedYachtData.royalAdultRate !== undefined ? Number(updatedYachtData.royalAdultRate) : yachts_db[yachtIndex].royalAdultRate || 0,
       royalDrinksRate: updatedYachtData.royalDrinksRate !== undefined ? Number(updatedYachtData.royalDrinksRate) : yachts_db[yachtIndex].royalDrinksRate || 0,
       othersAmtCake_rate: updatedYachtData.othersAmtCake_rate !== undefined ? Number(updatedYachtData.othersAmtCake_rate) : yachts_db[yachtIndex].othersAmtCake_rate || 0,
+      customPackageInfo: updatedYachtData.customPackageInfo !== undefined ? updatedYachtData.customPackageInfo : yachts_db[yachtIndex].customPackageInfo,
     };
     
     yachts_db[yachtIndex] = updatedYacht;
@@ -115,3 +116,4 @@ export async function DELETE(
     return NextResponse.json({ message: 'Failed to delete yacht', error: (error as Error).message }, { status: 500 });
   }
 }
+

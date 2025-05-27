@@ -31,7 +31,7 @@ export interface Yacht {
   capacity: number;
   status: 'Available' | 'Booked' | 'Maintenance';
 
-  // New standardized package rates
+  // Standardized package rates
   childRate?: number;
   adultStandardRate?: number;
   adultStandardDrinksRate?: number;
@@ -41,9 +41,9 @@ export interface Yacht {
   royalChildRate?: number;
   royalAdultRate?: number;
   royalDrinksRate?: number;
-
-  // This field seems like a leftover, decide if it's needed or if it's part of the 9 rates above
-  othersAmtCake_rate?: number; 
+  
+  othersAmtCake_rate?: number;
+  customPackageInfo?: string; // New custom field
 }
 
 export interface Invoice {
@@ -141,3 +141,4 @@ export interface BookingsByAgentData {
 
 // Re-exporting for easier import in CSV parser
 export type { LeadStatus as ExportedLeadStatus, ModeOfPayment as ExportedModeOfPayment };
+

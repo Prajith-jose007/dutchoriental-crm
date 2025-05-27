@@ -49,6 +49,7 @@ export async function POST(request: NextRequest) {
       royalAdultRate: Number(newYachtData.royalAdultRate) || 0,
       royalDrinksRate: Number(newYachtData.royalDrinksRate) || 0,
       othersAmtCake_rate: Number(newYachtData.othersAmtCake_rate) || 0,
+      customPackageInfo: newYachtData.customPackageInfo,
     };
 
     yachts_db.push(yachtToStore);
@@ -59,3 +60,4 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ message: 'Failed to create yacht', error: (error as Error).message }, { status: 500 });
   }
 }
+

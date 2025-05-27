@@ -27,21 +27,22 @@ export function AppShell({ children }: AppShellProps) {
       authStatus = !!localStorage.getItem(USER_ROLE_STORAGE_KEY);
     } catch (e) {
       console.error("Error accessing localStorage in AppShell for auth check:", e);
-      // Fallback: assume not authenticated if localStorage is inaccessible
+      // authStatus remains false, which is the safe default
     }
     setIsAuthenticated(authStatus);
     setIsAuthLoading(false);
-  }, []);
+  }, []); // Runs once on mount to check auth status
 
   useEffect(() => {
     if (!isAuthLoading && !isAuthenticated && pathname !== '/login') {
       router.replace('/login');
     }
+    // This effect depends on the auth state and current path
+    // It will re-run if these values change, ensuring redirection if auth state changes
   }, [isAuthLoading, isAuthenticated, pathname, router]);
 
   if (isAuthLoading) {
     // Show a full-page skeleton or loading indicator while checking auth
-    // This prevents a flash of content for pages that might get redirected
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4">
         <Skeleton className="h-12 w-1/2 mb-4" />
@@ -51,19 +52,20 @@ export function AppShell({ children }: AppShellProps) {
     );
   }
 
-  // If on login page or authenticated, render the shell and children
-  // Note: The login page itself should not use AppShell to avoid redirect loops if AppShell redirects.
-  // This assumes that AppShell is *not* part of the layout for /login.
-  // If it is, the check `pathname !== '/login'` handles it.
-
+  // If user is not authenticated AND they are NOT on the login page,
+  // they should have been redirected by the useEffect above.
+  // Return null or a loader to prevent rendering protected content during redirect.
   if (!isAuthenticated && pathname !== '/login') {
-    // This case should ideally be caught by the loading state or redirect,
-    // but as a fallback, render nothing or a minimal loader to avoid showing AppShell UI.
-    return null; 
+    return (
+        <div className="flex flex-col items-center justify-center min-h-screen p-4">
+            <p>Redirecting to login...</p>
+            <Skeleton className="h-12 w-1/2 mb-4 mt-4" />
+            <Skeleton className="h-8 w-1/3 mb-2" />
+        </div>
+    ); // Or simply return null
   }
-  
-  // If authenticated, or if it's the login page (which shouldn't use AppShell), render children.
-  // For authenticated routes, render the full AppShell.
+
+  // User is authenticated and not on the login page. Render the app shell.
   if (isAuthenticated && pathname !== '/login') {
     return (
       <SidebarProvider defaultOpen={true}>
@@ -78,8 +80,9 @@ export function AppShell({ children }: AppShellProps) {
     );
   }
 
-  // For non-authenticated access to pages not /login (should be redirected)
-  // or for the login page itself if it somehow gets wrapped by AppShell (it shouldn't).
-  // This primarily handles the case where children is the login page.
+  // At this point, the user is either:
+  // 1. Not authenticated AND IS on the login page (pathname === '/login').
+  // 2. Authenticated AND IS on the login page (login page itself should redirect them away).
+  // In both these cases for the login page, we just render the children (the login page content).
   return <>{children}</>;
 }

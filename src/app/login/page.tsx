@@ -10,6 +10,7 @@ import { Ship } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { Skeleton } from "@/components/ui/skeleton";
 
 // Define admin credentials
 const ADMIN_EMAIL = 'admin@dutchoriental.com';
@@ -25,7 +26,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true); // Start true
 
   // Check if user is already logged in
   useEffect(() => {
@@ -55,7 +56,7 @@ export default function LoginPage() {
     // --- Simulated Login Logic ---
     setTimeout(() => { // Simulate network delay
       try {
-        if (email.toLowerCase() === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
+        if (email.toLowerCase() === ADMIN_EMAIL.toLowerCase() && password === ADMIN_PASSWORD) {
           localStorage.setItem(USER_ROLE_STORAGE_KEY, 'admin');
           localStorage.setItem(USER_EMAIL_STORAGE_KEY, email);
           toast({
@@ -65,7 +66,6 @@ export default function LoginPage() {
           router.push('/dashboard');
         } else {
           // For any other credentials, simulate a regular user login
-          // In a real app, you'd validate against a user database
           localStorage.setItem(USER_ROLE_STORAGE_KEY, 'user');
           localStorage.setItem(USER_EMAIL_STORAGE_KEY, email);
           toast({
@@ -89,8 +89,33 @@ export default function LoginPage() {
   };
 
   if (isCheckingAuth) {
-    // Optional: show a loader while checking auth status
-    return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
+    return (
+        <div className="flex items-center justify-center min-h-screen bg-muted/40">
+            <Card className="w-full max-w-sm">
+                <CardHeader className="space-y-1 text-center">
+                    <div className="flex justify-center items-center gap-2 mb-4">
+                        <Skeleton className="h-8 w-8 rounded-full" />
+                        <Skeleton className="h-7 w-40" />
+                    </div>
+                    <Skeleton className="h-4 w-3/4 mx-auto" />
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                        <Skeleton className="h-4 w-16" />
+                        <Skeleton className="h-10 w-full" />
+                    </div>
+                    <div className="space-y-2">
+                        <Skeleton className="h-4 w-16" />
+                        <Skeleton className="h-10 w-full" />
+                    </div>
+                    <Skeleton className="h-10 w-full" />
+                </CardContent>
+                <CardFooter className="flex flex-col items-center text-xs text-muted-foreground">
+                    <Skeleton className="h-4 w-1/2" />
+                </CardFooter>
+            </Card>
+        </div>
+    );
   }
 
   return (
@@ -124,6 +149,7 @@ export default function LoginPage() {
               <Input
                 id="password"
                 type="password"
+                placeholder="Enter your password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required

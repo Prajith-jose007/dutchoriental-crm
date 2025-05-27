@@ -87,7 +87,8 @@ export default function AgentsPage() {
     try {
       const response = await fetch('/api/agents');
       if (!response.ok) {
-        throw new Error(`Failed to fetch agents: ${response.statusText}`);
+        const errorData = await response.json().catch(() => ({ message: response.statusText }));
+        throw new Error(errorData.message || `Failed to fetch agents: ${response.statusText}`);
       }
       const data = await response.json();
       setAgents(Array.isArray(data) ? data : []);
@@ -466,11 +467,11 @@ export default function AgentsPage() {
   };
 
 
-  if (isLoading && !isAdmin) {
+  if (isLoading && !isAdmin) { // Non-admin first load
     return <div className="container mx-auto py-2 text-center">Loading...</div>;
   }
 
-  if (!isAdmin && !isLoading) {
+  if (!isAdmin && !isLoading) { // Non-admin after loading, access denied
     return (
       <div className="container mx-auto py-2">
         <PageHeader
@@ -485,7 +486,7 @@ export default function AgentsPage() {
   }
 
   // Admin view
-  if (isLoading) {
+  if (isLoading) { // Admin still loading data
     return <div className="container mx-auto py-2 text-center">Loading agents...</div>;
   }
 
@@ -546,4 +547,3 @@ export default function AgentsPage() {
     </div>
   );
 }
-

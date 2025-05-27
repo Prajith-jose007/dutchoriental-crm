@@ -13,8 +13,8 @@ import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 
 // Define admin credentials
-const ADMIN_EMAIL = 'admin@dutchoriental.com';
-const ADMIN_PASSWORD = 'Dutch@123#'; 
+const ADMIN_EMAIL = 'admin@dutchoriental.com'; // Corrected email
+const ADMIN_PASSWORD = 'Dutch@123#'; // Corrected password
 
 const USER_ROLE_STORAGE_KEY = 'currentUserRole';
 const USER_EMAIL_STORAGE_KEY = 'currentUserEmail';

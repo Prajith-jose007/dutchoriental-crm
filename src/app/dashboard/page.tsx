@@ -2,6 +2,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { PageHeader } from '@/components/PageHeader';
 import { BookingReportChart } from './_components/BookingReportChart';
 import { RevenueSummary } from './_components/RevenueSummary';
@@ -14,19 +15,38 @@ import type { Lead, Invoice, Yacht, Agent } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export default function DashboardPage() {
+  const router = useRouter();
   const [leads, setLeads] = useState<Lead[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]); 
   const [yachts, setYachts] = useState<Yacht[]>([]);
   const [agents, setAgents] = useState<Agent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isAuthLoading, setIsAuthLoading] = useState(true);
 
   useEffect(() => {
+    // Client-side auth check
+    let isAuthenticated = false;
+    try {
+      isAuthenticated = !!localStorage.getItem('currentUserRole');
+    } catch (e) {
+      console.error("Error accessing localStorage in dashboard for auth check:", e);
+    }
+
+    if (!isAuthenticated) {
+      router.replace('/login');
+    } else {
+      setIsAuthLoading(false); // User is authenticated, proceed to fetch data
+    }
+  }, [router]);
+
+  useEffect(() => {
+    if (isAuthLoading) return; // Don't fetch data until auth check is complete
+
     const fetchData = async () => {
       setIsLoading(true);
       setError(null);
       try {
-        
         const [leadsRes, yachtsRes, agentsRes, invoicesRes] = await Promise.all([
           fetch('/api/leads'),
           fetch('/api/yachts'),
@@ -38,7 +58,6 @@ export default function DashboardPage() {
         if (!yachtsRes.ok) throw new Error('Failed to fetch yachts');
         if (!agentsRes.ok) throw new Error('Failed to fetch agents');
         if (!invoicesRes.ok) throw new Error('Failed to fetch invoices');
-
 
         const leadsData = await leadsRes.json();
         const yachtsData = await yachtsRes.json();
@@ -53,7 +72,6 @@ export default function DashboardPage() {
       } catch (err) {
         console.error("Error fetching dashboard data:", err);
         setError((err as Error).message);
-        
         setLeads([]);
         setYachts([]);
         setAgents([]);
@@ -63,9 +81,9 @@ export default function DashboardPage() {
       }
     };
     fetchData();
-  }, []);
+  }, [isAuthLoading]); // Re-run when auth loading state changes
   
-  if (isLoading) {
+  if (isAuthLoading || isLoading) {
     return (
       <div className="container mx-auto py-2">
         <PageHeader title="Dashboard" description="Loading data..." />
@@ -99,7 +117,6 @@ export default function DashboardPage() {
     );
   }
 
-
   return (
     <div className="container mx-auto py-2">
       <PageHeader title="Dashboard" description="Welcome to DutchOriental CRM. Here's an overview of your yacht business." />
@@ -131,5 +148,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-
-    

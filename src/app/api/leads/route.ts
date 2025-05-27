@@ -1,33 +1,16 @@
-
 // src/app/api/leads/route.ts
 import { NextResponse, type NextRequest } from 'next/server';
 import type { Lead } from '@/lib/types';
-import { placeholderLeads as initialLeads } from '@/lib/placeholder-data'; // Used for initial data if DB is empty
 import { formatISO } from 'date-fns';
-
-// In-memory store (replace with actual database calls)
-let leads_db_placeholder: Lead[] = [...initialLeads]; // Initialize with placeholder data
+// import { query } from '@/lib/db'; // You'll need to implement this
 
 export async function GET(request: NextRequest) {
   try {
-    // Filter for leads with valid createdAt dates before sorting
-    const validLeads = leads_db_placeholder.filter(lead => {
-      if (!lead.createdAt || typeof lead.createdAt !== 'string') {
-        console.warn(`Lead with ID ${lead.id} has missing or invalid createdAt type. Excluding from sort.`);
-        return false;
-      }
-      const date = new Date(lead.createdAt);
-      const isValidDate = !isNaN(date.getTime());
-      if (!isValidDate) {
-        console.warn(`Lead with ID ${lead.id} has invalid createdAt value: ${lead.createdAt}. Excluding from sort.`);
-      }
-      return isValidDate;
-    });
-
-    const sortedLeads = [...validLeads].sort((a, b) => {
-      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-    });
-    return NextResponse.json(sortedLeads, { status: 200 });
+    // TODO: Replace with actual database query: SELECT * FROM leads ORDER BY createdAt DESC
+    // Example: const leadsData = await query('SELECT * FROM leads ORDER BY createdAt DESC');
+    // Ensure createdAt is a valid date string before using it in new Date() for sorting if done in JS
+    const leads: Lead[] = []; // Replace with actual data from DB
+    return NextResponse.json(leads, { status: 200 });
   } catch (error) {
     console.error('Error in GET /api/leads:', error);
     return NextResponse.json({ message: 'Failed to fetch leads from API', error: (error as Error).message }, { status: 500 });
@@ -36,67 +19,78 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const newLeadData = await request.json() as Omit<Lead, 'createdAt' | 'updatedAt' | 'month'> & 
-      Partial<Pick<Lead, 'createdAt' | 'updatedAt' | 'lastModifiedByUserId' | 'ownerUserId' | 'notes'>> & 
-      { month: string }; // month is expected as ISO string from client
+    const newLeadData = await request.json() as Omit<Lead, 'createdAt' | 'updatedAt'> & 
+      Partial<Pick<Lead, 'createdAt' | 'updatedAt' | 'lastModifiedByUserId' | 'ownerUserId'>>;
 
     if (!newLeadData.id || !newLeadData.clientName || !newLeadData.agent || !newLeadData.yacht || !newLeadData.month) {
       return NextResponse.json({ message: 'Missing required lead fields (id, clientName, agent, yacht, month)' }, { status: 400 });
     }
 
-    const existingLead = leads_db_placeholder.find(l => l.id === newLeadData.id);
-    if (existingLead) {
-      return NextResponse.json({ message: `Lead with ID ${newLeadData.id} already exists.` }, { status: 409 });
-    }
+    // TODO: Check if lead with this ID already exists in the database
+    // Example: const existingLead = await query('SELECT id FROM leads WHERE id = ?', [newLeadData.id]);
+    // if (existingLead.length > 0) {
+    //   return NextResponse.json({ message: `Lead with ID ${newLeadData.id} already exists.` }, { status: 409 });
+    // }
 
     const now = new Date().toISOString();
     
     let validCreatedAt = now;
     if (newLeadData.createdAt && typeof newLeadData.createdAt === 'string') {
-        const parsedDate = new Date(newLeadData.createdAt);
+        const parsedDate = new Date(newLeadData.createdAt); // parseISO is more robust for ISO strings
         if (!isNaN(parsedDate.getTime())) {
-            validCreatedAt = newLeadData.createdAt;
+            validCreatedAt = newLeadData.createdAt; // Keep original if valid ISO
         } else {
             console.warn(`Invalid createdAt received for new lead ${newLeadData.id}: ${newLeadData.createdAt}. Defaulting to current time.`);
         }
     }
-
+    
     const leadToStore: Lead = {
-      dhowChildQty: newLeadData.dhowChildQty ?? 0,
-      dhowAdultQty: newLeadData.dhowAdultQty ?? 0,
-      dhowVipQty: newLeadData.dhowVipQty ?? 0,
-      dhowVipChildQty: newLeadData.dhowVipChildQty ?? 0,
-      dhowVipAlcoholQty: newLeadData.dhowVipAlcoholQty ?? 0,
-      oeChildQty: newLeadData.oeChildQty ?? 0,
-      oeAdultQty: newLeadData.oeAdultQty ?? 0,
-      oeVipQty: newLeadData.oeVipQty ?? 0,
-      oeVipChildQty: newLeadData.oeVipChildQty ?? 0,
-      oeVipAlcoholQty: newLeadData.oeVipAlcoholQty ?? 0,
-      sunsetChildQty: newLeadData.sunsetChildQty ?? 0,
-      sunsetAdultQty: newLeadData.sunsetAdultQty ?? 0,
-      sunsetVipQty: newLeadData.sunsetVipQty ?? 0,
-      sunsetVipChildQty: newLeadData.sunsetVipChildQty ?? 0,
-      sunsetVipAlcoholQty: newLeadData.sunsetVipAlcoholQty ?? 0,
-      lotusChildQty: newLeadData.lotusChildQty ?? 0,
-      lotusAdultQty: newLeadData.lotusAdultQty ?? 0,
-      lotusVipQty: newLeadData.lotusVipQty ?? 0,
-      lotusVipChildQty: newLeadData.lotusVipChildQty ?? 0,
-      lotusVipAlcoholQty: newLeadData.lotusVipAlcoholQty ?? 0,
-      royalQty: newLeadData.royalQty ?? 0,
-      othersAmtCake: newLeadData.othersAmtCake ?? 0,
-      commissionAmount: newLeadData.commissionAmount ?? 0, 
+      id: newLeadData.id,
+      clientName: newLeadData.clientName,
+      agent: newLeadData.agent,
+      status: newLeadData.status || 'Upcoming',
+      month: newLeadData.month, // Ensure this is a valid ISO string from client or parsed correctly
       notes: newLeadData.notes,
-      ...newLeadData, 
-      month: newLeadData.month, // Should be an ISO string
+      yacht: newLeadData.yacht,
+      type: newLeadData.type || 'N/A',
+      invoiceId: newLeadData.invoiceId,
+      modeOfPayment: newLeadData.modeOfPayment || 'Online',
+      
+      qty_childRate: newLeadData.qty_childRate ?? 0,
+      qty_adultStandardRate: newLeadData.qty_adultStandardRate ?? 0,
+      qty_adultStandardDrinksRate: newLeadData.qty_adultStandardDrinksRate ?? 0,
+      qty_vipChildRate: newLeadData.qty_vipChildRate ?? 0,
+      qty_vipAdultRate: newLeadData.qty_vipAdultRate ?? 0,
+      qty_vipAdultDrinksRate: newLeadData.qty_vipAdultDrinksRate ?? 0,
+      qty_royalChildRate: newLeadData.qty_royalChildRate ?? 0,
+      qty_royalAdultRate: newLeadData.qty_royalAdultRate ?? 0,
+      qty_royalDrinksRate: newLeadData.qty_royalDrinksRate ?? 0,
+      othersAmtCake: newLeadData.othersAmtCake ?? 0, // This should be qty_otherChargeRate based on current setup
+      
+      totalAmount: newLeadData.totalAmount || 0,
+      commissionPercentage: newLeadData.commissionPercentage || 0,
+      commissionAmount: newLeadData.commissionAmount || 0,
+      netAmount: newLeadData.netAmount || 0,
+      paidAmount: newLeadData.paidAmount || 0,
+      balanceAmount: newLeadData.balanceAmount || 0,
+
       createdAt: validCreatedAt,
       updatedAt: now,
       lastModifiedByUserId: newLeadData.lastModifiedByUserId, 
       ownerUserId: newLeadData.ownerUserId || newLeadData.lastModifiedByUserId, 
     };
     
-    leads_db_placeholder.push(leadToStore);
-    
+    // TODO: Implement MySQL query to insert leadToStore
+    // Example: const result = await query('INSERT INTO leads SET ?', leadToStore);
+    // if (result.affectedRows === 1) {
+    //   return NextResponse.json(leadToStore, { status: 201 });
+    // } else {
+    //   throw new Error('Failed to insert lead into database');
+    // }
+
+    // Placeholder response
     return NextResponse.json(leadToStore, { status: 201 });
+
   } catch (error) {
     console.error('Failed to create lead in POST /api/leads:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';

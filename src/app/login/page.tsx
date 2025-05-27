@@ -13,7 +13,10 @@ import { useToast } from "@/hooks/use-toast";
 
 // Define admin credentials
 const ADMIN_EMAIL = 'admin@dutchoriental.com';
-const ADMIN_PASSWORD = 'Dutch@123#'; // Updated password
+const ADMIN_PASSWORD = 'Dutch@123#'; 
+
+const USER_ROLE_STORAGE_KEY = 'currentUserRole';
+const USER_EMAIL_STORAGE_KEY = 'currentUserEmail';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -22,16 +25,19 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
 
   // Check if user is already logged in
   useEffect(() => {
     try {
-      if (localStorage.getItem('currentUserRole')) {
-        router.replace('/dashboard');
+      if (localStorage.getItem(USER_ROLE_STORAGE_KEY)) {
+        router.replace('/dashboard'); // If already "logged in", go to dashboard
+      } else {
+        setIsCheckingAuth(false); // Not logged in, ready to show login form
       }
     } catch (e) {
       console.error("Error accessing localStorage in login page:", e);
-      // Proceed to show login form
+      setIsCheckingAuth(false); // Proceed to show login form if localStorage fails
     }
   }, [router]);
 
@@ -49,17 +55,19 @@ export default function LoginPage() {
     // --- Simulated Login Logic ---
     setTimeout(() => { // Simulate network delay
       try {
-        if (email === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
-          localStorage.setItem('currentUserRole', 'admin');
-          localStorage.setItem('currentUserEmail', email);
+        if (email.toLowerCase() === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
+          localStorage.setItem(USER_ROLE_STORAGE_KEY, 'admin');
+          localStorage.setItem(USER_EMAIL_STORAGE_KEY, email);
           toast({
             title: 'Admin Login Successful',
             description: 'Redirecting to dashboard...',
           });
           router.push('/dashboard');
         } else {
-          localStorage.setItem('currentUserRole', 'user');
-          localStorage.setItem('currentUserEmail', email);
+          // For any other credentials, simulate a regular user login
+          // In a real app, you'd validate against a user database
+          localStorage.setItem(USER_ROLE_STORAGE_KEY, 'user');
+          localStorage.setItem(USER_EMAIL_STORAGE_KEY, email);
           toast({
             title: 'Login Successful',
             description: 'Redirecting to dashboard...',
@@ -69,11 +77,21 @@ export default function LoginPage() {
       } catch (storageError) {
         console.error("Error accessing localStorage during login:", storageError);
         setError('Login failed. Could not save session.');
+        toast({
+          title: 'Login Error',
+          description: 'Failed to save session information.',
+          variant: 'destructive'
+        });
       } finally {
         setIsLoading(false);
       }
     }, 500);
   };
+
+  if (isCheckingAuth) {
+    // Optional: show a loader while checking auth status
+    return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
+  }
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-muted/40">
@@ -94,7 +112,7 @@ export default function LoginPage() {
               <Input
                 id="email"
                 type="email"
-                placeholder="m@example.com"
+                placeholder="admin@dutchoriental.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required

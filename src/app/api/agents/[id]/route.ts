@@ -1,7 +1,8 @@
+
 // src/app/api/agents/[id]/route.ts
 import { NextResponse, type NextRequest } from 'next/server';
 import type { Agent } from '@/lib/types';
-// import { query } from '@/lib/db'; // You'll need to implement this
+import { query } from '@/lib/db';
 
 export async function GET(
   request: NextRequest,
@@ -9,12 +10,10 @@ export async function GET(
 ) {
   try {
     const id = params.id;
-    // TODO: Implement MySQL query to fetch agent by ID
-    // Example: const agentData = await query('SELECT * FROM agents WHERE id = ?', [id]);
-    // const agent = agentData[0] || null;
-    const agent: Agent | null = null; // Placeholder
-
-    if (agent) {
+    const agentData: any = await query('SELECT * FROM agents WHERE id = ?', [id]);
+    
+    if (agentData.length > 0) {
+      const agent: Agent = { ...agentData[0], discount: parseFloat(agentData[0].discount) };
       return NextResponse.json(agent, { status: 200 });
     } else {
       return NextResponse.json({ message: 'Agent not found' }, { status: 404 });
@@ -25,6 +24,21 @@ export async function GET(
   }
 }
 
+function buildUpdateSetClause(data: Record<string, any>): { clause: string, values: any[] } {
+  const fieldsToUpdate: string[] = [];
+  const valuesToUpdate: any[] = [];
+  const allowedKeys: (keyof Agent)[] = ['name', 'agency_code', 'address', 'phone_no', 'email', 'status', 'TRN_number', 'customer_type_id', 'discount', 'websiteUrl'];
+
+  Object.entries(data).forEach(([key, value]) => {
+    if (allowedKeys.includes(key as keyof Agent) && value !== undefined) {
+      fieldsToUpdate.push(`${key} = ?`);
+      // Ensure discount is a number if it's being updated
+      valuesToUpdate.push(key === 'discount' ? Number(value) : (value === '' ? null : value));
+    }
+  });
+  return { clause: fieldsToUpdate.join(', '), values: valuesToUpdate };
+}
+
 export async function PUT(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -33,47 +47,38 @@ export async function PUT(
     const id = params.id;
     const updatedAgentData = await request.json() as Partial<Agent>;
 
-    // TODO: First, check if the agent exists
-    // Example: const existingAgent = await query('SELECT * FROM agents WHERE id = ?', [id]);
-    // if (existingAgent.length === 0) {
-    //   return NextResponse.json({ message: 'Agent not found' }, { status: 404 });
-    // }
+    const existingAgentResult: any = await query('SELECT * FROM agents WHERE id = ?', [id]);
+    if (existingAgentResult.length === 0) {
+      return NextResponse.json({ message: 'Agent not found' }, { status: 404 });
+    }
+    const existingAgent: Agent = { ...existingAgentResult[0], discount: parseFloat(existingAgentResult[0].discount) };
 
-    if (updatedAgentData.discount !== undefined) {
-        updatedAgentData.discount = Number(updatedAgentData.discount);
+
+    if (updatedAgentData.email && updatedAgentData.email.toLowerCase() !== existingAgent.email.toLowerCase()) {
+      const agentByEmail: any = await query('SELECT id FROM agents WHERE email = ? AND id != ?', [updatedAgentData.email, id]);
+      if (agentByEmail.length > 0) {
+        return NextResponse.json({ message: `Agent with email ${updatedAgentData.email} already exists.` }, { status: 409 });
+      }
+    }
+    
+    const { clause, values } = buildUpdateSetClause(updatedAgentData);
+    if (clause.length === 0) {
+      return NextResponse.json({ message: 'No valid fields to update' }, { status: 400 });
+    }
+    values.push(id); // For the WHERE clause
+    
+    const result: any = await query(`UPDATE agents SET ${clause} WHERE id = ?`, values);
+    
+    if (result.affectedRows === 0) {
+       return NextResponse.json({ message: 'Agent not found during update or no changes made' }, { status: 404 });
+    }
+    
+    const finalUpdatedAgent: Agent = { ...existingAgent, ...updatedAgentData };
+     if (updatedAgentData.discount !== undefined) {
+      finalUpdatedAgent.discount = Number(updatedAgentData.discount);
     }
 
-    // TODO: Check for email conflicts if email is being changed
-    // if (updatedAgentData.email && updatedAgentData.email.toLowerCase() !== existingAgent[0].email.toLowerCase()) {
-    //   const agentByEmail = await query('SELECT id FROM agents WHERE email = ? AND id != ?', [updatedAgentData.email, id]);
-    //   if (agentByEmail.length > 0) {
-    //     return NextResponse.json({ message: `Agent with email ${updatedAgentData.email} already exists.` }, { status: 409 });
-    //   }
-    // }
-    
-    // TODO: Implement MySQL query to update the agent
-    // Construct SET clause dynamically based on provided fields
-    // Example:
-    // const fieldsToUpdate = [];
-    // const valuesToUpdate = [];
-    // Object.entries(updatedAgentData).forEach(([key, value]) => {
-    //   if (key !== 'id') { // Don't update ID
-    //     fieldsToUpdate.push(`${key} = ?`);
-    //     valuesToUpdate.push(value);
-    //   }
-    // });
-    // if (fieldsToUpdate.length === 0) {
-    //   return NextResponse.json({ message: 'No fields to update' }, { status: 400 });
-    // }
-    // valuesToUpdate.push(id); // For the WHERE clause
-    // const result = await query(`UPDATE agents SET ${fieldsToUpdate.join(', ')} WHERE id = ?`, valuesToUpdate);
-    // if (result.affectedRows === 0) { // Should not happen if existence check passed
-    //    return NextResponse.json({ message: 'Agent not found during update' }, { status: 404 });
-    // }
-    // const updatedAgent = { ...existingAgent[0], ...updatedAgentData };
-
-    const updatedAgent = { id, ...updatedAgentData }; // Placeholder
-    return NextResponse.json(updatedAgent, { status: 200 });
+    return NextResponse.json(finalUpdatedAgent, { status: 200 });
 
   } catch (error) {
     console.error(`Failed to update agent ${params.id}:`, error);
@@ -87,12 +92,9 @@ export async function DELETE(
 ) {
   try {
     const id = params.id;
-    // TODO: Implement MySQL query to delete the agent
-    // Example: const result = await query('DELETE FROM agents WHERE id = ?', [id]);
-    // const wasDeleted = result.affectedRows > 0;
-    const wasDeleted = true; // Placeholder
+    const result: any = await query('DELETE FROM agents WHERE id = ?', [id]);
     
-    if (!wasDeleted) {
+    if (result.affectedRows === 0) {
       return NextResponse.json({ message: 'Agent not found' }, { status: 404 });
     }
 

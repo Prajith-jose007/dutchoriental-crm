@@ -9,7 +9,7 @@ import {
   placeholderUsers,
 } from '../src/lib/placeholder-data';
 import type { Agent, Lead, Yacht, Invoice, User } from '../src/lib/types';
-import { formatISO, parseISO } from 'date-fns';
+import { formatISO, parseISO, isValid } from 'date-fns';
 
 // IMPORTANT:
 // 1. Ensure your MySQL tables are created and column names match the object keys used below.
@@ -44,9 +44,9 @@ async function migrateAgents() {
         agent.discount,
         agent.websiteUrl || null,
       ]);
-      console.log(`Inserted agent: ${agent.id}`);
+      console.log(`Inserted agent: ${agent.name} (ID: ${agent.id})`);
     } catch (error) {
-      console.error(`Error inserting agent ${agent.id}:`, (error as Error).message);
+      console.error(`Error inserting agent ${agent.name} (ID: ${agent.id}):`, (error as Error).message);
     }
   }
   console.log('Agent migration finished.');
@@ -84,9 +84,9 @@ async function migrateYachts() {
         yacht.otherChargeRate || 0,
         yacht.customPackageInfo || null,
       ]);
-      console.log(`Inserted yacht: ${yacht.id}`);
+      console.log(`Inserted yacht: ${yacht.name} (ID: ${yacht.id})`);
     } catch (error) {
-      console.error(`Error inserting yacht ${yacht.id}:`, (error as Error).message);
+      console.error(`Error inserting yacht ${yacht.name} (ID: ${yacht.id}):`, (error as Error).message);
     }
   }
   console.log('Yacht migration finished.');
@@ -112,10 +112,9 @@ async function migrateLeads() {
       )
     `;
     try {
-      // Ensure date fields are correctly formatted for MySQL if they are just strings
-      const monthDate = lead.month ? formatISO(parseISO(lead.month)) : null;
-      const createdAtDate = lead.createdAt ? formatISO(parseISO(lead.createdAt)) : null;
-      const updatedAtDate = lead.updatedAt ? formatISO(parseISO(lead.updatedAt)) : null;
+      const monthDate = lead.month && isValid(parseISO(lead.month)) ? formatISO(parseISO(lead.month)) : formatISO(new Date());
+      const createdAtDate = lead.createdAt && isValid(parseISO(lead.createdAt)) ? formatISO(parseISO(lead.createdAt)) : formatISO(new Date());
+      const updatedAtDate = lead.updatedAt && isValid(parseISO(lead.updatedAt)) ? formatISO(parseISO(lead.updatedAt)) : formatISO(new Date());
 
       await query(sql, [
         lead.id,
@@ -149,9 +148,9 @@ async function migrateLeads() {
         lead.lastModifiedByUserId || null,
         lead.ownerUserId || null,
       ]);
-      console.log(`Inserted lead: ${lead.id}`);
+      console.log(`Inserted lead: ${lead.clientName} (ID: ${lead.id})`);
     } catch (error) {
-      console.error(`Error inserting lead ${lead.id}:`, (error as Error).message);
+      console.error(`Error inserting lead ${lead.clientName} (ID: ${lead.id}):`, (error as Error).message);
     }
   }
   console.log('Lead migration finished.');
@@ -160,10 +159,10 @@ async function migrateLeads() {
 async function migrateInvoices() {
   console.log('Migrating Invoices...');
   for (const invoice of placeholderInvoices) {
-    const sql = `INSERT INTO ${MYSQL_TABLE_NAMES.invoices} (id, leadId, clientName, amount, dueDate, status, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?)`;
+    const sql = \`INSERT INTO ${MYSQL_TABLE_NAMES.invoices} (id, leadId, clientName, amount, dueDate, status, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?)\`;
     try {
-        const dueDateFormatted = invoice.dueDate ? formatISO(parseISO(invoice.dueDate)) : null;
-        const createdAtFormatted = invoice.createdAt ? formatISO(parseISO(invoice.createdAt)) : null;
+        const dueDateFormatted = invoice.dueDate && isValid(parseISO(invoice.dueDate)) ? formatISO(parseISO(invoice.dueDate)) : formatISO(new Date());
+        const createdAtFormatted = invoice.createdAt && isValid(parseISO(invoice.createdAt)) ? formatISO(parseISO(invoice.createdAt)) : formatISO(new Date());
       await query(sql, [
         invoice.id,
         invoice.leadId,
@@ -173,9 +172,9 @@ async function migrateInvoices() {
         invoice.status,
         createdAtFormatted,
       ]);
-      console.log(`Inserted invoice: ${invoice.id}`);
+      console.log(\`Inserted invoice: ${invoice.clientName} (ID: ${invoice.id})\`);
     } catch (error) {
-      console.error(`Error inserting invoice ${invoice.id}:`, (error as Error).message);
+      console.error(\`Error inserting invoice ${invoice.clientName} (ID: ${invoice.id}):\`, (error as Error).message);
     }
   }
   console.log('Invoice migration finished.');
@@ -184,7 +183,7 @@ async function migrateInvoices() {
 async function migrateUsers() {
   console.log('Migrating Users...');
   for (const user of placeholderUsers) {
-    const sql = `INSERT INTO ${MYSQL_TABLE_NAMES.users} (id, name, email, designation, avatarUrl, websiteUrl, status, password) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
+    const sql = \`INSERT INTO ${MYSQL_TABLE_NAMES.users} (id, name, email, designation, avatarUrl, websiteUrl, status, password) VALUES (?, ?, ?, ?, ?, ?, ?, ?)\`;
     try {
       await query(sql, [
         user.id,
@@ -196,9 +195,9 @@ async function migrateUsers() {
         user.status || 'Active',
         user.password || null, // Storing plaintext password - ONLY FOR DEMO/PLACEHOLDER DATA
       ]);
-      console.log(`Inserted user: ${user.id}`);
+      console.log(\`Inserted user: ${user.name} (ID: ${user.id})\`);
     } catch (error) {
-      console.error(`Error inserting user ${user.id}:`, (error as Error).message);
+      console.error(\`Error inserting user ${user.name} (ID: ${user.id}):\`, (error as Error).message);
     }
   }
   console.log('User migration finished.');
@@ -206,15 +205,19 @@ async function migrateUsers() {
 
 async function main() {
   console.log('Starting data migration...');
+  // Consider the order of migration if there are foreign key constraints
+  await migrateUsers();
   await migrateAgents();
   await migrateYachts();
-  await migrateUsers(); // Migrate users before leads/invoices if there are FK constraints eventually
-  await migrateLeads();
-  await migrateInvoices();
+  await migrateLeads(); // Leads often depend on users, agents, yachts
+  await migrateInvoices(); // Invoices often depend on leads
   console.log('Data migration complete! Make sure to close the DB connection if your db.ts doesn\'t do it automatically after a pool query.');
   // If your db.ts uses a pool that needs explicit closing for a script like this:
   // import pool from '../src/lib/db'; // if pool is exported directly
-  // await pool.end();
+  // if (pool && typeof (pool as any).end === 'function') {
+  //   await (pool as any).end();
+  //   console.log('MySQL pool closed by script.');
+  // }
 }
 
 main().catch(err => {

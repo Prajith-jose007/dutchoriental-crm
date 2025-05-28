@@ -6,11 +6,13 @@ import { query } from '@/lib/db'; // Assuming db.ts is in src/lib
 
 export async function GET(request: NextRequest) {
   try {
-    const agentsData: any = await query('SELECT * FROM agents ORDER BY name ASC');
+    const agentsData: any[] = await query('SELECT * FROM agents ORDER BY name ASC');
+    console.log('[API GET /api/agents] Raw DB Data:', agentsData);
     const agents: Agent[] = agentsData.map((agent: any) => ({
       ...agent,
-      discount: parseFloat(agent.discount) // Ensure discount is a number
+      discount: parseFloat(agent.discount || 0) // Ensure discount is a number
     }));
+    console.log('[API GET /api/agents] Mapped Agents Data:', agents);
     return NextResponse.json(agents, { status: 200 });
   } catch (error) {
     console.error('Failed to fetch agents:', error);

@@ -1,3 +1,4 @@
+
 // src/lib/db.ts
 // You MUST install mysql2: npm install mysql2
 // Ensure your .env.local file has DB_HOST, DB_USER, DB_PASSWORD, DB_DATABASE, DB_PORT
@@ -13,8 +14,9 @@ function getPool() {
   // Check if environment variables are loaded
   if (!process.env.DB_HOST || !process.env.DB_USER || !process.env.DB_DATABASE) {
     console.error('Database environment variables (DB_HOST, DB_USER, DB_DATABASE) are not set.');
-    // Optionally, throw an error or handle this case as appropriate for your application
-    // For now, we'll proceed, but connections will likely fail without proper env vars.
+    // For local development and scripts, you might want to load dotenv explicitly
+    // if not using Next.js's automatic loading (e.g., in a standalone script)
+    // require('dotenv').config({ path: '.env.local' }); // Potentially needed for scripts
   }
 
   pool = mysql.createPool({
@@ -26,7 +28,14 @@ function getPool() {
     waitForConnections: true,
     connectionLimit: 10, // Adjust as needed
     queueLimit: 0,
+    // ssl: {
+    //   // Required for some cloud DB providers like PlanetScale
+    //   // rejectUnauthorized: true, // Adjust based on your SSL certificate setup
+    //   // ca: fs.readFileSync('/path/to/your/ca-certificate.pem').toString(), // If using a custom CA
+    // }
   });
+
+  console.log('MySQL Pool created successfully.');
   return pool;
 }
 
@@ -36,13 +45,18 @@ function getPool() {
  * @param params Optional parameters for the SQL query.
  * @returns A promise that resolves with the query results.
  */
-export async function query(sql: string, params?: any[]) {
+export async function query(sql: string, params?: any[]): Promise<any> {
   try {
     const dbPool = getPool();
+    console.log(`Executing SQL: ${sql}`, params || '');
     const [results] = await dbPool.execute(sql, params);
+    console.log(`SQL executed successfully. Results count: ${(results as any[]).length}`);
     return results;
   } catch (error) {
-    console.error('Database query error:', error);
+    console.error('Database query error:', (error as Error).message);
+    console.error('SQL:', sql);
+    console.error('Params:', params);
+    console.error('Full error object:', error);
     // Re-throw the error or handle it as per your application's error handling strategy
     // For API routes, this might mean returning a 500 status code
     throw new Error(`Database query failed: ${(error as Error).message}`);

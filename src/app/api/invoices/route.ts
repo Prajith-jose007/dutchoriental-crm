@@ -5,28 +5,33 @@ import type { Invoice } from '@/lib/types';
 import { query } from '@/lib/db';
 import { formatISO, parseISO, isValid } from 'date-fns';
 
-// Helper to ensure date strings are in a consistent format for DB
+// Helper to ensure date strings are in a consistent format for DB or client
 const ensureISOFormat = (dateString?: string | Date): string | null => {
   if (!dateString) return null;
-  if (dateString instanceof Date) return formatISO(dateString);
+  if (dateString instanceof Date) {
+    if (isValid(dateString)) return formatISO(dateString);
+    return null;
+  }
   try {
     const parsed = parseISO(dateString);
     if (isValid(parsed)) return formatISO(parsed);
-    return null;
-  } catch {
-    return null;
+    return dateString; 
+  } catch(e) {
+    return dateString;
   }
 };
 
 export async function GET(request: NextRequest) {
   try {
     const invoicesData: any[] = await query('SELECT * FROM invoices ORDER BY createdAt DESC');
+    console.log('[API GET /api/invoices] Raw DB Data:', invoicesData);
     const invoices: Invoice[] = invoicesData.map(inv => ({
         ...inv,
-        amount: parseFloat(inv.amount),
+        amount: parseFloat(inv.amount || 0),
         dueDate: ensureISOFormat(inv.dueDate) || new Date().toISOString(),
         createdAt: ensureISOFormat(inv.createdAt) || new Date().toISOString(),
     }));
+    console.log('[API GET /api/invoices] Mapped Invoices Data:', invoices);
     return NextResponse.json(invoices, { status: 200 });
   } catch (error) {
     console.error('Failed to fetch invoices:', error);

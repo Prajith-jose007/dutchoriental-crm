@@ -15,20 +15,18 @@ const ensureISOFormat = (dateString?: string | Date): string | null => {
   try {
     const parsed = parseISO(dateString);
     if (isValid(parsed)) return formatISO(parsed);
-    // console.warn(`Could not parse date string: ${dateString} into a valid ISO format. Returning original.`);
-    return dateString; // Return original if not strictly ISO, client might need to handle or error
+    return dateString; 
   } catch(e) {
-    // console.warn(`Error in ensureISOFormat for date string: ${dateString}`, e);
-    return dateString; // Return original on error
+    return dateString; 
   }
 };
 
 export async function GET(request: NextRequest) {
   try {
     const leadsData: any[] = await query('SELECT * FROM leads ORDER BY createdAt DESC');
-    
+    console.log('[API GET /api/leads] Raw DB Data:', leadsData);
+
     const leads: Lead[] = leadsData.map(dbLead => {
-      // Explicitly map fields from dbLead to the Lead type
       const leadTyped: Lead = {
         id: dbLead.id,
         agent: dbLead.agent,
@@ -67,7 +65,7 @@ export async function GET(request: NextRequest) {
       };
       return leadTyped;
     });
-    
+    console.log('[API GET /api/leads] Mapped Leads Data:', leads);
     return NextResponse.json(leads, { status: 200 });
   } catch (error) {
     console.error('Error in GET /api/leads:', error);
@@ -84,16 +82,16 @@ export async function POST(request: NextRequest) {
     }
     
     const leadId = newLeadData.id || `lead-${Date.now()}-${Math.random().toString(36).substring(2,7)}`;
-
-    // Optional: Check if lead with this ID already exists in DB
-    // const existingLeadCheck: any = await query('SELECT id FROM leads WHERE id = ?', [leadId]);
-    // if (existingLeadCheck.length > 0) {
-    //   return NextResponse.json({ message: `Lead with ID ${leadId} already exists.` }, { status: 409 });
-    // }
-
     const now = new Date();
-    const formattedMonth = ensureISOFormat(newLeadData.month) || formatISO(now);
-    const formattedCreatedAt = formatISO(now);
+    
+    // Ensure month is correctly formatted or defaulted
+    let formattedMonth = newLeadData.month ? ensureISOFormat(newLeadData.month) : formatISO(now);
+    if (!formattedMonth || !isValid(parseISO(formattedMonth))) {
+        console.warn(`Invalid month provided for new lead ${leadId}, defaulting to now:`, newLeadData.month);
+        formattedMonth = formatISO(now);
+    }
+    
+    const formattedCreatedAt = newLeadData.createdAt && isValid(parseISO(newLeadData.createdAt)) ? ensureISOFormat(newLeadData.createdAt)! : formatISO(now);
     const formattedUpdatedAt = formatISO(now);
     
     const leadToStore: Lead = {
@@ -159,8 +157,6 @@ export async function POST(request: NextRequest) {
     const result: any = await query(sql, params);
 
     if (result.affectedRows === 1) {
-      // It's good practice to return the newly created resource, ideally by fetching it again
-      // For simplicity, we'll return the object we attempted to store, but ensure dates are ISO
       const finalLead: Lead = {
         ...leadToStore,
         month: ensureISOFormat(leadToStore.month)!,

@@ -7,9 +7,10 @@ import { query } from '@/lib/db';
 export async function GET(request: NextRequest) {
   try {
     const yachtsData: any[] = await query('SELECT * FROM yachts ORDER BY name ASC');
+    console.log('[API GET /api/yachts] Raw DB Data:', yachtsData);
     const yachts: Yacht[] = yachtsData.map(yacht => ({
       ...yacht,
-      capacity: Number(yacht.capacity),
+      capacity: Number(yacht.capacity || 0),
       childRate: parseFloat(yacht.childRate || 0),
       adultStandardRate: parseFloat(yacht.adultStandardRate || 0),
       adultStandardDrinksRate: parseFloat(yacht.adultStandardDrinksRate || 0),
@@ -21,6 +22,7 @@ export async function GET(request: NextRequest) {
       royalDrinksRate: parseFloat(yacht.royalDrinksRate || 0),
       otherChargeRate: parseFloat(yacht.otherChargeRate || 0),
     }));
+    console.log('[API GET /api/yachts] Mapped Yachts Data:', yachts);
     return NextResponse.json(yachts, { status: 200 });
   } catch (error) {
     console.error('Failed to fetch yachts:', error);

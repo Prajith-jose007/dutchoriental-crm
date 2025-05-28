@@ -1,62 +1,73 @@
 
 // src/app/api/leads/route.ts
 import { NextResponse, type NextRequest } from 'next/server';
-import type { Lead } from '@/lib/types';
+import type { Lead, LeadStatus, ModeOfPayment } from '@/lib/types';
 import { query } from '@/lib/db';
 import { formatISO, parseISO, isValid } from 'date-fns';
 
-// Helper to ensure date strings are in a consistent format for DB
+// Helper to ensure date strings are in a consistent format for DB or client
 const ensureISOFormat = (dateString?: string | Date): string | null => {
   if (!dateString) return null;
-  if (dateString instanceof Date) return formatISO(dateString);
+  if (dateString instanceof Date) {
+    if (isValid(dateString)) return formatISO(dateString);
+    return null;
+  }
   try {
     const parsed = parseISO(dateString);
     if (isValid(parsed)) return formatISO(parsed);
-    return null;
-  } catch {
-    return null;
+    // console.warn(`Could not parse date string: ${dateString} into a valid ISO format. Returning original.`);
+    return dateString; // Return original if not strictly ISO, client might need to handle or error
+  } catch(e) {
+    // console.warn(`Error in ensureISOFormat for date string: ${dateString}`, e);
+    return dateString; // Return original on error
   }
 };
-
 
 export async function GET(request: NextRequest) {
   try {
     const leadsData: any[] = await query('SELECT * FROM leads ORDER BY createdAt DESC');
-    const leads: Lead[] = leadsData.map(lead => ({
-      ...lead,
-      month: ensureISOFormat(lead.month) || new Date().toISOString(),
-      createdAt: ensureISOFormat(lead.createdAt) || new Date().toISOString(),
-      updatedAt: ensureISOFormat(lead.updatedAt) || new Date().toISOString(),
-      // Ensure numeric fields are numbers
-      dhowChildQty: Number(lead.dhowChildQty || 0),
-      dhowAdultQty: Number(lead.dhowAdultQty || 0),
-      dhowVipQty: Number(lead.dhowVipQty || 0),
-      dhowVipChildQty: Number(lead.dhowVipChildQty || 0),
-      dhowVipAlcoholQty: Number(lead.dhowVipAlcoholQty || 0),
-      oeChildQty: Number(lead.oeChildQty || 0),
-      oeAdultQty: Number(lead.oeAdultQty || 0),
-      oeVipQty: Number(lead.oeVipQty || 0),
-      oeVipChildQty: Number(lead.oeVipChildQty || 0),
-      oeVipAlcoholQty: Number(lead.oeVipAlcoholQty || 0),
-      sunsetChildQty: Number(lead.sunsetChildQty || 0),
-      sunsetAdultQty: Number(lead.sunsetAdultQty || 0),
-      sunsetVipQty: Number(lead.sunsetVipQty || 0),
-      sunsetVipChildQty: Number(lead.sunsetVipChildQty || 0),
-      sunsetVipAlcoholQty: Number(lead.sunsetVipAlcoholQty || 0),
-      lotusChildQty: Number(lead.lotusChildQty || 0),
-      lotusAdultQty: Number(lead.lotusAdultQty || 0),
-      lotusVipQty: Number(lead.lotusVipQty || 0),
-      lotusVipChildQty: Number(lead.lotusVipChildQty || 0),
-      lotusVipAlcoholQty: Number(lead.lotusVipAlcoholQty || 0),
-      royalQty: Number(lead.royalQty || 0),
-      othersAmtCake: parseFloat(lead.othersAmtCake || 0),
-      totalAmount: parseFloat(lead.totalAmount || 0),
-      commissionPercentage: parseFloat(lead.commissionPercentage || 0),
-      commissionAmount: parseFloat(lead.commissionAmount || 0),
-      netAmount: parseFloat(lead.netAmount || 0),
-      paidAmount: parseFloat(lead.paidAmount || 0),
-      balanceAmount: parseFloat(lead.balanceAmount || 0),
-    }));
+    
+    const leads: Lead[] = leadsData.map(dbLead => {
+      // Explicitly map fields from dbLead to the Lead type
+      const leadTyped: Lead = {
+        id: dbLead.id,
+        agent: dbLead.agent,
+        status: dbLead.status as LeadStatus,
+        month: ensureISOFormat(dbLead.month) || new Date().toISOString(),
+        notes: dbLead.notes,
+        yacht: dbLead.yacht,
+        type: dbLead.type,
+        invoiceId: dbLead.invoiceId,
+        modeOfPayment: dbLead.modeOfPayment as ModeOfPayment,
+        clientName: dbLead.clientName,
+
+        qty_childRate: Number(dbLead.qty_childRate || 0),
+        qty_adultStandardRate: Number(dbLead.qty_adultStandardRate || 0),
+        qty_adultStandardDrinksRate: Number(dbLead.qty_adultStandardDrinksRate || 0),
+        qty_vipChildRate: Number(dbLead.qty_vipChildRate || 0),
+        qty_vipAdultRate: Number(dbLead.qty_vipAdultRate || 0),
+        qty_vipAdultDrinksRate: Number(dbLead.qty_vipAdultDrinksRate || 0),
+        qty_royalChildRate: Number(dbLead.qty_royalChildRate || 0),
+        qty_royalAdultRate: Number(dbLead.qty_royalAdultRate || 0),
+        qty_royalDrinksRate: Number(dbLead.qty_royalDrinksRate || 0),
+        
+        othersAmtCake: Number(dbLead.othersAmtCake || 0),
+
+        totalAmount: parseFloat(dbLead.totalAmount || 0),
+        commissionPercentage: parseFloat(dbLead.commissionPercentage || 0),
+        commissionAmount: parseFloat(dbLead.commissionAmount || 0),
+        netAmount: parseFloat(dbLead.netAmount || 0),
+        paidAmount: parseFloat(dbLead.paidAmount || 0),
+        balanceAmount: parseFloat(dbLead.balanceAmount || 0),
+
+        createdAt: ensureISOFormat(dbLead.createdAt) || new Date().toISOString(),
+        updatedAt: ensureISOFormat(dbLead.updatedAt) || new Date().toISOString(),
+        lastModifiedByUserId: dbLead.lastModifiedByUserId,
+        ownerUserId: dbLead.ownerUserId,
+      };
+      return leadTyped;
+    });
+    
     return NextResponse.json(leads, { status: 200 });
   } catch (error) {
     console.error('Error in GET /api/leads:', error);
@@ -66,25 +77,27 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const newLeadData = await request.json() as Omit<Lead, 'createdAt' | 'updatedAt'> & 
-      Partial<Pick<Lead, 'createdAt' | 'updatedAt' | 'lastModifiedByUserId' | 'ownerUserId'>>;
+    const newLeadData = await request.json() as Partial<Omit<Lead, 'createdAt' | 'updatedAt' | 'id'>> & { id?: string };
 
-    if (!newLeadData.id || !newLeadData.clientName || !newLeadData.agent || !newLeadData.yacht || !newLeadData.month) {
-      return NextResponse.json({ message: 'Missing required lead fields (id, clientName, agent, yacht, month)' }, { status: 400 });
+    if (!newLeadData.clientName || !newLeadData.agent || !newLeadData.yacht || !newLeadData.month) {
+      return NextResponse.json({ message: 'Missing required lead fields (clientName, agent, yacht, month)' }, { status: 400 });
     }
     
-    const existingLead: any = await query('SELECT id FROM leads WHERE id = ?', [newLeadData.id]);
-    if (existingLead.length > 0) {
-      return NextResponse.json({ message: `Lead with ID ${newLeadData.id} already exists.` }, { status: 409 });
-    }
+    const leadId = newLeadData.id || `lead-${Date.now()}-${Math.random().toString(36).substring(2,7)}`;
+
+    // Optional: Check if lead with this ID already exists in DB
+    // const existingLeadCheck: any = await query('SELECT id FROM leads WHERE id = ?', [leadId]);
+    // if (existingLeadCheck.length > 0) {
+    //   return NextResponse.json({ message: `Lead with ID ${leadId} already exists.` }, { status: 409 });
+    // }
 
     const now = new Date();
     const formattedMonth = ensureISOFormat(newLeadData.month) || formatISO(now);
-    const formattedCreatedAt = ensureISOFormat(newLeadData.createdAt) || formatISO(now);
+    const formattedCreatedAt = formatISO(now);
     const formattedUpdatedAt = formatISO(now);
     
     const leadToStore: Lead = {
-      id: newLeadData.id,
+      id: leadId,
       clientName: newLeadData.clientName,
       agent: newLeadData.agent,
       status: newLeadData.status || 'Upcoming',
@@ -146,7 +159,15 @@ export async function POST(request: NextRequest) {
     const result: any = await query(sql, params);
 
     if (result.affectedRows === 1) {
-      return NextResponse.json(leadToStore, { status: 201 });
+      // It's good practice to return the newly created resource, ideally by fetching it again
+      // For simplicity, we'll return the object we attempted to store, but ensure dates are ISO
+      const finalLead: Lead = {
+        ...leadToStore,
+        month: ensureISOFormat(leadToStore.month)!,
+        createdAt: ensureISOFormat(leadToStore.createdAt)!,
+        updatedAt: ensureISOFormat(leadToStore.updatedAt)!,
+      };
+      return NextResponse.json(finalLead, { status: 201 });
     } else {
       throw new Error('Failed to insert lead into database');
     }

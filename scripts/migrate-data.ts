@@ -106,7 +106,7 @@ async function migrateLeads() {
         paidAmount, balanceAmount,
         createdAt, updatedAt, lastModifiedByUserId, ownerUserId
       ) VALUES (
-        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 
+        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
         ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
         ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
       )
@@ -159,7 +159,7 @@ async function migrateLeads() {
 async function migrateInvoices() {
   console.log('Migrating Invoices...');
   for (const invoice of placeholderInvoices) {
-    const sql = \`INSERT INTO ${MYSQL_TABLE_NAMES.invoices} (id, leadId, clientName, amount, dueDate, status, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?)\`;
+    const sql = `INSERT INTO ${MYSQL_TABLE_NAMES.invoices} (id, leadId, clientName, amount, dueDate, status, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?)`;
     try {
         const dueDateFormatted = invoice.dueDate && isValid(parseISO(invoice.dueDate)) ? formatISO(parseISO(invoice.dueDate)) : formatISO(new Date());
         const createdAtFormatted = invoice.createdAt && isValid(parseISO(invoice.createdAt)) ? formatISO(parseISO(invoice.createdAt)) : formatISO(new Date());
@@ -172,9 +172,9 @@ async function migrateInvoices() {
         invoice.status,
         createdAtFormatted,
       ]);
-      console.log(\`Inserted invoice: ${invoice.clientName} (ID: ${invoice.id})\`);
+      console.log(`Inserted invoice: ${invoice.clientName} (ID: ${invoice.id})`);
     } catch (error) {
-      console.error(\`Error inserting invoice ${invoice.clientName} (ID: ${invoice.id}):\`, (error as Error).message);
+      console.error(`Error inserting invoice ${invoice.clientName} (ID: ${invoice.id}):`, (error as Error).message);
     }
   }
   console.log('Invoice migration finished.');
@@ -183,7 +183,7 @@ async function migrateInvoices() {
 async function migrateUsers() {
   console.log('Migrating Users...');
   for (const user of placeholderUsers) {
-    const sql = \`INSERT INTO ${MYSQL_TABLE_NAMES.users} (id, name, email, designation, avatarUrl, websiteUrl, status, password) VALUES (?, ?, ?, ?, ?, ?, ?, ?)\`;
+    const sql = `INSERT INTO ${MYSQL_TABLE_NAMES.users} (id, name, email, designation, avatarUrl, websiteUrl, status, password) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
     try {
       await query(sql, [
         user.id,
@@ -195,9 +195,9 @@ async function migrateUsers() {
         user.status || 'Active',
         user.password || null, // Storing plaintext password - ONLY FOR DEMO/PLACEHOLDER DATA
       ]);
-      console.log(\`Inserted user: ${user.name} (ID: ${user.id})\`);
+      console.log(`Inserted user: ${user.name} (ID: ${user.id})`);
     } catch (error) {
-      console.error(\`Error inserting user ${user.name} (ID: ${user.id}):\`, (error as Error).message);
+      console.error(`Error inserting user ${user.name} (ID: ${user.id}):`, (error as Error).message);
     }
   }
   console.log('User migration finished.');

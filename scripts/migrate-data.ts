@@ -31,14 +31,14 @@ async function createUsersTable() {
   const tableName = MYSQL_TABLE_NAMES.users;
   const createTableSql = `
     CREATE TABLE IF NOT EXISTS ${tableName} (
-      id VARCHAR(255) PRIMARY KEY,
+      id VARCHAR(191) PRIMARY KEY,
       name VARCHAR(255) NOT NULL,
-      email VARCHAR(255) NOT NULL UNIQUE,
+      email VARCHAR(191) NOT NULL UNIQUE,
       designation VARCHAR(255),
       avatarUrl VARCHAR(255),
       websiteUrl VARCHAR(255),
       status VARCHAR(50),
-      password VARCHAR(255) 
+      password VARCHAR(255)
     );
   `;
   try {
@@ -55,12 +55,12 @@ async function createAgentsTable() {
   const tableName = MYSQL_TABLE_NAMES.agents;
   const createTableSql = `
     CREATE TABLE IF NOT EXISTS ${tableName} (
-      id VARCHAR(255) PRIMARY KEY,
+      id VARCHAR(191) PRIMARY KEY,
       name VARCHAR(255) NOT NULL,
       agency_code VARCHAR(255),
       address TEXT,
       phone_no VARCHAR(255),
-      email VARCHAR(255) NOT NULL,
+      email VARCHAR(191) NOT NULL,
       status VARCHAR(50),
       TRN_number VARCHAR(255),
       customer_type_id VARCHAR(255),
@@ -81,7 +81,7 @@ async function createYachtsTable() {
   const tableName = MYSQL_TABLE_NAMES.yachts;
   const createTableSql = `
     CREATE TABLE IF NOT EXISTS ${tableName} (
-      id VARCHAR(255) PRIMARY KEY,
+      id VARCHAR(191) PRIMARY KEY,
       name VARCHAR(255) NOT NULL,
       imageUrl VARCHAR(255),
       capacity INT,
@@ -113,7 +113,7 @@ async function createLeadsTable() {
   const tableName = MYSQL_TABLE_NAMES.leads;
   const createTableSql = `
     CREATE TABLE IF NOT EXISTS ${tableName} (
-      id VARCHAR(255) PRIMARY KEY,
+      id VARCHAR(191) PRIMARY KEY,
       clientName VARCHAR(255) NOT NULL,
       agent VARCHAR(255),
       yacht VARCHAR(255),
@@ -158,7 +158,7 @@ async function createInvoicesTable() {
   const tableName = MYSQL_TABLE_NAMES.invoices;
   const createTableSql = `
     CREATE TABLE IF NOT EXISTS ${tableName} (
-      id VARCHAR(255) PRIMARY KEY,
+      id VARCHAR(191) PRIMARY KEY,
       leadId VARCHAR(255),
       clientName VARCHAR(255),
       amount DECIMAL(10, 2),
@@ -297,8 +297,8 @@ async function migrateLeads() {
       await query(sql, [
         lead.id,
         lead.clientName,
-        lead.agent, 
-        lead.yacht, 
+        lead.agent,
+        lead.yacht,
         lead.status,
         monthDate, // lead.month should be a full ISO date string
         lead.notes || null,
@@ -365,11 +365,19 @@ async function main() {
   // For now, assuming no strict foreign key constraints that would block creation/insertion in this order.
   // If they exist, you might need to create all tables first, then insert.
   try {
+    // Create all tables first to handle potential foreign key dependencies if any were to be added.
+    await createUsersTable();
+    await createAgentsTable();
+    await createYachtsTable();
+    await createLeadsTable();
+    await createInvoicesTable();
+
+    // Then proceed with data migration
     await migrateUsers();
     await migrateAgents();
     await migrateYachts();
-    await migrateLeads(); 
-    await migrateInvoices(); 
+    await migrateLeads();
+    await migrateInvoices();
     console.log('Data migration complete! Make sure to close the DB connection if your db.ts doesn\'t do it automatically after a pool query.');
     // If your db.ts uses a pool that needs explicit closing for a script like this:
     // import pool from '../src/lib/db'; // if pool is exported directly
@@ -379,12 +387,54 @@ async function main() {
     // }
   } catch (error) {
       console.error("A critical error occurred during table creation or migration process, aborting further steps:", (error as Error).message);
+      // Optionally, explicitly close the pool here if an error occurs early
+      // to prevent the script from hanging if the pool isn't automatically closed.
+      // This depends on how your db.ts handles connections.
+      // if (pool && typeof (pool as any).end === 'function') {
+      //   try { await (pool as any).end(); console.log('MySQL pool closed due to error.'); } catch (e) { console.error('Error closing pool:', e); }
+      // }
+  } finally {
+    // Attempt to close the pool if it's defined and has an end method
+    // This is a more general cleanup attempt.
+    const dbModule = await import('../src/lib/db');
+    if (dbModule.default && typeof dbModule.default.end === 'function') {
+        try {
+            await dbModule.default.end();
+            console.log('MySQL pool closed by script in finally block.');
+        } catch (e) {
+            console.error('Error closing pool in finally block:', e);
+        }
+    } else if (dbModule.default && typeof (dbModule.default as any).pool?.end === 'function') { // If pool is nested
+        try {
+            await (dbModule.default as any).pool.end();
+            console.log('MySQL pool (nested) closed by script in finally block.');
+        } catch (e) {
+            console.error('Error closing nested pool in finally block:', e);
+        }
+    }
   }
 }
 
 main().catch(err => {
   console.error('Migration script failed:', err);
-  process.exit(1);
+  // Ensure pool is closed even on unhandled rejection from main
+  // This is a bit redundant if finally block in main is robust, but acts as a safeguard.
+  const attemptClose = async () => {
+    try {
+        const dbModule = await import('../src/lib/db');
+        if (dbModule.default && typeof dbModule.default.end === 'function') {
+            await dbModule.default.end();
+            console.log('MySQL pool closed due to script failure.');
+        } else if (dbModule.default && typeof (dbModule.default as any).pool?.end === 'function') {
+             await (dbModule.default as any).pool.end();
+             console.log('MySQL pool (nested) closed due to script failure.');
+        }
+    } catch (e) {
+        console.error('Error closing pool after script failure:', e);
+    }
+    process.exit(1);
+  };
+  attemptClose();
 });
 
     

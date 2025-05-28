@@ -1,14 +1,32 @@
+
 // src/app/api/invoices/route.ts
 import { NextResponse, type NextRequest } from 'next/server';
 import type { Invoice } from '@/lib/types';
-import { formatISO } from 'date-fns';
-// import { query } from '@/lib/db'; // You'll need to implement this
+import { query } from '@/lib/db';
+import { formatISO, parseISO, isValid } from 'date-fns';
+
+// Helper to ensure date strings are in a consistent format for DB
+const ensureISOFormat = (dateString?: string | Date): string | null => {
+  if (!dateString) return null;
+  if (dateString instanceof Date) return formatISO(dateString);
+  try {
+    const parsed = parseISO(dateString);
+    if (isValid(parsed)) return formatISO(parsed);
+    return null;
+  } catch {
+    return null;
+  }
+};
 
 export async function GET(request: NextRequest) {
   try {
-    // TODO: Replace with actual database query: SELECT * FROM invoices ORDER BY createdAt DESC
-    // Example: const invoicesData = await query('SELECT * FROM invoices ORDER BY createdAt DESC');
-    const invoices: Invoice[] = []; // Replace with actual data from DB
+    const invoicesData: any[] = await query('SELECT * FROM invoices ORDER BY createdAt DESC');
+    const invoices: Invoice[] = invoicesData.map(inv => ({
+        ...inv,
+        amount: parseFloat(inv.amount),
+        dueDate: ensureISOFormat(inv.dueDate) || new Date().toISOString(),
+        createdAt: ensureISOFormat(inv.createdAt) || new Date().toISOString(),
+    }));
     return NextResponse.json(invoices, { status: 200 });
   } catch (error) {
     console.error('Failed to fetch invoices:', error);
@@ -21,14 +39,13 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const newInvoiceData = await request.json() as Omit<Invoice, 'createdAt'> & { createdAt?: string }; // Allow optional createdAt
+    const newInvoiceData = await request.json() as Omit<Invoice, 'createdAt'> & { createdAt?: string };
 
-    // Basic validation
     if (
       !newInvoiceData.id ||
       !newInvoiceData.leadId ||
       !newInvoiceData.clientName ||
-      newInvoiceData.amount === undefined || // Check for undefined explicitly for numbers
+      newInvoiceData.amount === undefined ||
       !newInvoiceData.dueDate ||
       !newInvoiceData.status
     ) {
@@ -38,36 +55,41 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // TODO: Check if invoice with this ID already exists in the database
-    // Example: const existingInvoice = await query('SELECT id FROM invoices WHERE id = ?', [newInvoiceData.id]);
-    // if (existingInvoice.length > 0) {
-    //   return NextResponse.json(
-    //     { message: `Invoice with ID ${newInvoiceData.id} already exists.` },
-    //     { status: 409 }
-    //   );
-    // }
+    const existingInvoice: any = await query('SELECT id FROM invoices WHERE id = ?', [newInvoiceData.id]);
+    if (existingInvoice.length > 0) {
+      return NextResponse.json(
+        { message: `Invoice with ID ${newInvoiceData.id} already exists.` },
+        { status: 409 }
+      );
+    }
     
+    const now = new Date();
+    const formattedDueDate = ensureISOFormat(newInvoiceData.dueDate) || formatISO(now);
+    const formattedCreatedAt = ensureISOFormat(newInvoiceData.createdAt) || formatISO(now);
+
     const invoiceToStore: Invoice = {
       id: newInvoiceData.id,
       leadId: newInvoiceData.leadId,
       clientName: newInvoiceData.clientName,
       amount: Number(newInvoiceData.amount),
-      dueDate: newInvoiceData.dueDate, // Ensure this is a valid ISO date string
+      dueDate: formattedDueDate,
       status: newInvoiceData.status,
-      createdAt: newInvoiceData.createdAt || formatISO(new Date()), // Default to now if not provided
+      createdAt: formattedCreatedAt,
     };
+    
+    const result: any = await query(
+      'INSERT INTO invoices (id, leadId, clientName, amount, dueDate, status, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [
+        invoiceToStore.id, invoiceToStore.leadId, invoiceToStore.clientName, invoiceToStore.amount,
+        invoiceToStore.dueDate, invoiceToStore.status, invoiceToStore.createdAt
+      ]
+    );
 
-    // TODO: Implement MySQL query to insert invoiceToStore
-    // Example: const result = await query('INSERT INTO invoices SET ?', invoiceToStore);
-    // if (result.affectedRows === 1) {
-    //   return NextResponse.json(invoiceToStore, { status: 201 });
-    // } else {
-    //   throw new Error('Failed to insert invoice into database');
-    // }
-
-    // Placeholder response
-    return NextResponse.json(invoiceToStore, { status: 201 });
-
+    if (result.affectedRows === 1) {
+      return NextResponse.json(invoiceToStore, { status: 201 });
+    } else {
+      throw new Error('Failed to insert invoice into database');
+    }
   } catch (error) {
     console.error('Failed to create invoice:', error);
     return NextResponse.json(

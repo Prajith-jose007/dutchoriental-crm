@@ -1,7 +1,55 @@
+
 // src/app/api/leads/[id]/route.ts
 import { NextResponse, type NextRequest } from 'next/server';
 import type { Lead } from '@/lib/types';
-// import { query } from '@/lib/db'; // You'll need to implement this
+import { query } from '@/lib/db';
+import { formatISO, parseISO, isValid } from 'date-fns';
+
+// Helper to ensure date strings are in a consistent format for DB
+const ensureISOFormat = (dateString?: string | Date): string | null => {
+  if (!dateString) return null;
+  if (dateString instanceof Date) return formatISO(dateString);
+  try {
+    const parsed = parseISO(dateString);
+    if (isValid(parsed)) return formatISO(parsed);
+    return null;
+  } catch {
+    return null;
+  }
+};
+
+function buildLeadUpdateSetClause(data: Partial<Lead>): { clause: string, values: any[] } {
+  const fieldsToUpdate: string[] = [];
+  const valuesToUpdate: any[] = [];
+  // Explicitly list all updatable fields from Lead type
+  const allowedKeys: (keyof Lead)[] = [
+    'clientName', 'agent', 'status', 'month', 'notes', 'yacht', 'type', 'invoiceId', 'modeOfPayment',
+    'qty_childRate', 'qty_adultStandardRate', 'qty_adultStandardDrinksRate',
+    'qty_vipChildRate', 'qty_vipAdultRate', 'qty_vipAdultDrinksRate',
+    'qty_royalChildRate', 'qty_royalAdultRate', 'qty_royalDrinksRate',
+    'othersAmtCake', 'totalAmount', 'commissionPercentage', 'commissionAmount',
+    'netAmount', 'paidAmount', 'balanceAmount', 'updatedAt', 'lastModifiedByUserId', 'ownerUserId'
+    // 'id' and 'createdAt' should generally not be updated
+  ];
+
+  Object.entries(data).forEach(([key, value]) => {
+    if (allowedKeys.includes(key as keyof Lead) && value !== undefined) {
+      fieldsToUpdate.push(`${key} = ?`);
+      if (['month', 'updatedAt'].includes(key)) {
+        valuesToUpdate.push(ensureISOFormat(value as string) || null);
+      } else if (typeof value === 'string' && value.trim() === '') {
+        valuesToUpdate.push(null); // Treat empty strings as NULL for optional text fields
+      } else if (typeof value === 'number' && isNaN(value)) {
+        valuesToUpdate.push(0); // Default NaN numbers to 0
+      }
+      else {
+        valuesToUpdate.push(value);
+      }
+    }
+  });
+  return { clause: fieldsToUpdate.join(', '), values: valuesToUpdate };
+}
+
 
 export async function GET(
   request: NextRequest,
@@ -9,12 +57,25 @@ export async function GET(
 ) {
   try {
     const id = params.id;
-    // TODO: Implement MySQL query to fetch lead by ID
-    // Example: const leadData = await query('SELECT * FROM leads WHERE id = ?', [id]);
-    // const lead = leadData[0] || null;
-    const lead: Lead | null = null; // Placeholder
-
-    if (lead) {
+    const leadDataDb: any = await query('SELECT * FROM leads WHERE id = ?', [id]);
+    
+    if (leadDataDb.length > 0) {
+      const dbLead = leadDataDb[0];
+      const lead: Lead = {
+        ...dbLead,
+        month: ensureISOFormat(dbLead.month) || new Date().toISOString(),
+        createdAt: ensureISOFormat(dbLead.createdAt) || new Date().toISOString(),
+        updatedAt: ensureISOFormat(dbLead.updatedAt) || new Date().toISOString(),
+        dhowChildQty: Number(dbLead.dhowChildQty || 0),
+        dhowAdultQty: Number(dbLead.dhowAdultQty || 0),
+        // ... (ensure all numeric fields are correctly parsed)
+        totalAmount: parseFloat(dbLead.totalAmount || 0),
+        commissionPercentage: parseFloat(dbLead.commissionPercentage || 0),
+        commissionAmount: parseFloat(dbLead.commissionAmount || 0),
+        netAmount: parseFloat(dbLead.netAmount || 0),
+        paidAmount: parseFloat(dbLead.paidAmount || 0),
+        balanceAmount: parseFloat(dbLead.balanceAmount || 0),
+      };
       return NextResponse.json(lead, { status: 200 });
     } else {
       return NextResponse.json({ message: 'Lead not found' }, { status: 404 });
@@ -31,50 +92,47 @@ export async function PUT(
 ) {
   try {
     const id = params.id;
-    // Type assertion for the request body
-    const updatedLeadData = await request.json() as Partial<Omit<Lead, 'id' | 'createdAt'>> & { lastModifiedByUserId?: string; ownerUserId?: string; };
+    const updatedLeadData = await request.json() as Partial<Lead>;
 
+    const existingLeadResult: any = await query('SELECT * FROM leads WHERE id = ?', [id]);
+    if (existingLeadResult.length === 0) {
+      return NextResponse.json({ message: 'Lead not found' }, { status: 404 });
+    }
+    const existingLead = existingLeadResult[0];
 
-    // TODO: First, check if the lead exists
-    // Example: const existingLeadResult = await query('SELECT * FROM leads WHERE id = ?', [id]);
-    // if (existingLeadResult.length === 0) {
-    //   return NextResponse.json({ message: 'Lead not found' }, { status: 404 });
-    // }
-    // const leadToUpdate = existingLeadResult[0];
-
-    const now = new Date().toISOString();
-    
-    const updatedLead: Partial<Lead> = { // Use Partial<Lead> for the update payload
+    // Prepare data for update, ensuring 'updatedAt' is set
+    const dataToUpdate: Partial<Lead> = {
       ...updatedLeadData,
-      updatedAt: now,
-      // lastModifiedByUserId will come from updatedLeadData if client sends it
+      updatedAt: new Date().toISOString(),
     };
+    if (dataToUpdate.month) {
+        dataToUpdate.month = ensureISOFormat(dataToUpdate.month) || existingLead.month;
+    }
+
+
+    const { clause, values } = buildLeadUpdateSetClause(dataToUpdate);
+
+    if (clause.length === 0) {
+       return NextResponse.json({ message: 'No valid fields to update' }, { status: 400 });
+    }
+    values.push(id); // For the WHERE clause
     
-    // Remove id and createdAt from updatedLead object as they should not be updated
-    delete updatedLead.id; 
-    delete updatedLead.createdAt;
-
-    // TODO: Implement MySQL query to update the lead
-    // Construct SET clause dynamically
-    // Example:
-    // const fieldsToUpdate = [];
-    // const valuesToUpdate = [];
-    // Object.entries(updatedLead).forEach(([key, value]) => {
-    //    fieldsToUpdate.push(`${key} = ?`);
-    //    valuesToUpdate.push(value);
-    // });
-    // if (fieldsToUpdate.length === 0) {
-    //    return NextResponse.json({ message: 'No fields to update' }, { status: 400 });
-    // }
-    // valuesToUpdate.push(id); // For the WHERE clause
-    // const result = await query(`UPDATE leads SET ${fieldsToUpdate.join(', ')} WHERE id = ?`, valuesToUpdate);
-    // if (result.affectedRows === 0) {
-    //    return NextResponse.json({ message: 'Lead not found during update or no changes made' }, { status: 404 });
-    // }
-    // const finalUpdatedLead = { ...leadToUpdate, ...updatedLead, id: id, createdAt: leadToUpdate.createdAt };
-
-    // Placeholder response
-    const finalUpdatedLead = { id, createdAt: "some-iso-string", ...updatedLead }; // Adjust placeholder as needed
+    const result: any = await query(`UPDATE leads SET ${clause} WHERE id = ?`, values);
+    
+    if (result.affectedRows === 0) {
+       return NextResponse.json({ message: 'Lead not found during update or no changes made' }, { status: 404 });
+    }
+    
+    // Fetch the updated lead to return it
+    const updatedLeadFromDb: any = await query('SELECT * FROM leads WHERE id = ?', [id]);
+    const finalUpdatedLead: Lead = {
+        ...updatedLeadFromDb[0],
+        month: ensureISOFormat(updatedLeadFromDb[0].month) || new Date().toISOString(),
+        createdAt: ensureISOFormat(updatedLeadFromDb[0].createdAt) || new Date().toISOString(),
+        updatedAt: ensureISOFormat(updatedLeadFromDb[0].updatedAt) || new Date().toISOString(),
+        // ... (ensure all numeric fields are correctly parsed)
+        totalAmount: parseFloat(updatedLeadFromDb[0].totalAmount || 0),
+    };
     return NextResponse.json(finalUpdatedLead, { status: 200 });
 
   } catch (error) {
@@ -89,12 +147,9 @@ export async function DELETE(
 ) {
   try {
     const id = params.id;
-    // TODO: Implement MySQL query to delete lead by ID
-    // Example: const result = await query('DELETE FROM leads WHERE id = ?', [id]);
-    // const wasDeleted = result.affectedRows > 0;
-    const wasDeleted = true; // Placeholder
+    const result: any = await query('DELETE FROM leads WHERE id = ?', [id]);
     
-    if (!wasDeleted) {
+    if (result.affectedRows === 0) {
       return NextResponse.json({ message: 'Lead not found' }, { status: 404 });
     }
 

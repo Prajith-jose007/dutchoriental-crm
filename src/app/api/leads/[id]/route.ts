@@ -24,7 +24,7 @@ function buildLeadUpdateSetClause(data: Partial<Lead>): { clause: string, values
   const fieldsToUpdate: string[] = [];
   const valuesToUpdate: any[] = [];
   const allowedKeys: (keyof Lead)[] = [
-    'clientName', 'agent', 'yacht', 'status', 'month', 'notes', 'type', 'transactionId', 'modeOfPayment', // Renamed invoiceId
+    'clientName', 'agent', 'yacht', 'status', 'month', 'notes', 'type', 'transactionId', 'modeOfPayment',
     'qty_childRate', 'qty_adultStandardRate', 'qty_adultStandardDrinksRate',
     'qty_vipChildRate', 'qty_vipAdultRate', 'qty_vipAdultDrinksRate',
     'qty_royalChildRate', 'qty_royalAdultRate', 'qty_royalDrinksRate',
@@ -36,11 +36,11 @@ function buildLeadUpdateSetClause(data: Partial<Lead>): { clause: string, values
 
   Object.entries(data).forEach(([key, value]) => {
     if (allowedKeys.includes(key as keyof Lead) && value !== undefined) {
-      fieldsToUpdate.push(\`\`\${key}\`\` = ?); 
+      fieldsToUpdate.push(`${key} = ?`); 
       if (['month', 'updatedAt', 'createdAt'].includes(key)) {
         valuesToUpdate.push(ensureISOFormat(value as string) || null);
       } else if (typeof value === 'string' && value.trim() === '' && 
-                 ['notes', 'transactionId', 'lastModifiedByUserId', 'ownerUserId'].includes(key)) { // Renamed invoiceId
+                 ['notes', 'transactionId', 'lastModifiedByUserId', 'ownerUserId'].includes(key)) {
         valuesToUpdate.push(null); 
       } else if (typeof value === 'number' && isNaN(value)) {
         valuesToUpdate.push(0); 
@@ -73,7 +73,7 @@ export async function GET(
         month: dbLead.month ? ensureISOFormat(dbLead.month)! : new Date().toISOString(),
         notes: dbLead.notes,
         type: dbLead.type as LeadType,
-        transactionId: dbLead.transactionId, // Renamed from invoiceId
+        transactionId: dbLead.transactionId,
         modeOfPayment: dbLead.modeOfPayment as ModeOfPayment,
         qty_childRate: Number(dbLead.qty_childRate || 0),
         qty_adultStandardRate: Number(dbLead.qty_adultStandardRate || 0),
@@ -157,7 +157,7 @@ export async function PUT(
     const dbLead = updatedLeadFromDbResult[0];
     const finalUpdatedLead: Lead = {
         id: dbLead.id, clientName: dbLead.clientName, agent: dbLead.agent, yacht: dbLead.yacht, status: dbLead.status as LeadStatus,
-        month: dbLead.month ? ensureISOFormat(dbLead.month)! : new Date().toISOString(), notes: dbLead.notes, type: dbLead.type as LeadType, transactionId: dbLead.transactionId, // Renamed
+        month: dbLead.month ? ensureISOFormat(dbLead.month)! : new Date().toISOString(), notes: dbLead.notes, type: dbLead.type as LeadType, transactionId: dbLead.transactionId,
         modeOfPayment: dbLead.modeOfPayment as ModeOfPayment,
         qty_childRate: Number(dbLead.qty_childRate || 0), qty_adultStandardRate: Number(dbLead.qty_adultStandardRate || 0),
         qty_adultStandardDrinksRate: Number(dbLead.qty_adultStandardDrinksRate || 0), qty_vipChildRate: Number(dbLead.qty_vipChildRate || 0),

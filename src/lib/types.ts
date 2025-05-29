@@ -42,8 +42,9 @@ export interface Yacht {
   royalAdultRate?: number;
   royalDrinksRate?: number;
   
-  othersAmtCake_rate?: number;
-  customPackageInfo?: string; // New custom field
+  otherChargeName?: string;
+  otherChargeRate?: number;
+  customPackageInfo?: string;
 }
 
 export interface Invoice {
@@ -72,38 +73,18 @@ export interface Lead {
   modeOfPayment: ModeOfPayment;
   clientName: string;
 
-  // DHOW Package Quantities
-  dhowChildQty?: number;
-  dhowAdultQty?: number;
-  dhowVipQty?: number;
-  dhowVipChildQty?: number;
-  dhowVipAlcoholQty?: number;
-
-  // OE Package Quantities
-  oeChildQty?: number;
-  oeAdultQty?: number;
-  oeVipQty?: number;
-  oeVipChildQty?: number;
-  oeVipAlcoholQty?: number;
-
-  // SUNSET Package Quantities
-  sunsetChildQty?: number;
-  sunsetAdultQty?: number;
-  sunsetVipQty?: number;
-  sunsetVipChildQty?: number;
-  sunsetVipAlcoholQty?: number;
-
-  // LOTUS Package Quantities
-  lotusChildQty?: number;
-  lotusAdultQty?: number;
-  lotusVipQty?: number;
-  lotusVipChildQty?: number;
-  lotusVipAlcoholQty?: number;
-
-  // Royal Package Quantities
-  royalQty?: number;
+  // Standardized Package Quantities matching Yacht rates
+  qty_childRate?: number;
+  qty_adultStandardRate?: number;
+  qty_adultStandardDrinksRate?: number;
+  qty_vipChildRate?: number;
+  qty_vipAdultRate?: number;
+  qty_vipAdultDrinksRate?: number;
+  qty_royalChildRate?: number;
+  qty_royalAdultRate?: number;
+  qty_royalDrinksRate?: number;
   
-  othersAmtCake?: number; // Direct amount for other charges like cake
+  othersAmtCake?: number; // Represents quantity for the custom charge defined on the yacht (otherChargeName/Rate)
 
   totalAmount: number;
   commissionAmount?: number;
@@ -141,4 +122,3 @@ export interface BookingsByAgentData {
 
 // Re-exporting for easier import in CSV parser
 export type { LeadStatus as ExportedLeadStatus, ModeOfPayment as ExportedModeOfPayment };
-

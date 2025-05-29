@@ -45,7 +45,7 @@ const leadFormSchema = z.object({
   id: z.string().optional(),
   agent: z.string().min(1, 'Agent is required'),
   status: z.enum(leadStatusOptions),
-  month: z.date({ required_error: "Lead/Event Date is required." }), // Will store the primary event date
+  month: z.date({ required_error: "Lead/Event Date is required." }), 
   notes: z.string().optional(),
   yacht: z.string().min(1, 'Yacht selection is required'),
   type: z.enum(leadTypeOptions, { required_error: "Lead type is required."}),
@@ -53,7 +53,7 @@ const leadFormSchema = z.object({
   modeOfPayment: z.enum(modeOfPaymentOptions),
   clientName: z.string().min(1, 'Client name is required'),
 
-  // Standardized 9 Package Quantities - directly correspond to Yacht's 9 rates
+  // Standardized 9 Package Quantities
   qty_childRate: z.coerce.number().min(0).optional().default(0),
   qty_adultStandardRate: z.coerce.number().min(0).optional().default(0),
   qty_adultStandardDrinksRate: z.coerce.number().min(0).optional().default(0),
@@ -64,7 +64,7 @@ const leadFormSchema = z.object({
   qty_royalAdultRate: z.coerce.number().min(0).optional().default(0),
   qty_royalDrinksRate: z.coerce.number().min(0).optional().default(0),
   
-  othersAmtCake: z.coerce.number().min(0).optional().default(0), // Quantity for custom charge (from yacht.otherChargeRate)
+  othersAmtCake: z.coerce.number().min(0).optional().default(0), 
 
   totalAmount: z.coerce.number().min(0).default(0),
   commissionPercentage: z.coerce.number().min(0).max(100).default(0),
@@ -88,16 +88,17 @@ interface LeadFormDialogProps {
 }
 
 // Configuration for the 9 standard package item quantities on a lead
+// The 'label' will be simplified as per user request.
 const allPackageItemConfigs: { qtyKey: keyof LeadFormData; rateKey: keyof Yacht; label: string; isGuestCount?: boolean }[] = [
-  { qtyKey: 'qty_childRate', rateKey: 'childRate', label: 'Child Package Qty', isGuestCount: true },
-  { qtyKey: 'qty_adultStandardRate', rateKey: 'adultStandardRate', label: 'Adult Standard Package Qty', isGuestCount: true },
-  { qtyKey: 'qty_adultStandardDrinksRate', rateKey: 'adultStandardDrinksRate', label: 'Adult Standard Drinks Package Qty', isGuestCount: true },
-  { qtyKey: 'qty_vipChildRate', rateKey: 'vipChildRate', label: 'VIP Child Package Qty', isGuestCount: true },
-  { qtyKey: 'qty_vipAdultRate', rateKey: 'vipAdultRate', label: 'VIP Adult Package Qty', isGuestCount: true },
-  { qtyKey: 'qty_vipAdultDrinksRate', rateKey: 'vipAdultDrinksRate', label: 'VIP Adult Drinks Package Qty', isGuestCount: true },
-  { qtyKey: 'qty_royalChildRate', rateKey: 'royalChildRate', label: 'Royal Child Package Qty', isGuestCount: true },
-  { qtyKey: 'qty_royalAdultRate', rateKey: 'royalAdultRate', label: 'Royal Adult Package Qty', isGuestCount: true },
-  { qtyKey: 'qty_royalDrinksRate', rateKey: 'royalDrinksRate', label: 'Royal Drinks Package Qty', isGuestCount: true },
+  { qtyKey: 'qty_childRate', rateKey: 'childRate', label: 'Child Package', isGuestCount: true },
+  { qtyKey: 'qty_adultStandardRate', rateKey: 'adultStandardRate', label: 'Adult Standard Package', isGuestCount: true },
+  { qtyKey: 'qty_adultStandardDrinksRate', rateKey: 'adultStandardDrinksRate', label: 'Adult Standard Drinks Package', isGuestCount: true },
+  { qtyKey: 'qty_vipChildRate', rateKey: 'vipChildRate', label: 'VIP Child Package', isGuestCount: true },
+  { qtyKey: 'qty_vipAdultRate', rateKey: 'vipAdultRate', label: 'VIP Adult Package', isGuestCount: true },
+  { qtyKey: 'qty_vipAdultDrinksRate', rateKey: 'vipAdultDrinksRate', label: 'VIP Adult Drinks Package', isGuestCount: true },
+  { qtyKey: 'qty_royalChildRate', rateKey: 'royalChildRate', label: 'Royal Child Package', isGuestCount: true },
+  { qtyKey: 'qty_royalAdultRate', rateKey: 'royalAdultRate', label: 'Royal Adult Package', isGuestCount: true },
+  { qtyKey: 'qty_royalDrinksRate', rateKey: 'royalDrinksRate', label: 'Royal Drinks Package', isGuestCount: true },
 ];
 
 // Configuration for the custom charge (from yacht.otherChargeName and yacht.otherChargeRate)
@@ -170,7 +171,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
   const watchedStdQuantities = allPackageItemConfigs.map(config => form.watch(config.qtyKey as keyof LeadFormData));
   const watchedOthersAmtCakeQty = form.watch(customChargeConfig.qtyKey); 
   const watchedPaidAmount = form.watch('paidAmount');
-  // Month/Event date is handled by DatePicker's onChange
+  const watchedMonth = form.watch('month'); // Watch for event date changes
 
   useEffect(() => {
     const selectedAgent = agents.find(a => a.id === watchedAgentId);
@@ -209,13 +210,13 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
     const currentNetAmount = currentTotalAmount - currentCommissionAmount;
     form.setValue('netAmount', currentNetAmount);
 
-    const paidAmtValue = form.getValues('paidAmount'); // This is watched by watchedPaidAmount
+    const paidAmtValue = form.getValues('paidAmount'); 
     const paidAmt = typeof paidAmtValue === 'number' ? paidAmtValue : 0;
     const currentBalanceAmount = currentNetAmount - paidAmt;
     form.setValue('balanceAmount', currentBalanceAmount);
 
   }, [
-    watchedAgentId, watchedYachtId, ...watchedStdQuantities, // Spread the array of watched values
+    watchedAgentId, watchedYachtId, ...watchedStdQuantities, 
     watchedOthersAmtCakeQty, watchedPaidAmount, form, agents, yachts
   ]);
 
@@ -223,13 +224,13 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
     if (isOpen) {
       const defaultVals = getDefaultFormValues();
       if (lead) {
+        const leadMonthDate = lead.month && isValid(parseISO(lead.month)) ? parseISO(lead.month) : defaultVals.month;
         form.reset({
-          ...defaultVals, // Start with all defaults
-          ...lead,        // Override with existing lead data
-          month: lead.month && isValid(parseISO(lead.month)) ? parseISO(lead.month) : defaultVals.month,
+          ...defaultVals,
+          ...lead,
+          month: leadMonthDate,
           transactionId: lead.transactionId || defaultVals.transactionId,
           notes: lead.notes || defaultVals.notes,
-          // Ensure all 9 package quantities are initialized from lead or default to 0
           qty_childRate: lead.qty_childRate || 0,
           qty_adultStandardRate: lead.qty_adultStandardRate || 0,
           qty_adultStandardDrinksRate: lead.qty_adultStandardDrinksRate || 0,
@@ -240,7 +241,6 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
           qty_royalAdultRate: lead.qty_royalAdultRate || 0,
           qty_royalDrinksRate: lead.qty_royalDrinksRate || 0,
           othersAmtCake: lead.othersAmtCake || 0,
-          // Financials should recalculate, but set initial for display if needed
           totalAmount: lead.totalAmount || 0,
           commissionPercentage: lead.commissionPercentage || 0,
           commissionAmount: lead.commissionAmount || 0,
@@ -251,19 +251,18 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
       } else {
         form.reset(defaultVals);
       }
-      // Trigger initial calculation after reset
       const selectedAgent = agents.find(a => a.id === form.getValues('agent'));
       form.setValue('commissionPercentage', selectedAgent?.discount || 0);
     }
-  }, [lead, form, isOpen, agents]); // Add agents to dependency to ensure commission is set if agents load after dialog opens with a lead
+  }, [lead, form, isOpen, agents]);
 
   function onSubmit(data: LeadFormData) {
     const currentUserId = 'DO-user1'; // Placeholder
 
     const submittedLead: Lead = {
-      ...data, // All form data
-      month: data.month ? formatISO(data.month) : formatISO(new Date()), // Ensure month is ISO string
-      id: lead?.id, // Keep existing ID if editing, API will generate for new
+      ...data, 
+      month: data.month ? formatISO(data.month) : formatISO(new Date()), 
+      id: lead?.id, 
       createdAt: lead?.createdAt || formatISO(new Date()),
       updatedAt: formatISO(new Date()),
       lastModifiedByUserId: currentUserId,
@@ -351,11 +350,6 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
                         date={field.value instanceof Date ? field.value : (field.value && isValid(parseISO(field.value as unknown as string)) ? parseISO(field.value as unknown as string) : undefined)}
                         setDate={(date) => {
                             field.onChange(date);
-                            if (date) {
-                                const monthYear = format(date, 'yyyy-MM');
-                                // If you had a separate month field, you'd update it here
-                                // form.setValue('leadEventMonthField', monthYear);
-                            }
                         }}
                         placeholder="Pick event date"
                     />
@@ -437,7 +431,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
                       name={pkgFieldConfig.qtyKey as keyof LeadFormData}
                       render={({ field }) => (
                           <FormItem>
-                          <FormLabel>{pkgFieldConfig.label}{rateDisplay}</FormLabel>
+                          <FormLabel>{pkgFieldConfig.label}{/* Removed rate display here */}</FormLabel>
                           <FormControl>
                               <Input type="number" min="0" placeholder="0" {...field} onChange={e => field.onChange(parseInt(e.target.value,10) || 0)} />
                           </FormControl>
@@ -454,7 +448,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 <FormField
                     control={form.control}
-                    name={customChargeConfig.qtyKey} // This is 'othersAmtCake'
+                    name={customChargeConfig.qtyKey} 
                     render={({ field }) => {
                         const customChargeNameOnYacht = selectedYachtForRateDisplay?.[customChargeConfig.nameKey as keyof Yacht];
                         const customChargeRateOnYacht = selectedYachtForRateDisplay?.[customChargeConfig.rateKey as keyof Yacht];

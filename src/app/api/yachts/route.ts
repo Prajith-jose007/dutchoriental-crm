@@ -8,16 +8,19 @@ export async function GET(request: NextRequest) {
   console.log('[API GET /api/yachts] Received request');
   try {
     const yachtsDataDb: any[] = await query('SELECT * FROM yachts ORDER BY name ASC');
-    console.log('[API GET /api/yachts] Raw DB Data:', yachtsDataDb.length > 0 ? yachtsDataDb[0] : "No yachts from DB");
+    console.log('[API GET /api/yachts] Raw DB Data (first item):', yachtsDataDb.length > 0 ? yachtsDataDb[0] : "No yachts from DB");
 
     const yachts: Yacht[] = yachtsDataDb.map(dbYacht => {
       let packages: YachtPackage[] = [];
       if (dbYacht.packages_json) {
         try {
           packages = JSON.parse(dbYacht.packages_json);
-          if (!Array.isArray(packages)) packages = []; // Ensure it's an array
+          if (!Array.isArray(packages)) {
+            console.warn(`[API GET /api/yachts] packages_json for yacht ${dbYacht.id} did not parse to an array, defaulting to empty. Value:`, dbYacht.packages_json);
+            packages = [];
+          }
         } catch (e) {
-          console.error(`[API GET /api/yachts] Error parsing packages_json for yacht ${dbYacht.id}:`, e);
+          console.error(`[API GET /api/yachts] Error parsing packages_json for yacht ${dbYacht.id}:`, e, "Value:", dbYacht.packages_json);
           packages = [];
         }
       }
@@ -31,7 +34,7 @@ export async function GET(request: NextRequest) {
         customPackageInfo: dbYacht.customPackageInfo || undefined,
       };
     });
-    console.log('[API GET /api/yachts] Mapped Yachts Data (first item):', yachts.length > 0 ? yachts[0] : "No yachts mapped");
+    console.log('[API GET /api/yachts] Mapped Yachts Data (first item with parsed packages):', yachts.length > 0 ? yachts[0] : "No yachts mapped");
     return NextResponse.json(yachts, { status: 200 });
   } catch (error) {
     console.error('[API GET /api/yachts] Failed to fetch yachts:', error);
@@ -42,7 +45,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   console.log('[API POST /api/yachts] Received request');
   try {
-    const newYachtData = await request.json() as Omit<Yacht, 'id'> & { id?: string };
+    const newYachtData = await request.json() as Yacht; // Expect full Yacht object
     console.log('[API POST /api/yachts] Received data:', newYachtData);
 
     if (!newYachtData.id || !newYachtData.name || newYachtData.capacity === undefined) {
@@ -54,7 +57,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: `Yacht with ID ${newYachtData.id} already exists.` }, { status: 409 });
     }
     
-    const packagesJson = newYachtData.packages ? JSON.stringify(newYachtData.packages) : null;
+    const packagesJson = Array.isArray(newYachtData.packages) ? JSON.stringify(newYachtData.packages) : null;
 
     const yachtToStore = {
       id: newYachtData.id,
@@ -82,14 +85,12 @@ export async function POST(request: NextRequest) {
     console.log('[API POST /api/yachts] DB Insert Result:', result);
 
     if (result.affectedRows === 1) {
-      const createdYacht: Yacht = { // Construct the object to return, including parsed packages
-        id: yachtToStore.id,
-        name: yachtToStore.name,
-        imageUrl: yachtToStore.imageUrl || undefined,
-        capacity: yachtToStore.capacity,
-        status: yachtToStore.status as Yacht['status'],
-        packages: newYachtData.packages || [],
-        customPackageInfo: yachtToStore.customPackageInfo || undefined,
+      // Return the yacht object as it was sent by the client (with parsed packages)
+      const createdYacht: Yacht = { 
+        ...newYachtData, // Use the input data which has packages already parsed
+        status: newYachtData.status || 'Available', // ensure status default
+        imageUrl: newYachtData.imageUrl || undefined,
+        customPackageInfo: newYachtData.customPackageInfo || undefined,
       };
       return NextResponse.json(createdYacht, { status: 201 });
     } else {

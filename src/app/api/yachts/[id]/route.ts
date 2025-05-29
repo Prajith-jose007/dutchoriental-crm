@@ -4,19 +4,19 @@ import { NextResponse, type NextRequest } from 'next/server';
 import type { Yacht, YachtPackage } from '@/lib/types';
 import { query } from '@/lib/db';
 
+// Helper function to build the SET clause for UPDATE queries
 function buildYachtUpdateSetClause(data: Partial<Omit<Yacht, 'id' | 'packages'>> & { packages_json?: string }): { clause: string, values: any[] } {
   const fieldsToUpdate: string[] = [];
   const valuesToUpdate: any[] = [];
-  // Allowed direct DB columns, packages_json is handled separately if present
   const allowedKeys: (keyof (Omit<Yacht, 'id' | 'packages'> & { packages_json?: string }))[] = [
     'name', 'imageUrl', 'capacity', 'status',
-    'customPackageInfo', 'packages_json' // packages_json for the stringified array
+    'customPackageInfo', 'packages_json' 
   ];
 
   Object.entries(data).forEach(([key, value]) => {
     if (allowedKeys.includes(key as any) && value !== undefined) {
       fieldsToUpdate.push(`${key} = ?`);
-      if (typeof value === 'number' && isNaN(value)) {
+      if (typeof value === 'number' && isNaN(value)) { // Should not happen with proper client-side validation
         valuesToUpdate.push(0); 
       } else if (typeof value === 'string' && value.trim() === '' && (key === 'imageUrl' || key === 'customPackageInfo')) {
          valuesToUpdate.push(null);
@@ -44,10 +44,13 @@ export async function GET(
       if (dbYacht.packages_json) {
         try {
           packages = JSON.parse(dbYacht.packages_json);
-          if (!Array.isArray(packages)) packages = [];
+           if (!Array.isArray(packages)) {
+            console.warn(`[API GET /api/yachts/${id}] packages_json did not parse to an array, defaulting to empty. Value:`, dbYacht.packages_json);
+            packages = [];
+          }
         } catch (e) {
-          console.error(`[API GET /api/yachts/${id}] Error parsing packages_json for yacht ${dbYacht.id}:`, e);
-          packages = [];
+          console.error(`[API GET /api/yachts/${id}] Error parsing packages_json for yacht ${dbYacht.id}:`, e, "Value:", dbYacht.packages_json);
+          packages = []; 
         }
       }
       const yacht: Yacht = {
@@ -59,7 +62,7 @@ export async function GET(
         packages: packages,
         customPackageInfo: dbYacht.customPackageInfo || undefined,
       };
-      console.log(`[API GET /api/yachts/${id}] Mapped Yacht Data:`, yacht);
+      console.log(`[API GET /api/yachts/${id}] Mapped Yacht Data with parsed packages:`, yacht);
       return NextResponse.json(yacht, { status: 200 });
     } else {
       return NextResponse.json({ message: 'Yacht not found' }, { status: 404 });
@@ -77,10 +80,11 @@ export async function PUT(
   const id = params.id;
   console.log(`[API PUT /api/yachts/${id}] Received request`);
   try {
-    const updatedYachtDataFromClient = await request.json() as Partial<Yacht>;
+    // Expect the full Yacht object from the client, including the packages array
+    const updatedYachtDataFromClient = await request.json() as Yacht; 
     console.log(`[API PUT /api/yachts/${id}] Received data:`, updatedYachtDataFromClient);
 
-    const existingYachtResult: any = await query('SELECT * FROM yachts WHERE id = ?', [id]);
+    const existingYachtResult: any = await query('SELECT id FROM yachts WHERE id = ?', [id]);
     if (existingYachtResult.length === 0) {
       return NextResponse.json({ message: 'Yacht not found' }, { status: 404 });
     }
@@ -88,10 +92,9 @@ export async function PUT(
     // Prepare data for DB update, separating packages for JSON stringification
     const { packages, ...otherYachtData } = updatedYachtDataFromClient;
     const dataForUpdateClause: Partial<Omit<Yacht, 'id' | 'packages'>> & { packages_json?: string } = { ...otherYachtData };
-    if (packages !== undefined) { // if packages array is part of update
-        dataForUpdateClause.packages_json = JSON.stringify(packages || []); // Ensure it's an array even if null/undefined
-    }
-
+    
+    // Always stringify packages, even if empty, to ensure the column is updated consistently
+    dataForUpdateClause.packages_json = Array.isArray(packages) ? JSON.stringify(packages) : JSON.stringify([]);
 
     const { clause, values } = buildYachtUpdateSetClause(dataForUpdateClause);
 
@@ -105,34 +108,19 @@ export async function PUT(
     console.log(`[API PUT /api/yachts/${id}] DB Update Result:`, result);
     
     if (result.affectedRows === 0) {
-       return NextResponse.json({ message: 'Yacht not found during update or no changes made' }, { status: 404 });
+       // This could also mean no actual changes were made to the row if data was identical
+       console.warn(`[API PUT /api/yachts/${id}] Yacht not found during update or no changes made to the row.`);
     }
     
-    // Fetch the updated yacht to return it with parsed packages
-    const updatedYachtFromDbResult: any[] = await query('SELECT * FROM yachts WHERE id = ?', [id]);
-    if (updatedYachtFromDbResult.length > 0) {
-      const dbYacht = updatedYachtFromDbResult[0];
-      let finalPackages: YachtPackage[] = [];
-      if (dbYacht.packages_json) {
-        try {
-          finalPackages = JSON.parse(dbYacht.packages_json);
-          if (!Array.isArray(finalPackages)) finalPackages = [];
-        } catch (e) { finalPackages = []; }
-      }
-      const finalUpdatedYacht: Yacht = {
-        id: dbYacht.id,
-        name: dbYacht.name,
-        imageUrl: dbYacht.imageUrl || undefined,
-        capacity: Number(dbYacht.capacity || 0),
-        status: dbYacht.status || 'Available',
-        packages: finalPackages,
-        customPackageInfo: dbYacht.customPackageInfo || undefined,
-      };
-      return NextResponse.json(finalUpdatedYacht, { status: 200 });
-    }
-    // Fallback if fetch after update fails
-    return NextResponse.json({ message: 'Yacht updated, but failed to fetch confirmation with parsed packages.' }, { status: 200 });
-
+    // Return the data as it was received and processed for the update, which includes parsed packages
+    const finalUpdatedYacht: Yacht = {
+        ...updatedYachtDataFromClient, // This already has packages parsed
+        // Ensure defaults for any potentially missing optional fields if not sent by client
+        status: updatedYachtDataFromClient.status || 'Available',
+        imageUrl: updatedYachtDataFromClient.imageUrl || undefined,
+        customPackageInfo: updatedYachtDataFromClient.customPackageInfo || undefined,
+    };
+    return NextResponse.json(finalUpdatedYacht, { status: 200 });
 
   } catch (error) {
     console.error(`[API PUT /api/yachts/${id}] Failed to update yacht:`, error);

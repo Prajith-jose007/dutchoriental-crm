@@ -31,38 +31,35 @@ export function Logo({ className, textClassName, hideDefaultText = false, ...res
     if (storedLogo) {
       setUploadedLogoUrl(storedLogo);
       setCurrentSrc(storedLogo);
-      setShowDefaultAppName(false); // If custom logo, don't show app name text
+      setShowDefaultAppName(false); 
     } else {
-      // If no stored logo, use the default and decide on text based on hideDefaultText
       setCurrentSrc(DEFAULT_LOGO_SRC);
       setShowDefaultAppName(!hideDefaultText);
     }
     setIsLoading(false);
-  }, [hideDefaultText]); // Re-run if hideDefaultText changes
+  }, [hideDefaultText]);
 
   const handleImageError = () => {
     console.warn(`Error loading image: ${currentSrc}. Fallback or text only.`);
     if (currentSrc !== DEFAULT_LOGO_SRC && uploadedLogoUrl) {
-      // If uploaded logo fails, try to fall back to default SVG
       setCurrentSrc(DEFAULT_LOGO_SRC);
-      setShowDefaultAppName(!hideDefaultText); // Show app name with default icon if not hidden
-      setUploadedLogoUrl(null);
+      setShowDefaultAppName(!hideDefaultText);
+      setUploadedLogoUrl(null); // Clear the problematic uploaded URL state
       try {
         localStorage.removeItem(LOGO_STORAGE_KEY);
       } catch (error) {
         console.error("Could not remove from localStorage:", error);
       }
     } else {
-      // If default SVG also fails, show nothing or just text
-      setCurrentSrc(''); // No image source
-      setShowDefaultAppName(!hideDefaultText); // Show app name if not hidden
+      setCurrentSrc(''); 
+      setShowDefaultAppName(!hideDefaultText);
     }
   };
 
   if (isLoading) {
     return (
       <div
-        style={{ height: '50px', maxWidth: '150px', width: '100%' }}
+        style={{ height: '50px', width: '100%' }} // Updated skeleton style
         className={cn("animate-pulse bg-muted/50 rounded-md flex items-center justify-center", className)}
         {...rest}
       />
@@ -72,16 +69,19 @@ export function Logo({ className, textClassName, hideDefaultText = false, ...res
   const showImage = currentSrc && currentSrc !== '';
 
   return (
-    <div className={cn("flex items-center justify-center gap-2", className)} style={{ height: '50px', maxWidth: '150px' }} {...rest}>
+    <div 
+      className={cn("relative flex items-center justify-center w-full", className)} // Added w-full and relative
+      style={{ height: '50px' }} 
+      {...rest}
+    >
       {showImage ? (
         <Image
           src={currentSrc}
           alt={`${AppName} Logo`}
-          width={40}
-          height={40}
-          className="object-contain"
+          fill // Use fill to make image cover the parent div
+          className="object-contain" // Maintain aspect ratio and fit within bounds
           onError={handleImageError}
-          priority={currentSrc === DEFAULT_LOGO_SRC} // Prioritize loading default system logo
+          priority={currentSrc === DEFAULT_LOGO_SRC}
         />
       ) : null}
       {showDefaultAppName && (

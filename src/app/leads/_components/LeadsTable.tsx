@@ -50,20 +50,19 @@ const leadColumns: LeadTableColumn[] = [
   { accessorKey: 'type', header: 'Type' },
   { accessorKey: 'transactionId', header: 'Transaction ID' },
   { accessorKey: 'modeOfPayment', header: 'Payment Mode' },
-  { accessorKey: 'notes', header: 'Notes', isNotes: true }, // Ensure notes column is here
-
+  
   { accessorKey: 'totalGuests', header: 'Total Guests', isNumeric: true },
 
-  { accessorKey: 'qty_childRate', header: 'Child Pkg Qty', isNumeric: true },
-  { accessorKey: 'qty_adultStandardRate', header: 'Adult Std Qty', isNumeric: true },
-  { accessorKey: 'qty_adultStandardDrinksRate', header: 'Adult Std Drinks Qty', isNumeric: true },
-  { accessorKey: 'qty_vipChildRate', header: 'VIP Child Qty', isNumeric: true },
-  { accessorKey: 'qty_vipAdultRate', header: 'VIP Adult Qty', isNumeric: true },
-  { accessorKey: 'qty_vipAdultDrinksRate', header: 'VIP Adult Drinks Qty', isNumeric: true },
-  { accessorKey: 'qty_royalChildRate', header: 'Royal Child Qty', isNumeric: true },
-  { accessorKey: 'qty_royalAdultRate', header: 'Royal Adult Qty', isNumeric: true },
-  { accessorKey: 'qty_royalDrinksRate', header: 'Royal Drinks Qty', isNumeric: true },
-  { accessorKey: 'othersAmtCake', header: 'Custom Charge Qty', isNumeric: true },
+  { accessorKey: 'qty_childRate', header: 'CHILD', isNumeric: true },
+  { accessorKey: 'qty_adultStandardRate', header: 'STD', isNumeric: true },
+  { accessorKey: 'qty_adultStandardDrinksRate', header: 'STD DRK', isNumeric: true },
+  { accessorKey: 'qty_vipChildRate', header: 'VIP CH', isNumeric: true },
+  { accessorKey: 'qty_vipAdultRate', header: 'VIP', isNumeric: true },
+  { accessorKey: 'qty_vipAdultDrinksRate', header: 'VIP AL', isNumeric: true },
+  { accessorKey: 'qty_royalChildRate', header: 'RYL CH', isNumeric: true },
+  { accessorKey: 'qty_royalAdultRate', header: 'RYL', isNumeric: true },
+  { accessorKey: 'qty_royalDrinksRate', header: 'RYL DRK', isNumeric: true },
+  { accessorKey: 'othersAmtCake', header: 'Custom Charge Qty', isNumeric: true }, // This is the quantity for otherChargeRate from Yacht
 
   { accessorKey: 'totalAmount', header: 'Total Amt', isCurrency: true },
   { accessorKey: 'commissionPercentage', header: 'Agent Disc. %', isPercentage: true },
@@ -71,6 +70,7 @@ const leadColumns: LeadTableColumn[] = [
   { accessorKey: 'netAmount', header: 'Net Amt', isCurrency: true },
   { accessorKey: 'paidAmount', header: 'Paid Amt', isCurrency: true },
   { accessorKey: 'balanceAmount', header: 'Balance', isCurrency: true },
+  { accessorKey: 'notes', header: 'Notes', isNotes: true },
   { accessorKey: 'lastModifiedByUserId', header: 'Modified By', isUserLookup: true },
   { accessorKey: 'ownerUserId', header: 'Lead Owner', isUserLookup: true },
   { accessorKey: 'createdAt', header: 'Created At', isDate: true },
@@ -120,7 +120,7 @@ export function LeadsTable({
   }
 
   const formatNumeric = (value: number | undefined | null) => {
-    if (typeof value !== 'number' || isNaN(value)) return '0';
+    if (value === null || value === undefined || isNaN(value)) return '0'; // Changed from '-' to '0' as these are quantities
     return String(value);
   }
 
@@ -128,11 +128,12 @@ export function LeadsTable({
     if (!dateString) return '-';
     try {
       const date = parseISO(dateString);
-      if (!isValid(date)) return dateString;
+      if (!isValid(date)) return dateString; // Return original string if not a valid ISO date
       const dateFormat = includeTime ? 'dd/MM/yyyy HH:mm' : 'dd/MM/yyyy';
       return format(date, dateFormat);
     } catch (e) {
-      return dateString;
+      console.warn(`Error formatting date: ${dateString}`, e);
+      return dateString; // Return original string on error
     }
   };
 
@@ -143,6 +144,7 @@ export function LeadsTable({
 
   const calculateTotalGuests = (lead: Lead): number => {
     let total = 0;
+    // Summing up all 9 standardized guest-related package quantities
     total += lead.qty_childRate || 0;
     total += lead.qty_adultStandardRate || 0;
     total += lead.qty_adultStandardDrinksRate || 0;
@@ -152,7 +154,7 @@ export function LeadsTable({
     total += lead.qty_royalChildRate || 0;
     total += lead.qty_royalAdultRate || 0;
     total += lead.qty_royalDrinksRate || 0;
-    // othersAmtCake is not typically a guest count, so it's omitted here.
+    // othersAmtCake is a quantity for a custom charge, not typically a direct guest count
     return total;
   };
 
@@ -213,7 +215,7 @@ export function LeadsTable({
             {leadColumns.map(col => (
               <TableHead key={col.accessorKey} className={col.accessorKey === 'select' ? "w-[40px]" : ""}>
                 {col.accessorKey === 'select' ? (
-                  <Checkbox aria-label="Select all rows" disabled />
+                  <Checkbox aria-label="Select all rows" disabled /> // For future bulk actions
                 ) : col.header}
               </TableHead>
             ))}
@@ -229,9 +231,11 @@ export function LeadsTable({
           ) : (
             leads.map((lead) => (
               <TableRow key={lead.id}>
+                {/* Cell for checkbox - for future bulk actions */}
                 <TableCell>
                   <Checkbox aria-label={`Select row ${lead.id}`} disabled />
                 </TableCell>
+                {/* Iterate over columns, excluding the first (checkbox) and last (actions) */}
                 {leadColumns.slice(1, -1).map(col => (
                   <TableCell key={col.accessorKey}>
                     {renderCellContent(lead, col)}
@@ -249,7 +253,7 @@ export function LeadsTable({
                       <DropdownMenuLabel>Actions</DropdownMenuLabel>
                       <DropdownMenuItem
                         onClick={() => onEditLead(lead)}
-                        disabled={!!currentUserId && !!lead.ownerUserId && lead.ownerUserId !== currentUserId}
+                        disabled={!!currentUserId && !!lead.ownerUserId && lead.ownerUserId !== currentUserId && currentUserId !== 'DO-admin'} // Admins can always edit
                       >
                         Edit Lead
                       </DropdownMenuItem>
@@ -271,5 +275,3 @@ export function LeadsTable({
     </ScrollArea>
   );
 }
-
-    

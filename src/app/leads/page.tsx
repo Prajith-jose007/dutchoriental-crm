@@ -6,19 +6,17 @@ import { PageHeader } from '@/components/PageHeader';
 import { LeadsTable } from './_components/LeadsTable';
 import { ImportExportButtons } from './_components/ImportExportButtons';
 import { LeadFormDialog } from './_components/LeadFormDialog';
-import type { Lead, LeadStatus, User, Agent, Yacht } from '@/lib/types';
+import type { Lead, LeadStatus, User, Agent, Yacht, ExportedLeadStatus, ExportedModeOfPayment, ExportedLeadType, LeadType } from '@/lib/types';
+import { leadStatusOptions, modeOfPaymentOptions, leadTypeOptions } from '@/lib/types'; // Import options
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { DatePicker } from '@/components/ui/date-picker';
 import { Skeleton } from '@/components/ui/skeleton';
-import { format, parseISO, isWithinInterval, isValid, formatISO, getYear, getMonth as getMonthDateFns } from 'date-fns'; 
+import { format, parseISO, isWithinInterval, isValid, formatISO } from 'date-fns'; 
 
 const SIMULATED_CURRENT_USER_ID = 'DO-user1';
-const USER_DATA_STORAGE_KEY = 'dutchOrientalCrmUsers';
-
-const leadStatusOptions: LeadStatus[] = ['Balance', 'Closed', 'Conformed', 'Upcoming'];
 
 const csvHeaderMapping: { [csvHeaderKey: string]: keyof Lead } = {
   'id': 'id',
@@ -26,11 +24,12 @@ const csvHeaderMapping: { [csvHeaderKey: string]: keyof Lead } = {
   'agent': 'agent', 'agentid': 'agent',
   'yacht': 'yacht', 'yachtid': 'yacht',
   'status': 'status',
-  'month': 'month', 'event date': 'month', 'lead/event date': 'month',
-  'notes': 'notes',
+  'month': 'month', 'lead/event date': 'month', // 'month' is the lead/event date
+  'notes': 'notes', 'user feed': 'notes',
   'type': 'type', 'lead type': 'type',
   'invoiceid': 'invoiceId', 'invoice id': 'invoiceId',
   'modeofpayment': 'modeOfPayment', 'payment mode': 'modeOfPayment',
+  
   // Standardized Package Quantities (match Lead type fields)
   'qty_childrate': 'qty_childRate',
   'qty_adultstandardrate': 'qty_adultStandardRate',
@@ -68,8 +67,9 @@ const convertCsvValue = (key: keyof Lead, value: string): any => {
         return 0;
       case 'modeOfPayment': return 'Online';
       case 'status': return 'Upcoming';
+      case 'type': return 'Private'; // Default LeadType
       case 'notes': return '';
-      case 'month': return formatISO(new Date()); // Default to current date for event date
+      case 'month': return formatISO(new Date()); 
       case 'createdAt': case 'updatedAt': return formatISO(new Date());
       default: return undefined;
     }
@@ -84,22 +84,19 @@ const convertCsvValue = (key: keyof Lead, value: string): any => {
       const num = parseFloat(trimmedValue);
       return isNaN(num) ? 0 : num;
     case 'modeOfPayment':
-      const validModes: Lead['modeOfPayment'][] = ['Online', 'Credit', 'Cash/Card'];
-      return validModes.includes(trimmedValue as Lead['modeOfPayment']) ? trimmedValue : 'Online';
+      return modeOfPaymentOptions.includes(trimmedValue as ExportedModeOfPayment) ? trimmedValue : 'Online';
     case 'status':
-      return leadStatusOptions.includes(trimmedValue as LeadStatus) ? trimmedValue : 'Upcoming';
-    case 'month': // This is the Lead/Event Date
+      return leadStatusOptions.includes(trimmedValue as ExportedLeadStatus) ? trimmedValue : 'Upcoming';
+    case 'type':
+      return leadTypeOptions.includes(trimmedValue as ExportedLeadType) ? trimmedValue : 'Private';
+    case 'month': 
     case 'createdAt':
     case 'updatedAt':
       try {
-        // First, try to parse as ISO (most robust)
         const parsedDate = parseISO(trimmedValue);
         if (isValid(parsedDate)) return formatISO(parsedDate);
       } catch (e) { /* ignore ISO parse error and try other formats */ }
       
-      // Attempt to parse common date formats if ISO fails
-      // For simplicity, this example assumes dates might be in common US or EU formats
-      // A more robust solution would use date-fns parse with multiple format strings
       try {
         const dateObj = new Date(trimmedValue); 
         if (isValid(dateObj)) return formatISO(dateObj);
@@ -126,14 +123,13 @@ export default function LeadsPage() {
 
   const [fetchError, setFetchError] = useState<string | null>(null);
 
-  // Filters for createdDate
   const [startDate, setStartDate] = useState<Date | undefined>(undefined);
   const [endDate, setEndDate] = useState<Date | undefined>(undefined);
   
   const [statusFilter, setStatusFilter] = useState<LeadStatus | 'all'>('all');
   const [selectedYachtId, setSelectedYachtId] = useState<string>('all');
   const [selectedAgentId, setSelectedAgentId] = useState<string>('all');
-  const [selectedUserId, setSelectedUserId] = useState<string>('all'); // For lastModifiedByUserId filter
+  const [selectedUserId, setSelectedUserId] = useState<string>('all'); 
   const [isImporting, setIsImporting] = useState(false);
 
   const fetchAllData = async () => {
@@ -144,7 +140,7 @@ export default function LeadsPage() {
         fetch('/api/leads'),
         fetch('/api/agents'),
         fetch('/api/yachts'),
-        fetch('/api/users'), // Assuming you have an API for users
+        fetch('/api/users'), 
       ]);
 
       if (!leadsRes.ok) throw new Error(`Failed to fetch leads: ${leadsRes.statusText}`);
@@ -207,16 +203,16 @@ export default function LeadsPage() {
       ...submittedLeadData,
       lastModifiedByUserId: SIMULATED_CURRENT_USER_ID,
       updatedAt: new Date().toISOString(),
-      // month is already an ISO string from the form's conversion
+      month: submittedLeadData.month ? formatISO(parseISO(submittedLeadData.month)) : formatISO(new Date()),
     };
     
-    if (!editingLead) { // Creating new lead
+    if (!editingLead) { 
       payload.ownerUserId = SIMULATED_CURRENT_USER_ID;
       payload.createdAt = new Date().toISOString();
       payload.id = payload.id || `lead-${Date.now()}-${Math.random().toString(36).substring(2,7)}`;
-    } else { // Updating existing lead
-      payload.ownerUserId = editingLead.ownerUserId || SIMULATED_CURRENT_USER_ID; // Preserve original owner or set if missing
-      payload.createdAt = editingLead.createdAt || new Date().toISOString(); // Preserve original creation date
+    } else { 
+      payload.ownerUserId = editingLead.ownerUserId || SIMULATED_CURRENT_USER_ID; 
+      payload.createdAt = editingLead.createdAt || new Date().toISOString(); 
     }
 
     try {
@@ -245,7 +241,7 @@ export default function LeadsPage() {
         description: `Lead for ${submittedLeadData.clientName} has been saved.`,
       });
       
-      await fetchAllData(); // Re-fetch all data to ensure UI consistency
+      await fetchAllData(); 
       setIsLeadDialogOpen(false);
       setEditingLead(null);
 
@@ -312,7 +308,7 @@ export default function LeadsPage() {
         console.log("[CSV Import Leads] Detected Normalized Headers:", fileHeaders);
 
         const newLeadsFromCsv: Lead[] = [];
-        // Fetch current leads from API to check for ID duplicates accurately
+        
         const currentApiLeadsResponse = await fetch('/api/leads');
         const currentApiLeads: Lead[] = currentApiLeadsResponse.ok ? await currentApiLeadsResponse.json() : [];
         const existingLeadIds = new Set(currentApiLeads.map(l => l.id));
@@ -364,10 +360,10 @@ export default function LeadsPage() {
             status: parsedRow.status || 'Upcoming',
             month: parsedRow.month || formatISO(new Date()), 
             notes: parsedRow.notes || undefined,
-            type: parsedRow.type || 'Imported',
+            type: parsedRow.type || 'Private',
             invoiceId: parsedRow.invoiceId || undefined,
             modeOfPayment: parsedRow.modeOfPayment || 'Online',
-            // Initialize all 9 standardized package quantities
+            
             qty_childRate: parsedRow.qty_childRate ?? 0,
             qty_adultStandardRate: parsedRow.qty_adultStandardRate ?? 0,
             qty_adultStandardDrinksRate: parsedRow.qty_adultStandardDrinksRate ?? 0,
@@ -377,8 +373,9 @@ export default function LeadsPage() {
             qty_royalChildRate: parsedRow.qty_royalChildRate ?? 0,
             qty_royalAdultRate: parsedRow.qty_royalAdultRate ?? 0,
             qty_royalDrinksRate: parsedRow.qty_royalDrinksRate ?? 0,
-            othersAmtCake: parsedRow.othersAmtCake ?? 0, // Qty for custom charge
-            totalAmount: parsedRow.totalAmount ?? 0, // Should be recalculated ideally, or taken as is
+            othersAmtCake: parsedRow.othersAmtCake ?? 0, 
+            
+            totalAmount: parsedRow.totalAmount ?? 0, 
             commissionPercentage: parsedRow.commissionPercentage ?? 0,
             commissionAmount: parsedRow.commissionAmount ?? 0,
             netAmount: parsedRow.netAmount ?? 0,
@@ -403,7 +400,7 @@ export default function LeadsPage() {
           }
 
           newLeadsFromCsv.push(fullLead);
-          existingLeadIds.add(fullLead.id); // Add to set to prevent duplicates within the same batch
+          existingLeadIds.add(fullLead.id); 
         }
 
         if (newLeadsFromCsv.length > 0) {
@@ -434,7 +431,7 @@ export default function LeadsPage() {
         const endTime = Date.now();
         const durationInSeconds = ((endTime - startTime) / 1000).toFixed(2);
         if (successCount > 0 || skippedCount > 0) {
-            await fetchAllData(); // Refresh list if any action was taken
+            await fetchAllData(); 
         }
         toast({ 
             title: 'Import Processed', 
@@ -484,7 +481,7 @@ export default function LeadsPage() {
     setStatusFilter('all');
   };
 
-  if (isLoading && allLeads.length === 0 && allAgents.length === 0 && allYachts.length === 0) { // Check all critical data
+  if (isLoading && allLeads.length === 0 && allAgents.length === 0 && allYachts.length === 0) { 
     return (
       <div className="container mx-auto py-2">
         <PageHeader
@@ -522,7 +519,7 @@ export default function LeadsPage() {
       toast({ title: 'No Data', description: 'There are no leads (matching current filters) to export.', variant: 'default' });
       return;
     }
-    // Define the headers based on the Lead type, focusing on the new 9 package qty fields
+    
     const headers: (keyof Lead)[] = [
       'id', 'clientName', 'agent', 'yacht', 'status', 'month', 'type', 'invoiceId', 'modeOfPayment', 'notes',
       'qty_childRate', 'qty_adultStandardRate', 'qty_adultStandardDrinksRate',
@@ -532,13 +529,16 @@ export default function LeadsPage() {
       'commissionAmount', 'netAmount', 'paidAmount', 'balanceAmount',
       'createdAt', 'updatedAt', 'lastModifiedByUserId', 'ownerUserId'
     ];
-    const escapeCsvCell = (cellData: any): string => {
+    const escapeCsvCell = (cellData: any, headerKey: keyof Lead): string => {
       if (cellData === null || cellData === undefined) return '';
       let stringValue = String(cellData);
-      // For date fields (month, createdAt, updatedAt), format them as dd/MM/yyyy for CSV
-      if (['month', 'createdAt', 'updatedAt'].includes(stringValue) && isValid(parseISO(stringValue))) {
+      
+      if (['month', 'createdAt', 'updatedAt'].includes(headerKey) ) {
           try {
-              stringValue = format(parseISO(stringValue), 'dd/MM/yyyy');
+              const date = parseISO(stringValue);
+              if (isValid(date)) {
+                stringValue = format(date, 'dd/MM/yyyy HH:mm:ss');
+              }
           } catch (e) { /* ignore if not a valid date string for these specific keys */ }
       }
       if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n')) {
@@ -549,7 +549,7 @@ export default function LeadsPage() {
     const csvRows = [
       headers.join(','),
       ...filteredLeads.map(lead =>
-        headers.map(header => escapeCsvCell(lead[header])).join(',')
+        headers.map(header => escapeCsvCell(lead[header], header)).join(',')
       )
     ];
     const csvString = csvRows.join('\n');
@@ -666,3 +666,4 @@ export default function LeadsPage() {
     </div>
   );
 }
+

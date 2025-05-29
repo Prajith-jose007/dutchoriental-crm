@@ -59,6 +59,8 @@ export interface Invoice {
 
 export type LeadStatus = 'Balance' | 'Closed' | 'Conformed' | 'Upcoming';
 export type ModeOfPayment = 'Online' | 'Credit' | 'Cash/Card';
+export type LeadType = 'Dinner Cruise' | 'Sunset Cruise' | 'Private';
+export const leadTypeOptions: LeadType[] = ['Dinner Cruise', 'Sunset Cruise', 'Private'];
 
 
 export interface Lead {
@@ -68,7 +70,7 @@ export interface Lead {
   month: string; // Primary Lead/Event Date as ISO string (YYYY-MM-DDTHH:mm:ss.sssZ)
   notes?: string; // For user feed/notes about the lead
   yacht: string; // Yacht ID
-  type: string; // Lead type
+  type: LeadType; // Lead type
   invoiceId?: string;
   modeOfPayment: ModeOfPayment;
   clientName: string;
@@ -121,4 +123,5 @@ export interface BookingsByAgentData {
 }
 
 // Re-exporting for easier import in CSV parser
-export type { LeadStatus as ExportedLeadStatus, ModeOfPayment as ExportedModeOfPayment };
+export type { LeadStatus as ExportedLeadStatus, ModeOfPayment as ExportedModeOfPayment, LeadType as ExportedLeadType };
+

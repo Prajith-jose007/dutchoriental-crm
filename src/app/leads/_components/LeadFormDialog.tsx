@@ -34,22 +34,21 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Textarea } from '@/components/ui/textarea';
 import { DatePicker } from '@/components/ui/date-picker';
-import type { Lead, Agent, Yacht, ModeOfPayment, LeadStatus } from '@/lib/types';
+import type { Lead, Agent, Yacht, ModeOfPayment, LeadStatus, LeadType } from '@/lib/types';
+import { leadStatusOptions, modeOfPaymentOptions, leadTypeOptions } from '@/lib/types'; // Import options
 import { useToast } from '@/hooks/use-toast';
 import { useEffect, useState } from 'react';
-import { format, parseISO, formatISO, isValid } from 'date-fns';
+import { formatISO, parseISO, isValid } from 'date-fns';
 
-const leadStatusOptions: LeadStatus[] = ['Balance', 'Closed', 'Conformed', 'Upcoming'];
-const modeOfPaymentOptions: ModeOfPayment[] = ['Online', 'Credit', 'Cash/Card'];
-
+// Define Zod schema based on the 9 standardized package quantities
 const leadFormSchema = z.object({
   id: z.string().optional(),
   agent: z.string().min(1, 'Agent is required'),
   status: z.enum(leadStatusOptions),
-  month: z.date({ required_error: "Lead/Event Date is required." }), // This is the Lead/Event Date
+  month: z.date({ required_error: "Lead/Event Date is required." }),
   notes: z.string().optional(),
   yacht: z.string().min(1, 'Yacht selection is required'),
-  type: z.string().min(1, 'Lead type is required'),
+  type: z.enum(leadTypeOptions, { required_error: "Lead type is required."}),
   invoiceId: z.string().optional(),
   modeOfPayment: z.enum(modeOfPaymentOptions),
   clientName: z.string().min(1, 'Client name is required'),
@@ -65,7 +64,7 @@ const leadFormSchema = z.object({
   qty_royalAdultRate: z.coerce.number().min(0).optional().default(0),
   qty_royalDrinksRate: z.coerce.number().min(0).optional().default(0),
   
-  othersAmtCake: z.coerce.number().min(0).optional().default(0), // Quantity for custom charge
+  othersAmtCake: z.coerce.number().min(0).optional().default(0), // Quantity for custom charge from yacht
 
   totalAmount: z.coerce.number().min(0).default(0),
   commissionPercentage: z.coerce.number().min(0).max(100).default(0),
@@ -88,6 +87,7 @@ interface LeadFormDialogProps {
   onSubmitSuccess: (data: Lead) => void;
 }
 
+// Configuration for the 9 standardized package quantities
 const allPackageItemConfigs: { qtyKey: keyof LeadFormData; rateKey: keyof Yacht; label: string; isGuestCount?: boolean }[] = [
   { qtyKey: 'qty_childRate', rateKey: 'childRate', label: 'Child Package Qty', isGuestCount: true },
   { qtyKey: 'qty_adultStandardRate', rateKey: 'adultStandardRate', label: 'Adult Standard Package Qty', isGuestCount: true },
@@ -100,22 +100,21 @@ const allPackageItemConfigs: { qtyKey: keyof LeadFormData; rateKey: keyof Yacht;
   { qtyKey: 'qty_royalDrinksRate', rateKey: 'royalDrinksRate', label: 'Royal Drinks Package Qty', isGuestCount: true },
 ];
 
-// Config for the custom charge quantity field
 const customChargeConfig = {
-  qtyKey: 'othersAmtCake' as keyof LeadFormData, // This field in Lead type stores the quantity
-  rateKey: 'otherChargeRate' as keyof Yacht,    // This field in Yacht type stores the rate
-  nameKey: 'otherChargeName' as keyof Yacht     // This field in Yacht type stores the custom name
+  qtyKey: 'othersAmtCake' as keyof LeadFormData, 
+  rateKey: 'otherChargeRate' as keyof Yacht,    
+  nameKey: 'otherChargeName' as keyof Yacht     
 };
 
 
 const getDefaultFormValues = (): LeadFormData => ({
     agent: '', status: 'Upcoming', month: new Date(), yacht: '',
-    type: '', modeOfPayment: 'Online', clientName: '',
+    type: 'Private', modeOfPayment: 'Online', clientName: '',
     notes: '', invoiceId: '',
     qty_childRate: 0, qty_adultStandardRate: 0, qty_adultStandardDrinksRate: 0,
     qty_vipChildRate: 0, qty_vipAdultRate: 0, qty_vipAdultDrinksRate: 0,
     qty_royalChildRate: 0, qty_royalAdultRate: 0, qty_royalDrinksRate: 0,
-    othersAmtCake: 0, // Quantity for custom charge
+    othersAmtCake: 0, 
     totalAmount: 0, commissionPercentage: 0, commissionAmount:0, netAmount: 0,
     paidAmount: 0, balanceAmount: 0,
     lastModifiedByUserId: undefined,
@@ -136,9 +135,10 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
     resolver: zodResolver(leadFormSchema),
     defaultValues: lead
       ? {
-          ...getDefaultFormValues(),
-          ...lead,
+          ...getDefaultFormValues(), // Ensure all fields are present
+          ...lead, // Spread lead data
           month: lead.month && isValid(parseISO(lead.month)) ? parseISO(lead.month) : new Date(), 
+          // Ensure numeric fields default to 0 if undefined/null from lead object
           qty_childRate: lead.qty_childRate || 0,
           qty_adultStandardRate: lead.qty_adultStandardRate || 0,
           qty_adultStandardDrinksRate: lead.qty_adultStandardDrinksRate || 0,
@@ -219,9 +219,8 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
         }
       });
 
-      // Add custom other charge if rate and quantity are present
       const customChargeQty = form.getValues(customChargeConfig.qtyKey) as number || 0;
-      const customChargeRate = selectedYacht[customChargeConfig.rateKey] as number || 0;
+      const customChargeRate = selectedYacht[customChargeConfig.rateKey as keyof Yacht] as number || 0;
       if (customChargeQty > 0 && customChargeRate > 0) {
         currentTotalAmount += customChargeQty * customChargeRate;
       }
@@ -274,7 +273,6 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
 
       form.reset(currentLeadValues);
       
-      // Initial calculation of total guests when dialog opens with a lead
       if (lead) {
         let initialTotalGuests = 0;
         allPackageItemConfigs.forEach(pkgConfig => {
@@ -417,7 +415,12 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Lead Type</FormLabel>
-                    <FormControl><Input placeholder="e.g., Corporate Event" {...field} /></FormControl>
+                     <Select onValueChange={field.onChange} value={field.value || undefined} defaultValue={field.value}>
+                      <FormControl><SelectTrigger><SelectValue placeholder="Select lead type" /></SelectTrigger></FormControl>
+                      <SelectContent>
+                        {leadTypeOptions.map(typeOpt => (<SelectItem key={typeOpt} value={typeOpt}>{typeOpt}</SelectItem>))}
+                      </SelectContent>
+                    </Select>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -450,25 +453,6 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
                 )}
               />
             </div>
-
-            <FormField
-              control={form.control}
-              name="notes"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Notes / User Feed</FormLabel>
-                  <FormControl>
-                    <Textarea
-                      placeholder="Add any notes or updates about this lead..."
-                      className="resize-y min-h-[100px]"
-                      {...field}
-                      value={field.value || ''}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
             
             <div>
                 <h3 className="text-lg font-medium pt-4 border-t mt-6">Package Item Quantities</h3>
@@ -502,8 +486,8 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
                     control={form.control}
                     name={customChargeConfig.qtyKey}
                     render={({ field }) => {
-                        const customChargeName = selectedYachtForRateDisplay?.[customChargeConfig.nameKey];
-                        const customChargeRate = selectedYachtForRateDisplay?.[customChargeConfig.rateKey];
+                        const customChargeName = selectedYachtForRateDisplay?.[customChargeConfig.nameKey as keyof Yacht];
+                        const customChargeRate = selectedYachtForRateDisplay?.[customChargeConfig.rateKey as keyof Yacht];
                         const labelText = customChargeName 
                             ? `${customChargeName} Qty` 
                             : 'Quantity for Custom Charge';
@@ -520,7 +504,24 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
                     }}
                 />
             </div>
-
+             <FormField
+              control={form.control}
+              name="notes"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Notes / User Feed</FormLabel>
+                  <FormControl>
+                    <Textarea
+                      placeholder="Add any notes or updates about this lead..."
+                      className="resize-y min-h-[100px]"
+                      {...field}
+                      value={field.value || ''}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             <h3 className="text-lg font-medium pt-4 border-t mt-6">Financials</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -615,3 +616,4 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
     </Dialog>
   );
 }
+

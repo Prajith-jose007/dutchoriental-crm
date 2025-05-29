@@ -6,15 +6,14 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { AppName } from "@/lib/navigation";
-import { Ship } from "lucide-react";
+import { Logo } from "@/components/icons/Logo"; // Import Logo
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 
-// Define admin credentials
-const ADMIN_EMAIL = 'admin@dutchoriental.com'; // Corrected email
-const ADMIN_PASSWORD = 'Dutch@123#'; // Corrected password
+const ADMIN_EMAIL = 'admin@dutchoriental.com';
+const ADMIN_PASSWORD = 'Dutch@123#';
 
 const USER_ROLE_STORAGE_KEY = 'currentUserRole';
 const USER_EMAIL_STORAGE_KEY = 'currentUserEmail';
@@ -26,19 +25,20 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [isCheckingAuth, setIsCheckingAuth] = useState(true); // Start true
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
 
-  // Check if user is already logged in
   useEffect(() => {
+    let isAuthenticated = false;
     try {
-      if (localStorage.getItem(USER_ROLE_STORAGE_KEY)) {
-        router.replace('/dashboard'); // If already "logged in", go to dashboard
-      } else {
-        setIsCheckingAuth(false); // Not logged in, ready to show login form
-      }
+      isAuthenticated = !!localStorage.getItem(USER_ROLE_STORAGE_KEY);
     } catch (e) {
       console.error("Error accessing localStorage in login page:", e);
-      setIsCheckingAuth(false); // Proceed to show login form if localStorage fails
+    }
+
+    if (isAuthenticated) {
+      router.replace('/dashboard');
+    } else {
+      setIsCheckingAuth(false);
     }
   }, [router]);
 
@@ -53,8 +53,7 @@ export default function LoginPage() {
       return;
     }
 
-    // --- Simulated Login Logic ---
-    setTimeout(() => { // Simulate network delay
+    setTimeout(() => {
       try {
         if (email.toLowerCase() === ADMIN_EMAIL.toLowerCase() && password === ADMIN_PASSWORD) {
           localStorage.setItem(USER_ROLE_STORAGE_KEY, 'admin');
@@ -65,7 +64,6 @@ export default function LoginPage() {
           });
           router.push('/dashboard');
         } else {
-          // For any other credentials, simulate a regular user login
           localStorage.setItem(USER_ROLE_STORAGE_KEY, 'user');
           localStorage.setItem(USER_EMAIL_STORAGE_KEY, email);
           toast({
@@ -93,11 +91,11 @@ export default function LoginPage() {
         <div className="flex items-center justify-center min-h-screen bg-muted/40">
             <Card className="w-full max-w-sm">
                 <CardHeader className="space-y-1 text-center">
-                    <div className="flex justify-center items-center gap-2 mb-4">
-                        <Skeleton className="h-8 w-8 rounded-full" />
-                        <Skeleton className="h-7 w-40" />
+                    <div className="flex justify-center items-center mb-4">
+                         <Skeleton className="h-12 w-36" /> {/* Placeholder for Logo */}
                     </div>
-                    <Skeleton className="h-4 w-3/4 mx-auto" />
+                    <Skeleton className="h-6 w-24 mx-auto mb-2" /> {/* Placeholder for "Login" title */}
+                    <Skeleton className="h-4 w-3/4 mx-auto" /> {/* Placeholder for description */}
                 </CardHeader>
                 <CardContent className="space-y-4">
                     <div className="space-y-2">
@@ -121,13 +119,13 @@ export default function LoginPage() {
   return (
     <div className="flex items-center justify-center min-h-screen bg-muted/40">
       <Card className="w-full max-w-sm">
-        <CardHeader className="space-y-1 text-center">
-          <div className="flex justify-center items-center gap-2 mb-4">
-            <Ship className="h-8 w-8 text-primary" />
-            <CardTitle className="text-2xl">{AppName} Login</CardTitle>
+        <CardHeader className="space-y-2 text-center">
+          <div className="flex justify-center mb-4">
+            <Logo hideDefaultText={true} className="h-12 w-auto" />
           </div>
+          <CardTitle className="text-2xl">Member Login</CardTitle>
           <CardDescription>
-            Enter your credentials to access the CRM.
+            Enter your credentials to access the DutchOriental CRM.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -163,7 +161,7 @@ export default function LoginPage() {
           </form>
         </CardContent>
         <CardFooter className="flex flex-col items-center text-xs text-muted-foreground">
-          <p>&copy; {new Date().getFullYear()} {AppName}. All rights reserved.</p>
+          <p>&copy; {new Date().getFullYear()} DutchOriental CRM. All rights reserved.</p>
         </CardFooter>
       </Card>
     </div>

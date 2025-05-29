@@ -21,7 +21,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import type { Lead, LeadStatus } from '@/lib/types'; 
+import type { Lead, LeadStatus } from '@/lib/types';
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { format, parseISO, isValid } from 'date-fns';
 
@@ -30,16 +30,16 @@ const leadColumns: { accessorKey: keyof Lead | 'actions' | 'select', header: str
   { accessorKey: 'select', header: '' },
   { accessorKey: 'id', header: 'ID' },
   { accessorKey: 'clientName', header: 'Client' },
-  { accessorKey: 'agent', header: 'Agent ID' }, 
-  { accessorKey: 'yacht', header: 'Yacht ID' }, 
+  { accessorKey: 'agent', header: 'Agent ID' },
+  { accessorKey: 'yacht', header: 'Yacht ID' },
   { accessorKey: 'status', header: 'Status' },
-  { accessorKey: 'month', header: 'Lead/Event Date', isShortDate: true },
+  { accessorKey: 'month', header: 'Lead/Event Date', isShortDate: true }, // This is the primary event date
   { accessorKey: 'type', header: 'Type' },
   { accessorKey: 'invoiceId', header: 'Invoice' },
   { accessorKey: 'modeOfPayment', header: 'Payment Mode' },
-  { accessorKey: 'notes', header: 'Notes', isNotes: true },
-  
-  // New Standardized Package Quantities
+  { accessorKey: 'notes', header: 'Notes', isNotes: true }, // Ensure this is present
+
+  // Standardized Package Quantities
   { accessorKey: 'qty_childRate', header: 'Child Pkg Qty', isNumeric: true },
   { accessorKey: 'qty_adultStandardRate', header: 'Adult Std Qty', isNumeric: true },
   { accessorKey: 'qty_adultStandardDrinksRate', header: 'Adult Std Drinks Qty', isNumeric: true },
@@ -50,7 +50,7 @@ const leadColumns: { accessorKey: keyof Lead | 'actions' | 'select', header: str
   { accessorKey: 'qty_royalAdultRate', header: 'Royal Adult Qty', isNumeric: true },
   { accessorKey: 'qty_royalDrinksRate', header: 'Royal Drinks Qty', isNumeric: true },
   { accessorKey: 'othersAmtCake', header: 'Custom Charge Qty', isNumeric: true }, // Qty for custom charge
-  
+
   { accessorKey: 'totalAmount', header: 'Total Amt', isCurrency: true },
   { accessorKey: 'commissionPercentage', header: 'Agent Disc. %', isPercentage: true },
   { accessorKey: 'commissionAmount', header: 'Comm Amt', isCurrency: true },
@@ -68,18 +68,18 @@ interface LeadsTableProps {
   leads: Lead[];
   onEditLead: (lead: Lead) => void;
   onDeleteLead: (leadId: string) => void;
-  userMap: { [id: string]: string }; 
-  currentUserId?: string; 
+  userMap: { [id: string]: string };
+  currentUserId?: string;
 }
 
 export function LeadsTable({ leads, onEditLead, onDeleteLead, userMap, currentUserId }: LeadsTableProps) {
 
   const getStatusVariant = (status: LeadStatus) => {
     switch (status) {
-      case 'Balance': return 'secondary'; 
-      case 'Closed': return 'outline'; 
-      case 'Conformed': return 'default'; 
-      case 'Upcoming': return 'secondary'; 
+      case 'Balance': return 'secondary';
+      case 'Closed': return 'outline';
+      case 'Conformed': return 'default';
+      case 'Upcoming': return 'secondary';
       default: return 'outline';
     }
   };
@@ -93,7 +93,7 @@ export function LeadsTable({ leads, onEditLead, onDeleteLead, userMap, currentUs
     if (typeof value !== 'number') return '-';
     return `${value.toFixed(1)}%`;
   }
-  
+
   const formatNumeric = (value: number | undefined | null) => {
     if (typeof value !== 'number' || isNaN(value)) return '0';
     return String(value);
@@ -103,16 +103,16 @@ export function LeadsTable({ leads, onEditLead, onDeleteLead, userMap, currentUs
     if (!dateString) return '-';
     try {
       const date = parseISO(dateString);
-      if (!isValid(date)) return dateString; 
+      if (!isValid(date)) return dateString;
       const dateFormat = includeTime ? 'dd/MM/yyyy HH:mm' : 'dd/MM/yyyy';
       return format(date, dateFormat);
     } catch (e) {
-      return dateString; 
+      return dateString;
     }
   };
 
   const formatNotes = (notes?: string) => {
-    if (!notes) return '-';
+    if (!notes || notes.trim() === '') return '-';
     return notes.length > 30 ? notes.substring(0, 27) + '...' : notes;
   }
 
@@ -152,8 +152,8 @@ export function LeadsTable({ leads, onEditLead, onDeleteLead, userMap, currentUs
                        </Button>
                     ) : col.accessorKey === 'status' ? (
                       <Badge variant={getStatusVariant(lead.status)}>{lead.status}</Badge>
-                    ) : col.isShortDate ? ( 
-                        formatDateValue(lead[col.accessorKey as keyof Lead] as string | undefined, false) 
+                    ) : col.isShortDate ? (
+                        formatDateValue(lead[col.accessorKey as keyof Lead] as string | undefined, false)
                     ) : col.isDate ? (
                         formatDateValue(lead[col.accessorKey as keyof Lead] as string | undefined)
                     ) : col.isCurrency ? (
@@ -182,13 +182,13 @@ export function LeadsTable({ leads, onEditLead, onDeleteLead, userMap, currentUs
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                      <DropdownMenuItem 
+                      <DropdownMenuItem
                         onClick={() => onEditLead(lead)}
                         disabled={!!currentUserId && !!lead.ownerUserId && lead.ownerUserId !== currentUserId}
                         >
                         Edit Lead
                       </DropdownMenuItem>
-                      <DropdownMenuItem 
+                      <DropdownMenuItem
                         className="text-destructive"
                         onClick={() => onDeleteLead(lead.id)}
                        >

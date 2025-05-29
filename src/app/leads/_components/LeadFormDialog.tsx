@@ -44,15 +44,15 @@ const leadFormSchema = z.object({
   id: z.string().optional(),
   agent: z.string().min(1, 'Agent is required'),
   status: z.enum(leadStatusOptions),
-  month: z.date({ required_error: "Lead/Event Date is required." }), // This is the Lead/Event Date
+  month: z.date({ required_error: "Lead/Event Date is required." }),
   notes: z.string().optional(),
   yacht: z.string().min(1, 'Yacht selection is required'),
   type: z.enum(leadTypeOptions, { required_error: "Lead type is required."}),
-  transactionId: z.string().optional(), // Renamed from invoiceId
+  transactionId: z.string().optional(),
   modeOfPayment: z.enum(modeOfPaymentOptions),
   clientName: z.string().min(1, 'Client name is required'),
 
-  // Standardized Package Quantities
+  // Standardized Package Quantities - Directly correspond to Yacht's 9 rates
   qty_childRate: z.coerce.number().min(0).optional().default(0),
   qty_adultStandardRate: z.coerce.number().min(0).optional().default(0),
   qty_adultStandardDrinksRate: z.coerce.number().min(0).optional().default(0),
@@ -63,7 +63,7 @@ const leadFormSchema = z.object({
   qty_royalAdultRate: z.coerce.number().min(0).optional().default(0),
   qty_royalDrinksRate: z.coerce.number().min(0).optional().default(0),
   
-  othersAmtCake: z.coerce.number().min(0).optional().default(0), 
+  othersAmtCake: z.coerce.number().min(0).optional().default(0), // Quantity for custom charge
 
   totalAmount: z.coerce.number().min(0).default(0),
   commissionPercentage: z.coerce.number().min(0).max(100).default(0),
@@ -71,8 +71,8 @@ const leadFormSchema = z.object({
   netAmount: z.coerce.number().min(0).default(0),
   paidAmount: z.coerce.number().min(0).default(0),
   balanceAmount: z.coerce.number().min(0).default(0),
-  createdAt: z.string().optional(), // Stays as ISO string for data transfer
-  updatedAt: z.string().optional(), // Stays as ISO string for data transfer
+  createdAt: z.string().optional(),
+  updatedAt: z.string().optional(),
   lastModifiedByUserId: z.string().optional(),
   ownerUserId: z.string().optional(),
 });
@@ -86,6 +86,7 @@ interface LeadFormDialogProps {
   onSubmitSuccess: (data: Lead) => void;
 }
 
+// Configuration for the 9 standard package item quantities on a lead
 const allPackageItemConfigs: { qtyKey: keyof LeadFormData; rateKey: keyof Yacht; label: string; isGuestCount?: boolean }[] = [
   { qtyKey: 'qty_childRate', rateKey: 'childRate', label: 'Child Package Qty', isGuestCount: true },
   { qtyKey: 'qty_adultStandardRate', rateKey: 'adultStandardRate', label: 'Adult Standard Package Qty', isGuestCount: true },
@@ -98,21 +99,23 @@ const allPackageItemConfigs: { qtyKey: keyof LeadFormData; rateKey: keyof Yacht;
   { qtyKey: 'qty_royalDrinksRate', rateKey: 'royalDrinksRate', label: 'Royal Drinks Package Qty', isGuestCount: true },
 ];
 
+// Configuration for the custom charge
 const customChargeConfig = {
-  qtyKey: 'othersAmtCake' as keyof LeadFormData, 
-  rateKey: 'otherChargeRate' as keyof Yacht,    
-  nameKey: 'otherChargeName' as keyof Yacht     
+  qtyKey: 'othersAmtCake' as keyof LeadFormData, // This is the quantity field on the Lead
+  rateKey: 'otherChargeRate' as keyof Yacht,     // This is the rate field on the Yacht
+  nameKey: 'otherChargeName' as keyof Yacht      // This is the name field on the Yacht
 };
 
 
 const getDefaultFormValues = (): LeadFormData => ({
     agent: '', status: 'Upcoming', month: new Date(), yacht: '',
     type: 'Private', modeOfPayment: 'Online', clientName: '',
-    notes: '', transactionId: '', // Renamed from invoiceId
+    notes: '', transactionId: '',
+    // Initialize all 9 standard package quantities
     qty_childRate: 0, qty_adultStandardRate: 0, qty_adultStandardDrinksRate: 0,
     qty_vipChildRate: 0, qty_vipAdultRate: 0, qty_vipAdultDrinksRate: 0,
     qty_royalChildRate: 0, qty_royalAdultRate: 0, qty_royalDrinksRate: 0,
-    othersAmtCake: 0, 
+    othersAmtCake: 0, // Quantity for custom charge
     totalAmount: 0, commissionPercentage: 0, commissionAmount:0, netAmount: 0,
     paidAmount: 0, balanceAmount: 0,
     lastModifiedByUserId: undefined,
@@ -136,7 +139,8 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
           ...getDefaultFormValues(), 
           ...lead, 
           month: lead.month && isValid(parseISO(lead.month)) ? parseISO(lead.month) : new Date(), 
-          transactionId: lead.transactionId || '', // Renamed from invoiceId
+          transactionId: lead.transactionId || '',
+          // Ensure all 9 package quantities are initialized from lead or default
           qty_childRate: lead.qty_childRate || 0,
           qty_adultStandardRate: lead.qty_adultStandardRate || 0,
           qty_adultStandardDrinksRate: lead.qty_adultStandardDrinksRate || 0,
@@ -159,6 +163,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
 
   useEffect(() => {
     const fetchDropdownData = async () => {
+      if (!isOpen) return;
       setIsLoadingDropdowns(true);
       try {
         const [agentsRes, yachtsRes] = await Promise.all([
@@ -182,18 +187,17 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
       }
     };
 
-    if (isOpen) {
-      fetchDropdownData();
-    }
-  }, [isOpen]); // Removed toast from dependency
+    fetchDropdownData();
+  }, [isOpen, toast]); // Added toast to dependency for completeness, though it's stable
 
 
   const watchedAgentId = form.watch('agent');
   const watchedYachtId = form.watch('yacht');
-  const watchedQuantities = allPackageItemConfigs.map(config => form.watch(config.qtyKey));
+  // Watch all 9 standard package quantities
+  const watchedStdQuantities = allPackageItemConfigs.map(config => form.watch(config.qtyKey as keyof LeadFormData));
   const watchedOthersAmtCakeQty = form.watch(customChargeConfig.qtyKey); 
   const watchedPaidAmount = form.watch('paidAmount');
-  const watchedMonthDate = form.watch('month'); 
+  const watchedMonthDate = form.watch('month'); // For event date
 
   useEffect(() => {
     const selectedAgent = agents.find(a => a.id === watchedAgentId);
@@ -206,8 +210,9 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
     let currentTotalGuests = 0;
 
     if (selectedYacht) {
+      // Calculate total from the 9 standard package items
       allPackageItemConfigs.forEach(pkgConfig => {
-        const quantity = form.getValues(pkgConfig.qtyKey) as number || 0;
+        const quantity = form.getValues(pkgConfig.qtyKey as keyof LeadFormData) as number || 0;
         if (quantity > 0) {
           const rate = selectedYacht[pkgConfig.rateKey as keyof Yacht] as number || 0;
           currentTotalAmount += quantity * rate;
@@ -217,6 +222,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
         }
       });
 
+      // Add custom charge if applicable
       const customChargeQty = form.getValues(customChargeConfig.qtyKey) as number || 0;
       const customChargeRate = selectedYacht[customChargeConfig.rateKey as keyof Yacht] as number || 0;
       if (customChargeQty > 0 && customChargeRate > 0) {
@@ -234,11 +240,11 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
 
     const paidAmtValue = form.getValues('paidAmount');
     const paidAmt = typeof paidAmtValue === 'number' ? paidAmtValue : 0;
-    const currentBalanceAmount = currentTotalAmount - paidAmt; 
+    const currentBalanceAmount = currentNetAmount - paidAmt; // Updated calculation
     form.setValue('balanceAmount', currentBalanceAmount);
 
   }, [
-    watchedAgentId, watchedYachtId, ...watchedQuantities,
+    watchedAgentId, watchedYachtId, ...watchedStdQuantities,
     watchedOthersAmtCakeQty, watchedPaidAmount, form, agents, yachts
   ]);
 
@@ -250,7 +256,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
             ...defaultValues, 
             ...lead,
             month: lead.month && isValid(parseISO(lead.month)) ? parseISO(lead.month) : new Date(),
-            transactionId: lead.transactionId || '', // Renamed from invoiceId
+            transactionId: lead.transactionId || '',
             qty_childRate: lead.qty_childRate || 0,
             qty_adultStandardRate: lead.qty_adultStandardRate || 0,
             qty_adultStandardDrinksRate: lead.qty_adultStandardDrinksRate || 0,
@@ -276,7 +282,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
         let initialTotalGuests = 0;
         allPackageItemConfigs.forEach(pkgConfig => {
           if (pkgConfig.isGuestCount) {
-            initialTotalGuests += (currentLeadValues[pkgConfig.qtyKey] as number || 0);
+            initialTotalGuests += (currentLeadValues[pkgConfig.qtyKey as keyof LeadFormData] as number || 0);
           }
         });
         setCalculatedTotalGuests(initialTotalGuests);
@@ -290,13 +296,13 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
     const currentUserId = 'DO-user1'; 
 
     const submittedLead: Lead = {
-      ...getDefaultFormValues(), 
+      ...getDefaultFormValues(), // Ensure all lead fields are present
       ...data,
       month: data.month ? formatISO(data.month) : formatISO(new Date()), 
-      transactionId: data.transactionId || undefined, // Renamed from invoiceId
+      transactionId: data.transactionId || undefined,
       id: lead?.id || `lead-${Date.now()}-${Math.random().toString(36).substring(2,7)}`,
-      createdAt: lead?.createdAt || new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+      createdAt: lead?.createdAt || formatISO(new Date()),
+      updatedAt: formatISO(new Date()),
       lastModifiedByUserId: currentUserId,
       ownerUserId: lead?.ownerUserId || currentUserId,
       commissionPercentage: data.commissionPercentage || 0, 
@@ -383,7 +389,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
                   <FormItem className="flex flex-col">
                     <FormLabel>Lead/Event Date</FormLabel>
                     <DatePicker
-                        date={field.value}
+                        date={field.value instanceof Date ? field.value : (field.value ? parseISO(field.value) : undefined)}
                         setDate={(date) => {
                             field.onChange(date);
                         }}
@@ -443,7 +449,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
               />
                <FormField
                 control={form.control}
-                name="transactionId" // Renamed from invoiceId
+                name="transactionId"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Transaction ID (Optional)</FormLabel>
@@ -464,7 +470,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
                       <FormField
                       key={pkgFieldConfig.qtyKey}
                       control={form.control}
-                      name={pkgFieldConfig.qtyKey}
+                      name={pkgFieldConfig.qtyKey as keyof LeadFormData}
                       render={({ field }) => (
                           <FormItem>
                           <FormLabel>{pkgFieldConfig.label}{rateDisplay}</FormLabel>
@@ -480,7 +486,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
                 </div>
             </div>
 
-            <h3 className="text-lg font-medium pt-4 border-t mt-6">Additional Charges</h3>
+            <h3 className="text-lg font-medium pt-4 border-t mt-6">Custom Charge</h3>
              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 <FormField
                     control={form.control}
@@ -597,7 +603,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
                     <FormItem>
                       <FormLabel>Balance Amount (AED)</FormLabel>
                       <FormControl><Input type="number" placeholder="0.00" {...field} readOnly className="bg-muted/50" /></FormControl>
-                      <FormDescription>Total - Paid</FormDescription>
+                      <FormDescription>Net Amount - Paid</FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}

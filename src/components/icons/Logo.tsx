@@ -7,7 +7,7 @@ import { AppName } from '@/lib/navigation';
 import { cn } from '@/lib/utils';
 
 const LOGO_STORAGE_KEY = 'dutchOrientalCrmCompanyLogo';
-const DEFAULT_LOGO_SRC = '/logo.svg'; // Standardized constant for the default logo
+const DEFAULT_LOGO_SRC = '/logo.svg'; // Points to public/logo.svg
 
 interface LogoProps extends HTMLAttributes<HTMLDivElement> {
   textClassName?: string;
@@ -40,18 +40,23 @@ export function Logo({ className, textClassName, hideDefaultText = false, ...res
   }, [hideDefaultText]);
 
   const handleImageError = () => {
-    console.warn(`Error loading image: ${currentSrc}. Fallback or text only.`);
+    console.warn(`Error loading image: ${currentSrc}. Fallback to default SVG or text only.`);
     if (currentSrc !== DEFAULT_LOGO_SRC && uploadedLogoUrl) {
+      // If the custom uploaded logo fails, try falling back to the default SVG
       setCurrentSrc(DEFAULT_LOGO_SRC);
-      setShowDefaultAppName(!hideDefaultText);
-      setUploadedLogoUrl(null); // Clear the problematic uploaded URL state
+      setShowDefaultAppName(!hideDefaultText); // Show app name if default SVG is used and hideDefaultText is false
+      setUploadedLogoUrl(null); 
       try {
         localStorage.removeItem(LOGO_STORAGE_KEY);
       } catch (error) {
         console.error("Could not remove from localStorage:", error);
       }
-    } else {
+    } else if (currentSrc === DEFAULT_LOGO_SRC) {
+      // If the default SVG itself fails (e.g., file not found), hide the image and show text
       setCurrentSrc(''); 
+      setShowDefaultAppName(!hideDefaultText);
+    } else {
+      // General fallback if currentSrc was already empty
       setShowDefaultAppName(!hideDefaultText);
     }
   };
@@ -59,7 +64,7 @@ export function Logo({ className, textClassName, hideDefaultText = false, ...res
   if (isLoading) {
     return (
       <div
-        style={{ height: '50px', width: '100%' }} // Updated skeleton style
+        style={{ height: '60px', width: '100%' }} // Updated skeleton height
         className={cn("animate-pulse bg-muted/50 rounded-md flex items-center justify-center", className)}
         {...rest}
       />
@@ -70,23 +75,23 @@ export function Logo({ className, textClassName, hideDefaultText = false, ...res
 
   return (
     <div 
-      className={cn("relative flex items-center justify-center w-full", className)} // Added w-full and relative
-      style={{ height: '50px' }} 
+      className={cn("relative flex items-center justify-center w-full", className)}
+      style={{ height: '60px' }} // Increased height from 50px to 60px
       {...rest}
     >
       {showImage ? (
         <Image
           src={currentSrc}
           alt={`${AppName} Logo`}
-          fill // Use fill to make image cover the parent div
-          className="object-contain" // Maintain aspect ratio and fit within bounds
+          fill 
+          className="object-contain" 
           onError={handleImageError}
-          priority={currentSrc === DEFAULT_LOGO_SRC}
+          priority={currentSrc === DEFAULT_LOGO_SRC} // Prioritize if it's the default local SVG
         />
       ) : null}
-      {showDefaultAppName && (
+      {showDefaultAppName && !showImage && ( // Only show AppName text if image isn't shown
         <span className={cn(
-          "font-semibold text-lg text-primary hidden md:inline-block group-data-[state=expanded]:md:inline-block group-data-[state=collapsed]:md:hidden whitespace-nowrap overflow-hidden text-ellipsis",
+          "font-semibold text-xl text-primary whitespace-nowrap overflow-hidden text-ellipsis", // Slightly larger text if image fails
           textClassName
         )}>
           {AppName}

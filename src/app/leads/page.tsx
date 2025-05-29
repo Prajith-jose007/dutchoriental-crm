@@ -6,43 +6,76 @@ import { PageHeader } from '@/components/PageHeader';
 import { LeadsTable } from './_components/LeadsTable';
 import { ImportExportButtons } from './_components/ImportExportButtons';
 import { LeadFormDialog } from './_components/LeadFormDialog';
-import type { Lead, LeadStatus, ModeOfPayment, User, Agent, Yacht } from '@/lib/types';
-// import { placeholderUsers } from '@/lib/placeholder-data'; // No longer used for userMap directly
+import type { Lead, LeadStatus, User, Agent, Yacht } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { DatePicker } from '@/components/ui/date-picker';
 import { Skeleton } from '@/components/ui/skeleton';
-import { format, parseISO, isWithinInterval, isValid, formatISO, startOfMonth, endOfMonth, getYear as getYearFn, getMonth as getMonthFn, subMonths } from 'date-fns';
+import { format, parseISO, isWithinInterval, isValid, formatISO } from 'date-fns';
 
 const SIMULATED_CURRENT_USER_ID = 'DO-user1'; 
 
-const ensureNumericDefaults = (leadData: Partial<Lead>): Partial<Lead> => {
-  const numericQtyFields: (keyof Lead)[] = [
-    'qty_childRate', 'qty_adultStandardRate', 'qty_adultStandardDrinksRate',
-    'qty_vipChildRate', 'qty_vipAdultRate', 'qty_vipAdultDrinksRate',
-    'qty_royalChildRate', 'qty_royalAdultRate', 'qty_royalDrinksRate',
-    'othersAmtCake',
-    'totalAmount', 'commissionPercentage', 'commissionAmount', 'netAmount', 'paidAmount', 'balanceAmount',
-  ];
-  const result = { ...leadData };
-  numericQtyFields.forEach(field => {
-    if (result[field] === undefined || result[field] === null || isNaN(Number(result[field]))) {
-      result[field] = 0 as any;
-    } else {
-      result[field] = Number(result[field]) as any;
-    }
-  });
-  return result;
-};
-
 const leadStatusOptions: LeadStatus[] = ['Balance', 'Closed', 'Conformed', 'Upcoming'];
 
-const convertValue = (key: keyof Lead, value: string): any => {
+// CSV Header Mapping: Maps various CSV header names to strict Lead property keys
+const csvHeaderMapping: { [csvHeaderKey: string]: keyof Lead } = {
+  'id': 'id',
+  'clientname': 'clientName',
+  'client name': 'clientName',
+  'agent': 'agent',
+  'agentid': 'agent',
+  'yacht': 'yacht',
+  'yachtid': 'yacht',
+  'status': 'status',
+  'month': 'month', // Expects ISO Date string in CSV for this
+  'event date': 'month',
+  'notes': 'notes',
+  'type': 'type',
+  'lead type': 'type',
+  'invoiceid': 'invoiceId',
+  'invoice id': 'invoiceId',
+  'modeofpayment': 'modeOfPayment',
+  'payment mode': 'modeOfPayment',
+  'qty_childrate': 'qty_childRate',
+  'child qty': 'qty_childRate',
+  'qty_adultstandardrate': 'qty_adultStandardRate',
+  'adult std qty': 'qty_adultStandardRate',
+  'qty_adultstandarddrinksrate': 'qty_adultStandardDrinksRate',
+  'adult std drinks qty': 'qty_adultStandardDrinksRate',
+  'qty_vipchildrate': 'qty_vipChildRate',
+  'vip child qty': 'qty_vipChildRate',
+  'qty_vipadultrate': 'qty_vipAdultRate',
+  'vip adult qty': 'qty_vipAdultRate',
+  'qty_vipadultdrinksrate': 'qty_vipAdultDrinksRate',
+  'vip adult drinks qty': 'qty_vipAdultDrinksRate',
+  'qty_royalchildrate': 'qty_royalChildRate',
+  'royal child qty': 'qty_royalChildRate',
+  'qty_royaladultrate': 'qty_royalAdultRate',
+  'royal adult qty': 'qty_royalAdultRate',
+  'qty_royaldrinksrate': 'qty_royalDrinksRate',
+  'royal drinks qty': 'qty_royalDrinksRate',
+  'othersamtcake': 'othersAmtCake', // Qty for custom charge
+  'custom charge qty': 'othersAmtCake',
+  'totalamount': 'totalAmount',
+  'commissionpercentage': 'commissionPercentage',
+  'commissionamount': 'commissionAmount',
+  'netamount': 'netAmount',
+  'paidamount': 'paidAmount',
+  'balanceamount': 'balanceAmount',
+  'createdat': 'createdAt',
+  'updatedat': 'updatedAt',
+  'lastmodifiedbyuserid': 'lastModifiedByUserId',
+  'owneruserid': 'ownerUserId',
+};
+
+
+const convertCsvValue = (key: keyof Lead, value: string): any => {
   const trimmedValue = value ? String(value).trim() : '';
 
   if (trimmedValue === '' || value === null || value === undefined) {
+    // Default values for empty/null CSV cells
     switch (key) {
         case 'qty_childRate': case 'qty_adultStandardRate': case 'qty_adultStandardDrinksRate':
         case 'qty_vipChildRate': case 'qty_vipAdultRate': case 'qty_vipAdultDrinksRate':
@@ -54,11 +87,13 @@ const convertValue = (key: keyof Lead, value: string): any => {
         case 'modeOfPayment': return 'Online'; 
         case 'status': return 'Upcoming';
         case 'notes': return '';
-        case 'month': return formatISO(new Date()); 
-        default: return undefined;
+        case 'month': return formatISO(new Date()); // Default event date to now if empty
+        case 'createdAt': case 'updatedAt': return formatISO(new Date());
+        default: return undefined; // For optional string fields like invoiceId, agent, yacht etc.
     }
   }
 
+  // Type-specific conversions
   switch (key) {
     case 'qty_childRate': case 'qty_adultStandardRate': case 'qty_adultStandardDrinksRate':
     case 'qty_vipChildRate': case 'qty_vipAdultRate': case 'qty_vipAdultDrinksRate':
@@ -74,15 +109,30 @@ const convertValue = (key: keyof Lead, value: string): any => {
     case 'status':
         return leadStatusOptions.includes(trimmedValue as LeadStatus) ? trimmedValue : 'Upcoming';
     case 'month': 
-        const parsedEventDate = parseISO(trimmedValue); 
-        if (isValid(parsedEventDate)) return formatISO(parsedEventDate);
-        const commonFormats = ['dd/MM/yyyy', 'MM/dd/yyyy', 'yyyy-MM-dd'];
+    case 'createdAt': 
+    case 'updatedAt':
+        const parsedDate = parseISO(trimmedValue); 
+        if (isValid(parsedDate)) return formatISO(parsedDate);
+        // Attempt to parse common formats if ISO parsing fails
+        const commonFormats = ['dd/MM/yyyy', 'MM/dd/yyyy', 'yyyy-MM-dd', 'yyyy/MM/dd', 'M/d/yyyy', 'd/M/yyyy'];
         for (const fmt of commonFormats) {
             try {
-                const d = fmt === 'dd/MM/yyyy' ? new Date(trimmedValue.replace(/(\d{2})\/(\d{2})\/(\d{4})/, '$2/$1/$3')) : new Date(trimmedValue);
-                if (isValid(d)) return formatISO(d);
+                // Simple date parsing logic (might need a robust library for complex cases)
+                const parts = trimmedValue.match(/(\d+)[^\d](\d+)[^\d](\d+)/);
+                if (!parts) continue;
+                let d, m, y;
+                if (fmt === 'dd/MM/yyyy' || fmt === 'd/M/yyyy') { [d,m,y] = parts.slice(1).map(Number); }
+                else if (fmt === 'MM/dd/yyyy' || fmt === 'M/d/yyyy') { [m,d,y] = parts.slice(1).map(Number); }
+                else if (fmt === 'yyyy-MM-dd' || fmt === 'yyyy/MM/dd') { [y,m,d] = parts.slice(1).map(Number); }
+                else { continue; }
+
+                if (y < 100) y += 2000; // Basic year correction
+                const dateObj = new Date(y, m - 1, d);
+                if (isValid(dateObj)) return formatISO(dateObj);
             } catch (e) {/* ignore */}
         }
+        // Fallback if no known format matches, could log warning or use default
+        console.warn(`[CSV Import] Could not parse date "${trimmedValue}" for key "${key}". Defaulting to current date.`);
         return formatISO(new Date()); 
     default:
       return trimmedValue;
@@ -108,6 +158,7 @@ export default function LeadsPage() {
   const [selectedAgentId, setSelectedAgentId] = useState<string>('all');
   const [selectedUserId, setSelectedUserId] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<LeadStatus | 'all'>('all');
+  const [isImporting, setIsImporting] = useState(false);
 
 
   const fetchAllData = async () => {
@@ -118,7 +169,7 @@ export default function LeadsPage() {
         fetch('/api/leads'),
         fetch('/api/agents'),
         fetch('/api/yachts'),
-        fetch('/api/users'), // Fetch users from API
+        fetch('/api/users'), 
       ]);
 
       if (!leadsRes.ok) throw new Error(`Failed to fetch leads: ${leadsRes.statusText}`);
@@ -170,24 +221,22 @@ export default function LeadsPage() {
   };
 
   const handleLeadFormSubmit = async (submittedLeadData: Lead) => {
+    setIsLoading(true); // Indicate loading state
     const payload: Lead = {
       ...submittedLeadData,
       lastModifiedByUserId: SIMULATED_CURRENT_USER_ID, 
       updatedAt: new Date().toISOString(),
-      month: submittedLeadData.month ? formatISO(new Date(submittedLeadData.month)) : formatISO(new Date()),
+      month: submittedLeadData.month ? formatISO(parseISO(submittedLeadData.month)) : formatISO(new Date()), // Ensure month is ISO
     };
     
-    // Ensure ownerUserId for new leads
     if (!editingLead) {
         payload.ownerUserId = SIMULATED_CURRENT_USER_ID;
         payload.createdAt = new Date().toISOString();
-        // Generate ID if not present (though form dialog should enforce it)
         payload.id = payload.id || `lead-${Date.now()}-${Math.random().toString(36).substring(2,7)}`;
     } else {
-        payload.ownerUserId = editingLead.ownerUserId; // Preserve original owner on edit
-        payload.createdAt = editingLead.createdAt; // Preserve original creation date
+        payload.ownerUserId = editingLead.ownerUserId || SIMULATED_CURRENT_USER_ID; 
+        payload.createdAt = editingLead.createdAt || new Date().toISOString();
     }
-
 
     try {
       let response;
@@ -215,13 +264,15 @@ export default function LeadsPage() {
         description: `Lead for ${submittedLeadData.clientName} has been saved.`,
       });
       
-      fetchAllData(); 
+      await fetchAllData(); 
       setIsLeadDialogOpen(false);
       setEditingLead(null);
 
     } catch (error) {
       console.error("Error saving lead:", error);
       toast({ title: 'Error Saving Lead', description: (error as Error).message, variant: 'destructive' });
+    } finally {
+        setIsLoading(false);
     }
   };
 
@@ -229,6 +280,7 @@ export default function LeadsPage() {
     if (!confirm(`Are you sure you want to delete lead ${leadId}?`)) {
       return;
     }
+    setIsLoading(true);
     try {
       const response = await fetch(`/api/leads/${leadId}`, {
         method: 'DELETE',
@@ -238,25 +290,36 @@ export default function LeadsPage() {
         throw new Error(errorData.message || `Failed to delete lead: ${response.statusText}`);
       }
       toast({ title: 'Lead Deleted', description: `Lead ${leadId} has been deleted.` });
-      fetchAllData(); 
+      await fetchAllData(); 
     } catch (error) {
       console.error("Error deleting lead:", error);
       toast({ title: 'Error Deleting Lead', description: (error as Error).message, variant: 'destructive' });
+    } finally {
+        setIsLoading(false);
     }
   };
 
   const handleCsvImport = async (file: File) => {
+    setIsImporting(true);
+    toast({ title: 'Import Started', description: 'Processing CSV file... This may take a few moments.' });
+    const startTime = Date.now();
+
     const reader = new FileReader();
     reader.onload = async (event) => {
       const csvText = event.target?.result as string;
+      let successCount = 0;
+      let skippedCount = 0;
+
       if (!csvText) {
-        toast({ title: 'Import Error', description: 'Could not read the CSV file.', variant: 'destructive' });
+        toast({ title: 'Import Error', description: 'Could not read CSV file.', variant: 'destructive' });
+        setIsImporting(false);
         return;
       }
       try {
         const lines = csvText.split(/\r\n|\n/).filter(line => line.trim() !== '');
         if (lines.length < 2) {
-          toast({ title: 'Import Error', description: 'CSV file must have a header and at least one data row.', variant: 'destructive' });
+          toast({ title: 'Import Error', description: 'CSV must have a header and at least one data row.', variant: 'destructive' });
+          setIsImporting(false);
           return;
         }
 
@@ -264,12 +327,10 @@ export default function LeadsPage() {
         if (headerLine.charCodeAt(0) === 0xFEFF) { 
             headerLine = headerLine.substring(1);
         }
-        const headers = headerLine.split(',').map(h => h.trim() as keyof Lead);
-        console.log("[CSV Import] Parsed CSV Headers:", headers);
+        const fileHeaders = headerLine.split(',').map(h => h.trim().toLowerCase().replace(/\s+/g, '_'));
+        console.log("[CSV Import] Detected Normalized Headers:", fileHeaders);
 
         const newLeadsFromCsv: Lead[] = [];
-        let skippedCount = 0;
-        let successCount = 0;
         
         const currentApiLeadsResponse = await fetch('/api/leads'); 
         const currentApiLeads: Lead[] = await currentApiLeadsResponse.json();
@@ -278,28 +339,31 @@ export default function LeadsPage() {
         for (let i = 1; i < lines.length; i++) {
           let data = lines[i].split(',');
 
-          if (data.length > headers.length) {
-            const extraColumns = data.slice(headers.length);
+          if (data.length > fileHeaders.length) {
+            const extraColumns = data.slice(fileHeaders.length);
             const allExtraAreEmpty = extraColumns.every(col => (col || '').trim() === '');
             if (allExtraAreEmpty) {
-              data = data.slice(0, headers.length);
+              data = data.slice(0, fileHeaders.length);
             }
           }
 
-          if (data.length !== headers.length) {
-            console.warn(`[CSV Import] Skipping malformed CSV line ${i + 1}: Expected ${headers.length} columns, got ${data.length}. Line: "${lines[i]}"`);
+          if (data.length !== fileHeaders.length) {
+            console.warn(`[CSV Import] Skipping malformed CSV line ${i + 1}: Expected ${fileHeaders.length} columns, got ${data.length}. Line: "${lines[i]}"`);
             skippedCount++;
             continue;
           }
 
           const parsedRow = {} as Partial<Lead>;
-          headers.forEach((header, index) => {
-            parsedRow[header] = convertValue(header, data[index]);
+          fileHeaders.forEach((fileHeader, index) => {
+            const leadKey = csvHeaderMapping[fileHeader]; 
+            if (leadKey) {
+                parsedRow[leadKey] = convertCsvValue(leadKey, data[index]);
+            } else {
+                console.warn(`[CSV Import] Unknown header "${fileHeader}" in CSV row ${i+1}. Skipping this column.`);
+            }
           });
-          
-          if (i === 1) { 
-            console.log("[CSV Import] First Parsed Data Row (raw values from CSV after convertValue):", JSON.parse(JSON.stringify(parsedRow)));
-          }
+           if (i === 1) console.log("[CSV Import] Processing Row 1 - Parsed (after mapping & convertCsvValue):", JSON.parse(JSON.stringify(parsedRow)));
+
 
           let leadId = typeof parsedRow.id === 'string' && parsedRow.id.trim() !== '' ? parsedRow.id.trim() : undefined;
           const baseGeneratedId = `imported-lead-${Date.now()}-${i}`;
@@ -314,56 +378,57 @@ export default function LeadsPage() {
             leadId = currentGeneratedId;
           }
 
-          const numericDefaultsApplied = ensureNumericDefaults(parsedRow);
-
           const fullLead: Lead = {
             id: leadId!,
-            agent: typeof numericDefaultsApplied.agent === 'string' ? numericDefaultsApplied.agent : '',
-            status: (numericDefaultsApplied.status as LeadStatus) || 'Upcoming',
-            month: typeof numericDefaultsApplied.month === 'string' && isValid(parseISO(numericDefaultsApplied.month)) ? numericDefaultsApplied.month : formatISO(new Date()),
-            notes: typeof numericDefaultsApplied.notes === 'string' ? numericDefaultsApplied.notes : '',
-            yacht: typeof numericDefaultsApplied.yacht === 'string' ? numericDefaultsApplied.yacht : '',
-            type: typeof numericDefaultsApplied.type === 'string' && numericDefaultsApplied.type.trim() !== '' ? numericDefaultsApplied.type : 'Imported',
-            modeOfPayment: (numericDefaultsApplied.modeOfPayment as ModeOfPayment) || 'Online',
-            clientName: typeof numericDefaultsApplied.clientName === 'string' && numericDefaultsApplied.clientName.trim() !== '' ? numericDefaultsApplied.clientName : 'N/A from CSV',
-            invoiceId: typeof numericDefaultsApplied.invoiceId === 'string' ? numericDefaultsApplied.invoiceId : undefined,
+            clientName: parsedRow.clientName || 'N/A from CSV',
+            agent: parsedRow.agent || '',
+            yacht: parsedRow.yacht || '',
+            status: parsedRow.status || 'Upcoming',
+            month: parsedRow.month || formatISO(new Date()),
+            notes: parsedRow.notes || undefined,
+            type: parsedRow.type || 'Imported',
+            invoiceId: parsedRow.invoiceId || undefined,
+            modeOfPayment: parsedRow.modeOfPayment || 'Online',
             
-            qty_childRate: numericDefaultsApplied.qty_childRate ?? 0,
-            qty_adultStandardRate: numericDefaultsApplied.qty_adultStandardRate ?? 0,
-            qty_adultStandardDrinksRate: numericDefaultsApplied.qty_adultStandardDrinksRate ?? 0,
-            qty_vipChildRate: numericDefaultsApplied.qty_vipChildRate ?? 0,
-            qty_vipAdultRate: numericDefaultsApplied.qty_vipAdultRate ?? 0,
-            qty_vipAdultDrinksRate: numericDefaultsApplied.qty_vipAdultDrinksRate ?? 0,
-            qty_royalChildRate: numericDefaultsApplied.qty_royalChildRate ?? 0,
-            qty_royalAdultRate: numericDefaultsApplied.qty_royalAdultRate ?? 0,
-            qty_royalDrinksRate: numericDefaultsApplied.qty_royalDrinksRate ?? 0,
+            qty_childRate: parsedRow.qty_childRate ?? 0,
+            qty_adultStandardRate: parsedRow.qty_adultStandardRate ?? 0,
+            qty_adultStandardDrinksRate: parsedRow.qty_adultStandardDrinksRate ?? 0,
+            qty_vipChildRate: parsedRow.qty_vipChildRate ?? 0,
+            qty_vipAdultRate: parsedRow.qty_vipAdultRate ?? 0,
+            qty_vipAdultDrinksRate: parsedRow.qty_vipAdultDrinksRate ?? 0,
+            qty_royalChildRate: parsedRow.qty_royalChildRate ?? 0,
+            qty_royalAdultRate: parsedRow.qty_royalAdultRate ?? 0,
+            qty_royalDrinksRate: parsedRow.qty_royalDrinksRate ?? 0,
+            othersAmtCake: parsedRow.othersAmtCake ?? 0,
             
-            othersAmtCake: numericDefaultsApplied.othersAmtCake ?? 0,
-            totalAmount: numericDefaultsApplied.totalAmount ?? 0,
-            commissionPercentage: numericDefaultsApplied.commissionPercentage ?? 0,
-            commissionAmount: numericDefaultsApplied.commissionAmount ?? 0,
-            netAmount: numericDefaultsApplied.netAmount ?? 0,
-            paidAmount: numericDefaultsApplied.paidAmount ?? 0,
-            balanceAmount: numericDefaultsApplied.balanceAmount ?? 0,
-            createdAt: typeof numericDefaultsApplied.createdAt === 'string' && isValid(parseISO(numericDefaultsApplied.createdAt)) ? numericDefaultsApplied.createdAt : new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
+            totalAmount: parsedRow.totalAmount ?? 0,
+            commissionPercentage: parsedRow.commissionPercentage ?? 0,
+            commissionAmount: parsedRow.commissionAmount ?? 0,
+            netAmount: parsedRow.netAmount ?? 0,
+            paidAmount: parsedRow.paidAmount ?? 0,
+            balanceAmount: parsedRow.balanceAmount ?? 0,
+            
+            createdAt: parsedRow.createdAt || formatISO(new Date()),
+            updatedAt: formatISO(new Date()),
             lastModifiedByUserId: SIMULATED_CURRENT_USER_ID, 
             ownerUserId: SIMULATED_CURRENT_USER_ID,
           };
-          if (i === 1) { 
-             console.log("[CSV Import] First Full Lead Object (after defaults, before API post):", JSON.parse(JSON.stringify(fullLead)));
+          if (i === 1) console.log("[CSV Import] Processing Row 1 - Full Lead Object (to be POSTed):", JSON.parse(JSON.stringify(fullLead)));
+          
+          if (!fullLead.clientName || !fullLead.agent || !fullLead.yacht || !fullLead.month) {
+             console.warn(`[CSV Import] Skipping agent due to missing required fields (clientName, agent, yacht, month) at CSV row ${i+1}. Lead data:`, fullLead);
+             skippedCount++;
+             continue;
           }
 
-          const isDuplicateInExisting = existingLeadIds.has(fullLead.id);
-          const isDuplicateInThisBatch = newLeadsFromCsv.some(l => l.id === fullLead.id);
-
-          if (!isDuplicateInExisting && !isDuplicateInThisBatch) {
-            newLeadsFromCsv.push(fullLead);
-            existingLeadIds.add(fullLead.id); 
-          } else {
-            console.warn(`[CSV Import] Skipping import for lead with duplicate ID: ${fullLead.id} at CSV row ${i + 1}. Line: "${lines[i]}"`);
+          if (existingLeadIds.has(fullLead.id) || newLeadsFromCsv.some(l => l.id === fullLead.id)) {
+            console.warn(`[CSV Import] Skipping lead with duplicate ID: ${fullLead.id} from CSV row ${i+1}.`);
             skippedCount++;
+            continue;
           }
+
+          newLeadsFromCsv.push(fullLead);
+          existingLeadIds.add(fullLead.id);
         }
 
         if (newLeadsFromCsv.length > 0) {
@@ -378,59 +443,40 @@ export default function LeadsPage() {
                 successCount++;
               } else {
                 const errorData = await response.json();
-                console.warn(`[CSV Import] Failed to import lead ${leadToImport.id} via API: ${errorData.message || response.statusText}. Payload:`, JSON.stringify(leadToImport));
+                console.warn(`[CSV Import] API Error for lead ID ${leadToImport.id}: ${errorData.message || response.statusText}. Payload:`, leadToImport);
                 skippedCount++;
               }
             } catch (apiError) {
-                console.warn(`[CSV Import] API error importing lead ${leadToImport.id}:`, apiError, "Payload:", JSON.stringify(leadToImport));
+                console.warn(`[CSV Import] Network/JS Error importing lead ${leadToImport.id}:`, apiError, "Payload:", leadToImport);
                 skippedCount++;
             }
           }
-          
-          fetchAllData(); 
-
-          if (successCount > 0 && skippedCount === 0) {
-            toast({ title: 'Import Successful', description: `${successCount} new leads imported.` });
-          } else if (successCount > 0 && skippedCount > 0) {
-             toast({ title: 'Import Partially Completed', description: `${successCount} new leads imported, ${skippedCount} CSV rows/leads were skipped. Check console for details.`, variant: 'default' });
-          } else if (successCount === 0 && skippedCount > 0) {
-             toast({
-                title: 'Import Failed',
-                description: `All ${skippedCount} valid data rows from CSV were skipped during API submission or due to duplicates. Check console for details.`,
-                variant: 'destructive'
-            });
-          } else { 
-             toast({ title: 'Import Complete', description: 'No new leads were imported (file had no valid data rows or all were duplicates of existing leads). Check console for details on any parsing issues.' });
-          }
-
-        } else if (skippedCount > 0 && skippedCount === (lines.length -1) && lines.length > 1) {
-           toast({
-            title: 'Import Failed',
-            description: `All ${lines.length - 1} data rows were skipped during parsing or due to duplicate IDs. Please check your CSV file. Common issues: column count mismatch, incorrect delimiter, or duplicate IDs. Ensure IDs in CSV are unique if provided. Check console for details on skipped rows.`,
-            variant: 'destructive'
-          });
-        } else { 
-          toast({ title: 'Import Complete', description: 'No new leads were imported. The file may have contained only duplicates or no valid data rows after the header. Check console for details.' });
         }
-
       } catch (error) {
         console.error("CSV Parsing Error:", error);
-        let message = 'Failed to parse CSV file.';
-        if (error instanceof Error) {
-          message = error.message;
+        toast({ title: 'Import Error', description: (error as Error).message, variant: 'destructive' });
+      } finally {
+        const endTime = Date.now();
+        const durationInSeconds = ((endTime - startTime) / 1000).toFixed(2);
+        if (successCount > 0 || skippedCount > 0) {
+            await fetchAllData(); 
         }
-        toast({ title: 'Import Error', description: message, variant: 'destructive' });
+        toast({ 
+            title: 'Import Processed', 
+            description: `${successCount} leads imported. ${skippedCount} rows skipped. Processed in ${durationInSeconds} seconds. Check console for details on skipped rows.` 
+        });
+        setIsImporting(false);
       }
     };
     reader.onerror = () => {
         toast({ title: 'File Read Error', description: 'Could not read the selected file.', variant: 'destructive' });
+        setIsImporting(false);
     }
     reader.readAsText(file);
   };
 
   const filteredLeads = useMemo(() => {
     return allLeads.filter(lead => {
-      // Date range filter (uses createdAt)
       let leadCreationDate: Date | null = null;
       try {
         if (lead.createdAt && isValid(parseISO(lead.createdAt))) {
@@ -446,7 +492,6 @@ export default function LeadsPage() {
         if (leadCreationDate > endDate) return false;
       }
       
-      // Other filters
       if (selectedYachtId !== 'all' && lead.yacht !== selectedYachtId) return false;
       if (selectedAgentId !== 'all' && lead.agent !== selectedAgentId) return false;
       if (selectedUserId !== 'all' && lead.lastModifiedByUserId !== selectedUserId) return false;
@@ -465,7 +510,7 @@ export default function LeadsPage() {
   };
 
 
-  if (isLoading) {
+  if (isLoading && !allLeads.length) { // Show full skeleton only on initial hard load
     return (
         <div className="container mx-auto py-2">
             <PageHeader
@@ -526,8 +571,8 @@ export default function LeadsPage() {
                             
                             if (typeof cellData === 'string' && (cellData.includes('/') || cellData.includes('-')) && isValid(parseISO(cellData))) {
                                 try { 
-                                    stringValue = format(parseISO(cellData), 'dd/MM/yyyy'); // Format date for export
-                                } catch (e) { /* ignore, use original string */ }
+                                    stringValue = format(parseISO(cellData), 'dd/MM/yyyy'); 
+                                } catch (e) { /* ignore */ }
                             }
                             
                             if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n')) {
@@ -618,7 +663,13 @@ export default function LeadsPage() {
         </div>
       </div>
 
-      <LeadsTable leads={filteredLeads} onEditLead={handleEditLeadClick} onDeleteLead={handleDeleteLead} userMap={userMap} currentUserId={SIMULATED_CURRENT_USER_ID} />
+      {isLoading && allLeads.length > 0 ? ( // Show table skeleton if loading but some data already exists
+        <div className="space-y-2 mt-4">
+            {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}
+        </div>
+      ) : (
+        <LeadsTable leads={filteredLeads} onEditLead={handleEditLeadClick} onDeleteLead={handleDeleteLead} userMap={userMap} currentUserId={SIMULATED_CURRENT_USER_ID} />
+      )}
       
       {isLeadDialogOpen && (
         <LeadFormDialog

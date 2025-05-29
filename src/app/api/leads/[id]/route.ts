@@ -5,7 +5,6 @@ import type { Lead, LeadStatus, ModeOfPayment } from '@/lib/types';
 import { query } from '@/lib/db';
 import { formatISO, parseISO, isValid } from 'date-fns';
 
-// Helper to ensure date strings are in a consistent format
 const ensureISOFormat = (dateString?: string | Date): string | null => {
   if (!dateString) return null;
   if (dateString instanceof Date) {
@@ -29,21 +28,22 @@ function buildLeadUpdateSetClause(data: Partial<Lead>): { clause: string, values
     'qty_childRate', 'qty_adultStandardRate', 'qty_adultStandardDrinksRate',
     'qty_vipChildRate', 'qty_vipAdultRate', 'qty_vipAdultDrinksRate',
     'qty_royalChildRate', 'qty_royalAdultRate', 'qty_royalDrinksRate',
-    'othersAmtCake', 'totalAmount', 'commissionPercentage', 'commissionAmount',
+    'othersAmtCake', 
+    'totalAmount', 'commissionPercentage', 'commissionAmount',
     'netAmount', 'paidAmount', 'balanceAmount', 'updatedAt', 
-    'lastModifiedByUserId', 'ownerUserId' // ownerUserId can be updated if needed, though typically set on creation
+    'lastModifiedByUserId', 'ownerUserId'
   ];
 
   Object.entries(data).forEach(([key, value]) => {
     if (allowedKeys.includes(key as keyof Lead) && value !== undefined) {
-      fieldsToUpdate.push(\`\`\${key}\`\` = ?); // Use backticks for column names
-      if (['month', 'updatedAt', 'createdAt'].includes(key)) { // 'createdAt' should ideally not be updated often
+      fieldsToUpdate.push(\`\`\${key}\`\` = ?); 
+      if (['month', 'updatedAt', 'createdAt'].includes(key)) {
         valuesToUpdate.push(ensureISOFormat(value as string) || null);
       } else if (typeof value === 'string' && value.trim() === '' && 
                  ['notes', 'invoiceId', 'lastModifiedByUserId', 'ownerUserId'].includes(key)) {
-        valuesToUpdate.push(null); // Treat empty strings as NULL for these specific optional text fields
+        valuesToUpdate.push(null); 
       } else if (typeof value === 'number' && isNaN(value)) {
-        valuesToUpdate.push(0); // Default NaN numbers to 0
+        valuesToUpdate.push(0); 
       }
       else {
         valuesToUpdate.push(value);
@@ -70,7 +70,7 @@ export async function GET(
         agent: dbLead.agent,
         yacht: dbLead.yacht,
         status: dbLead.status as LeadStatus,
-        month: dbLead.month ? ensureISOFormat(dbLead.month) : new Date().toISOString(),
+        month: dbLead.month ? ensureISOFormat(dbLead.month)! : new Date().toISOString(),
         notes: dbLead.notes,
         type: dbLead.type,
         invoiceId: dbLead.invoiceId,
@@ -91,8 +91,8 @@ export async function GET(
         netAmount: parseFloat(dbLead.netAmount || 0),
         paidAmount: parseFloat(dbLead.paidAmount || 0),
         balanceAmount: parseFloat(dbLead.balanceAmount || 0),
-        createdAt: dbLead.createdAt ? ensureISOFormat(dbLead.createdAt) : new Date().toISOString(),
-        updatedAt: dbLead.updatedAt ? ensureISOFormat(dbLead.updatedAt) : new Date().toISOString(),
+        createdAt: dbLead.createdAt ? ensureISOFormat(dbLead.createdAt)! : new Date().toISOString(),
+        updatedAt: dbLead.updatedAt ? ensureISOFormat(dbLead.updatedAt)! : new Date().toISOString(),
         lastModifiedByUserId: dbLead.lastModifiedByUserId,
         ownerUserId: dbLead.ownerUserId,
       };
@@ -115,7 +115,6 @@ export async function PUT(
     const updatedLeadData = await request.json() as Partial<Lead>;
     console.log(`[API PUT /api/leads/${id}] Received updatedLeadData:`, JSON.stringify(updatedLeadData, null, 2));
 
-
     const existingLeadResult: any[] = await query('SELECT * FROM leads WHERE id = ?', [id]);
     if (existingLeadResult.length === 0) {
       return NextResponse.json({ message: 'Lead not found' }, { status: 404 });
@@ -124,27 +123,26 @@ export async function PUT(
 
     const dataToUpdate: Partial<Lead> = {
       ...updatedLeadData,
-      updatedAt: formatISO(new Date()), // Always update updatedAt timestamp
+      updatedAt: formatISO(new Date()), 
     };
     
-    if (dataToUpdate.month && typeof dataToUpdate.month === 'string') { // If month is a string from client
+    if (dataToUpdate.month && typeof dataToUpdate.month === 'string') { 
         dataToUpdate.month = ensureISOFormat(dataToUpdate.month) || existingLead.month;
-    } else if (dataToUpdate.month instanceof Date) { // if it was somehow passed as Date object
+    } else if (dataToUpdate.month instanceof Date) { 
         dataToUpdate.month = formatISO(dataToUpdate.month);
     }
 
-
-    const { clause, values } = buildLeadUpdateSetClause(dataToUpdate);
+    const { clause, values: updateValues } = buildLeadUpdateSetClause(dataToUpdate);
 
     if (clause.length === 0) {
        return NextResponse.json({ message: 'No valid fields to update' }, { status: 400 });
     }
-    values.push(id); // For the WHERE id = ?
+    updateValues.push(id); 
     
     console.log(`[API PUT /api/leads/${id}] Update clause:`, clause);
-    console.log(`[API PUT /api/leads/${id}] Update values:`, JSON.stringify(values, null, 2));
+    console.log(`[API PUT /api/leads/${id}] Update values:`, JSON.stringify(updateValues, null, 2));
 
-    const result: any = await query(\`UPDATE leads SET \${clause} WHERE id = ?\`, values);
+    const result: any = await query(\`UPDATE leads SET \${clause} WHERE id = ?\`, updateValues);
     
     if (result.affectedRows === 0) {
        console.warn(`[API PUT /api/leads/${id}] Lead not found during update or no changes made.`);
@@ -158,36 +156,20 @@ export async function PUT(
     }
     const dbLead = updatedLeadFromDbResult[0];
     const finalUpdatedLead: Lead = {
-        id: dbLead.id,
-        clientName: dbLead.clientName,
-        agent: dbLead.agent,
-        yacht: dbLead.yacht,
-        status: dbLead.status as LeadStatus,
-        month: dbLead.month ? ensureISOFormat(dbLead.month) : new Date().toISOString(),
-        notes: dbLead.notes,
-        type: dbLead.type,
-        invoiceId: dbLead.invoiceId,
+        id: dbLead.id, clientName: dbLead.clientName, agent: dbLead.agent, yacht: dbLead.yacht, status: dbLead.status as LeadStatus,
+        month: dbLead.month ? ensureISOFormat(dbLead.month)! : new Date().toISOString(), notes: dbLead.notes, type: dbLead.type, invoiceId: dbLead.invoiceId,
         modeOfPayment: dbLead.modeOfPayment as ModeOfPayment,
-        qty_childRate: Number(dbLead.qty_childRate || 0),
-        qty_adultStandardRate: Number(dbLead.qty_adultStandardRate || 0),
-        qty_adultStandardDrinksRate: Number(dbLead.qty_adultStandardDrinksRate || 0),
-        qty_vipChildRate: Number(dbLead.qty_vipChildRate || 0),
-        qty_vipAdultRate: Number(dbLead.qty_vipAdultRate || 0),
-        qty_vipAdultDrinksRate: Number(dbLead.qty_vipAdultDrinksRate || 0),
-        qty_royalChildRate: Number(dbLead.qty_royalChildRate || 0),
-        qty_royalAdultRate: Number(dbLead.qty_royalAdultRate || 0),
-        qty_royalDrinksRate: Number(dbLead.qty_royalDrinksRate || 0),
-        othersAmtCake: Number(dbLead.othersAmtCake || 0),
-        totalAmount: parseFloat(dbLead.totalAmount || 0),
-        commissionPercentage: parseFloat(dbLead.commissionPercentage || 0),
-        commissionAmount: parseFloat(dbLead.commissionAmount || 0),
-        netAmount: parseFloat(dbLead.netAmount || 0),
-        paidAmount: parseFloat(dbLead.paidAmount || 0),
-        balanceAmount: parseFloat(dbLead.balanceAmount || 0),
-        createdAt: dbLead.createdAt ? ensureISOFormat(dbLead.createdAt) : new Date().toISOString(),
-        updatedAt: dbLead.updatedAt ? ensureISOFormat(dbLead.updatedAt) : new Date().toISOString(),
-        lastModifiedByUserId: dbLead.lastModifiedByUserId,
-        ownerUserId: dbLead.ownerUserId,
+        qty_childRate: Number(dbLead.qty_childRate || 0), qty_adultStandardRate: Number(dbLead.qty_adultStandardRate || 0),
+        qty_adultStandardDrinksRate: Number(dbLead.qty_adultStandardDrinksRate || 0), qty_vipChildRate: Number(dbLead.qty_vipChildRate || 0),
+        qty_vipAdultRate: Number(dbLead.qty_vipAdultRate || 0), qty_vipAdultDrinksRate: Number(dbLead.qty_vipAdultDrinksRate || 0),
+        qty_royalChildRate: Number(dbLead.qty_royalChildRate || 0), qty_royalAdultRate: Number(dbLead.qty_royalAdultRate || 0),
+        qty_royalDrinksRate: Number(dbLead.qty_royalDrinksRate || 0), othersAmtCake: Number(dbLead.othersAmtCake || 0),
+        totalAmount: parseFloat(dbLead.totalAmount || 0), commissionPercentage: parseFloat(dbLead.commissionPercentage || 0),
+        commissionAmount: parseFloat(dbLead.commissionAmount || 0), netAmount: parseFloat(dbLead.netAmount || 0),
+        paidAmount: parseFloat(dbLead.paidAmount || 0), balanceAmount: parseFloat(dbLead.balanceAmount || 0),
+        createdAt: dbLead.createdAt ? ensureISOFormat(dbLead.createdAt)! : new Date().toISOString(),
+        updatedAt: dbLead.updatedAt ? ensureISOFormat(dbLead.updatedAt)! : new Date().toISOString(),
+        lastModifiedByUserId: dbLead.lastModifiedByUserId, ownerUserId: dbLead.ownerUserId,
     };
     console.log(`[API PUT /api/leads/${id}] Successfully updated lead:`, finalUpdatedLead.id);
     return NextResponse.json(finalUpdatedLead, { status: 200 });

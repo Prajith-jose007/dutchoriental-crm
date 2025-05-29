@@ -40,48 +40,32 @@ import { useEffect, useState } from 'react';
 import { format, parseISO, formatISO, isValid } from 'date-fns';
 
 const leadStatusOptions: LeadStatus[] = ['Balance', 'Closed', 'Conformed', 'Upcoming'];
+const modeOfPaymentOptions: ModeOfPayment[] = ['Online', 'Credit', 'Cash/Card'];
 
-// The leadFormSchema matches the Lead type's quantity fields
 const leadFormSchema = z.object({
   id: z.string().optional(),
   agent: z.string().min(1, 'Agent is required'),
   status: z.enum(leadStatusOptions),
-  month: z.date({ required_error: "Lead/Event Date is required." }), // This is the primary event date
+  month: z.date({ required_error: "Lead/Event Date is required." }),
   notes: z.string().optional(),
   yacht: z.string().min(1, 'Yacht selection is required'),
   type: z.string().min(1, 'Lead type is required'),
   invoiceId: z.string().optional(),
-  modeOfPayment: z.enum(['Online', 'Credit', 'Cash/Card']),
+  modeOfPayment: z.enum(modeOfPaymentOptions),
   clientName: z.string().min(1, 'Client name is required'),
 
-  // DHOW Quantities
-  dhowChildQty: z.coerce.number().min(0).optional().default(0),
-  dhowAdultQty: z.coerce.number().min(0).optional().default(0),
-  dhowVipQty: z.coerce.number().min(0).optional().default(0),
-  dhowVipChildQty: z.coerce.number().min(0).optional().default(0),
-  dhowVipAlcoholQty: z.coerce.number().min(0).optional().default(0),
-  // OE Quantities
-  oeChildQty: z.coerce.number().min(0).optional().default(0),
-  oeAdultQty: z.coerce.number().min(0).optional().default(0),
-  oeVipQty: z.coerce.number().min(0).optional().default(0),
-  oeVipChildQty: z.coerce.number().min(0).optional().default(0),
-  oeVipAlcoholQty: z.coerce.number().min(0).optional().default(0),
-  // SUNSET Quantities
-  sunsetChildQty: z.coerce.number().min(0).optional().default(0),
-  sunsetAdultQty: z.coerce.number().min(0).optional().default(0),
-  sunsetVipQty: z.coerce.number().min(0).optional().default(0),
-  sunsetVipChildQty: z.coerce.number().min(0).optional().default(0),
-  sunsetVipAlcoholQty: z.coerce.number().min(0).optional().default(0),
-  // LOTUS Quantities
-  lotusChildQty: z.coerce.number().min(0).optional().default(0),
-  lotusAdultQty: z.coerce.number().min(0).optional().default(0),
-  lotusVipQty: z.coerce.number().min(0).optional().default(0),
-  lotusVipChildQty: z.coerce.number().min(0).optional().default(0),
-  lotusVipAlcoholQty: z.coerce.number().min(0).optional().default(0),
-  // ROYAL Quantity
-  royalQty: z.coerce.number().min(0).optional().default(0),
+  // Standardized Package Quantities
+  qty_childRate: z.coerce.number().min(0).optional().default(0),
+  qty_adultStandardRate: z.coerce.number().min(0).optional().default(0),
+  qty_adultStandardDrinksRate: z.coerce.number().min(0).optional().default(0),
+  qty_vipChildRate: z.coerce.number().min(0).optional().default(0),
+  qty_vipAdultRate: z.coerce.number().min(0).optional().default(0),
+  qty_vipAdultDrinksRate: z.coerce.number().min(0).optional().default(0),
+  qty_royalChildRate: z.coerce.number().min(0).optional().default(0),
+  qty_royalAdultRate: z.coerce.number().min(0).optional().default(0),
+  qty_royalDrinksRate: z.coerce.number().min(0).optional().default(0),
   
-  othersAmtCake: z.coerce.number().min(0).optional().default(0),
+  othersAmtCake: z.coerce.number().min(0).optional().default(0), // This is now quantity for custom charge
 
   totalAmount: z.coerce.number().min(0).default(0),
   commissionPercentage: z.coerce.number().min(0).max(100).default(0),
@@ -104,56 +88,26 @@ interface LeadFormDialogProps {
   onSubmitSuccess: (data: Lead) => void;
 }
 
-// Maps Lead quantity fields to the new Yacht rate fields for calculation
-interface PackageFieldConfig {
-  qtyKey: keyof LeadFormData; // e.g., 'dhowChildQty'
-  rateKey: keyof Yacht;      // e.g., 'childRate' (from the new Yacht rates)
-  label: string;
-  category: 'DHOW' | 'OE' | 'SUNSET' | 'LOTUS' | 'ROYAL';
-}
-
-const allPackageItemConfigs: PackageFieldConfig[] = [
-  // DHOW
-  { qtyKey: 'dhowChildQty', rateKey: 'childRate', label: 'Child Qty', category: 'DHOW' },
-  { qtyKey: 'dhowAdultQty', rateKey: 'adultStandardRate', label: 'Adult Qty', category: 'DHOW' },
-  { qtyKey: 'dhowVipQty', rateKey: 'vipAdultRate', label: 'VIP Qty', category: 'DHOW' },
-  { qtyKey: 'dhowVipChildQty', rateKey: 'vipChildRate', label: 'VIP Child Qty', category: 'DHOW' },
-  { qtyKey: 'dhowVipAlcoholQty', rateKey: 'vipAdultDrinksRate', label: 'VIP Adult Drinks Qty', category: 'DHOW' },
-  // OE
-  { qtyKey: 'oeChildQty', rateKey: 'childRate', label: 'Child Qty', category: 'OE' },
-  { qtyKey: 'oeAdultQty', rateKey: 'adultStandardRate', label: 'Adult Qty', category: 'OE' },
-  { qtyKey: 'oeVipQty', rateKey: 'vipAdultRate', label: 'VIP Qty', category: 'OE' },
-  { qtyKey: 'oeVipChildQty', rateKey: 'vipChildRate', label: 'VIP Child Qty', category: 'OE' },
-  { qtyKey: 'oeVipAlcoholQty', rateKey: 'vipAdultDrinksRate', label: 'VIP Adult Drinks Qty', category: 'OE' },
-  // SUNSET
-  { qtyKey: 'sunsetChildQty', rateKey: 'childRate', label: 'Child Qty', category: 'SUNSET' },
-  { qtyKey: 'sunsetAdultQty', rateKey: 'adultStandardRate', label: 'Adult Qty', category: 'SUNSET' },
-  { qtyKey: 'sunsetVipQty', rateKey: 'vipAdultRate', label: 'VIP Qty', category: 'SUNSET' },
-  { qtyKey: 'sunsetVipChildQty', rateKey: 'vipChildRate', label: 'VIP Child Qty', category: 'SUNSET' },
-  { qtyKey: 'sunsetVipAlcoholQty', rateKey: 'vipAdultDrinksRate', label: 'VIP Adult Drinks Qty', category: 'SUNSET' },
-  // LOTUS
-  { qtyKey: 'lotusChildQty', rateKey: 'childRate', label: 'Child Qty', category: 'LOTUS' },
-  { qtyKey: 'lotusAdultQty', rateKey: 'adultStandardRate', label: 'Adult Qty', category: 'LOTUS' },
-  { qtyKey: 'lotusVipQty', rateKey: 'vipAdultRate', label: 'VIP Qty', category: 'LOTUS' },
-  { qtyKey: 'lotusVipChildQty', rateKey: 'vipChildRate', label: 'VIP Child Qty', category: 'LOTUS' },
-  { qtyKey: 'lotusVipAlcoholQty', rateKey: 'vipAdultDrinksRate', label: 'VIP Adult Drinks Qty', category: 'LOTUS' },
-  // ROYAL (Mapping Lead.royalQty to Yacht.royalAdultRate as a simplification)
-  { qtyKey: 'royalQty', rateKey: 'royalAdultRate', label: 'Royal Package Qty', category: 'ROYAL' },
+const allPackageItemConfigs: { qtyKey: keyof LeadFormData; rateKey: keyof Yacht; label: string; }[] = [
+  { qtyKey: 'qty_childRate', rateKey: 'childRate', label: 'Child Package Qty' },
+  { qtyKey: 'qty_adultStandardRate', rateKey: 'adultStandardRate', label: 'Adult Standard Package Qty' },
+  { qtyKey: 'qty_adultStandardDrinksRate', rateKey: 'adultStandardDrinksRate', label: 'Adult Standard Drinks Package Qty' },
+  { qtyKey: 'qty_vipChildRate', rateKey: 'vipChildRate', label: 'VIP Child Package Qty' },
+  { qtyKey: 'qty_vipAdultRate', rateKey: 'vipAdultRate', label: 'VIP Adult Package Qty' },
+  { qtyKey: 'qty_vipAdultDrinksRate', rateKey: 'vipAdultDrinksRate', label: 'VIP Adult Drinks Package Qty' },
+  { qtyKey: 'qty_royalChildRate', rateKey: 'royalChildRate', label: 'Royal Child Package Qty' },
+  { qtyKey: 'qty_royalAdultRate', rateKey: 'royalAdultRate', label: 'Royal Adult Package Qty' },
+  { qtyKey: 'qty_royalDrinksRate', rateKey: 'royalDrinksRate', label: 'Royal Drinks Package Qty' },
 ];
-
-
-const modeOfPaymentOptions: ModeOfPayment[] = ['Online', 'Credit', 'Cash/Card'];
 
 const getDefaultFormValues = (): LeadFormData => ({
     agent: '', status: 'Upcoming', month: new Date(), yacht: '',
     type: '', modeOfPayment: 'Online', clientName: '',
-    notes: '',
-    dhowChildQty: 0, dhowAdultQty: 0, dhowVipQty: 0, dhowVipChildQty: 0, dhowVipAlcoholQty: 0,
-    oeChildQty: 0, oeAdultQty: 0, oeVipQty: 0, oeVipChildQty: 0, oeVipAlcoholQty: 0,
-    sunsetChildQty: 0, sunsetAdultQty: 0, sunsetVipQty: 0, sunsetVipChildQty: 0, sunsetVipAlcoholQty: 0,
-    lotusChildQty: 0, lotusAdultQty: 0, lotusVipQty: 0, lotusVipChildQty: 0, lotusVipAlcoholQty: 0,
-    royalQty: 0,
-    othersAmtCake: 0,
+    notes: '', invoiceId: '',
+    qty_childRate: 0, qty_adultStandardRate: 0, qty_adultStandardDrinksRate: 0,
+    qty_vipChildRate: 0, qty_vipAdultRate: 0, qty_vipAdultDrinksRate: 0,
+    qty_royalChildRate: 0, qty_royalAdultRate: 0, qty_royalDrinksRate: 0,
+    othersAmtCake: 0, // Quantity for custom charge
     totalAmount: 0, commissionPercentage: 0, commissionAmount:0, netAmount: 0,
     paidAmount: 0, balanceAmount: 0,
     lastModifiedByUserId: undefined,
@@ -174,14 +128,23 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
           ...getDefaultFormValues(),
           ...lead,
           month: lead.month && isValid(parseISO(lead.month)) ? parseISO(lead.month) : new Date(), 
-          othersAmtCake: lead.othersAmtCake || 0,
+          qty_childRate: lead.qty_childRate || 0,
+          qty_adultStandardRate: lead.qty_adultStandardRate || 0,
+          qty_adultStandardDrinksRate: lead.qty_adultStandardDrinksRate || 0,
+          qty_vipChildRate: lead.qty_vipChildRate || 0,
+          qty_vipAdultRate: lead.qty_vipAdultRate || 0,
+          qty_vipAdultDrinksRate: lead.qty_vipAdultDrinksRate || 0,
+          qty_royalChildRate: lead.qty_royalChildRate || 0,
+          qty_royalAdultRate: lead.qty_royalAdultRate || 0,
+          qty_royalDrinksRate: lead.qty_royalDrinksRate || 0,
+          othersAmtCake: lead.othersAmtCake || 0, // Qty for custom charge
           totalAmount: lead.totalAmount || 0,
           commissionPercentage: lead.commissionPercentage || 0,
           commissionAmount: lead.commissionAmount || 0,
           netAmount: lead.netAmount || 0,
           paidAmount: lead.paidAmount || 0,
           balanceAmount: lead.balanceAmount || 0,
-        } as LeadFormData // Cast to ensure all fields are present
+        } as LeadFormData 
       : getDefaultFormValues(),
   });
 
@@ -213,15 +176,16 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
     if (isOpen) {
       fetchDropdownData();
     }
-  }, [isOpen]); // Removed toast from dependencies
+  }, [isOpen, toast]);
 
 
   const watchedAgentId = form.watch('agent');
   const watchedYachtId = form.watch('yacht');
   const watchedQuantities = allPackageItemConfigs.map(config => form.watch(config.qtyKey));
-  const watchedOthersAmtCake = form.watch('othersAmtCake');
+  const watchedOthersAmtCakeQty = form.watch('othersAmtCake'); // Qty for custom charge
   const watchedPaidAmount = form.watch('paidAmount');
-  
+  const watchedMonth = form.watch('month'); // Watch the event date for auto-updating month text field (if still needed)
+
   useEffect(() => {
     const selectedAgent = agents.find(a => a.id === watchedAgentId);
     const agentDiscountRate = selectedAgent?.discount || 0; 
@@ -234,25 +198,19 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
       allPackageItemConfigs.forEach(pkgConfig => {
         const quantity = form.getValues(pkgConfig.qtyKey) as number || 0;
         if (quantity > 0) {
-          // pkgConfig.rateKey now refers to one of the 9 new Yacht rates
           const rate = selectedYacht[pkgConfig.rateKey as keyof Yacht] as number || 0;
           currentTotalAmount += quantity * rate;
         }
       });
-    }
 
-    const othersCakeAmtValue = form.getValues('othersAmtCake');
-    const othersCakeAmt = typeof othersCakeAmtValue === 'number' ? othersCakeAmtValue : 0;
-    if (othersCakeAmt > 0) {
-        // If there's a specific rate for cake on the yacht, use it. Otherwise, add the amount directly.
-        const cakeRate = selectedYacht?.othersAmtCake_rate; // Assuming this field exists on yacht
-        if (typeof cakeRate === 'number' && cakeRate > 0) {
-             currentTotalAmount += othersCakeAmt * cakeRate; // if othersAmtCake is a quantity
-        } else {
-            currentTotalAmount += othersCakeAmt; // if othersAmtCake is a direct amount
-        }
+      // Add custom other charge if rate and quantity are present
+      const customChargeQty = form.getValues('othersAmtCake') as number || 0;
+      const customChargeRate = selectedYacht.otherChargeRate as number || 0;
+      if (customChargeQty > 0 && customChargeRate > 0) {
+        currentTotalAmount += customChargeQty * customChargeRate;
+      }
     }
-
+    
     form.setValue('totalAmount', currentTotalAmount);
 
     const currentCommissionAmount = (currentTotalAmount * agentDiscountRate) / 100;
@@ -263,12 +221,13 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
 
     const paidAmtValue = form.getValues('paidAmount');
     const paidAmt = typeof paidAmtValue === 'number' ? paidAmtValue : 0;
+    // Balance is total - paid amount, NOT net - paid
     const currentBalanceAmount = currentTotalAmount - paidAmt; 
     form.setValue('balanceAmount', currentBalanceAmount);
 
   }, [
     watchedAgentId, watchedYachtId, ...watchedQuantities,
-    watchedOthersAmtCake, watchedPaidAmount, form, agents, yachts
+    watchedOthersAmtCakeQty, watchedPaidAmount, form, agents, yachts
   ]);
 
   useEffect(() => {
@@ -276,22 +235,26 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
       const defaultValues = getDefaultFormValues();
       form.reset(lead
         ? {
-            ...defaultValues, // Ensure all default fields are present
+            ...defaultValues, 
             ...lead,
             month: lead.month && isValid(parseISO(lead.month)) ? parseISO(lead.month) : new Date(),
-            dhowChildQty: lead.dhowChildQty || 0, dhowAdultQty: lead.dhowAdultQty || 0, dhowVipQty: lead.dhowVipQty || 0, dhowVipChildQty: lead.dhowVipChildQty || 0, dhowVipAlcoholQty: lead.dhowVipAlcoholQty || 0,
-            oeChildQty: lead.oeChildQty || 0, oeAdultQty: lead.oeAdultQty || 0, oeVipQty: lead.oeVipQty || 0, oeVipChildQty: lead.oeVipChildQty || 0, oeVipAlcoholQty: lead.oeVipAlcoholQty || 0,
-            sunsetChildQty: lead.sunsetChildQty || 0, sunsetAdultQty: lead.sunsetAdultQty || 0, sunsetVipQty: lead.sunsetVipQty || 0, sunsetVipChildQty: lead.sunsetVipChildQty || 0, sunsetVipAlcoholQty: lead.sunsetVipAlcoholQty || 0,
-            lotusChildQty: lead.lotusChildQty || 0, lotusAdultQty: lead.lotusAdultQty || 0, lotusVipQty: lead.lotusVipQty || 0, lotusVipChildQty: lead.lotusVipChildQty || 0, lotusVipAlcoholQty: lead.lotusVipAlcoholQty || 0,
-            royalQty: lead.royalQty || 0,
-            othersAmtCake: lead.othersAmtCake || 0,
+            qty_childRate: lead.qty_childRate || 0,
+            qty_adultStandardRate: lead.qty_adultStandardRate || 0,
+            qty_adultStandardDrinksRate: lead.qty_adultStandardDrinksRate || 0,
+            qty_vipChildRate: lead.qty_vipChildRate || 0,
+            qty_vipAdultRate: lead.qty_vipAdultRate || 0,
+            qty_vipAdultDrinksRate: lead.qty_vipAdultDrinksRate || 0,
+            qty_royalChildRate: lead.qty_royalChildRate || 0,
+            qty_royalAdultRate: lead.qty_royalAdultRate || 0,
+            qty_royalDrinksRate: lead.qty_royalDrinksRate || 0,
+            othersAmtCake: lead.othersAmtCake || 0, // Qty for custom charge
             totalAmount: lead.totalAmount || 0,
             commissionPercentage: lead.commissionPercentage || 0,
             commissionAmount: lead.commissionAmount || 0,
             netAmount: lead.netAmount || 0,
             paidAmount: lead.paidAmount || 0,
             balanceAmount: lead.balanceAmount || 0,
-          } as LeadFormData // Cast to ensure type compatibility
+          } as LeadFormData 
         : defaultValues
       );
     }
@@ -301,7 +264,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
     const currentUserId = 'DO-user1'; // Placeholder for actual logged-in user ID
 
     const submittedLead: Lead = {
-      ...getDefaultFormValues(), // Ensure all default fields are present
+      ...getDefaultFormValues(), 
       ...data,
       month: data.month ? formatISO(data.month) : formatISO(new Date()), 
       id: lead?.id || `lead-${Date.now()}-${Math.random().toString(36).substring(2,7)}`,
@@ -309,35 +272,11 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
       updatedAt: new Date().toISOString(),
       lastModifiedByUserId: currentUserId,
       ownerUserId: lead?.ownerUserId || currentUserId,
-      dhowChildQty: data.dhowChildQty || 0,
-      dhowAdultQty: data.dhowAdultQty || 0,
-      dhowVipQty: data.dhowVipQty || 0,
-      dhowVipChildQty: data.dhowVipChildQty || 0,
-      dhowVipAlcoholQty: data.dhowVipAlcoholQty || 0,
-      oeChildQty: data.oeChildQty || 0,
-      oeAdultQty: data.oeAdultQty || 0,
-      oeVipQty: data.oeVipQty || 0,
-      oeVipChildQty: data.oeVipChildQty || 0,
-      oeVipAlcoholQty: data.oeVipAlcoholQty || 0,
-      sunsetChildQty: data.sunsetChildQty || 0,
-      sunsetAdultQty: data.sunsetAdultQty || 0,
-      sunsetVipQty: data.sunsetVipQty || 0,
-      sunsetVipChildQty: data.sunsetVipChildQty || 0,
-      sunsetVipAlcoholQty: data.sunsetVipAlcoholQty || 0,
-      lotusChildQty: data.lotusChildQty || 0,
-      lotusAdultQty: data.lotusAdultQty || 0,
-      lotusVipQty: data.lotusVipQty || 0,
-      lotusVipChildQty: data.lotusVipChildQty || 0,
-      lotusVipAlcoholQty: data.lotusVipAlcoholQty || 0,
-      royalQty: data.royalQty || 0,
-      othersAmtCake: data.othersAmtCake || 0,
       commissionPercentage: data.commissionPercentage || 0, 
       commissionAmount: data.commissionAmount || 0,
     };
     onSubmitSuccess(submittedLead);
   }
-
-  const packageCategories = ['DHOW', 'OE', 'SUNSET', 'LOTUS', 'ROYAL'] as const;
 
   if (isLoadingDropdowns && isOpen) {
     return (
@@ -351,6 +290,8 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
       </Dialog>
     );
   }
+
+  const selectedYachtForRateDisplay = yachts.find(y => y.id === form.watch('yacht'));
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -410,7 +351,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
               />
                <FormField
                 control={form.control}
-                name="month" // This is the Lead/Event Date
+                name="month" 
                 render={({ field }) => (
                   <FormItem className="flex flex-col">
                     <FormLabel>Lead/Event Date</FormLabel>
@@ -500,19 +441,20 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
               )}
             />
             
-            {/* Package Item Quantities - always visible, organized by category */}
-            {packageCategories.map(category => (
-              <div key={category}>
-                <h4 className="text-md font-semibold mt-4 mb-2">{category} Package Quantities</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {allPackageItemConfigs.filter(p => p.category === category).map(pkgFieldConfig => (
+            <div>
+                <h3 className="text-lg font-medium pt-4 border-t mt-6">Package Item Quantities</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-2">
+                  {allPackageItemConfigs.map(pkgFieldConfig => {
+                    const rate = selectedYachtForRateDisplay ? selectedYachtForRateDisplay[pkgFieldConfig.rateKey as keyof Yacht] : undefined;
+                    const rateDisplay = typeof rate === 'number' ? ` (Rate: ${rate} AED)` : selectedYachtForRateDisplay ? ' (Rate: N/A)' : ' (Select Yacht for Rate)';
+                    return (
                       <FormField
                       key={pkgFieldConfig.qtyKey}
                       control={form.control}
                       name={pkgFieldConfig.qtyKey}
                       render={({ field }) => (
                           <FormItem>
-                          <FormLabel>{pkgFieldConfig.label}</FormLabel>
+                          <FormLabel>{pkgFieldConfig.label}{rateDisplay}</FormLabel>
                           <FormControl>
                               <Input type="number" min="0" placeholder="0" {...field} onChange={e => field.onChange(parseInt(e.target.value,10) || 0)} />
                           </FormControl>
@@ -520,23 +462,33 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
                           </FormItem>
                       )}
                       />
-                  ))}
+                    );
+                  })}
                 </div>
-              </div>
-            ))}
+            </div>
 
             <h3 className="text-lg font-medium pt-4 border-t mt-6">Additional Charges</h3>
              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 <FormField
                     control={form.control}
-                    name="othersAmtCake"
-                    render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>Other Charges (e.g., Cake) (AED)</FormLabel>
-                        <FormControl><Input type="number" min="0" placeholder="0.00" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl>
-                        <FormMessage />
-                    </FormItem>
-                    )}
+                    name="othersAmtCake" // This field on Lead stores the quantity for the custom charge
+                    render={({ field }) => {
+                        const customChargeName = selectedYachtForRateDisplay?.otherChargeName;
+                        const customChargeRate = selectedYachtForRateDisplay?.otherChargeRate;
+                        const labelText = customChargeName 
+                            ? `${customChargeName} Qty` 
+                            : 'Quantity for Custom Charge';
+                        const rateDisplay = typeof customChargeRate === 'number' 
+                            ? ` (Rate: ${customChargeRate} AED)` 
+                            : selectedYachtForRateDisplay ? ' (No Custom Charge Rate Set)' : ' (Select Yacht for Custom Charge)';
+                        return (
+                            <FormItem>
+                                <FormLabel>{labelText}{rateDisplay}</FormLabel>
+                                <FormControl><Input type="number" min="0" placeholder="0" {...field} onChange={e => field.onChange(parseInt(e.target.value) || 0)} /></FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        );
+                    }}
                 />
             </div>
 

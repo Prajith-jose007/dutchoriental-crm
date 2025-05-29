@@ -39,33 +39,17 @@ const leadColumns: { accessorKey: keyof Lead | 'actions' | 'select', header: str
   { accessorKey: 'modeOfPayment', header: 'Payment Mode' },
   { accessorKey: 'notes', header: 'Notes', isNotes: true },
   
-  { accessorKey: 'dhowChildQty', header: 'Dhow Child', isNumeric: true },
-  { accessorKey: 'dhowAdultQty', header: 'Dhow Adult', isNumeric: true },
-  { accessorKey: 'dhowVipQty', header: 'Dhow VIP', isNumeric: true },
-  { accessorKey: 'dhowVipChildQty', header: 'Dhow VIP Child', isNumeric: true },
-  { accessorKey: 'dhowVipAlcoholQty', header: 'Dhow VIP Alcohol', isNumeric: true },
-  
-  { accessorKey: 'oeChildQty', header: 'OE Child', isNumeric: true },
-  { accessorKey: 'oeAdultQty', header: 'OE Adult', isNumeric: true },
-  { accessorKey: 'oeVipQty', header: 'OE VIP', isNumeric: true },
-  { accessorKey: 'oeVipChildQty', header: 'OE VIP Child', isNumeric: true },
-  { accessorKey: 'oeVipAlcoholQty', header: 'OE VIP Alcohol', isNumeric: true },
-  
-  { accessorKey: 'sunsetChildQty', header: 'Sunset Child', isNumeric: true },
-  { accessorKey: 'sunsetAdultQty', header: 'Sunset Adult', isNumeric: true },
-  { accessorKey: 'sunsetVipQty', header: 'Sunset VIP', isNumeric: true },
-  { accessorKey: 'sunsetVipChildQty', header: 'Sunset VIP Child', isNumeric: true },
-  { accessorKey: 'sunsetVipAlcoholQty', header: 'Sunset VIP Alcohol', isNumeric: true },
-  
-  { accessorKey: 'lotusChildQty', header: 'Lotus Child', isNumeric: true },
-  { accessorKey: 'lotusAdultQty', header: 'Lotus Adult', isNumeric: true },
-  { accessorKey: 'lotusVipQty', header: 'Lotus VIP', isNumeric: true },
-  { accessorKey: 'lotusVipChildQty', header: 'Lotus VIP Child', isNumeric: true },
-  { accessorKey: 'lotusVipAlcoholQty', header: 'Lotus VIP Alcohol', isNumeric: true },
-  
-  { accessorKey: 'royalQty', header: 'Royal Pkg', isNumeric: true },
-  
-  { accessorKey: 'othersAmtCake', header: 'Other Charges', isCurrency: true },
+  // New Standardized Package Quantities
+  { accessorKey: 'qty_childRate', header: 'Child Pkg Qty', isNumeric: true },
+  { accessorKey: 'qty_adultStandardRate', header: 'Adult Std Qty', isNumeric: true },
+  { accessorKey: 'qty_adultStandardDrinksRate', header: 'Adult Std Drinks Qty', isNumeric: true },
+  { accessorKey: 'qty_vipChildRate', header: 'VIP Child Qty', isNumeric: true },
+  { accessorKey: 'qty_vipAdultRate', header: 'VIP Adult Qty', isNumeric: true },
+  { accessorKey: 'qty_vipAdultDrinksRate', header: 'VIP Adult Drinks Qty', isNumeric: true },
+  { accessorKey: 'qty_royalChildRate', header: 'Royal Child Qty', isNumeric: true },
+  { accessorKey: 'qty_royalAdultRate', header: 'Royal Adult Qty', isNumeric: true },
+  { accessorKey: 'qty_royalDrinksRate', header: 'Royal Drinks Qty', isNumeric: true },
+  { accessorKey: 'othersAmtCake', header: 'Custom Charge Qty', isNumeric: true }, // Qty for custom charge
   
   { accessorKey: 'totalAmount', header: 'Total Amt', isCurrency: true },
   { accessorKey: 'commissionPercentage', header: 'Agent Disc. %', isPercentage: true },
@@ -92,10 +76,10 @@ export function LeadsTable({ leads, onEditLead, onDeleteLead, userMap, currentUs
 
   const getStatusVariant = (status: LeadStatus) => {
     switch (status) {
-      case 'Balance': return 'secondary'; // Example: yellow-ish/orange-ish for pending balance
-      case 'Closed': return 'outline'; // Example: grayed out or simple outline for closed (lost/done)
-      case 'Conformed': return 'default'; // Example: green/primary for conformed/won
-      case 'Upcoming': return 'secondary'; // Example: blue-ish for upcoming
+      case 'Balance': return 'secondary'; 
+      case 'Closed': return 'outline'; 
+      case 'Conformed': return 'default'; 
+      case 'Upcoming': return 'secondary'; 
       default: return 'outline';
     }
   };
@@ -119,12 +103,11 @@ export function LeadsTable({ leads, onEditLead, onDeleteLead, userMap, currentUs
     if (!dateString) return '-';
     try {
       const date = parseISO(dateString);
-      if (!isValid(date)) return dateString; // Return original if not a valid ISO string
+      if (!isValid(date)) return dateString; 
       const dateFormat = includeTime ? 'dd/MM/yyyy HH:mm' : 'dd/MM/yyyy';
       return format(date, dateFormat);
     } catch (e) {
-      // console.warn(`Error formatting date string: ${dateString}`, e);
-      return dateString; // Fallback to original string if parsing or formatting fails
+      return dateString; 
     }
   };
 

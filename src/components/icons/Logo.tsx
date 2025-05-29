@@ -8,7 +8,7 @@ import type { LucideProps } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const LOGO_STORAGE_KEY = 'dutchOrientalCrmCompanyLogo';
-const DEFAULT_FALLBACK_PLACEHOLDER_LOGO_URL = 'https://placehold.co/150x50.png?text=DutchOriental+Logo';
+const DEFAULT_FALLBACK_PLACEHOLDER_LOGO_URL = 'logo.svg';
 
 interface LogoProps extends LucideProps {
   textClassName?: string;

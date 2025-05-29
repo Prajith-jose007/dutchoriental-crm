@@ -1,18 +1,21 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type HTMLAttributes } from 'react';
 import Image from 'next/image';
 import { AppName } from '@/lib/navigation';
-import type { HTMLAttributes } from 'react';
 import { cn } from '@/lib/utils';
 
 const LOGO_STORAGE_KEY = 'dutchOrientalCrmCompanyLogo';
+<<<<<<< HEAD
 <<<<<<< HEAD
 const DEFAULT_FALLBACK_PLACEHOLDER_LOGO_URL = 'logo.svg';
 =======
 const DEFAULT_ICON_SRC = '/logo.svg'; // Updated to logo.svg
 >>>>>>> 64f629a26fd8c9d177c3ff74edb1567067cea52c
+=======
+const DEFAULT_LOGO_SRC = '/logo.svg'; // Standardized constant for the default logo
+>>>>>>> 3900b38 (Error:   × Merge conflict marker encountered.)
 
 interface LogoProps extends HTMLAttributes<HTMLDivElement> {
   textClassName?: string;
@@ -22,8 +25,8 @@ interface LogoProps extends HTMLAttributes<HTMLDivElement> {
 export function Logo({ className, textClassName, hideDefaultText = false, ...rest }: LogoProps) {
   const [uploadedLogoUrl, setUploadedLogoUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [currentSrc, setCurrentSrc] = useState<string>(DEFAULT_ICON_SRC);
-  const [showDefaultIcon, setShowDefaultIcon] = useState(true);
+  const [currentSrc, setCurrentSrc] = useState<string>(DEFAULT_LOGO_SRC);
+  const [showDefaultAppName, setShowDefaultAppName] = useState(!hideDefaultText);
 
   useEffect(() => {
     let storedLogo = null;
@@ -36,28 +39,31 @@ export function Logo({ className, textClassName, hideDefaultText = false, ...res
     if (storedLogo) {
       setUploadedLogoUrl(storedLogo);
       setCurrentSrc(storedLogo);
-      setShowDefaultIcon(false); 
+      setShowDefaultAppName(false); // If custom logo, don't show app name text
     } else {
-      setCurrentSrc(DEFAULT_ICON_SRC);
-      setShowDefaultIcon(true);
+      // If no stored logo, use the default and decide on text based on hideDefaultText
+      setCurrentSrc(DEFAULT_LOGO_SRC);
+      setShowDefaultAppName(!hideDefaultText);
     }
     setIsLoading(false);
-  }, []);
+  }, [hideDefaultText]); // Re-run if hideDefaultText changes
 
   const handleImageError = () => {
-    console.warn(`Error loading image: ${currentSrc}. Attempting fallback or showing text only.`);
-    if (currentSrc !== DEFAULT_ICON_SRC && uploadedLogoUrl) {
-      setCurrentSrc(DEFAULT_ICON_SRC);
-      setShowDefaultIcon(true);
-      setUploadedLogoUrl(null); 
+    console.warn(`Error loading image: ${currentSrc}. Fallback or text only.`);
+    if (currentSrc !== DEFAULT_LOGO_SRC && uploadedLogoUrl) {
+      // If uploaded logo fails, try to fall back to default SVG
+      setCurrentSrc(DEFAULT_LOGO_SRC);
+      setShowDefaultAppName(!hideDefaultText); // Show app name with default icon if not hidden
+      setUploadedLogoUrl(null);
       try {
         localStorage.removeItem(LOGO_STORAGE_KEY);
       } catch (error) {
         console.error("Could not remove from localStorage:", error);
       }
     } else {
-      setShowDefaultIcon(false);
-      setCurrentSrc(''); 
+      // If default SVG also fails, show nothing or just text
+      setCurrentSrc(''); // No image source
+      setShowDefaultAppName(!hideDefaultText); // Show app name if not hidden
     }
   };
 
@@ -71,22 +77,22 @@ export function Logo({ className, textClassName, hideDefaultText = false, ...res
     );
   }
 
-  const shouldShowImage = (showDefaultIcon && currentSrc === DEFAULT_ICON_SRC) || (uploadedLogoUrl && currentSrc === uploadedLogoUrl);
+  const showImage = currentSrc && currentSrc !== '';
 
   return (
     <div className={cn("flex items-center justify-center gap-2", className)} style={{ height: '50px', maxWidth: '150px' }} {...rest}>
-      {shouldShowImage && currentSrc && (
+      {showImage ? (
         <Image
           src={currentSrc}
           alt={`${AppName} Logo`}
-          width={40} 
-          height={40} 
+          width={40}
+          height={40}
           className="object-contain"
           onError={handleImageError}
-          priority 
+          priority={currentSrc === DEFAULT_LOGO_SRC} // Prioritize loading default system logo
         />
-      )}
-      {!hideDefaultText && !uploadedLogoUrl && ( 
+      ) : null}
+      {showDefaultAppName && (
         <span className={cn(
           "font-semibold text-lg text-primary hidden md:inline-block group-data-[state=expanded]:md:inline-block group-data-[state=collapsed]:md:hidden whitespace-nowrap overflow-hidden text-ellipsis",
           textClassName

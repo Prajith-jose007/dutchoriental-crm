@@ -24,27 +24,20 @@ export interface Agent {
   websiteUrl?: string;
 }
 
+export interface YachtPackage {
+  id: string; // Unique ID for the package item, e.g., client-generated UUID
+  name: string;
+  rate: number;
+}
+
 export interface Yacht {
   id: string;
   name: string;
   imageUrl?: string;
   capacity: number;
   status: 'Available' | 'Booked' | 'Maintenance';
-
-  // Standardized package rates
-  childRate?: number;
-  adultStandardRate?: number;
-  adultStandardDrinksRate?: number;
-  vipChildRate?: number;
-  vipAdultRate?: number;
-  vipAdultDrinksRate?: number;
-  royalChildRate?: number;
-  royalAdultRate?: number;
-  royalDrinksRate?: number;
-  
-  otherChargeName?: string;
-  otherChargeRate?: number;
-  customPackageInfo?: string;
+  packages?: YachtPackage[]; // Array of custom packages
+  customPackageInfo?: string; // General notes
 }
 
 export interface Invoice {
@@ -58,10 +51,12 @@ export interface Invoice {
 }
 
 export type LeadStatus = 'Balance' | 'Closed' | 'Conformed' | 'Upcoming';
-export type ModeOfPayment = 'Online' | 'Credit' | 'Cash/Card';
-export type LeadType = 'Dinner Cruise' | 'Sunset Cruise' | 'Private';
 export const leadStatusOptions: LeadStatus[] = ['Balance', 'Closed', 'Conformed', 'Upcoming'];
+
+export type ModeOfPayment = 'Online' | 'Credit' | 'Cash/Card';
 export const modeOfPaymentOptions: ModeOfPayment[] = ['Online', 'Credit', 'Cash/Card'];
+
+export type LeadType = 'Dinner Cruise' | 'Sunset Cruise' | 'Private';
 export const leadTypeOptions: LeadType[] = ['Dinner Cruise', 'Sunset Cruise', 'Private'];
 
 
@@ -72,12 +67,12 @@ export interface Lead {
   month: string; // Primary Lead/Event Date as ISO string (YYYY-MM-DDTHH:mm:ss.sssZ)
   notes?: string; // For user feed/notes about the lead
   yacht: string; // Yacht ID
-  type: LeadType; // Lead type
-  transactionId?: string; // Renamed from invoiceId
+  type: LeadType; 
+  transactionId?: string; 
   modeOfPayment: ModeOfPayment;
   clientName: string;
 
-  // Standardized Package Quantities matching Yacht rates
+  // These will be deprecated/replaced once leads consume dynamic yacht packages
   qty_childRate?: number;
   qty_adultStandardRate?: number;
   qty_adultStandardDrinksRate?: number;
@@ -88,17 +83,17 @@ export interface Lead {
   qty_royalAdultRate?: number;
   qty_royalDrinksRate?: number;
   
-  othersAmtCake?: number; // Represents quantity for the custom charge defined on the yacht (otherChargeName/Rate)
+  othersAmtCake?: number; 
 
   totalAmount: number;
   commissionAmount?: number;
-  commissionPercentage: number; // From Agent
+  commissionPercentage: number; 
   netAmount: number;
   paidAmount: number;
   balanceAmount: number;
 
-  createdAt: string; // ISO Date string
-  updatedAt: string; // ISO Date string
+  createdAt: string; 
+  updatedAt: string; 
   lastModifiedByUserId?: string; 
   ownerUserId?: string; 
 }

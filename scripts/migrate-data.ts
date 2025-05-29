@@ -9,7 +9,7 @@ import {
   placeholderUsers,
 } from '../src/lib/placeholder-data';
 import type { Agent, Lead, Yacht, Invoice, User } from '../src/lib/types';
-import { formatISO, parseISO, isValid } from 'date-fns';
+import { formatISO, parseISO, isValid, format } from 'date-fns';
 
 // IMPORTANT:
 // 1. This script will ATTEMPT to create tables if they don't exist.
@@ -84,17 +84,7 @@ async function createYachtsTable() {
       imageUrl VARCHAR(255),
       capacity INT,
       status VARCHAR(50),
-      childRate DECIMAL(10, 2) DEFAULT 0.00,
-      adultStandardRate DECIMAL(10, 2) DEFAULT 0.00,
-      adultStandardDrinksRate DECIMAL(10, 2) DEFAULT 0.00,
-      vipChildRate DECIMAL(10, 2) DEFAULT 0.00,
-      vipAdultRate DECIMAL(10, 2) DEFAULT 0.00,
-      vipAdultDrinksRate DECIMAL(10, 2) DEFAULT 0.00,
-      royalChildRate DECIMAL(10, 2) DEFAULT 0.00,
-      royalAdultRate DECIMAL(10, 2) DEFAULT 0.00,
-      royalDrinksRate DECIMAL(10, 2) DEFAULT 0.00,
-      otherChargeName VARCHAR(255),
-      otherChargeRate DECIMAL(10, 2) DEFAULT 0.00,
+      packages_json TEXT DEFAULT NULL, -- For storing JSON array of packages
       customPackageInfo TEXT
     );
   `;
@@ -109,6 +99,9 @@ async function createYachtsTable() {
 
 async function createLeadsTable() {
   const tableName = MYSQL_TABLE_NAMES.leads;
+  // Note: Old specific qty_ columns (qty_dhowChild, etc.) are removed.
+  // A new column booked_packages_json will be needed once leads consume dynamic packages.
+  // For now, keeping the 9 standardized qty fields as per current Lead type.
   const createTableSql = `
     CREATE TABLE IF NOT EXISTS ${tableName} (
       id VARCHAR(191) PRIMARY KEY,
@@ -116,11 +109,12 @@ async function createLeadsTable() {
       agent VARCHAR(255),
       yacht VARCHAR(255),
       status VARCHAR(50),
-      month DATETIME,
+      month DATETIME, -- This is the primary Lead/Event Date
       notes TEXT,
       type VARCHAR(255),
-      transactionId VARCHAR(255), -- Renamed from invoiceId
+      transactionId VARCHAR(255), 
       modeOfPayment VARCHAR(50),
+      
       qty_childRate INT DEFAULT 0,
       qty_adultStandardRate INT DEFAULT 0,
       qty_adultStandardDrinksRate INT DEFAULT 0,
@@ -130,7 +124,9 @@ async function createLeadsTable() {
       qty_royalChildRate INT DEFAULT 0,
       qty_royalAdultRate INT DEFAULT 0,
       qty_royalDrinksRate INT DEFAULT 0,
-      othersAmtCake DECIMAL(10, 2) DEFAULT 0.00,
+      
+      othersAmtCake DECIMAL(10, 2) DEFAULT 0.00, -- This maps to qty for custom yacht charge
+      
       totalAmount DECIMAL(10, 2) NOT NULL,
       commissionPercentage DECIMAL(5, 2) DEFAULT 0.00,
       commissionAmount DECIMAL(10, 2) DEFAULT 0.00,
@@ -176,7 +172,7 @@ async function createInvoicesTable() {
 
 
 async function migrateUsers() {
-  await createUsersTable(); 
+  // await createUsersTable(); // Table creation moved to main() start
   console.log('Migrating Users...');
   for (const user of placeholderUsers) {
     const sql = `INSERT INTO ${MYSQL_TABLE_NAMES.users} (id, name, email, designation, avatarUrl, websiteUrl, status, password) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
@@ -200,7 +196,7 @@ async function migrateUsers() {
 }
 
 async function migrateAgents() {
-  await createAgentsTable(); 
+  // await createAgentsTable(); 
   console.log('Migrating Agents...');
   for (const agent of placeholderAgents) {
     const sql = `INSERT INTO ${MYSQL_TABLE_NAMES.agents} (id, name, agency_code, address, phone_no, email, status, TRN_number, customer_type_id, discount, websiteUrl) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
@@ -227,36 +223,24 @@ async function migrateAgents() {
 }
 
 async function migrateYachts() {
-  await createYachtsTable(); 
+  // await createYachtsTable(); 
   console.log('Migrating Yachts...');
   for (const yacht of placeholderYachts) {
     const sql = `
       INSERT INTO ${MYSQL_TABLE_NAMES.yachts} (
         id, name, imageUrl, capacity, status,
-        childRate, adultStandardRate, adultStandardDrinksRate,
-        vipChildRate, vipAdultRate, vipAdultDrinksRate,
-        royalChildRate, royalAdultRate, royalDrinksRate,
-        otherChargeName, otherChargeRate, customPackageInfo
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        packages_json, customPackageInfo
+      ) VALUES (?, ?, ?, ?, ?, ?, ?)
     `;
     try {
+      const packagesJson = yacht.packages ? JSON.stringify(yacht.packages) : null;
       await query(sql, [
         yacht.id,
         yacht.name,
         yacht.imageUrl || null,
         yacht.capacity,
         yacht.status,
-        yacht.childRate || 0,
-        yacht.adultStandardRate || 0,
-        yacht.adultStandardDrinksRate || 0,
-        yacht.vipChildRate || 0,
-        yacht.vipAdultRate || 0,
-        yacht.vipAdultDrinksRate || 0,
-        yacht.royalChildRate || 0,
-        yacht.royalAdultRate || 0,
-        yacht.royalDrinksRate || 0,
-        yacht.otherChargeName || null,
-        yacht.otherChargeRate || 0,
+        packagesJson,
         yacht.customPackageInfo || null,
       ]);
       console.log(`Inserted yacht: ${yacht.name} (ID: ${yacht.id})`);
@@ -268,7 +252,7 @@ async function migrateYachts() {
 }
 
 async function migrateLeads() {
-  await createLeadsTable(); 
+  // await createLeadsTable(); 
   console.log('Migrating Leads...');
   for (const lead of placeholderLeads) {
     const sql = `
@@ -288,7 +272,25 @@ async function migrateLeads() {
       )
     `;
     try {
-      const monthDate = lead.month && isValid(parseISO(lead.month)) ? formatISO(parseISO(lead.month)) : formatISO(new Date());
+      // Ensure month is a valid ISO string or default it.
+      let monthDate = formatISO(new Date()); // Default to now
+      if (lead.month) {
+          try {
+              const parsedMonth = parseISO(lead.month);
+              if (isValid(parsedMonth)) {
+                  monthDate = formatISO(parsedMonth);
+              } else {
+                  // Attempt to parse 'dd/MM/yyyy' if ISO fails (common in some inputs)
+                  const parts = lead.month.split('/');
+                  if (parts.length === 3) {
+                      const reformatted = `${parts[2]}-${parts[1]}-${parts[0]}`; // YYYY-MM-DD
+                      const parsedAgain = parseISO(reformatted);
+                      if (isValid(parsedAgain)) monthDate = formatISO(parsedAgain);
+                  }
+              }
+          } catch(e) { /* monthDate remains default if parsing fails */ }
+      }
+      
       const createdAtDate = lead.createdAt && isValid(parseISO(lead.createdAt)) ? formatISO(parseISO(lead.createdAt)) : formatISO(new Date());
       const updatedAtDate = lead.updatedAt && isValid(parseISO(lead.updatedAt)) ? formatISO(parseISO(lead.updatedAt)) : formatISO(new Date());
 
@@ -301,7 +303,7 @@ async function migrateLeads() {
         monthDate, 
         lead.notes || null,
         lead.type,
-        lead.transactionId || null, // Renamed from invoiceId
+        lead.transactionId || null,
         lead.modeOfPayment,
         lead.qty_childRate || 0,
         lead.qty_adultStandardRate || 0,
@@ -333,19 +335,19 @@ async function migrateLeads() {
 }
 
 async function migrateInvoices() {
-  await createInvoicesTable(); 
+  // await createInvoicesTable(); 
   console.log('Migrating Invoices...');
   for (const invoice of placeholderInvoices) {
     const sql = `INSERT INTO ${MYSQL_TABLE_NAMES.invoices} (id, leadId, clientName, amount, dueDate, status, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?)`;
     try {
-        const dueDateFormatted = invoice.dueDate && isValid(parseISO(invoice.dueDate)) ? formatISO(parseISO(invoice.dueDate)) : formatISO(new Date());
+        const dueDateFormatted = invoice.dueDate && isValid(parseISO(invoice.dueDate)) ? format(parseISO(invoice.dueDate), 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd');
         const createdAtFormatted = invoice.createdAt && isValid(parseISO(invoice.createdAt)) ? formatISO(parseISO(invoice.createdAt)) : formatISO(new Date());
       await query(sql, [
         invoice.id,
         invoice.leadId,
         invoice.clientName,
         invoice.amount,
-        dueDateFormatted,
+        dueDateFormatted, // Ensure YYYY-MM-DD for DATE type
         invoice.status,
         createdAtFormatted,
       ]);
@@ -364,21 +366,20 @@ async function main() {
     await createUsersTable();
     await createAgentsTable();
     await createYachtsTable();
-    await createLeadsTable(); // Ensure leads table uses transactionId
+    await createLeadsTable(); 
     await createInvoicesTable();
 
     // Then migrate data
     await migrateUsers();
     await migrateAgents();
     await migrateYachts();
-    await migrateLeads(); // Ensure migrateLeads uses transactionId from placeholderLeads
+    await migrateLeads(); 
     await migrateInvoices();
     console.log('Data migration complete! Make sure to close the DB connection if your db.ts doesn\'t do it automatically after a pool query.');
   } catch (error) {
       console.error("A critical error occurred during table creation or migration process, aborting further steps:", (error as Error).message);
   } finally {
     const dbModule = await import('../src/lib/db');
-    // Check if the pool exists and has an end method before calling it
     if (dbModule.default && typeof dbModule.default.end === 'function') {
         try {
             await dbModule.default.end();
@@ -387,7 +388,6 @@ async function main() {
             console.error('Error closing pool in finally block:', e);
         }
     } else if (dbModule.default && typeof (dbModule.default as any).pool?.end === 'function') { 
-        // If pool is nested under a 'pool' property on the default export
         try {
             await (dbModule.default as any).pool.end();
             console.log('MySQL pool (nested) closed by script in finally block.');
@@ -400,7 +400,6 @@ async function main() {
 
 main().catch(async err => {
   console.error('Migration script failed:', err);
-  // Attempt to close the pool even on failure
   try {
     const dbModule = await import('../src/lib/db');
      if (dbModule.default && typeof dbModule.default.end === 'function') {
@@ -415,4 +414,3 @@ main().catch(async err => {
   }
   process.exit(1);
 });
-

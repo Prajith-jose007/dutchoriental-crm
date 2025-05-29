@@ -43,7 +43,7 @@ const yachtFormSchema = z.object({
   capacity: z.coerce.number().min(1, 'Capacity must be at least 1'),
   status: z.enum(['Available', 'Booked', 'Maintenance']),
 
-  // New standardized package rates
+  // Standardized package rates
   childRate: z.coerce.number().min(0).optional().default(0),
   adultStandardRate: z.coerce.number().min(0).optional().default(0),
   adultStandardDrinksRate: z.coerce.number().min(0).optional().default(0),
@@ -54,7 +54,8 @@ const yachtFormSchema = z.object({
   royalAdultRate: z.coerce.number().min(0).optional().default(0),
   royalDrinksRate: z.coerce.number().min(0).optional().default(0),
   
-  othersAmtCake_rate: z.coerce.number().min(0).optional().default(0),
+  otherChargeName: z.string().optional(),
+  otherChargeRate: z.coerce.number().min(0).optional().default(0),
   customPackageInfo: z.string().optional(),
 });
 
@@ -65,7 +66,7 @@ interface YachtFormDialogProps {
   onOpenChange: (open: boolean) => void;
   yacht?: Yacht | null;
   onSubmitSuccess: (data: Yacht) => void;
-  isAdmin: boolean; // New prop for admin status
+  isAdmin: boolean; 
 }
 
 const statusOptions: Yacht['status'][] = ['Available', 'Booked', 'Maintenance'];
@@ -80,7 +81,6 @@ const rateFieldsConfig: { name: keyof YachtFormData; label: string }[] = [
     { name: 'royalChildRate', label: 'Royal Child Rate (AED)' },
     { name: 'royalAdultRate', label: 'Royal Adult Rate (AED)' },
     { name: 'royalDrinksRate', label: 'Royal Drinks Rate (AED)' },
-    { name: 'othersAmtCake_rate', label: 'Others/Cake Base Rate (AED)'},
 ];
 
 
@@ -99,7 +99,8 @@ const getDefaultYachtFormValues = (): YachtFormData => ({
   royalChildRate: 0,
   royalAdultRate: 0,
   royalDrinksRate: 0,
-  othersAmtCake_rate: 0,
+  otherChargeName: '',
+  otherChargeRate: 0,
   customPackageInfo: '',
 });
 
@@ -109,7 +110,11 @@ export function YachtFormDialog({ isOpen, onOpenChange, yacht, onSubmitSuccess, 
   const form = useForm<YachtFormData>({
     resolver: zodResolver(yachtFormSchema),
     defaultValues: yacht 
-      ? { ...getDefaultYachtFormValues(), ...yacht, customPackageInfo: yacht.customPackageInfo || '' } 
+      ? { ...getDefaultYachtFormValues(), ...yacht, 
+          imageUrl: yacht.imageUrl || '',
+          customPackageInfo: yacht.customPackageInfo || '',
+          otherChargeName: yacht.otherChargeName || '',
+        } 
       : getDefaultYachtFormValues(),
   });
 
@@ -122,6 +127,7 @@ export function YachtFormDialog({ isOpen, onOpenChange, yacht, onSubmitSuccess, 
             ...yacht,
             imageUrl: yacht.imageUrl || '',
             customPackageInfo: yacht.customPackageInfo || '',
+            otherChargeName: yacht.otherChargeName || '',
           }
         : defaultValues;
       form.reset(currentYachtValues as YachtFormData);
@@ -129,11 +135,17 @@ export function YachtFormDialog({ isOpen, onOpenChange, yacht, onSubmitSuccess, 
   }, [yacht, form, isOpen]);
 
   function onSubmit(data: YachtFormData) {
+    if (!isAdmin) {
+      toast({ title: "Access Denied", description: "Only administrators can save yacht data.", variant: "destructive"});
+      onOpenChange(false); // Close dialog for non-admins without submitting
+      return;
+    }
     const submittedYacht: Yacht = {
       ...getDefaultYachtFormValues(), 
       ...data,
       imageUrl: data.imageUrl || undefined,
       customPackageInfo: data.customPackageInfo || undefined,
+      otherChargeName: data.otherChargeName || undefined,
     };
     onSubmitSuccess(submittedYacht);
     onOpenChange(false);
@@ -143,9 +155,9 @@ export function YachtFormDialog({ isOpen, onOpenChange, yacht, onSubmitSuccess, 
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[600px] md:max-w-[800px]">
         <DialogHeader>
-          <DialogTitle>{yacht ? 'Edit Yacht' : 'Add New Yacht'}</DialogTitle>
+          <DialogTitle>{isAdmin ? (yacht ? 'Edit Yacht' : 'Add New Yacht') : 'View Yacht Details'}</DialogTitle>
           <DialogDescription>
-            {yacht ? 'Update the details for this yacht.' : 'Fill in the details for the new yacht.'}
+            {isAdmin ? (yacht ? 'Update the details for this yacht.' : 'Fill in the details for the new yacht.') : 'Viewing yacht information. Editing is restricted to administrators.'}
           </DialogDescription>
         </DialogHeader>
         <ScrollArea className="max-h-[70vh] p-1">
@@ -163,7 +175,7 @@ export function YachtFormDialog({ isOpen, onOpenChange, yacht, onSubmitSuccess, 
                           placeholder="e.g., YACHT001" 
                           {...field} 
                           readOnly={!!yacht || !isAdmin} 
-                          className={(!!yacht || !isAdmin) ? "bg-muted/50" : ""}
+                          className={(!!yacht || !isAdmin) ? "bg-muted/50 cursor-not-allowed" : ""}
                         />
                       </FormControl>
                       <FormMessage />
@@ -181,7 +193,7 @@ export function YachtFormDialog({ isOpen, onOpenChange, yacht, onSubmitSuccess, 
                           placeholder="e.g., The Sea Serpent" 
                           {...field} 
                           readOnly={!isAdmin}
-                          className={!isAdmin ? "bg-muted/50" : ""}
+                          className={!isAdmin ? "bg-muted/50 cursor-not-allowed" : ""}
                         />
                       </FormControl>
                       <FormMessage />
@@ -200,7 +212,7 @@ export function YachtFormDialog({ isOpen, onOpenChange, yacht, onSubmitSuccess, 
                           {...field} 
                           value={field.value || ''} 
                           readOnly={!isAdmin}
-                          className={!isAdmin ? "bg-muted/50" : ""}
+                          className={!isAdmin ? "bg-muted/50 cursor-not-allowed" : ""}
                         />
                       </FormControl>
                       <FormMessage />
@@ -219,7 +231,7 @@ export function YachtFormDialog({ isOpen, onOpenChange, yacht, onSubmitSuccess, 
                           placeholder="50" 
                           {...field} 
                           readOnly={!isAdmin}
-                          className={!isAdmin ? "bg-muted/50" : ""}
+                          className={!isAdmin ? "bg-muted/50 cursor-not-allowed" : ""}
                         />
                       </FormControl>
                       <FormMessage />
@@ -239,7 +251,7 @@ export function YachtFormDialog({ isOpen, onOpenChange, yacht, onSubmitSuccess, 
                         disabled={!isAdmin}
                       >
                         <FormControl>
-                          <SelectTrigger className={!isAdmin ? "bg-muted/50" : ""}>
+                          <SelectTrigger className={!isAdmin ? "bg-muted/50 cursor-not-allowed" : ""}>
                             <SelectValue placeholder="Select status" />
                           </SelectTrigger>
                         </FormControl>
@@ -273,7 +285,7 @@ export function YachtFormDialog({ isOpen, onOpenChange, yacht, onSubmitSuccess, 
                             {...field} 
                             onChange={e => field.onChange(parseFloat(e.target.value) || 0)} 
                             readOnly={!isAdmin}
-                            className={!isAdmin ? "bg-muted/50" : ""}
+                            className={!isAdmin ? "bg-muted/50 cursor-not-allowed" : ""}
                           />
                         </FormControl>
                         <FormMessage />
@@ -282,13 +294,57 @@ export function YachtFormDialog({ isOpen, onOpenChange, yacht, onSubmitSuccess, 
                   />
                 ))}
               </div>
+
+              <h3 className="text-lg font-medium pt-4 border-t mt-6">Custom Other Charge</h3>
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="otherChargeName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Custom Charge Name (Optional)</FormLabel>
+                      <FormControl>
+                        <Input 
+                          placeholder="e.g., DJ Services" 
+                          {...field} 
+                          value={field.value || ''}
+                          readOnly={!isAdmin}
+                          className={!isAdmin ? "bg-muted/50 cursor-not-allowed" : ""}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="otherChargeRate"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Custom Charge Rate (AED)</FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="number" 
+                          min="0" 
+                          placeholder="0" 
+                          {...field} 
+                          onChange={e => field.onChange(parseFloat(e.target.value) || 0)}
+                          readOnly={!isAdmin}
+                          className={!isAdmin ? "bg-muted/50 cursor-not-allowed" : ""}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
               
               <FormField
                 control={form.control}
                 name="customPackageInfo"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Custom Package Info/Notes (Admin Only)</FormLabel>
+                    <FormLabel>Custom Package Info/Notes</FormLabel>
                     <FormControl>
                       <Textarea 
                         placeholder="Enter any custom package details or notes here..." 
@@ -296,7 +352,8 @@ export function YachtFormDialog({ isOpen, onOpenChange, yacht, onSubmitSuccess, 
                         {...field} 
                         value={field.value || ''}
                         readOnly={!isAdmin}
-                        className={!isAdmin ? "bg-muted/50" : ""}
+                        // Adding cursor-not-allowed style for textarea when readOnly
+                        className={!isAdmin ? "bg-muted/50 cursor-not-allowed" : ""} 
                       />
                     </FormControl>
                     <FormMessage />
@@ -309,7 +366,12 @@ export function YachtFormDialog({ isOpen, onOpenChange, yacht, onSubmitSuccess, 
                 <DialogClose asChild>
                   <Button type="button" variant="outline">Cancel</Button>
                 </DialogClose>
-                <Button type="submit" disabled={!isAdmin}>{isAdmin ? (yacht ? 'Save Changes' : 'Add Yacht') : 'View Only'}</Button>
+                {isAdmin && (
+                  <Button type="submit">{yacht ? 'Save Changes' : 'Add Yacht'}</Button>
+                )}
+                 {!isAdmin && yacht && ( // Only show "View Only" mode for existing yachts if not admin
+                    <Button type="button" disabled>View Only</Button> 
+                 )}
               </DialogFooter>
             </form>
           </Form>
@@ -318,4 +380,3 @@ export function YachtFormDialog({ isOpen, onOpenChange, yacht, onSubmitSuccess, 
     </Dialog>
   );
 }
-

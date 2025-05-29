@@ -31,10 +31,16 @@ export function Logo({ className, textClassName, ...rest }: LucideProps & { text
   }, []);
 
   if (isLoading) {
-    // Render a placeholder or null during the initial client-side check to avoid hydration mismatch
-    // and to prevent flash of default logo if a custom one is stored.
-    // Adjusted placeholder size to be less intrusive.
-    return <div style={{ width: 100, height: 30 }} className="animate-pulse bg-muted/50 rounded-md"></div>;
+    // Match dimensions closer to the actual image (150x50)
+    // Using a div with height and max-width for better consistency with potential text logo
+    return (
+      <div 
+        style={{ height: '50px', maxWidth: '150px', width: '100%' }} 
+        className="animate-pulse bg-muted/50 rounded-md flex items-center justify-center"
+      >
+         {/* Optional: A very faint placeholder text or icon if needed */}
+      </div>
+    );
   }
 
   if (uploadedLogoUrl) {
@@ -42,30 +48,29 @@ export function Logo({ className, textClassName, ...rest }: LucideProps & { text
       <Image
         src={uploadedLogoUrl}
         alt={`${AppName} Logo`}
-        width={150} // Consistent with LogoUpload preview size
-        height={50}  // Consistent with LogoUpload preview size
-        className={cn("object-contain", className)} // Apply passed className for external styling/sizing if needed
+        width={150} 
+        height={50}  
+        className={cn("object-contain", className)} 
         data-ai-hint="company logo"
         onError={() => {
-          // If the stored logo URL is broken (e.g., invalid data URI)
           console.warn('Error loading stored company logo. Removing invalid entry.');
           try {
             localStorage.removeItem(LOGO_STORAGE_KEY);
           } catch (error) {
             console.error("Could not remove from localStorage:", error);
           }
-          setUploadedLogoUrl(null); // Trigger re-render to show default logo
+          setUploadedLogoUrl(null); 
         }}
-        priority // If logo is critical LCP element
+        priority 
       />
     );
   }
 
-  // Fallback to default logo (icon + text) if no valid uploaded logo is found
+  // Fallback to default logo (icon + text)
   return (
-    <div className="flex items-center gap-2">
-      <AppLogo className={cn("h-7 w-7 text-primary", className)} {...rest} />
-      <span className={cn("font-semibold text-lg text-primary hidden md:inline-block group-data-[state=expanded]:md:inline-block group-data-[state=collapsed]:md:hidden", textClassName)}>
+    <div className={cn("flex items-center gap-2", className)} style={{ height: '50px', maxWidth: '150px' }}>
+      <AppLogo className={cn("h-7 w-7 text-primary", rest.className)} {...rest} />
+      <span className={cn("font-semibold text-lg text-primary hidden md:inline-block group-data-[state=expanded]:md:inline-block group-data-[state=collapsed]:md:hidden whitespace-nowrap overflow-hidden text-ellipsis", textClassName)}>
         {AppName}
       </span>
     </div>

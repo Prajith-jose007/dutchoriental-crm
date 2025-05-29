@@ -75,6 +75,7 @@ export async function GET(
         type: dbLead.type as LeadType,
         transactionId: dbLead.transactionId,
         modeOfPayment: dbLead.modeOfPayment as ModeOfPayment,
+        
         qty_childRate: Number(dbLead.qty_childRate || 0),
         qty_adultStandardRate: Number(dbLead.qty_adultStandardRate || 0),
         qty_adultStandardDrinksRate: Number(dbLead.qty_adultStandardDrinksRate || 0),
@@ -84,13 +85,16 @@ export async function GET(
         qty_royalChildRate: Number(dbLead.qty_royalChildRate || 0),
         qty_royalAdultRate: Number(dbLead.qty_royalAdultRate || 0),
         qty_royalDrinksRate: Number(dbLead.qty_royalDrinksRate || 0),
+        
         othersAmtCake: Number(dbLead.othersAmtCake || 0),
+
         totalAmount: parseFloat(dbLead.totalAmount || 0),
         commissionPercentage: parseFloat(dbLead.commissionPercentage || 0),
         commissionAmount: parseFloat(dbLead.commissionAmount || 0),
         netAmount: parseFloat(dbLead.netAmount || 0),
         paidAmount: parseFloat(dbLead.paidAmount || 0),
         balanceAmount: parseFloat(dbLead.balanceAmount || 0),
+
         createdAt: dbLead.createdAt ? ensureISOFormat(dbLead.createdAt)! : new Date().toISOString(),
         updatedAt: dbLead.updatedAt ? ensureISOFormat(dbLead.updatedAt)! : new Date().toISOString(),
         lastModifiedByUserId: dbLead.lastModifiedByUserId,
@@ -124,6 +128,7 @@ export async function PUT(
     const dataToUpdate: Partial<Lead> = {
       ...updatedLeadData,
       updatedAt: formatISO(new Date()), 
+      lastModifiedByUserId: updatedLeadData.lastModifiedByUserId || existingLead.lastModifiedByUserId // Ensure lastModifiedByUserId is preserved or updated
     };
     
     if (dataToUpdate.month && typeof dataToUpdate.month === 'string') { 
@@ -142,7 +147,7 @@ export async function PUT(
     console.log(`[API PUT /api/leads/${id}] Update clause:`, clause);
     console.log(`[API PUT /api/leads/${id}] Update values:`, JSON.stringify(updateValues, null, 2));
 
-    const result: any = await query(\`UPDATE leads SET \${clause} WHERE id = ?\`, updateValues);
+    const result: any = await query(`UPDATE leads SET ${clause} WHERE id = ?`, updateValues);
     
     if (result.affectedRows === 0) {
        console.warn(`[API PUT /api/leads/${id}] Lead not found during update or no changes made.`);

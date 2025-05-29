@@ -20,9 +20,11 @@ export const metadata: Metadata = {
   title: AppName,
   description: `Customer Relationship Management for ${AppName}`,
   icons: {
-    icon: '/favicon.ico', // Standard path for favicon
-    // You could also specify other icons like apple-touch-icon here
-    // apple: '/apple-icon.png', 
+    icon: '/icon.svg', // Reference the SVG icon in the public folder
+    // You might also want to provide other icon types for broader compatibility
+    // For example:
+    // shortcut: '/favicon.ico', // Traditional .ico
+    // apple: '/apple-touch-icon.png', // For Apple devices
   },
 };
 

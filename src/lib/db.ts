@@ -4,6 +4,8 @@
 // Ensure your .env.local file has DB_HOST, DB_USER, DB_PASSWORD, DB_DATABASE, DB_PORT
 
 import mysql from 'mysql2/promise';
+import dotenv from 'dotenv';
+dotenv.config({ path: '.env.local' });
 
 let pool: mysql.Pool | null = null;
 

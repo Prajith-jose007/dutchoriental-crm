@@ -7,15 +7,7 @@ import { AppName } from '@/lib/navigation';
 import { cn } from '@/lib/utils';
 
 const LOGO_STORAGE_KEY = 'dutchOrientalCrmCompanyLogo';
-<<<<<<< HEAD
-<<<<<<< HEAD
-const DEFAULT_FALLBACK_PLACEHOLDER_LOGO_URL = 'logo.svg';
-=======
-const DEFAULT_ICON_SRC = '/logo.svg'; // Updated to logo.svg
->>>>>>> 64f629a26fd8c9d177c3ff74edb1567067cea52c
-=======
 const DEFAULT_LOGO_SRC = '/logo.svg'; // Standardized constant for the default logo
->>>>>>> 3900b38 (Error:   × Merge conflict marker encountered.)
 
 interface LogoProps extends HTMLAttributes<HTMLDivElement> {
   textClassName?: string;

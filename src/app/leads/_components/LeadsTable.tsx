@@ -25,15 +25,14 @@ import type { Lead, LeadStatus } from '@/lib/types';
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { format, parseISO, isValid } from 'date-fns';
 
-// Define a more specific structure for columns to help with rendering
 type LeadTableColumn = {
-  accessorKey: keyof Lead | 'actions' | 'select';
+  accessorKey: keyof Lead | 'actions' | 'select' | 'totalGuests';
   header: string;
   isCurrency?: boolean;
   isPercentage?: boolean;
   isNumeric?: boolean;
-  isDate?: boolean; // For full datetime
-  isShortDate?: boolean; // For date only
+  isDate?: boolean; 
+  isShortDate?: boolean; 
   isNotes?: boolean;
   isUserLookup?: boolean;
   isAgentLookup?: boolean;
@@ -44,14 +43,16 @@ const leadColumns: LeadTableColumn[] = [
   { accessorKey: 'select', header: '' },
   { accessorKey: 'id', header: 'ID' },
   { accessorKey: 'clientName', header: 'Client' },
-  { accessorKey: 'agent', header: 'Agent', isAgentLookup: true }, // Changed header
-  { accessorKey: 'yacht', header: 'Yacht', isYachtLookup: true }, // Changed header
+  { accessorKey: 'agent', header: 'Agent', isAgentLookup: true }, 
+  { accessorKey: 'yacht', header: 'Yacht', isYachtLookup: true }, 
   { accessorKey: 'status', header: 'Status' },
   { accessorKey: 'month', header: 'Lead/Event Date', isShortDate: true },
   { accessorKey: 'type', header: 'Type' },
   { accessorKey: 'invoiceId', header: 'Invoice' },
   { accessorKey: 'modeOfPayment', header: 'Payment Mode' },
   { accessorKey: 'notes', header: 'Notes', isNotes: true },
+
+  { accessorKey: 'totalGuests', header: 'Total Guests', isNumeric: true }, // Calculated field
 
   // Standardized Package Quantities
   { accessorKey: 'qty_childRate', header: 'Child Pkg Qty', isNumeric: true },
@@ -98,7 +99,8 @@ export function LeadsTable({
   currentUserId
 }: LeadsTableProps) {
 
-  const getStatusVariant = (status: LeadStatus) => {
+  const getStatusVariant = (status?: LeadStatus) => {
+    if (!status) return 'outline';
     switch (status) {
       case 'Balance': return 'secondary';
       case 'Closed': return 'outline';
@@ -127,11 +129,11 @@ export function LeadsTable({
     if (!dateString) return '-';
     try {
       const date = parseISO(dateString);
-      if (!isValid(date)) return dateString; // Return original if not valid ISO
+      if (!isValid(date)) return dateString; 
       const dateFormat = includeTime ? 'dd/MM/yyyy HH:mm' : 'dd/MM/yyyy';
       return format(date, dateFormat);
     } catch (e) {
-      return dateString; // Fallback to original string if parsing fails
+      return dateString; 
     }
   };
 
@@ -140,7 +142,25 @@ export function LeadsTable({
     return notes.length > 30 ? notes.substring(0, 27) + '...' : notes;
   }
 
+  const calculateTotalGuests = (lead: Lead): number => {
+    let total = 0;
+    total += lead.qty_childRate || 0;
+    total += lead.qty_adultStandardRate || 0;
+    total += lead.qty_adultStandardDrinksRate || 0;
+    total += lead.qty_vipChildRate || 0;
+    total += lead.qty_vipAdultRate || 0;
+    total += lead.qty_vipAdultDrinksRate || 0;
+    total += lead.qty_royalChildRate || 0;
+    total += lead.qty_royalAdultRate || 0;
+    total += lead.qty_royalDrinksRate || 0;
+    // Note: othersAmtCake is for custom charge quantity, not necessarily guests
+    return total;
+  };
+
   const renderCellContent = (lead: Lead, column: LeadTableColumn) => {
+    if (column.accessorKey === 'totalGuests') {
+      return formatNumeric(calculateTotalGuests(lead));
+    }
     const value = lead[column.accessorKey as keyof Lead];
 
     if (column.accessorKey === 'id') {
@@ -194,7 +214,7 @@ export function LeadsTable({
             {leadColumns.map(col => (
               <TableHead key={col.accessorKey} className={col.accessorKey === 'select' ? "w-[40px]" : ""}>
                 {col.accessorKey === 'select' ? (
-                  <Checkbox aria-label="Select all rows" disabled /> /* Bulk selection not implemented yet */
+                  <Checkbox aria-label="Select all rows" disabled />
                 ) : col.header}
               </TableHead>
             ))}
@@ -211,9 +231,9 @@ export function LeadsTable({
             leads.map((lead) => (
               <TableRow key={lead.id}>
                 <TableCell>
-                  <Checkbox aria-label={`Select row ${lead.id}`} disabled /> /* Bulk selection not implemented yet */
+                  <Checkbox aria-label={`Select row ${lead.id}`} disabled /> 
                 </TableCell>
-                {leadColumns.slice(1, -1).map(col => ( // Exclude 'select' and 'actions'
+                {leadColumns.slice(1, -1).map(col => ( 
                   <TableCell key={col.accessorKey}>
                     {renderCellContent(lead, col)}
                   </TableCell>

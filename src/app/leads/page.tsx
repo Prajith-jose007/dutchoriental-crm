@@ -13,7 +13,7 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { DatePicker } from '@/components/ui/date-picker';
 import { Skeleton } from '@/components/ui/skeleton';
-import { format, parseISO, isWithinInterval, isValid, formatISO, getYear, getMonth as getMonthDateFns } from 'date-fns'; // Renamed getMonth to avoid conflict
+import { format, parseISO, isWithinInterval, isValid, formatISO, getYear, getMonth as getMonthDateFns } from 'date-fns'; 
 
 const SIMULATED_CURRENT_USER_ID = 'DO-user1';
 const USER_DATA_STORAGE_KEY = 'dutchOrientalCrmUsers';
@@ -26,11 +26,12 @@ const csvHeaderMapping: { [csvHeaderKey: string]: keyof Lead } = {
   'agent': 'agent', 'agentid': 'agent',
   'yacht': 'yacht', 'yachtid': 'yacht',
   'status': 'status',
-  'month': 'month', 'event date': 'month', // Expects ISO Date string for the lead's event date
+  'month': 'month', 'event date': 'month', 'lead/event date': 'month',
   'notes': 'notes',
   'type': 'type', 'lead type': 'type',
   'invoiceid': 'invoiceId', 'invoice id': 'invoiceId',
   'modeofpayment': 'modeOfPayment', 'payment mode': 'modeOfPayment',
+  // Standardized Package Quantities (match Lead type fields)
   'qty_childrate': 'qty_childRate',
   'qty_adultstandardrate': 'qty_adultStandardRate',
   'qty_adultstandarddrinksrate': 'qty_adultStandardDrinksRate',
@@ -41,6 +42,7 @@ const csvHeaderMapping: { [csvHeaderKey: string]: keyof Lead } = {
   'qty_royaladultrate': 'qty_royalAdultRate',
   'qty_royaldrinksrate': 'qty_royalDrinksRate',
   'othersamtcake': 'othersAmtCake', 'custom charge qty': 'othersAmtCake',
+
   'totalamount': 'totalAmount',
   'commissionpercentage': 'commissionPercentage',
   'commissionamount': 'commissionAmount',
@@ -67,7 +69,7 @@ const convertCsvValue = (key: keyof Lead, value: string): any => {
       case 'modeOfPayment': return 'Online';
       case 'status': return 'Upcoming';
       case 'notes': return '';
-      case 'month': return formatISO(new Date());
+      case 'month': return formatISO(new Date()); // Default to current date for event date
       case 'createdAt': case 'updatedAt': return formatISO(new Date());
       default: return undefined;
     }
@@ -86,24 +88,22 @@ const convertCsvValue = (key: keyof Lead, value: string): any => {
       return validModes.includes(trimmedValue as Lead['modeOfPayment']) ? trimmedValue : 'Online';
     case 'status':
       return leadStatusOptions.includes(trimmedValue as LeadStatus) ? trimmedValue : 'Upcoming';
-    case 'month':
+    case 'month': // This is the Lead/Event Date
     case 'createdAt':
     case 'updatedAt':
       try {
+        // First, try to parse as ISO (most robust)
         const parsedDate = parseISO(trimmedValue);
         if (isValid(parsedDate)) return formatISO(parsedDate);
       } catch (e) { /* ignore ISO parse error and try other formats */ }
       
       // Attempt to parse common date formats if ISO fails
-      const commonFormats = ['dd/MM/yyyy', 'MM/dd/yyyy', 'yyyy-MM-dd HH:mm:ss', 'yyyy-MM-dd'];
-      for (const fmt of commonFormats) {
-          try {
-              // This is a simplified parsing logic. For robust parsing, a library like date-fns's parse function with format string is better.
-              // Here, we assume a specific structure if not ISO.
-              const dateObj = new Date(trimmedValue); // Try direct Date constructor
-              if (isValid(dateObj)) return formatISO(dateObj);
-          } catch (e) {/* ignore */ }
-      }
+      // For simplicity, this example assumes dates might be in common US or EU formats
+      // A more robust solution would use date-fns parse with multiple format strings
+      try {
+        const dateObj = new Date(trimmedValue); 
+        if (isValid(dateObj)) return formatISO(dateObj);
+      } catch (e) {/* ignore */ }
       console.warn(`[CSV Import] Could not parse date "${trimmedValue}" for key "${key}". Defaulting to current date.`);
       return formatISO(new Date());
     default:
@@ -126,12 +126,14 @@ export default function LeadsPage() {
 
   const [fetchError, setFetchError] = useState<string | null>(null);
 
+  // Filters for createdDate
   const [startDate, setStartDate] = useState<Date | undefined>(undefined);
   const [endDate, setEndDate] = useState<Date | undefined>(undefined);
+  
   const [statusFilter, setStatusFilter] = useState<LeadStatus | 'all'>('all');
   const [selectedYachtId, setSelectedYachtId] = useState<string>('all');
   const [selectedAgentId, setSelectedAgentId] = useState<string>('all');
-  const [selectedUserId, setSelectedUserId] = useState<string>('all');
+  const [selectedUserId, setSelectedUserId] = useState<string>('all'); // For lastModifiedByUserId filter
   const [isImporting, setIsImporting] = useState(false);
 
   const fetchAllData = async () => {
@@ -142,7 +144,7 @@ export default function LeadsPage() {
         fetch('/api/leads'),
         fetch('/api/agents'),
         fetch('/api/yachts'),
-        fetch('/api/users'),
+        fetch('/api/users'), // Assuming you have an API for users
       ]);
 
       if (!leadsRes.ok) throw new Error(`Failed to fetch leads: ${leadsRes.statusText}`);
@@ -179,12 +181,7 @@ export default function LeadsPage() {
       console.error("Error fetching initial data for Leads page:", error);
       setFetchError((error as Error).message);
       toast({ title: 'Error Fetching Data', description: (error as Error).message, variant: 'destructive' });
-      setAllLeads([]);
-      setAllAgents([]);
-      setAllYachts([]);
-      setUserMap({});
-      setAgentMap({});
-      setYachtMap({});
+      setAllLeads([]); setAllAgents([]); setAllYachts([]); setUserMap({}); setAgentMap({}); setYachtMap({});
     } finally {
       setIsLoading(false);
     }
@@ -210,16 +207,16 @@ export default function LeadsPage() {
       ...submittedLeadData,
       lastModifiedByUserId: SIMULATED_CURRENT_USER_ID,
       updatedAt: new Date().toISOString(),
-      month: submittedLeadData.month ? formatISO(parseISO(submittedLeadData.month)) : formatISO(new Date()),
+      // month is already an ISO string from the form's conversion
     };
     
-    if (!editingLead) {
+    if (!editingLead) { // Creating new lead
       payload.ownerUserId = SIMULATED_CURRENT_USER_ID;
       payload.createdAt = new Date().toISOString();
       payload.id = payload.id || `lead-${Date.now()}-${Math.random().toString(36).substring(2,7)}`;
-    } else {
-      payload.ownerUserId = editingLead.ownerUserId || SIMULATED_CURRENT_USER_ID;
-      payload.createdAt = editingLead.createdAt || new Date().toISOString();
+    } else { // Updating existing lead
+      payload.ownerUserId = editingLead.ownerUserId || SIMULATED_CURRENT_USER_ID; // Preserve original owner or set if missing
+      payload.createdAt = editingLead.createdAt || new Date().toISOString(); // Preserve original creation date
     }
 
     try {
@@ -239,7 +236,7 @@ export default function LeadsPage() {
       }
 
       if (!response.ok) {
-        const errorData = await response.json();
+        const errorData = await response.json().catch(() => ({ message: `API Error: ${response.statusText}` }));
         throw new Error(errorData.message || `Failed to save lead: ${response.statusText}`);
       }
       
@@ -248,7 +245,7 @@ export default function LeadsPage() {
         description: `Lead for ${submittedLeadData.clientName} has been saved.`,
       });
       
-      await fetchAllData();
+      await fetchAllData(); // Re-fetch all data to ensure UI consistency
       setIsLeadDialogOpen(false);
       setEditingLead(null);
 
@@ -261,7 +258,7 @@ export default function LeadsPage() {
   };
 
   const handleDeleteLead = async (leadId: string) => {
-    if (!confirm(`Are you sure you want to delete lead ${leadId}?`)) {
+    if (!confirm(`Are you sure you want to delete lead ${leadId}? This action cannot be undone.`)) {
       return;
     }
     setIsLoading(true);
@@ -270,7 +267,7 @@ export default function LeadsPage() {
         method: 'DELETE',
       });
       if (!response.ok) {
-        const errorData = await response.json();
+        const errorData = await response.json().catch(() => ({ message: `API Error: ${response.statusText}` }));
         throw new Error(errorData.message || `Failed to delete lead: ${response.statusText}`);
       }
       toast({ title: 'Lead Deleted', description: `Lead ${leadId} has been deleted.` });
@@ -308,15 +305,16 @@ export default function LeadsPage() {
         }
 
         let headerLine = lines[0];
-        if (headerLine.charCodeAt(0) === 0xFEFF) {
-          headerLine = headerLine.substring(1);
+        if (headerLine.charCodeAt(0) === 0xFEFF) { 
+            headerLine = headerLine.substring(1);
         }
         const fileHeaders = headerLine.split(',').map(h => h.trim().toLowerCase().replace(/\s+/g, '_'));
         console.log("[CSV Import Leads] Detected Normalized Headers:", fileHeaders);
 
         const newLeadsFromCsv: Lead[] = [];
+        // Fetch current leads from API to check for ID duplicates accurately
         const currentApiLeadsResponse = await fetch('/api/leads');
-        const currentApiLeads: Lead[] = await currentApiLeadsResponse.json();
+        const currentApiLeads: Lead[] = currentApiLeadsResponse.ok ? await currentApiLeadsResponse.json() : [];
         const existingLeadIds = new Set(currentApiLeads.map(l => l.id));
 
         for (let i = 1; i < lines.length; i++) {
@@ -337,14 +335,14 @@ export default function LeadsPage() {
 
           const parsedRow = {} as Partial<Lead>;
           fileHeaders.forEach((fileHeader, index) => {
-            const leadKey = csvHeaderMapping[fileHeader];
+            const leadKey = csvHeaderMapping[fileHeader]; 
             if (leadKey) {
-              parsedRow[leadKey] = convertCsvValue(leadKey, data[index]);
+                parsedRow[leadKey] = convertCsvValue(leadKey, data[index]);
             } else {
-              console.warn(`[CSV Import Leads] Unknown header "${fileHeader}" in CSV row ${i + 1}. Skipping this column.`);
+                console.warn(`[CSV Import Leads] Unknown header "${fileHeader}" in CSV row ${i+1}. Skipping this column.`);
             }
           });
-          if (i === 1) console.log("[CSV Import Leads] Processing Row 1 - Parsed (after mapping & convertCsvValue):", JSON.parse(JSON.stringify(parsedRow)));
+           if (i === 1) console.log("[CSV Import Leads] Processing Row 1 - Parsed (after mapping & convertCsvValue):", JSON.parse(JSON.stringify(parsedRow)));
 
           let leadId = typeof parsedRow.id === 'string' && parsedRow.id.trim() !== '' ? parsedRow.id.trim() : undefined;
           const baseGeneratedId = `imported-lead-${Date.now()}-${i}`;
@@ -364,11 +362,12 @@ export default function LeadsPage() {
             agent: parsedRow.agent || '',
             yacht: parsedRow.yacht || '',
             status: parsedRow.status || 'Upcoming',
-            month: parsedRow.month || formatISO(new Date()),
+            month: parsedRow.month || formatISO(new Date()), 
             notes: parsedRow.notes || undefined,
             type: parsedRow.type || 'Imported',
             invoiceId: parsedRow.invoiceId || undefined,
             modeOfPayment: parsedRow.modeOfPayment || 'Online',
+            // Initialize all 9 standardized package quantities
             qty_childRate: parsedRow.qty_childRate ?? 0,
             qty_adultStandardRate: parsedRow.qty_adultStandardRate ?? 0,
             qty_adultStandardDrinksRate: parsedRow.qty_adultStandardDrinksRate ?? 0,
@@ -378,8 +377,8 @@ export default function LeadsPage() {
             qty_royalChildRate: parsedRow.qty_royalChildRate ?? 0,
             qty_royalAdultRate: parsedRow.qty_royalAdultRate ?? 0,
             qty_royalDrinksRate: parsedRow.qty_royalDrinksRate ?? 0,
-            othersAmtCake: parsedRow.othersAmtCake ?? 0,
-            totalAmount: parsedRow.totalAmount ?? 0,
+            othersAmtCake: parsedRow.othersAmtCake ?? 0, // Qty for custom charge
+            totalAmount: parsedRow.totalAmount ?? 0, // Should be recalculated ideally, or taken as is
             commissionPercentage: parsedRow.commissionPercentage ?? 0,
             commissionAmount: parsedRow.commissionAmount ?? 0,
             netAmount: parsedRow.netAmount ?? 0,
@@ -388,23 +387,23 @@ export default function LeadsPage() {
             createdAt: parsedRow.createdAt || formatISO(new Date()),
             updatedAt: formatISO(new Date()),
             lastModifiedByUserId: SIMULATED_CURRENT_USER_ID,
-            ownerUserId: SIMULATED_CURRENT_USER_ID,
+            ownerUserId: SIMULATED_CURRENT_USER_ID, 
           };
           if (i === 1) console.log("[CSV Import Leads] Processing Row 1 - Full Lead Object (to be POSTed):", JSON.parse(JSON.stringify(fullLead)));
-
+          
           if (!fullLead.clientName || !fullLead.agent || !fullLead.yacht || !fullLead.month) {
-            console.warn(`[CSV Import Leads] Skipping lead due to missing required fields (clientName, agent, yacht, month) at CSV row ${i + 1}. Lead data:`, fullLead);
-            skippedCount++;
-            continue;
+             console.warn(`[CSV Import Leads] Skipping lead due to missing required fields (clientName, agent, yacht, month/event date) at CSV row ${i+1}. Lead data:`, fullLead);
+             skippedCount++;
+             continue;
           }
           if (existingLeadIds.has(fullLead.id) || newLeadsFromCsv.some(l => l.id === fullLead.id)) {
-            console.warn(`[CSV Import Leads] Skipping lead with duplicate ID: ${fullLead.id} from CSV row ${i + 1}.`);
+            console.warn(`[CSV Import Leads] Skipping lead with duplicate ID: ${fullLead.id} from CSV row ${i+1}.`);
             skippedCount++;
             continue;
           }
 
           newLeadsFromCsv.push(fullLead);
-          existingLeadIds.add(fullLead.id);
+          existingLeadIds.add(fullLead.id); // Add to set to prevent duplicates within the same batch
         }
 
         if (newLeadsFromCsv.length > 0) {
@@ -418,13 +417,13 @@ export default function LeadsPage() {
               if (response.ok) {
                 successCount++;
               } else {
-                const errorData = await response.json();
+                const errorData = await response.json().catch(() => ({ message: `API Error: ${response.statusText}` }));
                 console.warn(`[CSV Import Leads] API Error for lead ID ${leadToImport.id}: ${errorData.message || response.statusText}. Payload:`, leadToImport);
                 skippedCount++;
               }
             } catch (apiError) {
-              console.warn(`[CSV Import Leads] Network/JS Error importing lead ${leadToImport.id}:`, apiError, "Payload:", leadToImport);
-              skippedCount++;
+                console.warn(`[CSV Import Leads] Network/JS Error importing lead ${leadToImport.id}:`, apiError, "Payload:", leadToImport);
+                skippedCount++;
             }
           }
         }
@@ -435,18 +434,18 @@ export default function LeadsPage() {
         const endTime = Date.now();
         const durationInSeconds = ((endTime - startTime) / 1000).toFixed(2);
         if (successCount > 0 || skippedCount > 0) {
-          await fetchAllData();
+            await fetchAllData(); // Refresh list if any action was taken
         }
-        toast({
-          title: 'Import Processed',
-          description: `${successCount} leads imported. ${skippedCount} rows skipped. Processed in ${durationInSeconds} seconds. Check console for details on skipped rows.`
+        toast({ 
+            title: 'Import Processed', 
+            description: `${successCount} leads imported. ${skippedCount} rows skipped. Processed in ${durationInSeconds} seconds. Check console for details on skipped rows.` 
         });
         setIsImporting(false);
       }
     };
     reader.onerror = () => {
-      toast({ title: 'File Read Error', description: 'Could not read the selected file.', variant: 'destructive' });
-      setIsImporting(false);
+        toast({ title: 'File Read Error', description: 'Could not read the selected file.', variant: 'destructive' });
+        setIsImporting(false);
     }
     reader.readAsText(file);
   };
@@ -467,7 +466,7 @@ export default function LeadsPage() {
       } else if (endDate && leadCreationDate) {
         if (leadCreationDate > endDate) return false;
       }
-
+      
       if (selectedYachtId !== 'all' && lead.yacht !== selectedYachtId) return false;
       if (selectedAgentId !== 'all' && lead.agent !== selectedAgentId) return false;
       if (selectedUserId !== 'all' && lead.lastModifiedByUserId !== selectedUserId) return false;
@@ -485,7 +484,7 @@ export default function LeadsPage() {
     setStatusFilter('all');
   };
 
-  if (isLoading && !allLeads.length) {
+  if (isLoading && allLeads.length === 0 && allAgents.length === 0 && allYachts.length === 0) { // Check all critical data
     return (
       <div className="container mx-auto py-2">
         <PageHeader
@@ -518,6 +517,59 @@ export default function LeadsPage() {
     );
   }
 
+  const handleCsvExport = () => {
+    if (filteredLeads.length === 0) {
+      toast({ title: 'No Data', description: 'There are no leads (matching current filters) to export.', variant: 'default' });
+      return;
+    }
+    // Define the headers based on the Lead type, focusing on the new 9 package qty fields
+    const headers: (keyof Lead)[] = [
+      'id', 'clientName', 'agent', 'yacht', 'status', 'month', 'type', 'invoiceId', 'modeOfPayment', 'notes',
+      'qty_childRate', 'qty_adultStandardRate', 'qty_adultStandardDrinksRate',
+      'qty_vipChildRate', 'qty_vipAdultRate', 'qty_vipAdultDrinksRate',
+      'qty_royalChildRate', 'qty_royalAdultRate', 'qty_royalDrinksRate',
+      'othersAmtCake', 'totalAmount', 'commissionPercentage',
+      'commissionAmount', 'netAmount', 'paidAmount', 'balanceAmount',
+      'createdAt', 'updatedAt', 'lastModifiedByUserId', 'ownerUserId'
+    ];
+    const escapeCsvCell = (cellData: any): string => {
+      if (cellData === null || cellData === undefined) return '';
+      let stringValue = String(cellData);
+      // For date fields (month, createdAt, updatedAt), format them as dd/MM/yyyy for CSV
+      if (['month', 'createdAt', 'updatedAt'].includes(stringValue) && isValid(parseISO(stringValue))) {
+          try {
+              stringValue = format(parseISO(stringValue), 'dd/MM/yyyy');
+          } catch (e) { /* ignore if not a valid date string for these specific keys */ }
+      }
+      if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n')) {
+        return `"${stringValue.replace(/"/g, '""')}"`;
+      }
+      return stringValue;
+    };
+    const csvRows = [
+      headers.join(','),
+      ...filteredLeads.map(lead =>
+        headers.map(header => escapeCsvCell(lead[header])).join(',')
+      )
+    ];
+    const csvString = csvRows.join('\n');
+    const blob = new Blob(["\uFEFF" + csvString], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    if (link.download !== undefined) {
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', 'dutchoriental_leads_export.csv');
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      toast({ title: 'Export Successful', description: 'Leads have been exported to CSV.' });
+    } else {
+      toast({ title: 'Export Failed', description: 'Your browser does not support this feature.', variant: 'destructive' });
+    }
+  };
+
   return (
     <div className="container mx-auto py-2">
       <PageHeader
@@ -526,56 +578,7 @@ export default function LeadsPage() {
         actions={<ImportExportButtons
           onAddLeadClick={handleAddLeadClick}
           onCsvImport={handleCsvImport}
-          onCsvExport={() => {
-            if (allLeads.length === 0) {
-              toast({ title: 'No Data', description: 'There are no leads to export.', variant: 'default' });
-              return;
-            }
-            const headers: (keyof Lead)[] = [
-              'id', 'clientName', 'agent', 'yacht', 'status', 'month', 'type', 'invoiceId', 'modeOfPayment', 'notes',
-              'qty_childRate', 'qty_adultStandardRate', 'qty_adultStandardDrinksRate',
-              'qty_vipChildRate', 'qty_vipAdultRate', 'qty_vipAdultDrinksRate',
-              'qty_royalChildRate', 'qty_royalAdultRate', 'qty_royalDrinksRate',
-              'othersAmtCake', 'totalAmount', 'commissionPercentage',
-              'commissionAmount', 'netAmount', 'paidAmount', 'balanceAmount',
-              'createdAt', 'updatedAt', 'lastModifiedByUserId', 'ownerUserId'
-            ];
-            const escapeCsvCell = (cellData: any): string => {
-              if (cellData === null || cellData === undefined) return '';
-              let stringValue = String(cellData);
-              if (typeof cellData === 'string' && (cellData.includes('/') || cellData.includes('-')) && isValid(parseISO(cellData))) {
-                try {
-                  stringValue = format(parseISO(cellData), 'dd/MM/yyyy');
-                } catch (e) { /* ignore */ }
-              }
-              if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n')) {
-                return `"${stringValue.replace(/"/g, '""')}"`;
-              }
-              return stringValue;
-            };
-            const csvRows = [
-              headers.join(','),
-              ...allLeads.map(lead =>
-                headers.map(header => escapeCsvCell(lead[header])).join(',')
-              )
-            ];
-            const csvString = csvRows.join('\n');
-            const blob = new Blob(["\uFEFF" + csvString], { type: 'text/csv;charset=utf-8;' });
-            const link = document.createElement('a');
-            if (link.download !== undefined) {
-              const url = URL.createObjectURL(blob);
-              link.setAttribute('href', url);
-              link.setAttribute('download', 'dutchoriental_leads_export.csv');
-              link.style.visibility = 'hidden';
-              document.body.appendChild(link);
-              link.click();
-              document.body.removeChild(link);
-              URL.revokeObjectURL(url);
-              toast({ title: 'Export Successful', description: 'Leads have been exported to CSV.' });
-            } else {
-              toast({ title: 'Export Failed', description: 'Your browser does not support this feature.', variant: 'destructive' });
-            }
-          }}
+          onCsvExport={handleCsvExport} 
         />}
       />
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-6 p-4 border rounded-lg shadow-sm">
@@ -636,7 +639,7 @@ export default function LeadsPage() {
         </div>
       </div>
 
-      {isLoading && allLeads.length > 0 ? (
+      {isLoading && allLeads.length === 0 ? (
         <div className="space-y-2 mt-4">
           {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}
         </div>

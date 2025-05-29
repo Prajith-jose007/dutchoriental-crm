@@ -45,7 +45,7 @@ const leadFormSchema = z.object({
   id: z.string().optional(),
   agent: z.string().min(1, 'Agent is required'),
   status: z.enum(leadStatusOptions),
-  month: z.date({ required_error: "Lead/Event Date is required." }), 
+  month: z.date({ required_error: "Lead/Event Date is required." }),
   notes: z.string().optional(),
   yacht: z.string().min(1, 'Yacht selection is required'),
   type: z.enum(leadTypeOptions, { required_error: "Lead type is required."}),
@@ -63,8 +63,8 @@ const leadFormSchema = z.object({
   qty_royalChildRate: z.coerce.number().min(0).optional().default(0),
   qty_royalAdultRate: z.coerce.number().min(0).optional().default(0),
   qty_royalDrinksRate: z.coerce.number().min(0).optional().default(0),
-  
-  othersAmtCake: z.coerce.number().min(0).optional().default(0), 
+
+  othersAmtCake: z.coerce.number().min(0).optional().default(0), // Quantity for custom charge
 
   totalAmount: z.coerce.number().min(0).default(0),
   commissionPercentage: z.coerce.number().min(0).max(100).default(0),
@@ -87,8 +87,6 @@ interface LeadFormDialogProps {
   onSubmitSuccess: (data: Lead) => void;
 }
 
-// Configuration for the 9 standard package item quantities on a lead
-// The 'label' will be simplified as per user request.
 const allPackageItemConfigs: { qtyKey: keyof LeadFormData; rateKey: keyof Yacht; label: string; isGuestCount?: boolean }[] = [
   { qtyKey: 'qty_childRate', rateKey: 'childRate', label: 'Child Package', isGuestCount: true },
   { qtyKey: 'qty_adultStandardRate', rateKey: 'adultStandardRate', label: 'Adult Standard Package', isGuestCount: true },
@@ -101,14 +99,14 @@ const allPackageItemConfigs: { qtyKey: keyof LeadFormData; rateKey: keyof Yacht;
   { qtyKey: 'qty_royalDrinksRate', rateKey: 'royalDrinksRate', label: 'Royal Drinks Package', isGuestCount: true },
 ];
 
-// Configuration for the custom charge (from yacht.otherChargeName and yacht.otherChargeRate)
 const customChargeConfig = {
-  qtyKey: 'othersAmtCake' as keyof LeadFormData, 
-  rateKey: 'otherChargeRate' as keyof Yacht,     
-  nameKey: 'otherChargeName' as keyof Yacht      
+  qtyKey: 'othersAmtCake' as keyof LeadFormData,
+  rateKey: 'otherChargeRate' as keyof Yacht,
+  nameKey: 'otherChargeName' as keyof Yacht
 };
 
 const getDefaultFormValues = (): LeadFormData => ({
+    id: undefined,
     agent: '', status: 'Upcoming', month: new Date(), yacht: '',
     type: 'Private', modeOfPayment: 'Online', clientName: '',
     notes: '', transactionId: '',
@@ -163,20 +161,20 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
       }
     };
     fetchDropdownData();
-  }, [isOpen]); 
+  }, [isOpen]);
 
 
   const watchedAgentId = form.watch('agent');
   const watchedYachtId = form.watch('yacht');
   const watchedStdQuantities = allPackageItemConfigs.map(config => form.watch(config.qtyKey as keyof LeadFormData));
-  const watchedOthersAmtCakeQty = form.watch(customChargeConfig.qtyKey); 
+  const watchedOthersAmtCakeQty = form.watch(customChargeConfig.qtyKey);
   const watchedPaidAmount = form.watch('paidAmount');
   const watchedMonth = form.watch('month'); // Watch for event date changes
 
   useEffect(() => {
     const selectedAgent = agents.find(a => a.id === watchedAgentId);
     const agentDiscountRate = selectedAgent?.discount || 0;
-    form.setValue('commissionPercentage', agentDiscountRate);
+    form.setValue('commissionPercentage', agentDiscountRate, { shouldValidate: true, shouldDirty: true });
 
     const selectedYacht = yachts.find(y => y.id === watchedYachtId);
 
@@ -202,21 +200,21 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
       }
     }
     setCalculatedTotalGuests(currentTotalGuests);
-    form.setValue('totalAmount', currentTotalAmount);
+    form.setValue('totalAmount', currentTotalAmount, { shouldValidate: true, shouldDirty: true });
 
     const currentCommissionAmount = (currentTotalAmount * agentDiscountRate) / 100;
-    form.setValue('commissionAmount', currentCommissionAmount);
+    form.setValue('commissionAmount', currentCommissionAmount, { shouldValidate: true, shouldDirty: true });
 
     const currentNetAmount = currentTotalAmount - currentCommissionAmount;
-    form.setValue('netAmount', currentNetAmount);
+    form.setValue('netAmount', currentNetAmount, { shouldValidate: true, shouldDirty: true });
 
-    const paidAmtValue = form.getValues('paidAmount'); 
+    const paidAmtValue = form.getValues('paidAmount');
     const paidAmt = typeof paidAmtValue === 'number' ? paidAmtValue : 0;
     const currentBalanceAmount = currentNetAmount - paidAmt;
-    form.setValue('balanceAmount', currentBalanceAmount);
+    form.setValue('balanceAmount', currentBalanceAmount, { shouldValidate: true, shouldDirty: true });
 
   }, [
-    watchedAgentId, watchedYachtId, ...watchedStdQuantities, 
+    watchedAgentId, watchedYachtId, ...watchedStdQuantities,
     watchedOthersAmtCakeQty, watchedPaidAmount, form, agents, yachts
   ]);
 
@@ -225,7 +223,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
       const defaultVals = getDefaultFormValues();
       if (lead) {
         const leadMonthDate = lead.month && isValid(parseISO(lead.month)) ? parseISO(lead.month) : defaultVals.month;
-        form.reset({
+        const resetValues: LeadFormData = {
           ...defaultVals,
           ...lead,
           month: leadMonthDate,
@@ -247,22 +245,25 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
           netAmount: lead.netAmount || 0,
           paidAmount: lead.paidAmount || 0,
           balanceAmount: lead.balanceAmount || 0,
-        } as LeadFormData);
+        };
+        form.reset(resetValues);
       } else {
         form.reset(defaultVals);
       }
-      const selectedAgent = agents.find(a => a.id === form.getValues('agent'));
+      // Recalculate commission percentage if agent changes or form opens
+      const currentAgentId = form.getValues('agent');
+      const selectedAgent = agents.find(a => a.id === currentAgentId);
       form.setValue('commissionPercentage', selectedAgent?.discount || 0);
     }
-  }, [lead, form, isOpen, agents]);
+  }, [lead, form, isOpen, agents]); // Added agents to dependency array
 
   function onSubmit(data: LeadFormData) {
-    const currentUserId = 'DO-user1'; // Placeholder
+    const currentUserId = 'DO-user1'; // Placeholder for actual logged-in user ID
 
     const submittedLead: Lead = {
-      ...data, 
-      month: data.month ? formatISO(data.month) : formatISO(new Date()), 
-      id: lead?.id, 
+      ...data,
+      month: data.month ? formatISO(data.month) : formatISO(new Date()),
+      id: lead?.id || data.id, // Use existing ID if editing, or form ID if present (for potential pre-set IDs)
       createdAt: lead?.createdAt || formatISO(new Date()),
       updatedAt: formatISO(new Date()),
       lastModifiedByUserId: currentUserId,
@@ -342,7 +343,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
               />
                <FormField
                 control={form.control}
-                name="month" 
+                name="month"
                 render={({ field }) => (
                   <FormItem className="flex flex-col">
                     <FormLabel>Lead/Event Date</FormLabel>
@@ -417,13 +418,13 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
                 )}
               />
             </div>
-            
+
             <div>
                 <h3 className="text-lg font-medium pt-4 border-t mt-6">Package Item Quantities</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-2">
                   {allPackageItemConfigs.map(pkgFieldConfig => {
                     const rate = selectedYachtForRateDisplay ? selectedYachtForRateDisplay[pkgFieldConfig.rateKey as keyof Yacht] : undefined;
-                    const rateDisplay = typeof rate === 'number' ? ` (Rate: ${rate} AED)` : selectedYachtForRateDisplay ? ' (Rate: N/A)' : ' (Select Yacht for Rate)';
+                    const rateDisplay = typeof rate === 'number' && rate > 0 ? `(Rate: ${rate} AED)` : selectedYachtForRateDisplay ? '(Rate: N/A)' : '(Select Yacht)';
                     return (
                       <FormField
                       key={pkgFieldConfig.qtyKey}
@@ -431,7 +432,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
                       name={pkgFieldConfig.qtyKey as keyof LeadFormData}
                       render={({ field }) => (
                           <FormItem>
-                          <FormLabel>{pkgFieldConfig.label}{/* Removed rate display here */}</FormLabel>
+                          <FormLabel>{pkgFieldConfig.label} {rateDisplay}</FormLabel>
                           <FormControl>
                               <Input type="number" min="0" placeholder="0" {...field} onChange={e => field.onChange(parseInt(e.target.value,10) || 0)} />
                           </FormControl>
@@ -448,19 +449,19 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 <FormField
                     control={form.control}
-                    name={customChargeConfig.qtyKey} 
+                    name={customChargeConfig.qtyKey}
                     render={({ field }) => {
                         const customChargeNameOnYacht = selectedYachtForRateDisplay?.[customChargeConfig.nameKey as keyof Yacht];
                         const customChargeRateOnYacht = selectedYachtForRateDisplay?.[customChargeConfig.rateKey as keyof Yacht];
-                        const labelText = customChargeNameOnYacht 
-                            ? `${customChargeNameOnYacht} Qty` 
+                        const labelText = customChargeNameOnYacht
+                            ? `${customChargeNameOnYacht} Qty`
                             : 'Quantity for Custom Charge';
-                        const rateDisplay = typeof customChargeRateOnYacht === 'number' 
-                            ? ` (Rate: ${customChargeRateOnYacht} AED)` 
-                            : selectedYachtForRateDisplay ? ' (No Custom Charge Rate Set)' : ' (Select Yacht for Custom Charge)';
+                        const rateDisplay = typeof customChargeRateOnYacht === 'number' && customChargeRateOnYacht > 0
+                            ? `(Rate: ${customChargeRateOnYacht} AED)`
+                            : selectedYachtForRateDisplay ? '(No Custom Charge Rate Set)' : '(Select Yacht)';
                         return (
                             <FormItem>
-                                <FormLabel>{labelText}{rateDisplay}</FormLabel>
+                                <FormLabel>{labelText} {rateDisplay}</FormLabel>
                                 <FormControl><Input type="number" min="0" placeholder="0" {...field} onChange={e => field.onChange(parseInt(e.target.value) || 0)} /></FormControl>
                                 <FormMessage />
                             </FormItem>
@@ -580,4 +581,3 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
     </Dialog>
   );
 }
-

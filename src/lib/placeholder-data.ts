@@ -1,5 +1,5 @@
 
-import type { Lead, User, Yacht, Invoice, Agent, LeadType, ModeOfPayment, LeadStatus, YachtPackage } from './types';
+import type { Lead, User, Yacht, Invoice, Agent, LeadType, ModeOfPayment, LeadStatus } from './types';
 import { formatISO, parseISO, subDays, addDays, format } from 'date-fns';
 
 export const placeholderUsers: User[] = [
@@ -46,7 +46,7 @@ export let placeholderAgents: Agent[] = [
     status: 'Non Active',
     TRN_number: '100458965200003',
     customer_type_id: 'INTL-TOUR',
-    discount: 12.5, // Example discount
+    discount: 12.5,
     websiteUrl: 'https://globalcharters.com'
   },
 ];
@@ -55,43 +55,52 @@ export let placeholderAgents: Agent[] = [
 export let placeholderYachts: Yacht[] = [
   {
     id: 'DO-yacht1', name: 'The Sea Serpent', capacity: 50, status: 'Available', imageUrl: 'https://placehold.co/600x400.png?text=Sea+Serpent',
-    packages: [
-      { id: 'ss-child', name: 'Standard Child Pass', rate: 89 },
-      { id: 'ss-adult', name: 'Standard Adult Pass', rate: 129 },
-      { id: 'ss-adult-drinks', name: 'Standard Adult Pass + Drinks', rate: 159 },
-      { id: 'ss-vip-child', name: 'VIP Child Pass', rate: 139 },
-      { id: 'ss-vip-adult', name: 'VIP Adult Pass', rate: 189 },
-      { id: 'ss-vip-adult-drinks', name: 'VIP Adult Pass + Drinks', rate: 249 },
-    ],
-    customPackageInfo: "Weekend special: Includes free jet ski for 1 hour (Admin Note)"
+    customPackageInfo: "Weekend special: Includes free jet ski for 1 hour (Admin Note)",
+    childRate: 89,
+    adultStandardRate: 129,
+    adultStandardDrinksRate: 159,
+    vipChildRate: 139,
+    vipAdultRate: 189,
+    vipAdultDrinksRate: 249,
+    royalChildRate: 200,
+    royalAdultRate: 300,
+    royalDrinksRate: 380,
+    otherChargeName: 'Cake Service',
+    otherChargeRate: 150,
   },
   {
     id: 'DO-yacht2', name: 'Ocean Voyager', capacity: 100, status: 'Available', imageUrl: 'https://placehold.co/600x400.png?text=Ocean+Voyager',
-    packages: [
-      { id: 'ov-child', name: 'Child Ticket', rate: 95 },
-      { id: 'ov-adult-std', name: 'Adult Standard Ticket', rate: 135 },
-      { id: 'ov-adult-prem', name: 'Adult Premium Ticket (Incl. Soft Drinks)', rate: 165 },
-      { id: 'ov-vip', name: 'VIP Experience (All Inclusive)', rate: 255 },
-    ],
-    customPackageInfo: "Corporate events preferred."
+    customPackageInfo: "Corporate events preferred.",
+    childRate: 95,
+    adultStandardRate: 135,
+    adultStandardDrinksRate: 165,
+    vipChildRate: 145,
+    vipAdultRate: 195,
+    vipAdultDrinksRate: 255,
+    royalChildRate: 220,
+    royalAdultRate: 320,
+    royalDrinksRate: 400,
+    otherChargeName: undefined, // No specific other charge name
+    otherChargeRate: 0, // No other charge rate
   },
 ];
 
 const today = new Date();
 
+// Sample leads updated to use the new 9 standardized quantity fields
 export let placeholderLeads: Lead[] = [
   {
     id: 'DO-001',
     agent: 'DO-AGENT-001',
     status: 'Conformed',
-    month: formatISO(new Date('2024-07-15T14:00:00+04:00')), // Event Date
+    month: formatISO(parseISO('2024-07-15T14:00:00+04:00')),
     notes: 'Confirmed booking, client very happy.',
-    yacht: 'DO-yacht1',
-    type: 'Dinner Cruise',
+    yacht: 'DO-yacht1', // Sea Serpent
+    type: 'Dinner Cruise' as LeadType,
     transactionId: '202400001',
-    modeOfPayment: 'Online',
+    modeOfPayment: 'Online' as ModeOfPayment,
     qty_childRate: 0,
-    qty_adultStandardRate: 10, // 10 * 129 = 1290
+    qty_adultStandardRate: 10, // 10 * 129 (Sea Serpent adultStandardRate) = 1290
     qty_adultStandardDrinksRate: 0,
     qty_vipChildRate: 0,
     qty_vipAdultRate: 0,
@@ -99,15 +108,15 @@ export let placeholderLeads: Lead[] = [
     qty_royalChildRate: 0,
     qty_royalAdultRate: 0,
     qty_royalDrinksRate: 0,
-    othersAmtCake: 0,
+    othersAmtCake: 0, // No custom cake service for this lead
     totalAmount: 1290,
     commissionPercentage: 10,
-    commissionAmount: 129, // 10% of 1290
+    commissionAmount: 129,
     netAmount: 1161,
-    paidAmount: 1290,
+    paidAmount: 1161,
     balanceAmount: 0,
-    createdAt: formatISO(new Date('2024-06-15T14:00:00+04:00')),
-    updatedAt: formatISO(new Date('2024-07-01T14:00:00+04:00')),
+    createdAt: formatISO(parseISO('2024-06-15T14:00:00+04:00')),
+    updatedAt: formatISO(parseISO('2024-07-01T14:00:00+04:00')),
     lastModifiedByUserId: 'DO-user1',
     ownerUserId: 'DO-user1'
   },
@@ -115,14 +124,14 @@ export let placeholderLeads: Lead[] = [
     id: 'DO-002',
     agent: 'DO-AGENT-002',
     status: 'Upcoming',
-    month: formatISO(new Date('2024-07-25T18:30:00+04:00')),
+    month: formatISO(parseISO('2024-07-25T18:30:00+04:00')),
     notes: 'Follow up next week.',
-    yacht: 'DO-yacht2',
-    type: 'Private',
+    yacht: 'DO-yacht2', // Ocean Voyager
+    type: 'Private' as LeadType,
     transactionId: '202400002',
-    modeOfPayment: 'Credit',
-    qty_childRate: 0,
-    qty_adultStandardRate: 10, // 10 * 135 = 1350 (assuming yacht2 adultStandardRate is 135)
+    modeOfPayment: 'Credit' as ModeOfPayment,
+    qty_childRate: 5,  // 5 * 95 (Ocean Voyager childRate) = 475
+    qty_adultStandardRate: 5, // 5 * 135 (Ocean Voyager adultStandardRate) = 675
     qty_adultStandardDrinksRate: 0,
     qty_vipChildRate: 0,
     qty_vipAdultRate: 0,
@@ -131,14 +140,14 @@ export let placeholderLeads: Lead[] = [
     qty_royalAdultRate: 0,
     qty_royalDrinksRate: 0,
     othersAmtCake: 0,
-    totalAmount: 1350,
+    totalAmount: 1150, // 475 + 675
     commissionPercentage: 15,
-    commissionAmount: 202.5,
-    netAmount: 1147.5,
+    commissionAmount: 172.5,
+    netAmount: 977.5,
     paidAmount: 500,
-    balanceAmount: 647.5, // 1147.5 - 500
-    createdAt: formatISO(new Date('2024-06-20T14:00:00+04:00')),
-    updatedAt: formatISO(new Date('2024-07-05T14:00:00+04:00')),
+    balanceAmount: 477.5,
+    createdAt: formatISO(parseISO('2024-06-20T14:00:00+04:00')),
+    updatedAt: formatISO(parseISO('2024-07-05T14:00:00+04:00')),
     lastModifiedByUserId: 'DO-user2',
     ownerUserId: 'DO-user2'
   },
@@ -146,123 +155,30 @@ export let placeholderLeads: Lead[] = [
     id: 'DO-003',
     agent: 'DO-AGENT-001',
     status: 'Conformed',
-    month: formatISO(new Date('2024-08-10T16:00:00+04:00')),
+    month: formatISO(parseISO('2024-08-10T16:00:00+04:00')),
     notes: '',
-    yacht: 'DO-yacht1',
-    type: 'Dinner Cruise',
+    yacht: 'DO-yacht1', // Sea Serpent
+    type: 'Dinner Cruise' as LeadType,
     transactionId: undefined,
-    modeOfPayment: 'Cash/Card',
-    qty_childRate: 0,
-    qty_adultStandardRate: 10, // 10 * 129 = 1290
-    qty_adultStandardDrinksRate: 0,
-    qty_vipChildRate: 0,
-    qty_vipAdultRate: 0,
-    qty_vipAdultDrinksRate: 0,
-    qty_royalChildRate: 0,
-    qty_royalAdultRate: 0,
-    qty_royalDrinksRate: 0,
-    othersAmtCake: 0,
-    totalAmount: 1290,
-    commissionPercentage: 10,
-    commissionAmount: 129,
-    netAmount: 1161,
-    paidAmount: 1290,
-    balanceAmount: 0,
-    createdAt: formatISO(new Date('2024-07-10T14:00:00+04:00')),
-    updatedAt: formatISO(new Date('2024-07-12T14:00:00+04:00')),
-    lastModifiedByUserId: 'DO-user1',
-    ownerUserId: 'DO-user1'
-  },
-  {
-    id: 'DO-004',
-    agent: 'DO-AGENT-001',
-    status: 'Upcoming',
-    month: formatISO(new Date('2024-08-20T22:00:00+04:00')),
-    notes: 'Special request for decoration.',
-    yacht: 'DO-yacht1',
-    type: 'Private',
-    transactionId: '202400003',
-    modeOfPayment: 'Online',
+    modeOfPayment: 'Cash/Card' as ModeOfPayment,
     qty_childRate: 0,
     qty_adultStandardRate: 0,
     qty_adultStandardDrinksRate: 0,
     qty_vipChildRate: 0,
-    qty_vipAdultRate: 20, // 20 * 189 (Sea Serpent VIP Adult) = 3780
+    qty_vipAdultRate: 10, // 10 * 189 (Sea Serpent vipAdultRate) = 1890
     qty_vipAdultDrinksRate: 0,
     qty_royalChildRate: 0,
     qty_royalAdultRate: 0,
     qty_royalDrinksRate: 0,
-    othersAmtCake: 1, // 1 * 150 (Sea Serpent Cake Service) = 150
-    totalAmount: 3930, // 3780 + 150
+    othersAmtCake: 1, // 1 * 150 (Sea Serpent otherChargeRate for Cake Service) = 150
+    totalAmount: 2040, // 1890 + 150
     commissionPercentage: 10,
-    commissionAmount: 393,
-    netAmount: 3537,
-    paidAmount: 0,
-    balanceAmount: 3537,
-    createdAt: formatISO(new Date('2024-07-20T14:00:00+04:00')),
-    updatedAt: formatISO(new Date('2024-07-20T14:00:00+04:00')),
-    lastModifiedByUserId: 'DO-user3',
-    ownerUserId: 'DO-user3'
-  },
-  {
-    id: 'DO-005',
-    agent: 'DO-AGENT-002',
-    status: 'Balance',
-    month: formatISO(new Date('2024-09-05T20:00:00+04:00')),
-    notes: 'Client paid deposit.',
-    yacht: 'DO-yacht1',
-    type: 'Dinner Cruise',
-    transactionId: '202400004',
-    modeOfPayment: 'Credit',
-    qty_childRate: 10, // 10 * 89 = 890
-    qty_adultStandardRate: 10, // 10 * 129 = 1290
-    qty_adultStandardDrinksRate: 0,
-    qty_vipChildRate: 0,
-    qty_vipAdultRate: 0,
-    qty_vipAdultDrinksRate: 0,
-    qty_royalChildRate: 0,
-    qty_royalAdultRate: 0,
-    qty_royalDrinksRate: 0,
-    othersAmtCake: 0,
-    totalAmount: 2180, // 890 + 1290
-    commissionPercentage: 15,
-    commissionAmount: 327,
-    netAmount: 1853,
-    paidAmount: 1000,
-    balanceAmount: 853,
-    createdAt: formatISO(new Date('2024-08-10T14:00:00+04:00')),
-    updatedAt: formatISO(new Date('2024-08-15T14:00:00+04:00')),
-    lastModifiedByUserId: 'DO-user2',
-    ownerUserId: 'DO-user2'
-  },
-  {
-    id: 'DO-006',
-    agent: 'DO-AGENT-001',
-    status: 'Closed',
-    month: formatISO(new Date('2024-05-05T20:00:00+04:00')),
-    notes: 'Event cancelled by client.',
-    yacht: 'DO-yacht2',
-    type: 'Private',
-    transactionId: '202400005',
-    modeOfPayment: 'Online',
-    qty_childRate: 0,
-    qty_adultStandardRate: 0,
-    qty_adultStandardDrinksRate: 0,
-    qty_vipChildRate: 0,
-    qty_vipAdultRate: 5, // 5 * 195 (Ocean Voyager VIP) = 975
-    qty_vipAdultDrinksRate: 0,
-    qty_royalChildRate: 0,
-    qty_royalAdultRate: 0,
-    qty_royalDrinksRate: 0,
-    othersAmtCake: 0,
-    totalAmount: 975,
-    commissionPercentage: 10,
-    commissionAmount: 97.5,
-    netAmount: 877.5,
-    paidAmount: 975, // Full amount paid before cancellation, might need refund logic elsewhere.
+    commissionAmount: 204,
+    netAmount: 1836,
+    paidAmount: 1836,
     balanceAmount: 0,
-    createdAt: formatISO(new Date('2024-04-10T14:00:00+04:00')),
-    updatedAt: formatISO(new Date('2024-04-15T14:00:00+04:00')),
+    createdAt: formatISO(parseISO('2024-07-10T14:00:00+04:00')),
+    updatedAt: formatISO(parseISO('2024-07-12T14:00:00+04:00')),
     lastModifiedByUserId: 'DO-user1',
     ownerUserId: 'DO-user1'
   },
@@ -270,8 +186,6 @@ export let placeholderLeads: Lead[] = [
 
 export let placeholderInvoices: Invoice[] = [
   { id: 'DO-inv001', leadId: 'DO-001', clientName: 'Tech Corp', amount: 1290, dueDate: formatISO(addDays(today, 15)), status: 'Paid', createdAt: formatISO(subDays(today, 5)) },
-  { id: 'DO-inv002', leadId: 'DO-002', clientName: 'Innovate Ltd', amount: 1350, dueDate: formatISO(addDays(today, 20)), status: 'Pending', createdAt: formatISO(subDays(today, 3)) },
-  { id: 'DO-inv003', leadId: 'DO-003', clientName: 'Solutions Inc', amount: 1290, dueDate: formatISO(subDays(today, 5)), status: 'Pending', createdAt: formatISO(subDays(today, 10)) }, // Example of an overdue invoice
-  { id: 'DO-inv004', leadId: 'DO-004', clientName: 'Global Co', amount: 3930, dueDate: formatISO(addDays(today, 30)), status: 'Pending', createdAt: formatISO(subDays(today, 1)) },
-  { id: 'DO-inv005', leadId: 'DO-005', clientName: 'Celebrations LLC', amount: 2180, dueDate: formatISO(addDays(today, 10)), status: 'Pending', createdAt: formatISO(subDays(today, 2)) },
+  { id: 'DO-inv002', leadId: 'DO-002', clientName: 'Innovate Ltd', amount: 1150, dueDate: formatISO(addDays(today, 20)), status: 'Pending', createdAt: formatISO(subDays(today, 3)) },
+  { id: 'DO-inv003', leadId: 'DO-003', clientName: 'Solutions Inc', amount: 2040, dueDate: formatISO(subDays(today, 5)), status: 'Pending', createdAt: formatISO(subDays(today, 10)) },
 ];

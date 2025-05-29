@@ -7,16 +7,16 @@ import { LeadsTable } from './_components/LeadsTable';
 import { ImportExportButtons } from './_components/ImportExportButtons';
 import { LeadFormDialog } from './_components/LeadFormDialog';
 import type { Lead, LeadStatus, User, Agent, Yacht, ExportedLeadStatus, ExportedModeOfPayment, ExportedLeadType, LeadType } from '@/lib/types';
-import { leadStatusOptions, modeOfPaymentOptions, leadTypeOptions } from '@/lib/types'; // Import options
+import { leadStatusOptions, modeOfPaymentOptions, leadTypeOptions } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { DatePicker } from '@/components/ui/date-picker';
 import { Skeleton } from '@/components/ui/skeleton';
-import { format, parseISO, isWithinInterval, isValid, formatISO } from 'date-fns'; 
+import { format, parseISO, isWithinInterval, isValid, formatISO, getYear, getMonth as getMonthIndex } from 'date-fns'; 
 
-const SIMULATED_CURRENT_USER_ID = 'DO-user1';
+const SIMULATED_CURRENT_USER_ID = 'DO-user1'; 
 
 const csvHeaderMapping: { [csvHeaderKey: string]: keyof Lead } = {
   'id': 'id',
@@ -24,13 +24,12 @@ const csvHeaderMapping: { [csvHeaderKey: string]: keyof Lead } = {
   'agent': 'agent', 'agentid': 'agent',
   'yacht': 'yacht', 'yachtid': 'yacht',
   'status': 'status',
-  'month': 'month', 'lead/event date': 'month', // 'month' is the lead/event date
+  'month': 'month', 'lead/event date': 'month', 
   'notes': 'notes', 'user feed': 'notes',
   'type': 'type', 'lead type': 'type',
-  'invoiceid': 'invoiceId', 'invoice id': 'invoiceId',
+  'transactionid': 'transactionId', 'transaction id': 'transactionId', // Renamed from invoiceId
   'modeofpayment': 'modeOfPayment', 'payment mode': 'modeOfPayment',
   
-  // Standardized Package Quantities (match Lead type fields)
   'qty_childrate': 'qty_childRate',
   'qty_adultstandardrate': 'qty_adultStandardRate',
   'qty_adultstandarddrinksrate': 'qty_adultStandardDrinksRate',
@@ -67,7 +66,7 @@ const convertCsvValue = (key: keyof Lead, value: string): any => {
         return 0;
       case 'modeOfPayment': return 'Online';
       case 'status': return 'Upcoming';
-      case 'type': return 'Private'; // Default LeadType
+      case 'type': return 'Private' as LeadType;
       case 'notes': return '';
       case 'month': return formatISO(new Date()); 
       case 'createdAt': case 'updatedAt': return formatISO(new Date());
@@ -98,8 +97,25 @@ const convertCsvValue = (key: keyof Lead, value: string): any => {
       } catch (e) { /* ignore ISO parse error and try other formats */ }
       
       try {
-        const dateObj = new Date(trimmedValue); 
-        if (isValid(dateObj)) return formatISO(dateObj);
+        // Attempt to parse common date formats like DD/MM/YYYY
+        const parts = trimmedValue.split(/[\/\-\.]/); // Split by slash, hyphen, or dot
+        if (parts.length === 3) {
+            let day, month, year;
+            // Common heuristic: if first part is > 12, it's likely day or year
+            if (parseInt(parts[0]) > 12 && parseInt(parts[1]) <= 12) { // DD/MM/YYYY
+                day = parseInt(parts[0]); month = parseInt(parts[1]); year = parseInt(parts[2]);
+            } else if (parseInt(parts[0]) <=12 && parseInt(parts[1]) > 12) { // MM/DD/YYYY
+                month = parseInt(parts[0]); day = parseInt(parts[1]); year = parseInt(parts[2]);
+            } else { // Could be ambiguous, try MM/DD/YYYY or DD/MM/YYYY based on typical usage or a fixed assumption
+                 month = parseInt(parts[0]); day = parseInt(parts[1]); year = parseInt(parts[2]); // Default to MM/DD/YYYY or DD/MM/YYYY as preferred
+            }
+             if (String(year).length === 2) year += 2000; // Handle YY
+            
+            if (!isNaN(day) && !isNaN(month) && !isNaN(year) && year > 1900 && year < 2100 && month >=1 && month <=12 && day >=1 && day <=31) {
+                 const dateObj = new Date(year, month - 1, day); // Month is 0-indexed
+                 if (isValid(dateObj)) return formatISO(dateObj);
+            }
+        }
       } catch (e) {/* ignore */ }
       console.warn(`[CSV Import] Could not parse date "${trimmedValue}" for key "${key}". Defaulting to current date.`);
       return formatISO(new Date());
@@ -361,7 +377,7 @@ export default function LeadsPage() {
             month: parsedRow.month || formatISO(new Date()), 
             notes: parsedRow.notes || undefined,
             type: parsedRow.type || 'Private',
-            invoiceId: parsedRow.invoiceId || undefined,
+            transactionId: parsedRow.transactionId || undefined, // Renamed
             modeOfPayment: parsedRow.modeOfPayment || 'Online',
             
             qty_childRate: parsedRow.qty_childRate ?? 0,
@@ -521,7 +537,7 @@ export default function LeadsPage() {
     }
     
     const headers: (keyof Lead)[] = [
-      'id', 'clientName', 'agent', 'yacht', 'status', 'month', 'type', 'invoiceId', 'modeOfPayment', 'notes',
+      'id', 'clientName', 'agent', 'yacht', 'status', 'month', 'type', 'transactionId', 'modeOfPayment', 'notes', // Renamed
       'qty_childRate', 'qty_adultStandardRate', 'qty_adultStandardDrinksRate',
       'qty_vipChildRate', 'qty_vipAdultRate', 'qty_vipAdultDrinksRate',
       'qty_royalChildRate', 'qty_royalAdultRate', 'qty_royalDrinksRate',
@@ -666,4 +682,3 @@ export default function LeadsPage() {
     </div>
   );
 }
-

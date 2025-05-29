@@ -35,21 +35,20 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Textarea } from '@/components/ui/textarea';
 import { DatePicker } from '@/components/ui/date-picker';
 import type { Lead, Agent, Yacht, ModeOfPayment, LeadStatus, LeadType } from '@/lib/types';
-import { leadStatusOptions, modeOfPaymentOptions, leadTypeOptions } from '@/lib/types'; // Import options
+import { leadStatusOptions, modeOfPaymentOptions, leadTypeOptions } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { useEffect, useState } from 'react';
 import { formatISO, parseISO, isValid } from 'date-fns';
 
-// Define Zod schema based on the 9 standardized package quantities
 const leadFormSchema = z.object({
   id: z.string().optional(),
   agent: z.string().min(1, 'Agent is required'),
   status: z.enum(leadStatusOptions),
-  month: z.date({ required_error: "Lead/Event Date is required." }),
+  month: z.date({ required_error: "Lead/Event Date is required." }), // This is the Lead/Event Date
   notes: z.string().optional(),
   yacht: z.string().min(1, 'Yacht selection is required'),
   type: z.enum(leadTypeOptions, { required_error: "Lead type is required."}),
-  invoiceId: z.string().optional(),
+  transactionId: z.string().optional(), // Renamed from invoiceId
   modeOfPayment: z.enum(modeOfPaymentOptions),
   clientName: z.string().min(1, 'Client name is required'),
 
@@ -64,7 +63,7 @@ const leadFormSchema = z.object({
   qty_royalAdultRate: z.coerce.number().min(0).optional().default(0),
   qty_royalDrinksRate: z.coerce.number().min(0).optional().default(0),
   
-  othersAmtCake: z.coerce.number().min(0).optional().default(0), // Quantity for custom charge from yacht
+  othersAmtCake: z.coerce.number().min(0).optional().default(0), 
 
   totalAmount: z.coerce.number().min(0).default(0),
   commissionPercentage: z.coerce.number().min(0).max(100).default(0),
@@ -72,8 +71,8 @@ const leadFormSchema = z.object({
   netAmount: z.coerce.number().min(0).default(0),
   paidAmount: z.coerce.number().min(0).default(0),
   balanceAmount: z.coerce.number().min(0).default(0),
-  createdAt: z.string().optional(),
-  updatedAt: z.string().optional(),
+  createdAt: z.string().optional(), // Stays as ISO string for data transfer
+  updatedAt: z.string().optional(), // Stays as ISO string for data transfer
   lastModifiedByUserId: z.string().optional(),
   ownerUserId: z.string().optional(),
 });
@@ -87,7 +86,6 @@ interface LeadFormDialogProps {
   onSubmitSuccess: (data: Lead) => void;
 }
 
-// Configuration for the 9 standardized package quantities
 const allPackageItemConfigs: { qtyKey: keyof LeadFormData; rateKey: keyof Yacht; label: string; isGuestCount?: boolean }[] = [
   { qtyKey: 'qty_childRate', rateKey: 'childRate', label: 'Child Package Qty', isGuestCount: true },
   { qtyKey: 'qty_adultStandardRate', rateKey: 'adultStandardRate', label: 'Adult Standard Package Qty', isGuestCount: true },
@@ -110,7 +108,7 @@ const customChargeConfig = {
 const getDefaultFormValues = (): LeadFormData => ({
     agent: '', status: 'Upcoming', month: new Date(), yacht: '',
     type: 'Private', modeOfPayment: 'Online', clientName: '',
-    notes: '', invoiceId: '',
+    notes: '', transactionId: '', // Renamed from invoiceId
     qty_childRate: 0, qty_adultStandardRate: 0, qty_adultStandardDrinksRate: 0,
     qty_vipChildRate: 0, qty_vipAdultRate: 0, qty_vipAdultDrinksRate: 0,
     qty_royalChildRate: 0, qty_royalAdultRate: 0, qty_royalDrinksRate: 0,
@@ -135,10 +133,10 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
     resolver: zodResolver(leadFormSchema),
     defaultValues: lead
       ? {
-          ...getDefaultFormValues(), // Ensure all fields are present
-          ...lead, // Spread lead data
+          ...getDefaultFormValues(), 
+          ...lead, 
           month: lead.month && isValid(parseISO(lead.month)) ? parseISO(lead.month) : new Date(), 
-          // Ensure numeric fields default to 0 if undefined/null from lead object
+          transactionId: lead.transactionId || '', // Renamed from invoiceId
           qty_childRate: lead.qty_childRate || 0,
           qty_adultStandardRate: lead.qty_adultStandardRate || 0,
           qty_adultStandardDrinksRate: lead.qty_adultStandardDrinksRate || 0,
@@ -187,7 +185,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
     if (isOpen) {
       fetchDropdownData();
     }
-  }, [isOpen, toast]);
+  }, [isOpen]); // Removed toast from dependency
 
 
   const watchedAgentId = form.watch('agent');
@@ -252,6 +250,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
             ...defaultValues, 
             ...lead,
             month: lead.month && isValid(parseISO(lead.month)) ? parseISO(lead.month) : new Date(),
+            transactionId: lead.transactionId || '', // Renamed from invoiceId
             qty_childRate: lead.qty_childRate || 0,
             qty_adultStandardRate: lead.qty_adultStandardRate || 0,
             qty_adultStandardDrinksRate: lead.qty_adultStandardDrinksRate || 0,
@@ -288,12 +287,13 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
   }, [lead, form, isOpen]);
 
   function onSubmit(data: LeadFormData) {
-    const currentUserId = 'DO-user1'; // Placeholder for actual logged-in user ID
+    const currentUserId = 'DO-user1'; 
 
     const submittedLead: Lead = {
       ...getDefaultFormValues(), 
       ...data,
       month: data.month ? formatISO(data.month) : formatISO(new Date()), 
+      transactionId: data.transactionId || undefined, // Renamed from invoiceId
       id: lead?.id || `lead-${Date.now()}-${Math.random().toString(36).substring(2,7)}`,
       createdAt: lead?.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -443,11 +443,11 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
               />
                <FormField
                 control={form.control}
-                name="invoiceId"
+                name="transactionId" // Renamed from invoiceId
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Invoice ID (Optional)</FormLabel>
-                    <FormControl><Input placeholder="e.g., INV00123" {...field} value={field.value || ''} /></FormControl>
+                    <FormLabel>Transaction ID (Optional)</FormLabel>
+                    <FormControl><Input placeholder="e.g., 202500001" {...field} value={field.value || ''} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -616,4 +616,3 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
     </Dialog>
   );
 }
-

@@ -48,11 +48,11 @@ const leadColumns: LeadTableColumn[] = [
   { accessorKey: 'status', header: 'Status' },
   { accessorKey: 'month', header: 'Lead/Event Date', isShortDate: true },
   { accessorKey: 'type', header: 'Type' },
-  { accessorKey: 'invoiceId', header: 'Invoice' },
+  { accessorKey: 'transactionId', header: 'Transaction ID' }, // Renamed from invoiceId
   { accessorKey: 'modeOfPayment', header: 'Payment Mode' },
   { accessorKey: 'notes', header: 'Notes', isNotes: true },
 
-  { accessorKey: 'totalGuests', header: 'Total Guests', isNumeric: true }, // Calculated field
+  { accessorKey: 'totalGuests', header: 'Total Guests', isNumeric: true },
 
   // Standardized Package Quantities
   { accessorKey: 'qty_childRate', header: 'Child Pkg Qty', isNumeric: true },
@@ -153,7 +153,6 @@ export function LeadsTable({
     total += lead.qty_royalChildRate || 0;
     total += lead.qty_royalAdultRate || 0;
     total += lead.qty_royalDrinksRate || 0;
-    // Note: othersAmtCake is for custom charge quantity, not necessarily guests
     return total;
   };
 

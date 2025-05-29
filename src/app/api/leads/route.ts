@@ -1,7 +1,7 @@
 
 // src/app/api/leads/route.ts
 import { NextResponse, type NextRequest } from 'next/server';
-import type { Lead, LeadStatus, ModeOfPayment } from '@/lib/types';
+import type { Lead, LeadStatus, ModeOfPayment, LeadType } from '@/lib/types';
 import { query } from '@/lib/db';
 import { formatISO, parseISO, isValid } from 'date-fns';
 
@@ -32,10 +32,10 @@ export async function GET(request: NextRequest) {
         agent: dbLead.agent,
         yacht: dbLead.yacht,
         status: dbLead.status as LeadStatus,
-        month: dbLead.month ? ensureISOFormat(dbLead.month) : new Date().toISOString(),
+        month: dbLead.month ? ensureISOFormat(dbLead.month)! : new Date().toISOString(),
         notes: dbLead.notes,
-        type: dbLead.type,
-        invoiceId: dbLead.invoiceId,
+        type: dbLead.type as LeadType,
+        transactionId: dbLead.transactionId, // Renamed from invoiceId
         modeOfPayment: dbLead.modeOfPayment as ModeOfPayment,
         
         qty_childRate: Number(dbLead.qty_childRate || 0),
@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
         qty_royalAdultRate: Number(dbLead.qty_royalAdultRate || 0),
         qty_royalDrinksRate: Number(dbLead.qty_royalDrinksRate || 0),
         
-        othersAmtCake: Number(dbLead.othersAmtCake || 0), // Quantity for custom charge
+        othersAmtCake: Number(dbLead.othersAmtCake || 0),
 
         totalAmount: parseFloat(dbLead.totalAmount || 0),
         commissionPercentage: parseFloat(dbLead.commissionPercentage || 0),
@@ -57,8 +57,8 @@ export async function GET(request: NextRequest) {
         paidAmount: parseFloat(dbLead.paidAmount || 0),
         balanceAmount: parseFloat(dbLead.balanceAmount || 0),
 
-        createdAt: dbLead.createdAt ? ensureISOFormat(dbLead.createdAt) : new Date().toISOString(),
-        updatedAt: dbLead.updatedAt ? ensureISOFormat(dbLead.updatedAt) : new Date().toISOString(),
+        createdAt: dbLead.createdAt ? ensureISOFormat(dbLead.createdAt)! : new Date().toISOString(),
+        updatedAt: dbLead.updatedAt ? ensureISOFormat(dbLead.updatedAt)! : new Date().toISOString(),
         lastModifiedByUserId: dbLead.lastModifiedByUserId,
         ownerUserId: dbLead.ownerUserId,
       };
@@ -102,8 +102,8 @@ export async function POST(request: NextRequest) {
       month: formattedMonth, 
       notes: newLeadData.notes || null,
       yacht: newLeadData.yacht,
-      type: newLeadData.type || 'N/A',
-      invoiceId: newLeadData.invoiceId || null,
+      type: newLeadData.type || 'Private',
+      transactionId: newLeadData.transactionId || null, // Renamed from invoiceId
       modeOfPayment: newLeadData.modeOfPayment || 'Online',
       
       qty_childRate: Number(newLeadData.qty_childRate || 0),
@@ -116,7 +116,7 @@ export async function POST(request: NextRequest) {
       qty_royalAdultRate: Number(newLeadData.qty_royalAdultRate || 0),
       qty_royalDrinksRate: Number(newLeadData.qty_royalDrinksRate || 0),
       
-      othersAmtCake: Number(newLeadData.othersAmtCake || 0), // Quantity for custom charge
+      othersAmtCake: Number(newLeadData.othersAmtCake || 0),
       
       totalAmount: Number(newLeadData.totalAmount || 0),
       commissionPercentage: Number(newLeadData.commissionPercentage || 0),
@@ -135,7 +135,7 @@ export async function POST(request: NextRequest) {
 
     const sql = `
       INSERT INTO leads (
-        id, clientName, agent, yacht, status, month, notes, type, invoiceId, modeOfPayment,
+        id, clientName, agent, yacht, status, month, notes, type, transactionId, modeOfPayment,
         qty_childRate, qty_adultStandardRate, qty_adultStandardDrinksRate,
         qty_vipChildRate, qty_vipAdultRate, qty_vipAdultDrinksRate,
         qty_royalChildRate, qty_royalAdultRate, qty_royalDrinksRate,
@@ -147,7 +147,7 @@ export async function POST(request: NextRequest) {
     `;
     const params = [
       leadToStore.id, leadToStore.clientName, leadToStore.agent, leadToStore.yacht, leadToStore.status, 
-      leadToStore.month, leadToStore.notes, leadToStore.type, leadToStore.invoiceId, leadToStore.modeOfPayment,
+      leadToStore.month, leadToStore.notes, leadToStore.type, leadToStore.transactionId, leadToStore.modeOfPayment,
       leadToStore.qty_childRate, leadToStore.qty_adultStandardRate, leadToStore.qty_adultStandardDrinksRate,
       leadToStore.qty_vipChildRate, leadToStore.qty_vipAdultRate, leadToStore.qty_vipAdultDrinksRate,
       leadToStore.qty_royalChildRate, leadToStore.qty_royalAdultRate, leadToStore.qty_royalDrinksRate,
@@ -166,9 +166,9 @@ export async function POST(request: NextRequest) {
       const insertedLeadData: any[] = await query('SELECT * FROM leads WHERE id = ?', [leadToStore.id]);
       if (insertedLeadData.length > 0) {
         const dbLead = insertedLeadData[0];
-        const finalLead: Lead = { // Remap to ensure all fields and types are correct
+        const finalLead: Lead = { 
             id: dbLead.id, clientName: dbLead.clientName, agent: dbLead.agent, yacht: dbLead.yacht, status: dbLead.status as LeadStatus,
-            month: dbLead.month ? ensureISOFormat(dbLead.month)! : new Date().toISOString(), notes: dbLead.notes, type: dbLead.type, invoiceId: dbLead.invoiceId,
+            month: dbLead.month ? ensureISOFormat(dbLead.month)! : new Date().toISOString(), notes: dbLead.notes, type: dbLead.type as LeadType, transactionId: dbLead.transactionId,
             modeOfPayment: dbLead.modeOfPayment as ModeOfPayment,
             qty_childRate: Number(dbLead.qty_childRate || 0), qty_adultStandardRate: Number(dbLead.qty_adultStandardRate || 0),
             qty_adultStandardDrinksRate: Number(dbLead.qty_adultStandardDrinksRate || 0), qty_vipChildRate: Number(dbLead.qty_vipChildRate || 0),

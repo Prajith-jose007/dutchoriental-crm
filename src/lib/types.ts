@@ -60,6 +60,8 @@ export interface Invoice {
 export type LeadStatus = 'Balance' | 'Closed' | 'Conformed' | 'Upcoming';
 export type ModeOfPayment = 'Online' | 'Credit' | 'Cash/Card';
 export type LeadType = 'Dinner Cruise' | 'Sunset Cruise' | 'Private';
+export const leadStatusOptions: LeadStatus[] = ['Balance', 'Closed', 'Conformed', 'Upcoming'];
+export const modeOfPaymentOptions: ModeOfPayment[] = ['Online', 'Credit', 'Cash/Card'];
 export const leadTypeOptions: LeadType[] = ['Dinner Cruise', 'Sunset Cruise', 'Private'];
 
 
@@ -71,7 +73,7 @@ export interface Lead {
   notes?: string; // For user feed/notes about the lead
   yacht: string; // Yacht ID
   type: LeadType; // Lead type
-  invoiceId?: string;
+  transactionId?: string; // Renamed from invoiceId
   modeOfPayment: ModeOfPayment;
   clientName: string;
 
@@ -124,4 +126,3 @@ export interface BookingsByAgentData {
 
 // Re-exporting for easier import in CSV parser
 export type { LeadStatus as ExportedLeadStatus, ModeOfPayment as ExportedModeOfPayment, LeadType as ExportedLeadType };
-

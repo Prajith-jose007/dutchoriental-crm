@@ -25,19 +25,33 @@ import type { Lead, LeadStatus } from '@/lib/types';
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { format, parseISO, isValid } from 'date-fns';
 
+// Define a more specific structure for columns to help with rendering
+type LeadTableColumn = {
+  accessorKey: keyof Lead | 'actions' | 'select';
+  header: string;
+  isCurrency?: boolean;
+  isPercentage?: boolean;
+  isNumeric?: boolean;
+  isDate?: boolean; // For full datetime
+  isShortDate?: boolean; // For date only
+  isNotes?: boolean;
+  isUserLookup?: boolean;
+  isAgentLookup?: boolean;
+  isYachtLookup?: boolean;
+};
 
-const leadColumns: { accessorKey: keyof Lead | 'actions' | 'select', header: string, isCurrency?: boolean, isPercentage?: boolean, isNumeric?: boolean, isDate?: boolean, isShortDate?: boolean, isNotes?: boolean }[] = [
+const leadColumns: LeadTableColumn[] = [
   { accessorKey: 'select', header: '' },
   { accessorKey: 'id', header: 'ID' },
   { accessorKey: 'clientName', header: 'Client' },
-  { accessorKey: 'agent', header: 'Agent ID' },
-  { accessorKey: 'yacht', header: 'Yacht ID' },
+  { accessorKey: 'agent', header: 'Agent', isAgentLookup: true }, // Changed header
+  { accessorKey: 'yacht', header: 'Yacht', isYachtLookup: true }, // Changed header
   { accessorKey: 'status', header: 'Status' },
-  { accessorKey: 'month', header: 'Lead/Event Date', isShortDate: true }, // This is the primary event date
+  { accessorKey: 'month', header: 'Lead/Event Date', isShortDate: true },
   { accessorKey: 'type', header: 'Type' },
   { accessorKey: 'invoiceId', header: 'Invoice' },
   { accessorKey: 'modeOfPayment', header: 'Payment Mode' },
-  { accessorKey: 'notes', header: 'Notes', isNotes: true }, // Ensure this is present
+  { accessorKey: 'notes', header: 'Notes', isNotes: true },
 
   // Standardized Package Quantities
   { accessorKey: 'qty_childRate', header: 'Child Pkg Qty', isNumeric: true },
@@ -49,7 +63,7 @@ const leadColumns: { accessorKey: keyof Lead | 'actions' | 'select', header: str
   { accessorKey: 'qty_royalChildRate', header: 'Royal Child Qty', isNumeric: true },
   { accessorKey: 'qty_royalAdultRate', header: 'Royal Adult Qty', isNumeric: true },
   { accessorKey: 'qty_royalDrinksRate', header: 'Royal Drinks Qty', isNumeric: true },
-  { accessorKey: 'othersAmtCake', header: 'Custom Charge Qty', isNumeric: true }, // Qty for custom charge
+  { accessorKey: 'othersAmtCake', header: 'Custom Charge Qty', isNumeric: true },
 
   { accessorKey: 'totalAmount', header: 'Total Amt', isCurrency: true },
   { accessorKey: 'commissionPercentage', header: 'Agent Disc. %', isPercentage: true },
@@ -57,10 +71,10 @@ const leadColumns: { accessorKey: keyof Lead | 'actions' | 'select', header: str
   { accessorKey: 'netAmount', header: 'Net Amt', isCurrency: true },
   { accessorKey: 'paidAmount', header: 'Paid Amt', isCurrency: true },
   { accessorKey: 'balanceAmount', header: 'Balance', isCurrency: true },
-  { accessorKey: 'lastModifiedByUserId', header: 'Modified By'},
-  { accessorKey: 'ownerUserId', header: 'Lead Owner'},
-  { accessorKey: 'createdAt', header: 'Created At', isDate: true},
-  { accessorKey: 'updatedAt', header: 'Updated At', isDate: true},
+  { accessorKey: 'lastModifiedByUserId', header: 'Modified By', isUserLookup: true },
+  { accessorKey: 'ownerUserId', header: 'Lead Owner', isUserLookup: true },
+  { accessorKey: 'createdAt', header: 'Created At', isDate: true },
+  { accessorKey: 'updatedAt', header: 'Updated At', isDate: true },
   { accessorKey: 'actions', header: 'Actions' },
 ];
 
@@ -69,10 +83,20 @@ interface LeadsTableProps {
   onEditLead: (lead: Lead) => void;
   onDeleteLead: (leadId: string) => void;
   userMap: { [id: string]: string };
+  agentMap: { [id: string]: string };
+  yachtMap: { [id: string]: string };
   currentUserId?: string;
 }
 
-export function LeadsTable({ leads, onEditLead, onDeleteLead, userMap, currentUserId }: LeadsTableProps) {
+export function LeadsTable({
+  leads,
+  onEditLead,
+  onDeleteLead,
+  userMap,
+  agentMap,
+  yachtMap,
+  currentUserId
+}: LeadsTableProps) {
 
   const getStatusVariant = (status: LeadStatus) => {
     switch (status) {
@@ -99,15 +123,15 @@ export function LeadsTable({ leads, onEditLead, onDeleteLead, userMap, currentUs
     return String(value);
   }
 
- const formatDateValue = (dateString?: string, includeTime: boolean = true) => {
+  const formatDateValue = (dateString?: string, includeTime: boolean = true) => {
     if (!dateString) return '-';
     try {
       const date = parseISO(dateString);
-      if (!isValid(date)) return dateString;
+      if (!isValid(date)) return dateString; // Return original if not valid ISO
       const dateFormat = includeTime ? 'dd/MM/yyyy HH:mm' : 'dd/MM/yyyy';
       return format(date, dateFormat);
     } catch (e) {
-      return dateString;
+      return dateString; // Fallback to original string if parsing fails
     }
   };
 
@@ -116,6 +140,51 @@ export function LeadsTable({ leads, onEditLead, onDeleteLead, userMap, currentUs
     return notes.length > 30 ? notes.substring(0, 27) + '...' : notes;
   }
 
+  const renderCellContent = (lead: Lead, column: LeadTableColumn) => {
+    const value = lead[column.accessorKey as keyof Lead];
+
+    if (column.accessorKey === 'id') {
+      return (
+        <Button variant="link" className="p-0 h-auto font-medium" onClick={() => onEditLead(lead)}>
+          {lead.id && lead.id.length > 10 ? lead.id.substring(0, 4) + '...' + lead.id.substring(lead.id.length - 4) : lead.id}
+        </Button>
+      );
+    }
+    if (column.accessorKey === 'status') {
+      return <Badge variant={getStatusVariant(lead.status)}>{lead.status}</Badge>;
+    }
+    if (column.isAgentLookup) {
+      const agentId = value as string | undefined;
+      return agentId ? agentMap[agentId] || agentId : '-';
+    }
+    if (column.isYachtLookup) {
+      const yachtId = value as string | undefined;
+      return yachtId ? yachtMap[yachtId] || yachtId : '-';
+    }
+    if (column.isShortDate) {
+      return formatDateValue(value as string | undefined, false);
+    }
+    if (column.isDate) {
+      return formatDateValue(value as string | undefined);
+    }
+    if (column.isCurrency) {
+      return formatCurrency(value as number | undefined);
+    }
+    if (column.isPercentage) {
+      return formatPercentage(value as number | undefined);
+    }
+    if (column.isNumeric) {
+      return formatNumeric(value as number | undefined);
+    }
+    if (column.isNotes) {
+      return formatNotes(value as string | undefined);
+    }
+    if (column.isUserLookup) {
+      const userId = value as string | undefined;
+      return userId ? userMap[userId] || userId : '-';
+    }
+    return value !== undefined && value !== null ? String(value) : '-';
+  };
 
   return (
     <ScrollArea className="rounded-md border whitespace-nowrap">
@@ -125,7 +194,7 @@ export function LeadsTable({ leads, onEditLead, onDeleteLead, userMap, currentUs
             {leadColumns.map(col => (
               <TableHead key={col.accessorKey} className={col.accessorKey === 'select' ? "w-[40px]" : ""}>
                 {col.accessorKey === 'select' ? (
-                  <Checkbox aria-label="Select all rows" />
+                  <Checkbox aria-label="Select all rows" disabled /> /* Bulk selection not implemented yet */
                 ) : col.header}
               </TableHead>
             ))}
@@ -142,34 +211,11 @@ export function LeadsTable({ leads, onEditLead, onDeleteLead, userMap, currentUs
             leads.map((lead) => (
               <TableRow key={lead.id}>
                 <TableCell>
-                  <Checkbox aria-label={`Select row ${lead.id}`} />
+                  <Checkbox aria-label={`Select row ${lead.id}`} disabled /> /* Bulk selection not implemented yet */
                 </TableCell>
-                {leadColumns.slice(1, -1).map(col => (
+                {leadColumns.slice(1, -1).map(col => ( // Exclude 'select' and 'actions'
                   <TableCell key={col.accessorKey}>
-                    {col.accessorKey === 'id' ? (
-                       <Button variant="link" className="p-0 h-auto font-medium" onClick={() => onEditLead(lead)}>
-                        {lead.id && lead.id.length > 10 ? lead.id.substring(0,4) + '...' + lead.id.substring(lead.id.length-4) : lead.id}
-                       </Button>
-                    ) : col.accessorKey === 'status' ? (
-                      <Badge variant={getStatusVariant(lead.status)}>{lead.status}</Badge>
-                    ) : col.isShortDate ? (
-                        formatDateValue(lead[col.accessorKey as keyof Lead] as string | undefined, false)
-                    ) : col.isDate ? (
-                        formatDateValue(lead[col.accessorKey as keyof Lead] as string | undefined)
-                    ) : col.isCurrency ? (
-                      formatCurrency(lead[col.accessorKey as keyof Lead] as number | undefined)
-                    ) : col.isPercentage ? (
-                        formatPercentage(lead[col.accessorKey as keyof Lead] as number | undefined)
-                    ) : col.isNumeric ? (
-                        formatNumeric(lead[col.accessorKey as keyof Lead] as number | undefined)
-                    ): col.isNotes ? (
-                        formatNotes(lead[col.accessorKey as keyof Lead] as string | undefined)
-                    ) : col.accessorKey === 'lastModifiedByUserId' || col.accessorKey === 'ownerUserId' ? (
-                        userMap[lead[col.accessorKey as 'lastModifiedByUserId' | 'ownerUserId'] || ''] || lead[col.accessorKey as 'lastModifiedByUserId' | 'ownerUserId'] || '-'
-                    ) : (
-                      lead[col.accessorKey as keyof Lead] !== undefined && lead[col.accessorKey as keyof Lead] !== null ?
-                      String(lead[col.accessorKey as keyof Lead]) : '-'
-                    )}
+                    {renderCellContent(lead, col)}
                   </TableCell>
                 ))}
                 <TableCell>
@@ -185,13 +231,13 @@ export function LeadsTable({ leads, onEditLead, onDeleteLead, userMap, currentUs
                       <DropdownMenuItem
                         onClick={() => onEditLead(lead)}
                         disabled={!!currentUserId && !!lead.ownerUserId && lead.ownerUserId !== currentUserId}
-                        >
+                      >
                         Edit Lead
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         className="text-destructive"
                         onClick={() => onDeleteLead(lead.id)}
-                       >
+                      >
                         Delete Lead
                       </DropdownMenuItem>
                     </DropdownMenuContent>

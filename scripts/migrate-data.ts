@@ -12,12 +12,11 @@ import type { Agent, Lead, Yacht, Invoice, User } from '../src/lib/types';
 import { formatISO, parseISO, isValid } from 'date-fns';
 
 // IMPORTANT:
-// 1. This script will now ATTEMPT to create tables if they don't exist.
-//    Review the CREATE TABLE statements below and adjust column types/lengths as needed for your production setup.
+// 1. This script will ATTEMPT to create tables if they don't exist.
+//    Review the CREATE TABLE statements below and adjust column types/lengths as needed.
 // 2. This script is NOT fully idempotent for data insertion. Running it multiple times
 //    will attempt to insert duplicate data, which may fail if you have primary key constraints.
-// 3. Passwords for users are inserted as-is from placeholder data. In a real system,
-//    passwords MUST be hashed before storing. This is for placeholder migration only.
+// 3. Passwords for users are inserted as-is. In a real system, they MUST be hashed.
 
 const MYSQL_TABLE_NAMES = {
   agents: 'agents',
@@ -46,7 +45,6 @@ async function createUsersTable() {
     console.log(`Table ${tableName} checked/created successfully.`);
   } catch (error) {
     console.error(`Error creating table ${tableName}:`, (error as Error).message);
-    // If table creation fails, we might not want to proceed with inserting data for it.
     throw error;
   }
 }
@@ -362,22 +360,25 @@ async function migrateInvoices() {
 async function main() {
   console.log('Starting data migration with table creation checks...');
   try {
+    // Create all tables first to ensure dependencies are met if any FKs were added
     await createUsersTable();
     await createAgentsTable();
     await createYachtsTable();
-    await createLeadsTable();
+    await createLeadsTable(); // Ensure leads table uses transactionId
     await createInvoicesTable();
 
+    // Then migrate data
     await migrateUsers();
     await migrateAgents();
     await migrateYachts();
-    await migrateLeads();
+    await migrateLeads(); // Ensure migrateLeads uses transactionId from placeholderLeads
     await migrateInvoices();
     console.log('Data migration complete! Make sure to close the DB connection if your db.ts doesn\'t do it automatically after a pool query.');
   } catch (error) {
       console.error("A critical error occurred during table creation or migration process, aborting further steps:", (error as Error).message);
   } finally {
     const dbModule = await import('../src/lib/db');
+    // Check if the pool exists and has an end method before calling it
     if (dbModule.default && typeof dbModule.default.end === 'function') {
         try {
             await dbModule.default.end();
@@ -386,6 +387,7 @@ async function main() {
             console.error('Error closing pool in finally block:', e);
         }
     } else if (dbModule.default && typeof (dbModule.default as any).pool?.end === 'function') { 
+        // If pool is nested under a 'pool' property on the default export
         try {
             await (dbModule.default as any).pool.end();
             console.log('MySQL pool (nested) closed by script in finally block.');
@@ -396,22 +398,21 @@ async function main() {
   }
 }
 
-main().catch(err => {
+main().catch(async err => {
   console.error('Migration script failed:', err);
-  const attemptClose = async () => {
-    try {
-        const dbModule = await import('../src/lib/db');
-        if (dbModule.default && typeof dbModule.default.end === 'function') {
-            await dbModule.default.end();
-            console.log('MySQL pool closed due to script failure.');
-        } else if (dbModule.default && typeof (dbModule.default as any).pool?.end === 'function') {
-             await (dbModule.default as any).pool.end();
-             console.log('MySQL pool (nested) closed due to script failure.');
-        }
-    } catch (e) {
-        console.error('Error closing pool after script failure:', e);
+  // Attempt to close the pool even on failure
+  try {
+    const dbModule = await import('../src/lib/db');
+     if (dbModule.default && typeof dbModule.default.end === 'function') {
+        await dbModule.default.end();
+        console.log('MySQL pool closed due to script failure.');
+    } else if (dbModule.default && typeof (dbModule.default as any).pool?.end === 'function') {
+         await (dbModule.default as any).pool.end();
+         console.log('MySQL pool (nested) closed due to script failure.');
     }
-    process.exit(1);
-  };
-  attemptClose();
+  } catch (e) {
+    console.error('Error closing pool after script failure:', e);
+  }
+  process.exit(1);
 });
+

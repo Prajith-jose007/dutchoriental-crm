@@ -1,6 +1,6 @@
 
 import type { Lead, User, Yacht, Invoice, Agent, LeadType, ModeOfPayment, LeadStatus } from './types';
-import { formatISO, parseISO } from 'date-fns';
+import { formatISO, parseISO, subDays, addDays } from 'date-fns';
 
 export const placeholderUsers: User[] = [
   { id: 'DO-user1', name: 'Naufal', email: 'naufal@dutchoriental.com', designation: 'Acounts', avatarUrl: 'https://placehold.co/100x100.png?text=AS', status: 'Active' },
@@ -79,70 +79,90 @@ export let placeholderYachts: Yacht[] = [
     royalChildRate: 220,
     royalAdultRate: 320,
     royalDrinksRate: 400,
-    otherChargeName: 'Premium Sound System',
-    otherChargeRate: 250,
+    // No otherChargeName/Rate for this yacht, so it's undefined/0
     customPackageInfo: ""
   },
 ];
 
+const today = new Date();
+
 export let placeholderLeads: Lead[] = [
   {
-    id: 'DO-lead1', agent: 'DO-AGENT-001', status: 'Conformed' as LeadStatus, month: formatISO(parseISO('2024-07-15T10:00:00.000Z')), notes: 'Confirmed booking, client very happy.', yacht: 'DO-yacht1',
+    id: 'DO-lead1', agent: 'DO-AGENT-001', status: 'Conformed' as LeadStatus, 
+    month: formatISO(addDays(today, 15)), // Event Date
+    notes: 'Confirmed booking, client very happy.', yacht: 'DO-yacht1',
     type: 'Dinner Cruise' as LeadType, transactionId: '202400001', modeOfPayment: 'Online' as ModeOfPayment, clientName: 'Tech Corp',
-    qty_adultStandardRate: 10, // 10 * 129 (from DO-yacht1) = 1290
+    qty_adultStandardRate: 10, // For Sea Serpent: 10 * 129 = 1290
     totalAmount: 1290, commissionPercentage: 10, commissionAmount: 129,
     netAmount: 1161, paidAmount: 1290, balanceAmount: 0,
-    createdAt: formatISO(parseISO('2024-06-15T10:00:00.000Z')), updatedAt: formatISO(parseISO('2024-07-01T10:00:00.000Z')), lastModifiedByUserId: 'DO-user1', ownerUserId: 'DO-user1'
+    createdAt: formatISO(subDays(today, 10)), updatedAt: formatISO(subDays(today, 5)), 
+    lastModifiedByUserId: 'DO-user1', ownerUserId: 'DO-user1'
   },
   {
-    id: 'DO-lead2', agent: 'DO-AGENT-002', status: 'Upcoming' as LeadStatus, month: formatISO(parseISO('2024-07-25T14:30:00.000Z')), notes: 'Follow up next week.', yacht: 'DO-yacht2',
+    id: 'DO-lead2', agent: 'DO-AGENT-002', status: 'Upcoming' as LeadStatus, 
+    month: formatISO(addDays(today, 25)), // Event Date
+    notes: 'Follow up next week.', yacht: 'DO-yacht2',
     type: 'Private' as LeadType, transactionId: '202400002', modeOfPayment: 'Credit' as ModeOfPayment, clientName: 'Innovate Ltd',
-    qty_adultStandardRate: 10, // 10 * 135 (from DO-yacht2) = 1350
+    qty_adultStandardRate: 10, // For Ocean Voyager: 10 * 135 = 1350
     totalAmount: 1350, commissionPercentage: 15, commissionAmount: 202.5,
     netAmount: 1147.5, paidAmount: 500, balanceAmount: 850,
-    createdAt: formatISO(parseISO('2024-06-20T10:00:00.000Z')), updatedAt: formatISO(parseISO('2024-07-05T10:00:00.000Z')), lastModifiedByUserId: 'DO-user2', ownerUserId: 'DO-user2'
+    createdAt: formatISO(subDays(today, 8)), updatedAt: formatISO(subDays(today, 3)), 
+    lastModifiedByUserId: 'DO-user2', ownerUserId: 'DO-user2'
   },
   {
-    id: 'DO-lead3', agent: 'DO-AGENT-001', status: 'Conformed' as LeadStatus, month: formatISO(parseISO('2024-08-10T12:00:00.000Z')), yacht: 'DO-yacht1',
+    id: 'DO-lead3', agent: 'DO-AGENT-001', status: 'Conformed' as LeadStatus, 
+    month: formatISO(addDays(today, 40)), // Event Date
+    yacht: 'DO-yacht1',
     type: 'Sunset Cruise' as LeadType, transactionId: '202400003', modeOfPayment: 'Cash/Card' as ModeOfPayment, clientName: 'Solutions Inc',
-    qty_adultStandardRate: 10, // 10 * 129 (from DO-yacht1) = 1290
+    qty_adultStandardRate: 10, // For Sea Serpent: 10 * 129 = 1290
     totalAmount: 1290, commissionPercentage: 10, commissionAmount: 129,
     netAmount: 1161, paidAmount: 1290, balanceAmount: 0,
-    createdAt: formatISO(parseISO('2024-07-10T10:00:00.000Z')), updatedAt: formatISO(parseISO('2024-07-12T10:00:00.000Z')), lastModifiedByUserId: 'DO-user1', ownerUserId: 'DO-user1'
+    createdAt: formatISO(subDays(today, 2)), updatedAt: formatISO(subDays(today, 1)), 
+    lastModifiedByUserId: 'DO-user1', ownerUserId: 'DO-user1'
   },
   {
-    id: 'DO-lead4', agent: 'DO-AGENT-001', status: 'Upcoming' as LeadStatus, month: formatISO(parseISO('2024-08-20T18:00:00.000Z')), yacht: 'DO-yacht1',
+    id: 'DO-lead4', agent: 'DO-AGENT-001', status: 'Upcoming' as LeadStatus, 
+    month: formatISO(addDays(today, 50)), // Event Date
+    yacht: 'DO-yacht1',
     type: 'Private' as LeadType, transactionId: '202400004', modeOfPayment: 'Online' as ModeOfPayment, clientName: 'Global Co',
-    qty_vipAdultRate: 20, // 20 * 189 (from DO-yacht1) = 3780
-    othersAmtCake: 1, // Qty for custom charge. DO-yacht1 has otherChargeRate: 150. So, 1 * 150 = 150
+    qty_vipAdultRate: 20, // For Sea Serpent: 20 * 189 = 3780
+    othersAmtCake: 1, // For Sea Serpent: 1 * 150 = 150 (Cake Service)
     totalAmount: 3780 + 150, commissionPercentage: 10, commissionAmount: (3780 + 150) * 0.10,
     netAmount: (3780 + 150) * 0.90, paidAmount: 0, balanceAmount: 3780 + 150,
-    createdAt: formatISO(parseISO('2024-07-20T10:00:00.000Z')), updatedAt: formatISO(parseISO('2024-07-20T10:00:00.000Z')), lastModifiedByUserId: 'DO-user3', ownerUserId: 'DO-user3'
+    createdAt: formatISO(today), updatedAt: formatISO(today), 
+    lastModifiedByUserId: 'DO-user3', ownerUserId: 'DO-user3'
   },
   {
-    id: 'DO-lead5', agent: 'DO-AGENT-002', status: 'Balance' as LeadStatus, month: formatISO(parseISO('2024-09-05T16:00:00.000Z')), yacht: 'DO-yacht1',
+    id: 'DO-lead5', agent: 'DO-AGENT-002', status: 'Balance' as LeadStatus, 
+    month: formatISO(addDays(today, 65)), // Event Date
+    yacht: 'DO-yacht1',
     type: 'Dinner Cruise' as LeadType, transactionId: '202400005', modeOfPayment: 'Credit' as ModeOfPayment, clientName: 'Celebrations LLC',
-    qty_childRate: 10, // 10 * 89 = 890
-    qty_adultStandardRate: 10, // 10 * 129 = 1290
+    qty_childRate: 10, // For Sea Serpent: 10 * 89 = 890
+    qty_adultStandardRate: 10, // For Sea Serpent: 10 * 129 = 1290
     totalAmount: 890 + 1290, commissionPercentage: 15, commissionAmount: (890 + 1290) * 0.15,
     netAmount: (890 + 1290) * 0.85, paidAmount: 1000, balanceAmount: (890 + 1290) - 1000,
-    createdAt: formatISO(parseISO('2024-08-10T10:00:00.000Z')), updatedAt: formatISO(parseISO('2024-08-15T10:00:00.000Z')), lastModifiedByUserId: 'DO-user2', ownerUserId: 'DO-user2'
+    createdAt: formatISO(subDays(today, 1)), updatedAt: formatISO(today), 
+    lastModifiedByUserId: 'DO-user2', ownerUserId: 'DO-user2'
   },
    {
-    id: 'DO-lead6', agent: 'DO-AGENT-001', status: 'Closed' as LeadStatus, month: formatISO(parseISO('2024-05-05T16:00:00.000Z')), yacht: 'DO-yacht2',
+    id: 'DO-lead6', agent: 'DO-AGENT-001', status: 'Closed' as LeadStatus, 
+    month: formatISO(subDays(today, 30)), // Event Date
+    yacht: 'DO-yacht2',
     type: 'Private' as LeadType, transactionId: '202400006', modeOfPayment: 'Online' as ModeOfPayment, clientName: 'Old Ventures',
-    qty_vipAdultRate: 5, // 5 * 195 (from DO-yacht2) = 975
+    qty_vipAdultRate: 5, // For Ocean Voyager: 5 * 195 = 975
     totalAmount: 975, commissionPercentage: 10, commissionAmount: 97.5, 
     netAmount: 877.5, 
     paidAmount: 975, balanceAmount: 0,
-    createdAt: formatISO(parseISO('2024-04-10T10:00:00.000Z')), updatedAt: formatISO(parseISO('2024-04-15T10:00:00.000Z')), lastModifiedByUserId: 'DO-user1', ownerUserId: 'DO-user1'
+    createdAt: formatISO(subDays(today, 45)), updatedAt: formatISO(subDays(today, 40)), 
+    lastModifiedByUserId: 'DO-user1', ownerUserId: 'DO-user1'
   }
 ];
 
 export let placeholderInvoices: Invoice[] = [
-  { id: 'DO-inv001', leadId: 'DO-lead1', clientName: 'Tech Corp', amount: 1290, dueDate: formatISO(parseISO('2024-08-15')), status: 'Paid', createdAt: formatISO(parseISO('2024-07-01')) },
-  { id: 'DO-inv002', leadId: 'DO-lead2', clientName: 'Innovate Ltd', amount: 1350, dueDate: formatISO(parseISO('2024-08-20')), status: 'Pending', createdAt: formatISO(parseISO('2024-07-05')) },
-  { id: 'DO-inv003', leadId: 'DO-lead3', clientName: 'Solutions Inc', amount: 1290, dueDate: formatISO(parseISO('2024-07-25')), status: 'Pending', createdAt: formatISO(parseISO('2024-06-10')) }, 
-  { id: 'DO-inv004', leadId: 'DO-lead4', clientName: 'Global Co', amount: 3930, dueDate: formatISO(parseISO('2024-09-01')), status: 'Pending', createdAt: formatISO(parseISO('2024-07-15')) },
-  { id: 'DO-inv005', leadId: 'DO-lead5', clientName: 'Celebrations LLC', amount: 2180, dueDate: formatISO(parseISO('2024-09-10')), status: 'Pending', createdAt: formatISO(parseISO('2024-08-01')) },
+  { id: 'DO-inv001', leadId: 'DO-lead1', clientName: 'Tech Corp', amount: 1290, dueDate: formatISO(addDays(today, 15)), status: 'Paid', createdAt: formatISO(subDays(today, 5)) },
+  { id: 'DO-inv002', leadId: 'DO-lead2', clientName: 'Innovate Ltd', amount: 1350, dueDate: formatISO(addDays(today, 20)), status: 'Pending', createdAt: formatISO(subDays(today, 3)) },
+  { id: 'DO-inv003', leadId: 'DO-lead3', clientName: 'Solutions Inc', amount: 1290, dueDate: formatISO(addDays(today, 25)), status: 'Pending', createdAt: formatISO(subDays(today, 2)) }, 
+  { id: 'DO-inv004', leadId: 'DO-lead4', clientName: 'Global Co', amount: 3930, dueDate: formatISO(addDays(today, 50)), status: 'Pending', createdAt: formatISO(today) },
+  { id: 'DO-inv005', leadId: 'DO-lead5', clientName: 'Celebrations LLC', amount: 2180, dueDate: formatISO(addDays(today, 60)), status: 'Pending', createdAt: formatISO(today) },
 ];
+

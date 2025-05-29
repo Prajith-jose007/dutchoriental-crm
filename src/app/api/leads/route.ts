@@ -4,11 +4,9 @@ import { NextResponse, type NextRequest } from 'next/server';
 import type { Lead, LeadStatus, ModeOfPayment, LeadType } from '@/lib/types';
 import { query } from '@/lib/db';
 import { formatISO, parseISO, isValid } from 'date-fns';
-import { placeholderLeads } from '@/lib/placeholder-data'; // For ID generation logic with mock DB
+import { placeholderLeads } from '@/lib/placeholder-data'; // For ID generation logic if DB is empty
 
-// This is a mock in-memory store. Replace with actual database interactions.
-let leads_db_placeholder: Lead[] = [...placeholderLeads];
-
+const SIMULATED_CURRENT_USER_ID_API = 'DO-user-api'; // Placeholder for server-side user ID
 
 const ensureISOFormat = (dateString?: string | Date): string | null => {
   if (!dateString) return null;
@@ -17,16 +15,11 @@ const ensureISOFormat = (dateString?: string | Date): string | null => {
     return null;
   }
   try {
-    // Attempt to parse common date formats if not already ISO
-    const parsed = parseISO(dateString); // Handles ISO directly
+    const parsed = parseISO(dateString);
     if (isValid(parsed)) return formatISO(parsed);
-
-    // Add more robust date parsing if needed for other formats like DD/MM/YYYY
-    // For now, assumes if not ISO, it might be an issue or already formatted client-side.
-    return dateString; // Fallback, might be problematic if not ISO
-  } catch(e) {
-    console.warn(`[API ensureISOFormat] Error parsing date: ${dateString}`, e);
-    return dateString; // Fallback
+    return dateString; 
+  } catch {
+    return dateString;
   }
 };
 
@@ -39,15 +32,15 @@ export async function GET(request: NextRequest) {
     const leads: Lead[] = leadsData.map(dbLead => {
       const leadTyped: Lead = {
         id: dbLead.id,
-        clientName: dbLead.clientName,
-        agent: dbLead.agent,
-        yacht: dbLead.yacht,
-        status: dbLead.status as LeadStatus,
-        month: dbLead.month ? ensureISOFormat(dbLead.month)! : new Date().toISOString(),
+        clientName: dbLead.clientName || '',
+        agent: dbLead.agent || '',
+        yacht: dbLead.yacht || '',
+        status: (dbLead.status || 'Upcoming') as LeadStatus,
+        month: dbLead.month ? ensureISOFormat(dbLead.month)! : formatISO(new Date()), // Event Date
         notes: dbLead.notes || undefined,
-        type: dbLead.type as LeadType,
+        type: (dbLead.type || 'Private') as LeadType,
         transactionId: dbLead.transactionId || undefined,
-        modeOfPayment: dbLead.modeOfPayment as ModeOfPayment,
+        modeOfPayment: (dbLead.modeOfPayment || 'Online') as ModeOfPayment,
         
         qty_childRate: Number(dbLead.qty_childRate || 0),
         qty_adultStandardRate: Number(dbLead.qty_adultStandardRate || 0),
@@ -59,7 +52,7 @@ export async function GET(request: NextRequest) {
         qty_royalAdultRate: Number(dbLead.qty_royalAdultRate || 0),
         qty_royalDrinksRate: Number(dbLead.qty_royalDrinksRate || 0),
         
-        othersAmtCake: Number(dbLead.othersAmtCake || 0),
+        othersAmtCake: Number(dbLead.othersAmtCake || 0), // Quantity for custom charge
 
         totalAmount: parseFloat(dbLead.totalAmount || 0),
         commissionPercentage: parseFloat(dbLead.commissionPercentage || 0),
@@ -68,8 +61,8 @@ export async function GET(request: NextRequest) {
         paidAmount: parseFloat(dbLead.paidAmount || 0),
         balanceAmount: parseFloat(dbLead.balanceAmount || 0),
 
-        createdAt: dbLead.createdAt ? ensureISOFormat(dbLead.createdAt)! : new Date().toISOString(),
-        updatedAt: dbLead.updatedAt ? ensureISOFormat(dbLead.updatedAt)! : new Date().toISOString(),
+        createdAt: dbLead.createdAt ? ensureISOFormat(dbLead.createdAt)! : formatISO(new Date()),
+        updatedAt: dbLead.updatedAt ? ensureISOFormat(dbLead.updatedAt)! : formatISO(new Date()),
         lastModifiedByUserId: dbLead.lastModifiedByUserId || undefined,
         ownerUserId: dbLead.ownerUserId || undefined,
       };
@@ -87,7 +80,7 @@ function generateNewLeadId(existingLeads: Lead[]): string {
   const prefix = "DO-";
   let maxNum = 0;
   existingLeads.forEach(lead => {
-    if (lead.id.startsWith(prefix)) {
+    if (lead.id && lead.id.startsWith(prefix)) {
       const numPart = parseInt(lead.id.substring(prefix.length), 10);
       if (!isNaN(numPart) && numPart > maxNum) {
         maxNum = numPart;
@@ -101,41 +94,44 @@ function generateNewLeadId(existingLeads: Lead[]): string {
 
 export async function POST(request: NextRequest) {
   try {
-    const newLeadData = await request.json() as Partial<Lead>;
+    const newLeadData = await request.json() as Partial<Lead>; // Use Partial<Lead> as not all fields might be sent
     console.log('[API POST /api/leads] Received newLeadData:', JSON.stringify(newLeadData, null, 2));
 
+    // Basic validation for required fields
     if (!newLeadData.clientName || !newLeadData.agent || !newLeadData.yacht || !newLeadData.month) {
-      console.error('[API POST /api/leads] Validation Error: Missing required fields.');
+      console.error('[API POST /api/leads] Validation Error: Missing required fields (clientName, agent, yacht, month/event date).');
       return NextResponse.json({ message: 'Missing required lead fields (clientName, agent, yacht, month/event date)' }, { status: 400 });
     }
     
-    // Generate new ID if not provided
-    const currentLeadsFromDB: any[] = await query('SELECT id FROM leads WHERE id LIKE "DO-%"');
-    const existingLeadIds = currentLeadsFromDB.map(l => l.id);
-    
-    const leadId = newLeadData.id || generateNewLeadId(existingLeadIds.map(id => ({id} as Lead)));
+    let leadId = newLeadData.id;
+    if (!leadId) {
+      const currentLeadsFromDB: any[] = await query('SELECT id FROM leads WHERE id LIKE "DO-%"');
+      const existingLeadIds = currentLeadsFromDB.map(l => l.id as string);
+      leadId = generateNewLeadId(existingLeadIds.map(id => ({id} as Lead)));
+      console.log(`[API POST /api/leads] Generated new Lead ID: ${leadId}`);
+    }
+
 
     const now = new Date();
-    
-    let formattedMonth = newLeadData.month ? ensureISOFormat(newLeadData.month) : formatISO(now);
+    const formattedMonth = newLeadData.month ? ensureISOFormat(newLeadData.month) : formatISO(now);
     if (!formattedMonth || !isValid(parseISO(formattedMonth))) {
         console.warn(`[API POST /api/leads] Invalid month/event date provided for new lead ${leadId}, defaulting to now:`, newLeadData.month);
-        formattedMonth = formatISO(now);
+        return NextResponse.json({ message: 'Invalid month/event date format. Expected ISO string.' }, { status: 400 });
     }
     
     const formattedCreatedAt = newLeadData.createdAt && isValid(parseISO(newLeadData.createdAt)) ? ensureISOFormat(newLeadData.createdAt)! : formatISO(now);
     const formattedUpdatedAt = formatISO(now);
     
     const leadToStore: Lead = {
-      id: leadId,
-      clientName: newLeadData.clientName,
-      agent: newLeadData.agent,
+      id: leadId!,
+      clientName: newLeadData.clientName, // Already validated
+      agent: newLeadData.agent,           // Already validated
+      yacht: newLeadData.yacht,           // Already validated
       status: newLeadData.status || 'Upcoming',
       month: formattedMonth, 
-      notes: newLeadData.notes || undefined,
-      yacht: newLeadData.yacht,
+      notes: newLeadData.notes || null, // Use null for empty optional strings in DB
       type: newLeadData.type || 'Private',
-      transactionId: newLeadData.transactionId || undefined,
+      transactionId: newLeadData.transactionId || null,
       modeOfPayment: newLeadData.modeOfPayment || 'Online',
       
       qty_childRate: Number(newLeadData.qty_childRate || 0),
@@ -159,8 +155,8 @@ export async function POST(request: NextRequest) {
 
       createdAt: formattedCreatedAt,
       updatedAt: formattedUpdatedAt,
-      lastModifiedByUserId: newLeadData.lastModifiedByUserId || undefined, 
-      ownerUserId: newLeadData.ownerUserId || newLeadData.lastModifiedByUserId || undefined, 
+      lastModifiedByUserId: newLeadData.lastModifiedByUserId || SIMULATED_CURRENT_USER_ID_API, 
+      ownerUserId: newLeadData.ownerUserId || newLeadData.lastModifiedByUserId || SIMULATED_CURRENT_USER_ID_API, 
     };
     
     console.log('[API POST /api/leads] leadToStore (to be inserted):', JSON.stringify(leadToStore, null, 2));
@@ -195,26 +191,40 @@ export async function POST(request: NextRequest) {
     console.log('[API POST /api/leads] DB Insert Result:', result);
 
     if (result.affectedRows === 1) {
+      // Fetch the inserted lead to return it, ensuring all fields are as stored
       const insertedLeadData: any[] = await query('SELECT * FROM leads WHERE id = ?', [leadToStore.id]);
       if (insertedLeadData.length > 0) {
         const dbLead = insertedLeadData[0];
-        const finalLead: Lead = { 
-            id: dbLead.id, clientName: dbLead.clientName, agent: dbLead.agent, yacht: dbLead.yacht, status: dbLead.status as LeadStatus,
-            month: dbLead.month ? ensureISOFormat(dbLead.month)! : new Date().toISOString(), notes: dbLead.notes, type: dbLead.type as LeadType, transactionId: dbLead.transactionId,
-            modeOfPayment: dbLead.modeOfPayment as ModeOfPayment,
-            qty_childRate: Number(dbLead.qty_childRate || 0), qty_adultStandardRate: Number(dbLead.qty_adultStandardRate || 0),
-            qty_adultStandardDrinksRate: Number(dbLead.qty_adultStandardDrinksRate || 0), qty_vipChildRate: Number(dbLead.qty_vipChildRate || 0),
-            qty_vipAdultRate: Number(dbLead.qty_vipAdultRate || 0), qty_vipAdultDrinksRate: Number(dbLead.qty_vipAdultDrinksRate || 0),
-            qty_royalChildRate: Number(dbLead.qty_royalChildRate || 0), qty_royalAdultRate: Number(dbLead.qty_royalAdultRate || 0),
-            qty_royalDrinksRate: Number(dbLead.qty_royalDrinksRate || 0), othersAmtCake: Number(dbLead.othersAmtCake || 0),
-            totalAmount: parseFloat(dbLead.totalAmount || 0), commissionPercentage: parseFloat(dbLead.commissionPercentage || 0),
-            commissionAmount: parseFloat(dbLead.commissionAmount || 0), netAmount: parseFloat(dbLead.netAmount || 0),
-            paidAmount: parseFloat(dbLead.paidAmount || 0), balanceAmount: parseFloat(dbLead.balanceAmount || 0),
-            createdAt: dbLead.createdAt ? ensureISOFormat(dbLead.createdAt)! : new Date().toISOString(),
-            updatedAt: dbLead.updatedAt ? ensureISOFormat(dbLead.updatedAt)! : new Date().toISOString(),
-            lastModifiedByUserId: dbLead.lastModifiedByUserId, ownerUserId: dbLead.ownerUserId,
+        // Map dbLead to Lead type correctly (similar to GET handler)
+        const finalLead: Lead = {
+            id: dbLead.id, clientName: dbLead.clientName || '', agent: dbLead.agent || '', yacht: dbLead.yacht || '', 
+            status: (dbLead.status || 'Upcoming') as LeadStatus,
+            month: dbLead.month ? ensureISOFormat(dbLead.month)! : formatISO(new Date()), 
+            notes: dbLead.notes || undefined, type: (dbLead.type || 'Private') as LeadType, 
+            transactionId: dbLead.transactionId || undefined,
+            modeOfPayment: (dbLead.modeOfPayment || 'Online') as ModeOfPayment,
+            qty_childRate: Number(dbLead.qty_childRate || 0), 
+            qty_adultStandardRate: Number(dbLead.qty_adultStandardRate || 0),
+            qty_adultStandardDrinksRate: Number(dbLead.qty_adultStandardDrinksRate || 0), 
+            qty_vipChildRate: Number(dbLead.qty_vipChildRate || 0),
+            qty_vipAdultRate: Number(dbLead.qty_vipAdultRate || 0), 
+            qty_vipAdultDrinksRate: Number(dbLead.qty_vipAdultDrinksRate || 0),
+            qty_royalChildRate: Number(dbLead.qty_royalChildRate || 0), 
+            qty_royalAdultRate: Number(dbLead.qty_royalAdultRate || 0),
+            qty_royalDrinksRate: Number(dbLead.qty_royalDrinksRate || 0), 
+            othersAmtCake: Number(dbLead.othersAmtCake || 0),
+            totalAmount: parseFloat(dbLead.totalAmount || 0), 
+            commissionPercentage: parseFloat(dbLead.commissionPercentage || 0),
+            commissionAmount: parseFloat(dbLead.commissionAmount || 0), 
+            netAmount: parseFloat(dbLead.netAmount || 0),
+            paidAmount: parseFloat(dbLead.paidAmount || 0), 
+            balanceAmount: parseFloat(dbLead.balanceAmount || 0),
+            createdAt: dbLead.createdAt ? ensureISOFormat(dbLead.createdAt)! : formatISO(new Date()),
+            updatedAt: dbLead.updatedAt ? ensureISOFormat(dbLead.updatedAt)! : formatISO(new Date()),
+            lastModifiedByUserId: dbLead.lastModifiedByUserId || undefined, 
+            ownerUserId: dbLead.ownerUserId || undefined,
         };
-        console.log('[API POST /api/leads] Successfully created lead:', finalLead.id);
+        console.log('[API POST /api/leads] Successfully created lead and returning from DB:', finalLead.id);
         return NextResponse.json(finalLead, { status: 201 });
       }
       console.warn('[API POST /api/leads] Lead inserted, but failed to fetch for confirmation. Returning original payload.');
@@ -225,7 +235,8 @@ export async function POST(request: NextRequest) {
     }
   } catch (error) {
     console.error('[API POST /api/leads] Error in POST handler:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error during lead creation';
     return NextResponse.json({ message: 'Failed to create lead', error: errorMessage }, { status: 500 });
   }
 }
+

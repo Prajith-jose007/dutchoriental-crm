@@ -53,6 +53,6 @@ export const mainNavItems: NavItem[] = [
   },
 ];
 
-export const AppLogo = Ship;
+// AppLogo constant (e.g. Ship from lucide-react) is no longer exported from here
+// as the Logo.tsx component now uses /icon.svg by default.
 export const AppName = "DutchOriental CRM";
-

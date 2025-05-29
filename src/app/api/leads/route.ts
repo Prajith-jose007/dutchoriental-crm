@@ -4,6 +4,11 @@ import { NextResponse, type NextRequest } from 'next/server';
 import type { Lead, LeadStatus, ModeOfPayment, LeadType } from '@/lib/types';
 import { query } from '@/lib/db';
 import { formatISO, parseISO, isValid } from 'date-fns';
+import { placeholderLeads } from '@/lib/placeholder-data'; // For ID generation logic with mock DB
+
+// This is a mock in-memory store. Replace with actual database interactions.
+let leads_db_placeholder: Lead[] = [...placeholderLeads];
+
 
 const ensureISOFormat = (dateString?: string | Date): string | null => {
   if (!dateString) return null;
@@ -12,15 +17,21 @@ const ensureISOFormat = (dateString?: string | Date): string | null => {
     return null;
   }
   try {
-    const parsed = parseISO(dateString);
+    // Attempt to parse common date formats if not already ISO
+    const parsed = parseISO(dateString); // Handles ISO directly
     if (isValid(parsed)) return formatISO(parsed);
-    return dateString; 
+
+    // Add more robust date parsing if needed for other formats like DD/MM/YYYY
+    // For now, assumes if not ISO, it might be an issue or already formatted client-side.
+    return dateString; // Fallback, might be problematic if not ISO
   } catch(e) {
-    return dateString;
+    console.warn(`[API ensureISOFormat] Error parsing date: ${dateString}`, e);
+    return dateString; // Fallback
   }
 };
 
 export async function GET(request: NextRequest) {
+  console.log('[API GET /api/leads] Received request');
   try {
     const leadsData: any[] = await query('SELECT * FROM leads ORDER BY createdAt DESC');
     console.log('[API GET /api/leads] Raw DB Data Sample (first item):', leadsData.length > 0 ? leadsData[0] : 'No leads found');
@@ -33,9 +44,9 @@ export async function GET(request: NextRequest) {
         yacht: dbLead.yacht,
         status: dbLead.status as LeadStatus,
         month: dbLead.month ? ensureISOFormat(dbLead.month)! : new Date().toISOString(),
-        notes: dbLead.notes,
+        notes: dbLead.notes || undefined,
         type: dbLead.type as LeadType,
-        transactionId: dbLead.transactionId, // Renamed from invoiceId
+        transactionId: dbLead.transactionId || undefined,
         modeOfPayment: dbLead.modeOfPayment as ModeOfPayment,
         
         qty_childRate: Number(dbLead.qty_childRate || 0),
@@ -59,8 +70,8 @@ export async function GET(request: NextRequest) {
 
         createdAt: dbLead.createdAt ? ensureISOFormat(dbLead.createdAt)! : new Date().toISOString(),
         updatedAt: dbLead.updatedAt ? ensureISOFormat(dbLead.updatedAt)! : new Date().toISOString(),
-        lastModifiedByUserId: dbLead.lastModifiedByUserId,
-        ownerUserId: dbLead.ownerUserId,
+        lastModifiedByUserId: dbLead.lastModifiedByUserId || undefined,
+        ownerUserId: dbLead.ownerUserId || undefined,
       };
       return leadTyped;
     });
@@ -72,6 +83,22 @@ export async function GET(request: NextRequest) {
   }
 }
 
+function generateNewLeadId(existingLeads: Lead[]): string {
+  const prefix = "DO-";
+  let maxNum = 0;
+  existingLeads.forEach(lead => {
+    if (lead.id.startsWith(prefix)) {
+      const numPart = parseInt(lead.id.substring(prefix.length), 10);
+      if (!isNaN(numPart) && numPart > maxNum) {
+        maxNum = numPart;
+      }
+    }
+  });
+  const nextNum = maxNum + 1;
+  return `${prefix}${String(nextNum).padStart(3, '0')}`;
+}
+
+
 export async function POST(request: NextRequest) {
   try {
     const newLeadData = await request.json() as Partial<Lead>;
@@ -82,7 +109,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: 'Missing required lead fields (clientName, agent, yacht, month/event date)' }, { status: 400 });
     }
     
-    const leadId = newLeadData.id || `lead-${Date.now()}-${Math.random().toString(36).substring(2,7)}`;
+    // Generate new ID if not provided
+    const currentLeadsFromDB: any[] = await query('SELECT id FROM leads WHERE id LIKE "DO-%"');
+    const existingLeadIds = currentLeadsFromDB.map(l => l.id);
+    
+    const leadId = newLeadData.id || generateNewLeadId(existingLeadIds.map(id => ({id} as Lead)));
+
     const now = new Date();
     
     let formattedMonth = newLeadData.month ? ensureISOFormat(newLeadData.month) : formatISO(now);
@@ -100,10 +132,10 @@ export async function POST(request: NextRequest) {
       agent: newLeadData.agent,
       status: newLeadData.status || 'Upcoming',
       month: formattedMonth, 
-      notes: newLeadData.notes || null,
+      notes: newLeadData.notes || undefined,
       yacht: newLeadData.yacht,
       type: newLeadData.type || 'Private',
-      transactionId: newLeadData.transactionId || null, // Renamed from invoiceId
+      transactionId: newLeadData.transactionId || undefined,
       modeOfPayment: newLeadData.modeOfPayment || 'Online',
       
       qty_childRate: Number(newLeadData.qty_childRate || 0),
@@ -127,8 +159,8 @@ export async function POST(request: NextRequest) {
 
       createdAt: formattedCreatedAt,
       updatedAt: formattedUpdatedAt,
-      lastModifiedByUserId: newLeadData.lastModifiedByUserId || null, 
-      ownerUserId: newLeadData.ownerUserId || newLeadData.lastModifiedByUserId || null, 
+      lastModifiedByUserId: newLeadData.lastModifiedByUserId || undefined, 
+      ownerUserId: newLeadData.ownerUserId || newLeadData.lastModifiedByUserId || undefined, 
     };
     
     console.log('[API POST /api/leads] leadToStore (to be inserted):', JSON.stringify(leadToStore, null, 2));
@@ -186,7 +218,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json(finalLead, { status: 201 });
       }
       console.warn('[API POST /api/leads] Lead inserted, but failed to fetch for confirmation. Returning original payload.');
-      return NextResponse.json(leadToStore, { status: 201 });
+      return NextResponse.json(leadToStore, { status: 201 }); // Fallback
     } else {
       console.error('[API POST /api/leads] Database insert failed, affectedRows was not 1.');
       throw new Error('Failed to insert lead into database');

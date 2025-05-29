@@ -13,10 +13,10 @@ import { Button } from '@/components/ui/button';
 import { DatePicker } from '@/components/ui/date-picker'; 
 import { Skeleton } from '@/components/ui/skeleton';
 import type { Lead, Invoice, Yacht, Agent, User } from '@/lib/types';
-import { placeholderUsers } from '@/lib/placeholder-data';
+// import { placeholderUsers } from '@/lib/placeholder-data'; // No longer used for userMap directly
 import { getMonth, getYear, format, parseISO, isWithinInterval, startOfMonth, endOfMonth, startOfYear, endOfYear, isValid } from 'date-fns';
+import { useToast } from '@/hooks/use-toast';
 
-const USERS_STORAGE_KEY = 'dutchOrientalCrmUsers';
 
 export default function ReportsPage() {
   const [allLeads, setAllLeads] = useState<Lead[]>([]);
@@ -27,6 +27,7 @@ export default function ReportsPage() {
 
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { toast } = useToast();
 
   
   const [startDate, setStartDate] = useState<Date | undefined>(undefined);
@@ -35,60 +36,64 @@ export default function ReportsPage() {
   const [selectedAgentId, setSelectedAgentId] = useState<string>('all');
   const [selectedUserId, setSelectedUserId] = useState<string>('all');
 
-  useEffect(() => {
-    const fetchData = async () => {
-      setIsLoading(true);
-      setError(null);
-      try {
-        const [leadsRes, invoicesRes, yachtsRes, agentsRes] = await Promise.all([
-          fetch('/api/leads'),
-          fetch('/api/invoices'),
-          fetch('/api/yachts'),
-          fetch('/api/agents'),
-        ]);
+  const fetchAllData = async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const [leadsRes, invoicesRes, yachtsRes, agentsRes, usersRes] = await Promise.all([
+        fetch('/api/leads'),
+        fetch('/api/invoices'),
+        fetch('/api/yachts'),
+        fetch('/api/agents'),
+        fetch('/api/users'), // Fetch users from API
+      ]);
 
-        if (!leadsRes.ok) throw new Error('Failed to fetch leads');
-        if (!invoicesRes.ok) throw new Error('Failed to fetch invoices');
-        if (!yachtsRes.ok) throw new Error('Failed to fetch yachts');
-        if (!agentsRes.ok) throw new Error('Failed to fetch agents');
+      if (!leadsRes.ok) throw new Error('Failed to fetch leads');
+      if (!invoicesRes.ok) throw new Error('Failed to fetch invoices');
+      if (!yachtsRes.ok) throw new Error('Failed to fetch yachts');
+      if (!agentsRes.ok) throw new Error('Failed to fetch agents');
+      if (!usersRes.ok) throw new Error('Failed to fetch users');
 
-        const leadsData = await leadsRes.json();
-        const invoicesData = await invoicesRes.json();
-        const yachtsData = await yachtsRes.json();
-        const agentsData = await agentsRes.json();
 
-        setAllLeads(Array.isArray(leadsData) ? leadsData : []);
-        setAllInvoices(Array.isArray(invoicesData) ? invoicesData : []);
-        setAllYachts(Array.isArray(yachtsData) ? yachtsData : []);
-        setAllAgents(Array.isArray(agentsData) ? agentsData : []);
+      const leadsData = await leadsRes.json();
+      const invoicesData = await invoicesRes.json();
+      const yachtsData = await yachtsRes.json();
+      const agentsData = await agentsRes.json();
+      const usersData: User[] = await usersRes.json();
 
-        
-        let usersToMap: User[] = placeholderUsers;
-        try {
-            const storedUsers = localStorage.getItem(USERS_STORAGE_KEY);
-            if (storedUsers) {
-                const parsedUsers: User[] = JSON.parse(storedUsers);
-                if (Array.isArray(parsedUsers)) usersToMap = parsedUsers;
-            }
-        } catch (e) { console.error("Error parsing users from localStorage for map:", e); }
-        
-        const map: { [id: string]: string } = {};
-        usersToMap.forEach(user => { map[user.id] = user.name; });
-        setUserMap(map);
 
-      } catch (err) {
-        console.error("Error fetching report data:", err);
-        setError((err as Error).message);
-      } finally {
-        setIsLoading(false);
+      setAllLeads(Array.isArray(leadsData) ? leadsData : []);
+      setAllInvoices(Array.isArray(invoicesData) ? invoicesData : []);
+      setAllYachts(Array.isArray(yachtsData) ? yachtsData : []);
+      setAllAgents(Array.isArray(agentsData) ? agentsData : []);
+      
+      const map: { [id: string]: string } = {};
+      if (Array.isArray(usersData)) {
+        usersData.forEach(user => { map[user.id] = user.name; });
       }
-    };
-    fetchData();
+      setUserMap(map);
+
+    } catch (err) {
+      console.error("Error fetching report data:", err);
+      setError((err as Error).message);
+      toast({ title: 'Error Fetching Report Data', description: (err as Error).message, variant: 'destructive' });
+      setAllLeads([]);
+      setAllInvoices([]);
+      setAllYachts([]);
+      setAllAgents([]);
+      setUserMap({});
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  useEffect(() => {
+    fetchAllData();
   }, []);
 
 
   const filteredLeads = useMemo(() => {
     return allLeads.filter(lead => {
+      // Date range filter (uses lead's event month)
       let leadEventDate: Date | null = null;
       try {
         if(lead.month && isValid(parseISO(lead.month))) {
@@ -96,7 +101,13 @@ export default function ReportsPage() {
         }
       } catch(e) { console.warn(`Invalid event date for lead ${lead.id}: ${lead.month}`); }
 
-      if (startDate && endDate && leadEventDate && !isWithinInterval(leadEventDate, { start: startDate, end: endDate })) return false;
+      if (startDate && endDate && leadEventDate) {
+         if (!isWithinInterval(leadEventDate, { start: startDate, end: endDate })) return false;
+      } else if (startDate && leadEventDate) {
+        if (leadEventDate < startDate) return false;
+      } else if (endDate && leadEventDate) {
+         if (leadEventDate > endDate) return false;
+      }
       
       if (selectedYachtId !== 'all' && lead.yacht !== selectedYachtId) return false;
       if (selectedAgentId !== 'all' && lead.agent !== selectedAgentId) return false;
@@ -107,15 +118,25 @@ export default function ReportsPage() {
 
   const filteredInvoices = useMemo(() => {
     return allInvoices.filter(invoice => {
-      let invoiceCreationDate: Date | null = null;
+      // Date range filter (uses invoice's creation date)
+       let invoiceCreationDate: Date | null = null;
        try {
           if(invoice.createdAt && isValid(parseISO(invoice.createdAt))) {
             invoiceCreationDate = parseISO(invoice.createdAt);
           }
         } catch(e) { console.warn(`Invalid creation date for invoice ${invoice.id}: ${invoice.createdAt}`); }
 
-       if (startDate && endDate && invoiceCreationDate && !isWithinInterval(invoiceCreationDate, { start: startDate, end: endDate })) return false;
+       if (startDate && endDate && invoiceCreationDate) {
+         if (!isWithinInterval(invoiceCreationDate, { start: startDate, end: endDate })) return false;
+       } else if (startDate && invoiceCreationDate) {
+         if (invoiceCreationDate < startDate) return false;
+       } else if (endDate && invoiceCreationDate) {
+         if (invoiceCreationDate > endDate) return false;
+       }
        
+      // Additional invoice-specific filters could be added here if needed
+      // For example, linking invoices to filtered leads if leadId is present
+      // This example keeps it simple by just applying date range to invoices directly
       return true;
     });
   }, [allInvoices, startDate, endDate]);
@@ -132,9 +153,8 @@ export default function ReportsPage() {
     return (
       <div className="container mx-auto py-2">
         <PageHeader title="CRM Reports" description="Loading report data..." />
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 p-4 border rounded-lg shadow-sm">
-          {[...Array(5)].map((_,i) => <Skeleton key={i} className="h-10 w-full" />)}
-          <Skeleton className="h-10 w-full bg-primary/20" />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-6 p-4 border rounded-lg shadow-sm">
+          {[...Array(6)].map((_,i) => <Skeleton key={i} className="h-10 w-full" />)}
         </div>
         <div className="grid gap-6">
           <Skeleton className="h-[350px] w-full" />
@@ -167,11 +187,11 @@ export default function ReportsPage() {
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-6 p-4 border rounded-lg shadow-sm">
         <div>
-          <Label htmlFor="start-date-report">Start Date (Event/Invoice)</Label>
+          <Label htmlFor="start-date-report">Start Date (Lead Event / Invoice Creation)</Label>
           <DatePicker date={startDate} setDate={setStartDate} placeholder="Start Date" />
         </div>
         <div>
-          <Label htmlFor="end-date-report">End Date (Event/Invoice)</Label>
+          <Label htmlFor="end-date-report">End Date (Lead Event / Invoice Creation)</Label>
           <DatePicker date={endDate} setDate={setEndDate} placeholder="End Date" disabled={(date) => startDate ? date < startDate : false} />
         </div>
         
@@ -225,5 +245,3 @@ export default function ReportsPage() {
     </div>
   );
 }
-
-    

@@ -7,25 +7,23 @@ import { LeadsTable } from './_components/LeadsTable';
 import { ImportExportButtons } from './_components/ImportExportButtons';
 import { LeadFormDialog } from './_components/LeadFormDialog';
 import type { Lead, LeadStatus, ModeOfPayment, User, Agent, Yacht } from '@/lib/types';
-import { placeholderUsers } from '@/lib/placeholder-data';
+// import { placeholderUsers } from '@/lib/placeholder-data'; // No longer used for userMap directly
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { DatePicker } from '@/components/ui/date-picker';
 import { Skeleton } from '@/components/ui/skeleton';
-import { format, parseISO, isWithinInterval, isValid, formatISO } from 'date-fns';
+import { format, parseISO, isWithinInterval, isValid, formatISO, startOfMonth, endOfMonth, getYear as getYearFn, getMonth as getMonthFn, subMonths } from 'date-fns';
 
-const USERS_STORAGE_KEY = 'dutchOrientalCrmUsers';
 const SIMULATED_CURRENT_USER_ID = 'DO-user1'; 
 
 const ensureNumericDefaults = (leadData: Partial<Lead>): Partial<Lead> => {
   const numericQtyFields: (keyof Lead)[] = [
-    'dhowChildQty', 'dhowAdultQty', 'dhowVipQty', 'dhowVipChildQty', 'dhowVipAlcoholQty',
-    'oeChildQty', 'oeAdultQty', 'oeVipQty', 'oeVipChildQty', 'oeVipAlcoholQty',
-    'sunsetChildQty', 'sunsetAdultQty', 'sunsetVipQty', 'sunsetVipChildQty', 'sunsetVipAlcoholQty',
-    'lotusChildQty', 'lotusAdultQty', 'lotusVipQty', 'lotusVipChildQty', 'lotusVipAlcoholQty',
-    'royalQty', 'othersAmtCake',
+    'qty_childRate', 'qty_adultStandardRate', 'qty_adultStandardDrinksRate',
+    'qty_vipChildRate', 'qty_vipAdultRate', 'qty_vipAdultDrinksRate',
+    'qty_royalChildRate', 'qty_royalAdultRate', 'qty_royalDrinksRate',
+    'othersAmtCake',
     'totalAmount', 'commissionPercentage', 'commissionAmount', 'netAmount', 'paidAmount', 'balanceAmount',
   ];
   const result = { ...leadData };
@@ -46,17 +44,15 @@ const convertValue = (key: keyof Lead, value: string): any => {
 
   if (trimmedValue === '' || value === null || value === undefined) {
     switch (key) {
-        case 'dhowChildQty': case 'dhowAdultQty': case 'dhowVipQty': case 'dhowVipChildQty': case 'dhowVipAlcoholQty':
-        case 'oeChildQty': case 'oeAdultQty': case 'oeVipQty': case 'oeVipChildQty': case 'oeVipAlcoholQty':
-        case 'sunsetChildQty': case 'sunsetAdultQty': case 'sunsetVipQty': case 'sunsetVipChildQty': case 'sunsetVipAlcoholQty':
-        case 'lotusChildQty': case 'lotusAdultQty': case 'lotusVipQty': case 'lotusVipChildQty': case 'lotusVipAlcoholQty':
-        case 'royalQty':
+        case 'qty_childRate': case 'qty_adultStandardRate': case 'qty_adultStandardDrinksRate':
+        case 'qty_vipChildRate': case 'qty_vipAdultRate': case 'qty_vipAdultDrinksRate':
+        case 'qty_royalChildRate': case 'qty_royalAdultRate': case 'qty_royalDrinksRate':
         case 'othersAmtCake': case 'totalAmount':
         case 'commissionPercentage': case 'commissionAmount': case 'netAmount':
         case 'paidAmount': case 'balanceAmount':
             return 0;
         case 'modeOfPayment': return 'Online'; 
-        case 'status': return 'Upcoming'; // Default to Upcoming
+        case 'status': return 'Upcoming';
         case 'notes': return '';
         case 'month': return formatISO(new Date()); 
         default: return undefined;
@@ -64,11 +60,9 @@ const convertValue = (key: keyof Lead, value: string): any => {
   }
 
   switch (key) {
-    case 'dhowChildQty': case 'dhowAdultQty': case 'dhowVipQty': case 'dhowVipChildQty': case 'dhowVipAlcoholQty':
-    case 'oeChildQty': case 'oeAdultQty': case 'oeVipQty': case 'oeVipChildQty': case 'oeVipAlcoholQty':
-    case 'sunsetChildQty': case 'sunsetAdultQty': case 'sunsetVipQty': case 'sunsetVipChildQty': case 'sunsetVipAlcoholQty':
-    case 'lotusChildQty': case 'lotusAdultQty': case 'lotusVipQty': case 'lotusVipChildQty': case 'lotusVipAlcoholQty':
-    case 'royalQty':
+    case 'qty_childRate': case 'qty_adultStandardRate': case 'qty_adultStandardDrinksRate':
+    case 'qty_vipChildRate': case 'qty_vipAdultRate': case 'qty_vipAdultDrinksRate':
+    case 'qty_royalChildRate': case 'qty_royalAdultRate': case 'qty_royalDrinksRate':
     case 'othersAmtCake': case 'totalAmount':
     case 'commissionPercentage': case 'commissionAmount': case 'netAmount':
     case 'paidAmount': case 'balanceAmount':
@@ -78,16 +72,13 @@ const convertValue = (key: keyof Lead, value: string): any => {
       const validModes: ModeOfPayment[] = ['Online', 'Credit', 'Cash/Card'];
       return validModes.includes(trimmedValue as ModeOfPayment) ? trimmedValue : 'Online';
     case 'status':
-        const validStatuses: LeadStatus[] = ['Balance', 'Closed', 'Conformed', 'Upcoming'];
-        return validStatuses.includes(trimmedValue as LeadStatus) ? trimmedValue : 'Upcoming'; // Default to Upcoming
+        return leadStatusOptions.includes(trimmedValue as LeadStatus) ? trimmedValue : 'Upcoming';
     case 'month': 
         const parsedEventDate = parseISO(trimmedValue); 
         if (isValid(parsedEventDate)) return formatISO(parsedEventDate);
-        // Try parsing common date formats if ISO parsing fails
         const commonFormats = ['dd/MM/yyyy', 'MM/dd/yyyy', 'yyyy-MM-dd'];
         for (const fmt of commonFormats) {
             try {
-                // A bit of a hack to handle dd/MM/yyyy by swapping day and month for Date constructor
                 const d = fmt === 'dd/MM/yyyy' ? new Date(trimmedValue.replace(/(\d{2})\/(\d{2})\/(\d{4})/, '$2/$1/$3')) : new Date(trimmedValue);
                 if (isValid(d)) return formatISO(d);
             } catch (e) {/* ignore */}
@@ -119,68 +110,52 @@ export default function LeadsPage() {
   const [statusFilter, setStatusFilter] = useState<LeadStatus | 'all'>('all');
 
 
-  const fetchLeads = async () => {
+  const fetchAllData = async () => {
+    setIsLoading(true);
+    setFetchError(null);
     try {
-      const response = await fetch('/api/leads');
-      if (!response.ok) {
-        throw new Error(`Failed to fetch leads: ${response.statusText}`);
+      const [leadsRes, agentsRes, yachtsRes, usersRes] = await Promise.all([
+        fetch('/api/leads'),
+        fetch('/api/agents'),
+        fetch('/api/yachts'),
+        fetch('/api/users'), // Fetch users from API
+      ]);
+
+      if (!leadsRes.ok) throw new Error(`Failed to fetch leads: ${leadsRes.statusText}`);
+      const leadsData = await leadsRes.json();
+      setAllLeads(Array.isArray(leadsData) ? leadsData : []);
+
+      if (!agentsRes.ok) throw new Error(`Failed to fetch agents: ${agentsRes.statusText}`);
+      const agentsData = await agentsRes.json();
+      setAllAgents(Array.isArray(agentsData) ? agentsData : []);
+
+      if (!yachtsRes.ok) throw new Error(`Failed to fetch yachts: ${yachtsRes.statusText}`);
+      const yachtsData = await yachtsRes.json();
+      setAllYachts(Array.isArray(yachtsData) ? yachtsData : []);
+      
+      if (!usersRes.ok) throw new Error(`Failed to fetch users: ${usersRes.statusText}`);
+      const usersData: User[] = await usersRes.json();
+      const map: { [id: string]: string } = {};
+      if (Array.isArray(usersData)) {
+        usersData.forEach(user => { map[user.id] = user.name; });
       }
-      const data = await response.json();
-      setAllLeads(Array.isArray(data) ? data : []);
+      setUserMap(map);
+
     } catch (error) {
-      console.error("Error fetching leads:", error);
-      toast({ title: 'Error Fetching Leads', description: (error as Error).message, variant: 'destructive' });
-      setAllLeads([]); 
+      console.error("Error fetching initial data for Leads page:", error);
+      setFetchError((error as Error).message);
+      toast({ title: 'Error Fetching Data', description: (error as Error).message, variant: 'destructive' });
+      setAllLeads([]);
+      setAllAgents([]);
+      setAllYachts([]);
+      setUserMap({});
+    } finally {
+      setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    const loadInitialData = async () => {
-      setIsLoading(true);
-      setFetchError(null);
-      try {
-        await fetchLeads(); 
-
-        const [agentsRes, yachtsRes] = await Promise.all([
-          fetch('/api/agents'),
-          fetch('/api/yachts'),
-        ]);
-
-        if (!agentsRes.ok) throw new Error(`Failed to fetch agents: ${agentsRes.statusText}`);
-        const agentsData = await agentsRes.json();
-        setAllAgents(Array.isArray(agentsData) ? agentsData : []);
-
-        if (!yachtsRes.ok) throw new Error(`Failed to fetch yachts: ${yachtsRes.statusText}`);
-        const yachtsData = await yachtsRes.json();
-        setAllYachts(Array.isArray(yachtsData) ? yachtsData : []);
-
-        let usersToMap: User[] = placeholderUsers; 
-        try {
-            const storedUsers = localStorage.getItem(USERS_STORAGE_KEY);
-            if (storedUsers) {
-                const parsedUsers: User[] = JSON.parse(storedUsers);
-                if (Array.isArray(parsedUsers) && parsedUsers.length > 0) {
-                usersToMap = parsedUsers;
-                }
-            }
-        } catch (e) {
-            console.error("Error parsing users from localStorage for map:", e);
-        }
-        const map: { [id: string]: string } = {};
-        usersToMap.forEach(user => { map[user.id] = user.name; });
-        setUserMap(map);
-
-      } catch (error) {
-        console.error("Error fetching initial data for Leads page:", error);
-        setFetchError((error as Error).message);
-        toast({ title: 'Error Fetching Data', description: (error as Error).message, variant: 'destructive' });
-        setAllAgents([]);
-        setAllYachts([]);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    loadInitialData();
+    fetchAllData();
   }, []);
 
 
@@ -195,13 +170,24 @@ export default function LeadsPage() {
   };
 
   const handleLeadFormSubmit = async (submittedLeadData: Lead) => {
-    const payload = {
+    const payload: Lead = {
       ...submittedLeadData,
       lastModifiedByUserId: SIMULATED_CURRENT_USER_ID, 
       updatedAt: new Date().toISOString(),
-      ownerUserId: editingLead ? editingLead.ownerUserId : SIMULATED_CURRENT_USER_ID, 
-      month: submittedLeadData.month, 
+      month: submittedLeadData.month ? formatISO(new Date(submittedLeadData.month)) : formatISO(new Date()),
     };
+    
+    // Ensure ownerUserId for new leads
+    if (!editingLead) {
+        payload.ownerUserId = SIMULATED_CURRENT_USER_ID;
+        payload.createdAt = new Date().toISOString();
+        // Generate ID if not present (though form dialog should enforce it)
+        payload.id = payload.id || `lead-${Date.now()}-${Math.random().toString(36).substring(2,7)}`;
+    } else {
+        payload.ownerUserId = editingLead.ownerUserId; // Preserve original owner on edit
+        payload.createdAt = editingLead.createdAt; // Preserve original creation date
+    }
+
 
     try {
       let response;
@@ -212,15 +198,10 @@ export default function LeadsPage() {
           body: JSON.stringify(payload),
         });
       } else {
-        const newLeadWithTimestamps = {
-            ...payload,
-            createdAt: new Date().toISOString(),
-            id: payload.id || `lead-${Date.now()}-${Math.random().toString(36).substring(2,7)}`
-        };
         response = await fetch('/api/leads', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(newLeadWithTimestamps),
+          body: JSON.stringify(payload),
         });
       }
 
@@ -234,7 +215,7 @@ export default function LeadsPage() {
         description: `Lead for ${submittedLeadData.clientName} has been saved.`,
       });
       
-      fetchLeads(); 
+      fetchAllData(); 
       setIsLeadDialogOpen(false);
       setEditingLead(null);
 
@@ -257,7 +238,7 @@ export default function LeadsPage() {
         throw new Error(errorData.message || `Failed to delete lead: ${response.statusText}`);
       }
       toast({ title: 'Lead Deleted', description: `Lead ${leadId} has been deleted.` });
-      fetchLeads(); 
+      fetchAllData(); 
     } catch (error) {
       console.error("Error deleting lead:", error);
       toast({ title: 'Error Deleting Lead', description: (error as Error).message, variant: 'destructive' });
@@ -284,7 +265,7 @@ export default function LeadsPage() {
             headerLine = headerLine.substring(1);
         }
         const headers = headerLine.split(',').map(h => h.trim() as keyof Lead);
-        console.log("Parsed CSV Headers:", headers);
+        console.log("[CSV Import] Parsed CSV Headers:", headers);
 
         const newLeadsFromCsv: Lead[] = [];
         let skippedCount = 0;
@@ -306,7 +287,7 @@ export default function LeadsPage() {
           }
 
           if (data.length !== headers.length) {
-            console.warn(`Skipping malformed CSV line ${i + 1}: Expected ${headers.length} columns, got ${data.length}. Line: "${lines[i]}"`);
+            console.warn(`[CSV Import] Skipping malformed CSV line ${i + 1}: Expected ${headers.length} columns, got ${data.length}. Line: "${lines[i]}"`);
             skippedCount++;
             continue;
           }
@@ -317,7 +298,7 @@ export default function LeadsPage() {
           });
           
           if (i === 1) { 
-            console.log("First Parsed Data Row (raw values from CSV after convertValue):", JSON.parse(JSON.stringify(parsedRow)));
+            console.log("[CSV Import] First Parsed Data Row (raw values from CSV after convertValue):", JSON.parse(JSON.stringify(parsedRow)));
           }
 
           let leadId = typeof parsedRow.id === 'string' && parsedRow.id.trim() !== '' ? parsedRow.id.trim() : undefined;
@@ -344,29 +325,19 @@ export default function LeadsPage() {
             yacht: typeof numericDefaultsApplied.yacht === 'string' ? numericDefaultsApplied.yacht : '',
             type: typeof numericDefaultsApplied.type === 'string' && numericDefaultsApplied.type.trim() !== '' ? numericDefaultsApplied.type : 'Imported',
             modeOfPayment: (numericDefaultsApplied.modeOfPayment as ModeOfPayment) || 'Online',
-            clientName: typeof numericDefaultsApplied.clientName === 'string' && numericDefaultsApplied.clientName.trim() !== '' ? numericDefaultsApplied.clientName : 'N/A',
+            clientName: typeof numericDefaultsApplied.clientName === 'string' && numericDefaultsApplied.clientName.trim() !== '' ? numericDefaultsApplied.clientName : 'N/A from CSV',
             invoiceId: typeof numericDefaultsApplied.invoiceId === 'string' ? numericDefaultsApplied.invoiceId : undefined,
-            dhowChildQty: numericDefaultsApplied.dhowChildQty ?? 0,
-            dhowAdultQty: numericDefaultsApplied.dhowAdultQty ?? 0,
-            dhowVipQty: numericDefaultsApplied.dhowVipQty ?? 0,
-            dhowVipChildQty: numericDefaultsApplied.dhowVipChildQty ?? 0,
-            dhowVipAlcoholQty: numericDefaultsApplied.dhowVipAlcoholQty ?? 0,
-            oeChildQty: numericDefaultsApplied.oeChildQty ?? 0,
-            oeAdultQty: numericDefaultsApplied.oeAdultQty ?? 0,
-            oeVipQty: numericDefaultsApplied.oeVipQty ?? 0,
-            oeVipChildQty: numericDefaultsApplied.oeVipChildQty ?? 0,
-            oeVipAlcoholQty: numericDefaultsApplied.oeVipAlcoholQty ?? 0,
-            sunsetChildQty: numericDefaultsApplied.sunsetChildQty ?? 0,
-            sunsetAdultQty: numericDefaultsApplied.sunsetAdultQty ?? 0,
-            sunsetVipQty: numericDefaultsApplied.sunsetVipQty ?? 0,
-            sunsetVipChildQty: numericDefaultsApplied.sunsetVipChildQty ?? 0,
-            sunsetVipAlcoholQty: numericDefaultsApplied.sunsetVipAlcoholQty ?? 0,
-            lotusChildQty: numericDefaultsApplied.lotusChildQty ?? 0,
-            lotusAdultQty: numericDefaultsApplied.lotusAdultQty ?? 0,
-            lotusVipQty: numericDefaultsApplied.lotusVipQty ?? 0,
-            lotusVipChildQty: numericDefaultsApplied.lotusVipChildQty ?? 0,
-            lotusVipAlcoholQty: numericDefaultsApplied.lotusVipAlcoholQty ?? 0,
-            royalQty: numericDefaultsApplied.royalQty ?? 0,
+            
+            qty_childRate: numericDefaultsApplied.qty_childRate ?? 0,
+            qty_adultStandardRate: numericDefaultsApplied.qty_adultStandardRate ?? 0,
+            qty_adultStandardDrinksRate: numericDefaultsApplied.qty_adultStandardDrinksRate ?? 0,
+            qty_vipChildRate: numericDefaultsApplied.qty_vipChildRate ?? 0,
+            qty_vipAdultRate: numericDefaultsApplied.qty_vipAdultRate ?? 0,
+            qty_vipAdultDrinksRate: numericDefaultsApplied.qty_vipAdultDrinksRate ?? 0,
+            qty_royalChildRate: numericDefaultsApplied.qty_royalChildRate ?? 0,
+            qty_royalAdultRate: numericDefaultsApplied.qty_royalAdultRate ?? 0,
+            qty_royalDrinksRate: numericDefaultsApplied.qty_royalDrinksRate ?? 0,
+            
             othersAmtCake: numericDefaultsApplied.othersAmtCake ?? 0,
             totalAmount: numericDefaultsApplied.totalAmount ?? 0,
             commissionPercentage: numericDefaultsApplied.commissionPercentage ?? 0,
@@ -374,13 +345,13 @@ export default function LeadsPage() {
             netAmount: numericDefaultsApplied.netAmount ?? 0,
             paidAmount: numericDefaultsApplied.paidAmount ?? 0,
             balanceAmount: numericDefaultsApplied.balanceAmount ?? 0,
-            createdAt: typeof numericDefaultsApplied.createdAt === 'string' && numericDefaultsApplied.createdAt.trim() !== '' ? numericDefaultsApplied.createdAt : new Date().toISOString(),
+            createdAt: typeof numericDefaultsApplied.createdAt === 'string' && isValid(parseISO(numericDefaultsApplied.createdAt)) ? numericDefaultsApplied.createdAt : new Date().toISOString(),
             updatedAt: new Date().toISOString(),
             lastModifiedByUserId: SIMULATED_CURRENT_USER_ID, 
             ownerUserId: SIMULATED_CURRENT_USER_ID,
           };
           if (i === 1) { 
-             console.log("First Full Lead Object (after defaults, before API post):", JSON.parse(JSON.stringify(fullLead)));
+             console.log("[CSV Import] First Full Lead Object (after defaults, before API post):", JSON.parse(JSON.stringify(fullLead)));
           }
 
           const isDuplicateInExisting = existingLeadIds.has(fullLead.id);
@@ -390,7 +361,7 @@ export default function LeadsPage() {
             newLeadsFromCsv.push(fullLead);
             existingLeadIds.add(fullLead.id); 
           } else {
-            console.warn(`Skipping import for lead with duplicate ID: ${fullLead.id} at CSV row ${i + 1}. Line: "${lines[i]}"`);
+            console.warn(`[CSV Import] Skipping import for lead with duplicate ID: ${fullLead.id} at CSV row ${i + 1}. Line: "${lines[i]}"`);
             skippedCount++;
           }
         }
@@ -407,16 +378,16 @@ export default function LeadsPage() {
                 successCount++;
               } else {
                 const errorData = await response.json();
-                console.warn(`Failed to import lead ${leadToImport.id} via API: ${errorData.message || response.statusText}. Payload:`, JSON.stringify(leadToImport));
+                console.warn(`[CSV Import] Failed to import lead ${leadToImport.id} via API: ${errorData.message || response.statusText}. Payload:`, JSON.stringify(leadToImport));
                 skippedCount++;
               }
             } catch (apiError) {
-                console.warn(`API error importing lead ${leadToImport.id}:`, apiError, "Payload:", JSON.stringify(leadToImport));
+                console.warn(`[CSV Import] API error importing lead ${leadToImport.id}:`, apiError, "Payload:", JSON.stringify(leadToImport));
                 skippedCount++;
             }
           }
           
-          fetchLeads(); 
+          fetchAllData(); 
 
           if (successCount > 0 && skippedCount === 0) {
             toast({ title: 'Import Successful', description: `${successCount} new leads imported.` });
@@ -459,6 +430,7 @@ export default function LeadsPage() {
 
   const filteredLeads = useMemo(() => {
     return allLeads.filter(lead => {
+      // Date range filter (uses createdAt)
       let leadCreationDate: Date | null = null;
       try {
         if (lead.createdAt && isValid(parseISO(lead.createdAt))) {
@@ -466,8 +438,15 @@ export default function LeadsPage() {
         }
       } catch(e) { console.warn(`Invalid createdAt date for lead ${lead.id}: ${lead.createdAt}`); }
       
-      if (startDate && endDate && leadCreationDate && !isWithinInterval(leadCreationDate, { start: startDate, end: endDate })) return false;
+      if (startDate && endDate && leadCreationDate) {
+        if (!isWithinInterval(leadCreationDate, { start: startDate, end: endDate })) return false;
+      } else if (startDate && leadCreationDate) {
+        if (leadCreationDate < startDate) return false;
+      } else if (endDate && leadCreationDate) {
+        if (leadCreationDate > endDate) return false;
+      }
       
+      // Other filters
       if (selectedYachtId !== 'all' && lead.yacht !== selectedYachtId) return false;
       if (selectedAgentId !== 'all' && lead.agent !== selectedAgentId) return false;
       if (selectedUserId !== 'all' && lead.lastModifiedByUserId !== selectedUserId) return false;
@@ -501,7 +480,7 @@ export default function LeadsPage() {
                 }
             />
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-6 p-4 border rounded-lg shadow-sm">
-                 {[...Array(6)].map((_,i) => <Skeleton key={i} className="h-10 w-full" />)} 
+                 {[...Array(7)].map((_,i) => <Skeleton key={i} className="h-10 w-full" />)} 
             </div>
             <div className="space-y-2">
                 {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}
@@ -534,11 +513,9 @@ export default function LeadsPage() {
                         }
                         const headers: (keyof Lead)[] = [
                             'id', 'clientName', 'agent', 'yacht', 'status', 'month', 'type', 'invoiceId', 'modeOfPayment', 'notes',
-                            'dhowChildQty', 'dhowAdultQty', 'dhowVipQty', 'dhowVipChildQty', 'dhowVipAlcoholQty',
-                            'oeChildQty', 'oeAdultQty', 'oeVipQty', 'oeVipChildQty', 'oeVipAlcoholQty',
-                            'sunsetChildQty', 'sunsetAdultQty', 'sunsetVipQty', 'sunsetVipChildQty', 'sunsetVipAlcoholQty',
-                            'lotusChildQty', 'lotusAdultQty', 'lotusVipQty', 'lotusVipChildQty', 'lotusVipAlcoholQty',
-                            'royalQty',
+                            'qty_childRate', 'qty_adultStandardRate', 'qty_adultStandardDrinksRate',
+                            'qty_vipChildRate', 'qty_vipAdultRate', 'qty_vipAdultDrinksRate',
+                            'qty_royalChildRate', 'qty_royalAdultRate', 'qty_royalDrinksRate',
                             'othersAmtCake', 'totalAmount', 'commissionPercentage',
                             'commissionAmount', 'netAmount', 'paidAmount', 'balanceAmount', 
                             'createdAt', 'updatedAt', 'lastModifiedByUserId', 'ownerUserId'
@@ -549,7 +526,7 @@ export default function LeadsPage() {
                             
                             if (typeof cellData === 'string' && (cellData.includes('/') || cellData.includes('-')) && isValid(parseISO(cellData))) {
                                 try { 
-                                    stringValue = format(parseISO(cellData), 'dd/MM/yyyy');
+                                    stringValue = format(parseISO(cellData), 'dd/MM/yyyy'); // Format date for export
                                 } catch (e) { /* ignore, use original string */ }
                             }
                             
@@ -636,7 +613,7 @@ export default function LeadsPage() {
             </SelectContent>
           </Select>
         </div>
-        <div className="flex items-end md:col-span-2 lg:col-span-1 xl:col-span-1"> 
+        <div className="flex items-end md:col-span-2 lg:col-span-1 xl:col-span-2"> 
             <Button onClick={resetFilters} variant="outline" className="w-full">Reset Filters</Button>
         </div>
       </div>

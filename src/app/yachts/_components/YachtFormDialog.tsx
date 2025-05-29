@@ -348,12 +348,10 @@ export function YachtFormDialog({ isOpen, onOpenChange, yacht, onSubmitSuccess, 
                     <FormControl>
                       <Textarea 
                         placeholder="Enter any custom package details or notes here..." 
-                        className="resize-y"
+                        className={cn("resize-y", !isAdmin && "bg-muted/50 cursor-not-allowed")}
                         {...field} 
                         value={field.value || ''}
                         readOnly={!isAdmin}
-                        // Adding cursor-not-allowed style for textarea when readOnly
-                        className={!isAdmin ? "bg-muted/50 cursor-not-allowed" : ""} 
                       />
                     </FormControl>
                     <FormMessage />
@@ -369,7 +367,7 @@ export function YachtFormDialog({ isOpen, onOpenChange, yacht, onSubmitSuccess, 
                 {isAdmin && (
                   <Button type="submit">{yacht ? 'Save Changes' : 'Add Yacht'}</Button>
                 )}
-                 {!isAdmin && yacht && ( // Only show "View Only" mode for existing yachts if not admin
+                 {!isAdmin && yacht && ( 
                     <Button type="button" disabled>View Only</Button> 
                  )}
               </DialogFooter>

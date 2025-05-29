@@ -43,7 +43,7 @@ export function SidebarNav() {
   return (
     <Sidebar collapsible="icon" variant="sidebar" side="left">
       <SidebarHeader className="p-4">
-        <Logo textClassName={cn(state === "expanded" ? "opacity-100" : "opacity-0", "transition-opacity duration-300")} />
+        <Logo hideDefaultText={true} />
       </SidebarHeader>
       <SidebarContent>
         <SidebarMenu>

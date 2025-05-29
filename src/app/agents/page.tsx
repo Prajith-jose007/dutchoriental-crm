@@ -9,6 +9,7 @@ import { AgentsTable } from './_components/AgentsTable';
 import { AgentFormDialog } from './_components/AgentFormDialog';
 import type { Agent } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const USER_ROLE_STORAGE_KEY = 'currentUserRole';
 
@@ -29,8 +30,8 @@ const csvHeaderMapping: { [csvHeaderKey: string]: keyof Agent } = {
   'customer_type_id': 'customer_type_id',
   'customer type id': 'customer_type_id',
   'discount': 'discount',
-  'discount_rate': 'discount', // Alias for discount
-  'discount rate': 'discount', // Alias for discount
+  'discount_rate': 'discount', 
+  'discount rate': 'discount', 
   'websiteurl': 'websiteUrl',
   'website url': 'websiteUrl',
   'website_url': 'websiteUrl',
@@ -63,7 +64,7 @@ const convertAgentValue = (key: keyof Agent, value: string): any => {
     case 'status':
       const validStatuses: Agent['status'][] = ['Active', 'Non Active', 'Dead'];
       return validStatuses.includes(trimmedValue as Agent['status']) ? trimmedValue : 'Active';
-    case 'TRN_number': // Ensure TRN_number is treated as a string
+    case 'TRN_number': 
     case 'customer_type_id':
       return trimmedValue;
     default:
@@ -77,7 +78,7 @@ export default function AgentsPage() {
   const [editingAgent, setEditingAgent] = useState<Agent | null>(null);
   const [agents, setAgents] = useState<Agent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isImporting, setIsImporting] = useState(false); // New state for import loading
+  const [isImporting, setIsImporting] = useState(false); 
   const [isAdmin, setIsAdmin] = useState(false);
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -124,10 +125,7 @@ export default function AgentsPage() {
   };
 
   const handleEditAgentClick = (agent: Agent) => {
-    if (!isAdmin) {
-      toast({ title: "Access Denied", description: "Only administrators can edit agents.", variant: "destructive" });
-      return;
-    }
+    // Admins can edit, non-admins can open dialog in read-only mode (handled in dialog)
     setEditingAgent(agent);
     setIsAgentDialogOpen(true);
   };
@@ -146,28 +144,35 @@ export default function AgentsPage() {
           body: JSON.stringify(submittedAgentData),
         });
       } else {
-        const currentAgentsResponse = await fetch('/api/agents');
-        if (!currentAgentsResponse.ok) throw new Error('Could not verify existing agents.');
-        const currentAgents: Agent[] = await currentAgentsResponse.json();
-
-        const existingAgentById = currentAgents.find(a => a.id === submittedAgentData.id);
-        if (existingAgentById && !editingAgent) {
-             toast({
+         // Check if agent with this ID already exists before POSTing
+        const checkResponse = await fetch(`/api/agents/${submittedAgentData.id}`);
+        if (checkResponse.ok && !editingAgent) { // if status 200, agent exists
+            toast({
                 title: 'Error Adding Agent',
                 description: `Agent with ID ${submittedAgentData.id} already exists.`,
                 variant: 'destructive',
             });
             return;
         }
-        const existingAgentByEmail = currentAgents.find(a => a.email.toLowerCase() === submittedAgentData.email.toLowerCase() && a.id !== submittedAgentData.id);
-         if (existingAgentByEmail && (!editingAgent || (editingAgent && editingAgent.email.toLowerCase() !== submittedAgentData.email.toLowerCase()))) {
-             toast({
-                title: 'Error Saving Agent',
-                description: `Agent with email ${submittedAgentData.email} already exists.`,
-                variant: 'destructive',
-            });
-            return;
+        // Check for email conflict as well, only if email is provided and different from current editing agent's email
+        if (submittedAgentData.email) {
+            const allAgentsResponse = await fetch('/api/agents');
+            if (allAgentsResponse.ok) {
+                const allAgentsData: Agent[] = await allAgentsResponse.json();
+                const conflictingAgent = allAgentsData.find(
+                    (a) => a.email.toLowerCase() === submittedAgentData.email.toLowerCase() && a.id !== submittedAgentData.id
+                );
+                if (conflictingAgent) {
+                    toast({
+                        title: 'Error Saving Agent',
+                        description: `Agent with email ${submittedAgentData.email} already exists.`,
+                        variant: 'destructive',
+                    });
+                    return;
+                }
+            }
         }
+
         response = await fetch('/api/agents', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -176,7 +181,7 @@ export default function AgentsPage() {
       }
 
       if (!response.ok) {
-        const errorData = await response.json();
+        const errorData = await response.json().catch(() => ({ message: `API Error: ${response.statusText}` }));
         throw new Error(errorData.message || `Failed to save agent: ${response.statusText}`);
       }
 
@@ -208,7 +213,7 @@ export default function AgentsPage() {
         method: 'DELETE',
       });
       if (!response.ok) {
-        const errorData = await response.json();
+        const errorData = await response.json().catch(() => ({ message: `API Error: ${response.statusText}` }));
         throw new Error(errorData.message || `Failed to delete agent: ${response.statusText}`);
       }
       toast({ title: 'Agent Deleted', description: `Agent ${agentId} has been deleted.` });
@@ -240,6 +245,7 @@ export default function AgentsPage() {
     if (!confirm(`Are you sure you want to delete ${selectedAgentIds.length} selected agents? This action cannot be undone.`)) {
       return;
     }
+    console.log("[Bulk Delete Agents] Selected IDs to delete:", selectedAgentIds); // Frontend Log
     try {
       const response = await fetch('/api/agents', {
         method: 'DELETE',
@@ -247,14 +253,15 @@ export default function AgentsPage() {
         body: JSON.stringify({ ids: selectedAgentIds }),
       });
       if (!response.ok) {
-        const errorData = await response.json();
+        const errorData = await response.json().catch(() => ({ message: `API Error ${response.status}: ${response.statusText}` }));
+        console.error("[Bulk Delete Agents] API Error:", response.status, errorData); // Frontend Log
         throw new Error(errorData.message || 'Failed to delete selected agents');
       }
       toast({ title: 'Agents Deleted', description: `${selectedAgentIds.length} agents have been deleted.` });
       fetchAgents();
       setSelectedAgentIds([]);
     } catch (error) {
-      console.error("Error deleting selected agents:", error);
+      console.error("Error deleting selected agents:", error); // Frontend Log
       toast({ title: 'Error Deleting Agents', description: (error as Error).message, variant: 'destructive' });
     }
   };
@@ -265,7 +272,7 @@ export default function AgentsPage() {
       toast({ title: "Access Denied", description: "Only administrators can import agents.", variant: "destructive" });
       return;
     }
-    if (isImporting) return; // Prevent multiple imports
+    if (isImporting) return; 
     fileInputRef.current?.click();
   };
 
@@ -293,7 +300,7 @@ export default function AgentsPage() {
         return;
     }
     setIsImporting(true);
-    setSelectedAgentIds([]); // Clear selection during import
+    setSelectedAgentIds([]); 
     toast({ title: 'Import Started', description: 'Processing CSV file... This may take a few moments.' });
     const startTime = Date.now();
 
@@ -321,19 +328,19 @@ export default function AgentsPage() {
             headerLine = headerLine.substring(1);
         }
         const fileHeaders = headerLine.split(',').map(h => h.trim().toLowerCase().replace(/\s+/g, '_'));
-        console.log("[CSV Import] Detected Normalized Headers:", fileHeaders);
+        console.log("[CSV Import Agents] Detected Headers:", fileHeaders);
 
         const newAgentsFromCsv: Agent[] = [];
         
         const currentAgentsResponse = await fetch('/api/agents');
-        const currentAgents: Agent[] = await currentAgentsResponse.json();
+        const currentAgents: Agent[] = currentAgentsResponse.ok ? await currentAgentsResponse.json() : [];
         const existingAgentIds = new Set(currentAgents.map(a => a.id));
         const existingAgentEmails = new Set(currentAgents.map(a => a.email.toLowerCase()));
 
         for (let i = 1; i < lines.length; i++) {
           let data = lines[i].split(',');
           if (data.length !== fileHeaders.length) {
-            console.warn(`[CSV Import] Skipping malformed CSV line ${i + 1}: Expected ${fileHeaders.length} columns, got ${data.length}. Line: "${lines[i]}"`);
+            console.warn(`[CSV Import Agents] Skipping malformed CSV line ${i + 1}: Expected ${fileHeaders.length} columns, got ${data.length}. Line: "${lines[i]}"`);
             skippedCount++;
             continue;
           }
@@ -344,20 +351,20 @@ export default function AgentsPage() {
             if (agentKey) {
                 parsedRow[agentKey] = convertAgentValue(agentKey, data[index]);
             } else {
-                console.warn(`[CSV Import] Unknown header "${fileHeader}" in CSV row ${i+1}. Skipping this column.`);
+                console.warn(`[CSV Import Agents] Unknown header "${fileHeader}" in CSV row ${i+1}. Skipping this column.`);
             }
           });
-           if (i === 1) console.log("[CSV Import] Processing Row 1 - Parsed (after mapping & convertValue):", parsedRow);
+           if (i < 3) console.log(`[CSV Import Agents] Processing Row ${i+1} - Parsed (after mapping & convertAgentValue):`, JSON.parse(JSON.stringify(parsedRow)));
 
           let agentId = parsedRow.id && String(parsedRow.id).trim() !== '' ? String(parsedRow.id).trim() : `DO-agent-csv-${Date.now()}-${i}`;
 
           if (existingAgentIds.has(agentId) || newAgentsFromCsv.some(a => a.id === agentId)) {
-            console.warn(`[CSV Import] Skipping agent with duplicate ID: ${agentId} from CSV row ${i+1}.`);
+            console.warn(`[CSV Import Agents] Skipping agent with duplicate ID: ${agentId} from CSV row ${i+1}.`);
             skippedCount++;
             continue;
           }
           if (parsedRow.email && (existingAgentEmails.has(parsedRow.email.toLowerCase()) || newAgentsFromCsv.some(a => a.email!.toLowerCase() === parsedRow.email!.toLowerCase()))) {
-            console.warn(`[CSV Import] Skipping agent with duplicate email: ${parsedRow.email} from CSV row ${i+1}.`);
+            console.warn(`[CSV Import Agents] Skipping agent with duplicate email: ${parsedRow.email} from CSV row ${i+1}.`);
             skippedCount++;
             continue;
           }
@@ -375,10 +382,10 @@ export default function AgentsPage() {
             discount: typeof parsedRow.discount === 'number' ? parsedRow.discount : 0,
             websiteUrl: parsedRow.websiteUrl,
           };
-          if (i === 1) console.log("[CSV Import] Processing Row 1 - Agent to POST:", fullAgent);
+          if (i < 3) console.log(`[CSV Import Agents] Processing Row ${i+1} - Agent to POST:`, JSON.parse(JSON.stringify(fullAgent)));
           
           if (!fullAgent.id || !fullAgent.name || !fullAgent.email || fullAgent.discount === undefined || !fullAgent.status) {
-             console.warn(`[CSV Import] Skipping agent due to missing required fields (id, name, email, discount, status) at CSV row ${i+1}. Agent data:`, fullAgent);
+             console.warn(`[CSV Import Agents] Skipping agent due to missing required fields (id, name, email, discount, status) at CSV row ${i+1}. Agent data:`, fullAgent);
              skippedCount++;
              continue;
           }
@@ -399,12 +406,12 @@ export default function AgentsPage() {
               if (response.ok) {
                 successCount++;
               } else {
-                const errorData = await response.json();
-                console.warn(`[CSV Import] API Error for agent ID ${agentToImport.id}: ${errorData.message || response.statusText}. Payload:`, agentToImport);
+                const errorData = await response.json().catch(() => ({ message: `API Error: ${response.statusText}` }));
+                console.warn(`[CSV Import Agents] API Error for agent ID ${agentToImport.id}: ${errorData.message || response.statusText}. Payload:`, agentToImport);
                 skippedCount++;
               }
             } catch (apiError) {
-                console.warn(`[CSV Import] Network/JS Error importing agent ${agentToImport.id}:`, apiError, "Payload:", agentToImport);
+                console.warn(`[CSV Import Agents] Network/JS Error importing agent ${agentToImport.id}:`, apiError, "Payload:", agentToImport);
                 skippedCount++;
             }
           }
@@ -416,7 +423,7 @@ export default function AgentsPage() {
         const endTime = Date.now();
         const durationInSeconds = ((endTime - startTime) / 1000).toFixed(2);
         if (successCount > 0 || skippedCount > 0) {
-            fetchAgents(); // Refresh list if any action was taken
+            fetchAgents(); 
         }
         toast({ 
             title: 'Import Processed', 
@@ -481,10 +488,6 @@ export default function AgentsPage() {
   };
 
 
-  if (isLoading && !isAdmin) {
-    return <div className="container mx-auto py-2 text-center">Loading...</div>;
-  }
-
   if (!isAdmin && !isLoading) { 
     return (
       <div className="container mx-auto py-2">
@@ -500,8 +503,26 @@ export default function AgentsPage() {
   }
 
   if (isLoading) { 
-    return <div className="container mx-auto py-2 text-center">Loading agents...</div>;
+    return (
+      <div className="container mx-auto py-2">
+        <PageHeader
+          title="Agent Management"
+          description="Loading agent data..."
+          actions={
+            isAdmin && (
+            <div className="flex items-center gap-2">
+              <Skeleton className="h-10 w-32" />
+              <Skeleton className="h-10 w-32" />
+              <Skeleton className="h-10 w-28" />
+            </div>
+            )
+          }
+        />
+        <Skeleton className="h-[300px] w-full mt-4" />
+      </div>
+    );
   }
+
 
   return (
     <div className="container mx-auto py-2">
@@ -549,7 +570,7 @@ export default function AgentsPage() {
         onSelectAgent={handleSelectAgent}
         onSelectAllAgents={handleSelectAllAgents}
       />
-      {isAgentDialogOpen && isAdmin && (
+      {isAgentDialogOpen && ( // Dialog now only opens if admin
         <AgentFormDialog
           isOpen={isAgentDialogOpen}
           onOpenChange={setIsAgentDialogOpen}
@@ -560,5 +581,4 @@ export default function AgentsPage() {
     </div>
   );
 }
-
     

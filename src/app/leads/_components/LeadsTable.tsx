@@ -31,8 +31,8 @@ type LeadTableColumn = {
   isCurrency?: boolean;
   isPercentage?: boolean;
   isNumeric?: boolean;
-  isDate?: boolean; 
-  isShortDate?: boolean; 
+  isDate?: boolean;
+  isShortDate?: boolean;
   isNotes?: boolean;
   isUserLookup?: boolean;
   isAgentLookup?: boolean;
@@ -43,18 +43,17 @@ const leadColumns: LeadTableColumn[] = [
   { accessorKey: 'select', header: '' },
   { accessorKey: 'id', header: 'ID' },
   { accessorKey: 'clientName', header: 'Client' },
-  { accessorKey: 'agent', header: 'Agent', isAgentLookup: true }, 
-  { accessorKey: 'yacht', header: 'Yacht', isYachtLookup: true }, 
+  { accessorKey: 'agent', header: 'Agent', isAgentLookup: true },
+  { accessorKey: 'yacht', header: 'Yacht', isYachtLookup: true },
   { accessorKey: 'status', header: 'Status' },
   { accessorKey: 'month', header: 'Lead/Event Date', isShortDate: true },
   { accessorKey: 'type', header: 'Type' },
-  { accessorKey: 'transactionId', header: 'Transaction ID' }, // Renamed from invoiceId
+  { accessorKey: 'transactionId', header: 'Transaction ID' },
   { accessorKey: 'modeOfPayment', header: 'Payment Mode' },
-  { accessorKey: 'notes', header: 'Notes', isNotes: true },
+  { accessorKey: 'notes', header: 'Notes', isNotes: true }, // Ensure notes column is here
 
   { accessorKey: 'totalGuests', header: 'Total Guests', isNumeric: true },
 
-  // Standardized Package Quantities
   { accessorKey: 'qty_childRate', header: 'Child Pkg Qty', isNumeric: true },
   { accessorKey: 'qty_adultStandardRate', header: 'Adult Std Qty', isNumeric: true },
   { accessorKey: 'qty_adultStandardDrinksRate', header: 'Adult Std Drinks Qty', isNumeric: true },
@@ -111,12 +110,12 @@ export function LeadsTable({
   };
 
   const formatCurrency = (amount: number | undefined | null) => {
-    if (typeof amount !== 'number') return '-';
+    if (typeof amount !== 'number' || isNaN(amount)) return '-';
     return `${amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} AED`;
   };
 
   const formatPercentage = (value: number | undefined | null) => {
-    if (typeof value !== 'number') return '-';
+    if (typeof value !== 'number' || isNaN(value)) return '-';
     return `${value.toFixed(1)}%`;
   }
 
@@ -129,11 +128,11 @@ export function LeadsTable({
     if (!dateString) return '-';
     try {
       const date = parseISO(dateString);
-      if (!isValid(date)) return dateString; 
+      if (!isValid(date)) return dateString;
       const dateFormat = includeTime ? 'dd/MM/yyyy HH:mm' : 'dd/MM/yyyy';
       return format(date, dateFormat);
     } catch (e) {
-      return dateString; 
+      return dateString;
     }
   };
 
@@ -153,6 +152,7 @@ export function LeadsTable({
     total += lead.qty_royalChildRate || 0;
     total += lead.qty_royalAdultRate || 0;
     total += lead.qty_royalDrinksRate || 0;
+    // othersAmtCake is not typically a guest count, so it's omitted here.
     return total;
   };
 
@@ -165,7 +165,7 @@ export function LeadsTable({
     if (column.accessorKey === 'id') {
       return (
         <Button variant="link" className="p-0 h-auto font-medium" onClick={() => onEditLead(lead)}>
-          {lead.id && lead.id.length > 10 ? lead.id.substring(0, 4) + '...' + lead.id.substring(lead.id.length - 4) : lead.id}
+          {String(lead.id).length > 10 ? String(lead.id).substring(0, 4) + '...' + String(lead.id).substring(String(lead.id).length - 4) : lead.id}
         </Button>
       );
     }
@@ -230,9 +230,9 @@ export function LeadsTable({
             leads.map((lead) => (
               <TableRow key={lead.id}>
                 <TableCell>
-                  <Checkbox aria-label={`Select row ${lead.id}`} disabled /> 
+                  <Checkbox aria-label={`Select row ${lead.id}`} disabled />
                 </TableCell>
-                {leadColumns.slice(1, -1).map(col => ( 
+                {leadColumns.slice(1, -1).map(col => (
                   <TableCell key={col.accessorKey}>
                     {renderCellContent(lead, col)}
                   </TableCell>
@@ -271,3 +271,5 @@ export function LeadsTable({
     </ScrollArea>
   );
 }
+
+    

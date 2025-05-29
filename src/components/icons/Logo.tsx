@@ -3,15 +3,14 @@
 
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { AppName } from '@/lib/navigation'; // AppLogo is no longer needed here
-import type { HTMLAttributes } from 'react'; // Changed from LucideProps
+import { AppName } from '@/lib/navigation';
+import type { HTMLAttributes } from 'react';
 import { cn } from '@/lib/utils';
 
 const LOGO_STORAGE_KEY = 'dutchOrientalCrmCompanyLogo';
-// We will now use /icon.svg from the public folder as the primary fallback.
-const DEFAULT_ICON_SRC = '/icon.svg';
+const DEFAULT_ICON_SRC = '/icon.svg'; // Using the static SVG from public
 
-interface LogoProps extends HTMLAttributes<HTMLDivElement> { // Changed props to extend HTMLAttributes for a div
+interface LogoProps extends HTMLAttributes<HTMLDivElement> {
   textClassName?: string;
   hideDefaultText?: boolean;
 }
@@ -20,7 +19,7 @@ export function Logo({ className, textClassName, hideDefaultText = false, ...res
   const [uploadedLogoUrl, setUploadedLogoUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [currentSrc, setCurrentSrc] = useState<string>(DEFAULT_ICON_SRC);
-  const [showDefaultIcon, setShowDefaultIcon] = useState(true);
+  const [showDefaultIcon, setShowDefaultIcon] = useState(true); // To control if default icon.svg should attempt to render
 
   useEffect(() => {
     let storedLogo = null;
@@ -33,35 +32,31 @@ export function Logo({ className, textClassName, hideDefaultText = false, ...res
     if (storedLogo) {
       setUploadedLogoUrl(storedLogo);
       setCurrentSrc(storedLogo);
-      setShowDefaultIcon(false);
+      setShowDefaultIcon(false); // An uploaded logo exists, so don't try to show the default icon.svg initially
     } else {
-      // If no stored logo, we'll use the default icon.svg
-      setCurrentSrc(DEFAULT_ICON_SRC);
+      setCurrentSrc(DEFAULT_ICON_SRC); // No stored logo, use /icon.svg
       setShowDefaultIcon(true);
     }
     setIsLoading(false);
   }, []);
 
   const handleImageError = () => {
-    console.warn(`Error loading image: ${currentSrc}. Falling back or attempting default.`);
-    if (currentSrc !== DEFAULT_ICON_SRC) {
-      // If the uploaded logo failed, try the default icon.svg
+    console.warn(`Error loading image: ${currentSrc}. Attempting fallback or showing text only.`);
+    if (currentSrc !== DEFAULT_ICON_SRC && uploadedLogoUrl) {
+      // If the uploaded logo failed, try falling back to the default icon.svg
       setCurrentSrc(DEFAULT_ICON_SRC);
-      setShowDefaultIcon(true);
-      // If it was the uploaded logo that failed, also clear it from storage
-      if (uploadedLogoUrl && currentSrc === uploadedLogoUrl) {
-        try {
-          localStorage.removeItem(LOGO_STORAGE_KEY);
-          setUploadedLogoUrl(null);
-        } catch (error) {
-          console.error("Could not remove from localStorage:", error);
-        }
+      setShowDefaultIcon(true); // Indicate that we are now trying to show the default
+      setUploadedLogoUrl(null); // Clear the problematic uploaded URL state
+      try {
+        localStorage.removeItem(LOGO_STORAGE_KEY); // Also remove it from storage
+      } catch (error) {
+        console.error("Could not remove from localStorage:", error);
       }
     } else {
-      // If default icon.svg also fails, perhaps render nothing or just text
-      setShowDefaultIcon(false); // To avoid infinite loop if default also fails
-      // Optionally, set currentSrc to a known good placeholder if even /icon.svg fails
-      // For now, it will try to render AppName text if hideDefaultText is false
+      // If DEFAULT_ICON_SRC (/icon.svg) also fails, or if there was no uploaded logo to begin with,
+      // then don't try to render an Image component for it anymore.
+      setShowDefaultIcon(false);
+      setCurrentSrc(''); // Ensure no Image tag attempts to render a faulty src
     }
   };
 
@@ -69,25 +64,28 @@ export function Logo({ className, textClassName, hideDefaultText = false, ...res
     return (
       <div
         style={{ height: '50px', maxWidth: '150px', width: '100%' }}
-        className="animate-pulse bg-muted/50 rounded-md flex items-center justify-center"
+        className={cn("animate-pulse bg-muted/50 rounded-md flex items-center justify-center", className)}
+        {...rest}
       />
     );
   }
 
+  const shouldShowImage = (showDefaultIcon && currentSrc === DEFAULT_ICON_SRC) || (uploadedLogoUrl && currentSrc === uploadedLogoUrl);
+
   return (
     <div className={cn("flex items-center justify-center gap-2", className)} style={{ height: '50px', maxWidth: '150px' }} {...rest}>
-      {(showDefaultIcon || uploadedLogoUrl) && (
+      {shouldShowImage && currentSrc && (
         <Image
-          src={currentSrc} // This will be either uploaded logo or /icon.svg
+          src={currentSrc}
           alt={`${AppName} Logo`}
-          width={hideDefaultText ? 40 : 30} // Adjust size slightly if text is hidden
-          height={hideDefaultText ? 40 : 30}
-          className="object-contain" // removed custom className from here to apply to wrapper
+          width={40} // Consistent width
+          height={40} // Consistent height
+          className="object-contain"
           onError={handleImageError}
           priority // Good for LCP elements like a logo
         />
       )}
-      {!hideDefaultText && (
+      {!hideDefaultText && !uploadedLogoUrl && ( // Show AppName text only if no uploaded logo and hideDefaultText is false
         <span className={cn(
           "font-semibold text-lg text-primary hidden md:inline-block group-data-[state=expanded]:md:inline-block group-data-[state=collapsed]:md:hidden whitespace-nowrap overflow-hidden text-ellipsis",
           textClassName

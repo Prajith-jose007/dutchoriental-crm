@@ -78,17 +78,8 @@ async function createYachtsTable() {
       imageUrl VARCHAR(255),
       capacity INT,
       status VARCHAR(50),
-      childRate DECIMAL(10, 2) DEFAULT 0.00,
-      adultStandardRate DECIMAL(10, 2) DEFAULT 0.00,
-      adultStandardDrinksRate DECIMAL(10, 2) DEFAULT 0.00,
-      vipChildRate DECIMAL(10, 2) DEFAULT 0.00,
-      vipAdultRate DECIMAL(10, 2) DEFAULT 0.00,
-      vipAdultDrinksRate DECIMAL(10, 2) DEFAULT 0.00,
-      royalChildRate DECIMAL(10, 2) DEFAULT 0.00,
-      royalAdultRate DECIMAL(10, 2) DEFAULT 0.00,
-      royalDrinksRate DECIMAL(10, 2) DEFAULT 0.00,
-      other_charges_json TEXT DEFAULT NULL, -- Changed from otherChargeName and otherChargeRate
-      customPackageInfo TEXT
+      customPackageInfo TEXT,
+      other_charges_json TEXT DEFAULT NULL 
     );
   `;
   try {
@@ -125,7 +116,7 @@ async function createLeadsTable() {
       qty_royalAdultRate INT DEFAULT 0,
       qty_royalDrinksRate INT DEFAULT 0,
 
-      othersAmtCake INT DEFAULT 0, -- This is a quantity
+      othersAmtCake INT DEFAULT 0,
 
       totalAmount DECIMAL(10, 2) NOT NULL,
       commissionPercentage DECIMAL(5, 2) DEFAULT 0.00,
@@ -174,7 +165,6 @@ async function createInvoicesTable() {
 // --- Data Migration Functions ---
 async function migrateUsers() {
   console.log('Migrating Users...');
-  // await createUsersTable(); No need to call create here, main() does it
   for (const user of placeholderUsers) {
     const sql = 'INSERT INTO users (id, name, email, designation, avatarUrl, websiteUrl, status, password) VALUES (?, ?, ?, ?, ?, ?, ?, ?)';
     try {
@@ -198,7 +188,6 @@ async function migrateUsers() {
 
 async function migrateAgents() {
   console.log('Migrating Agents...');
-  // await createAgentsTable(); No need to call create here, main() does it
   for (const agent of placeholderAgents) {
     const sql = 'INSERT INTO agents (id, name, agency_code, address, phone_no, email, status, TRN_number, customer_type_id, discount, websiteUrl) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
     try {
@@ -225,17 +214,13 @@ async function migrateAgents() {
 
 async function migrateYachts() {
   console.log('Migrating Yachts...');
-  // await createYachtsTable(); No need to call create here, main() does it
   for (const yacht of placeholderYachts) {
     const sql = `
       INSERT INTO ${MYSQL_TABLE_NAMES.yachts} (
         id, name, imageUrl, capacity, status,
-        childRate, adultStandardRate, adultStandardDrinksRate,
-        vipChildRate, vipAdultRate, vipAdultDrinksRate,
-        royalChildRate, royalAdultRate, royalDrinksRate,
-        other_charges_json, customPackageInfo
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `; // Changed to other_charges_json
+        customPackageInfo, other_charges_json
+      ) VALUES (?, ?, ?, ?, ?, ?, ?)
+    `; 
     try {
       const otherChargesJsonString = yacht.otherCharges && yacht.otherCharges.length > 0 ? JSON.stringify(yacht.otherCharges) : null;
       await query(sql, [
@@ -244,17 +229,8 @@ async function migrateYachts() {
         yacht.imageUrl || null,
         yacht.capacity,
         yacht.status,
-        yacht.childRate ?? 0,
-        yacht.adultStandardRate ?? 0,
-        yacht.adultStandardDrinksRate ?? 0,
-        yacht.vipChildRate ?? 0,
-        yacht.vipAdultRate ?? 0,
-        yacht.vipAdultDrinksRate ?? 0,
-        yacht.royalChildRate ?? 0,
-        yacht.royalAdultRate ?? 0,
-        yacht.royalDrinksRate ?? 0,
-        otherChargesJsonString, // Use the stringified JSON
         yacht.customPackageInfo || null,
+        otherChargesJsonString, 
       ]);
       console.log(`Inserted yacht: ${yacht.name} (ID: ${yacht.id})`);
     } catch (error) {
@@ -266,7 +242,6 @@ async function migrateYachts() {
 
 async function migrateLeads() {
   console.log('Migrating Leads...');
-  // await createLeadsTable(); No need to call create here, main() does it
   for (const lead of placeholderLeads) {
     const sql = `
       INSERT INTO leads (
@@ -344,11 +319,9 @@ async function migrateLeads() {
 
 async function migrateInvoices() {
   console.log('Migrating Invoices...');
-  // await createInvoicesTable(); No need to call create here, main() does it
   for (const invoice of placeholderInvoices) {
     const sql = 'INSERT INTO invoices (id, leadId, clientName, amount, dueDate, status, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?)';
     try {
-        // Ensure dueDate is formatted as YYYY-MM-DD for MySQL DATE column
         const dueDateFormatted = invoice.dueDate && isValid(parseISO(invoice.dueDate)) ? format(parseISO(invoice.dueDate), 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd');
         const createdAtFormatted = invoice.createdAt && isValid(parseISO(invoice.createdAt)) ? formatISO(parseISO(invoice.createdAt)) : formatISO(new Date());
       await query(sql, [
@@ -371,14 +344,12 @@ async function migrateInvoices() {
 async function main() {
   console.log('Starting data migration with table creation checks...');
   try {
-    // Call table creation functions first to ensure schema exists
     await createUsersTable();
     await createAgentsTable();
     await createYachtsTable();
     await createLeadsTable();
     await createInvoicesTable();
     
-    // Then migrate data
     await migrateUsers();
     await migrateAgents();
     await migrateYachts();

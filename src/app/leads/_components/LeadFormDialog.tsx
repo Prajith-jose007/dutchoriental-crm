@@ -45,7 +45,7 @@ const leadFormSchema = z.object({
   id: z.string().optional(),
   agent: z.string().min(1, 'Agent is required'),
   status: z.enum(leadStatusOptions),
-  month: z.date({ required_error: "Lead/Event Date is required." }), // This is the primary Lead/Event Date
+  month: z.date({ required_error: "Lead/Event Date is required." }), 
   notes: z.string().optional(),
   yacht: z.string().min(1, 'Yacht selection is required'),
   type: z.enum(leadTypeOptions, { required_error: "Lead type is required."}),
@@ -53,24 +53,24 @@ const leadFormSchema = z.object({
   modeOfPayment: z.enum(modeOfPaymentOptions),
   clientName: z.string().min(1, 'Client name is required'),
 
-  // Standardized 9 Package Quantities - allow negative numbers
-  qty_childRate: z.coerce.number().optional().default(0),
-  qty_adultStandardRate: z.coerce.number().optional().default(0),
-  qty_adultStandardDrinksRate: z.coerce.number().optional().default(0),
-  qty_vipChildRate: z.coerce.number().optional().default(0),
-  qty_vipAdultRate: z.coerce.number().optional().default(0),
-  qty_vipAdultDrinksRate: z.coerce.number().optional().default(0),
-  qty_royalChildRate: z.coerce.number().optional().default(0),
-  qty_royalAdultRate: z.coerce.number().optional().default(0),
-  qty_royalDrinksRate: z.coerce.number().optional().default(0),
+  // Standardized 9 Package Quantities
+  qty_childRate: z.coerce.number().min(0, "Quantity must be non-negative").optional().default(0),
+  qty_adultStandardRate: z.coerce.number().min(0, "Quantity must be non-negative").optional().default(0),
+  qty_adultStandardDrinksRate: z.coerce.number().min(0, "Quantity must be non-negative").optional().default(0),
+  qty_vipChildRate: z.coerce.number().min(0, "Quantity must be non-negative").optional().default(0),
+  qty_vipAdultRate: z.coerce.number().min(0, "Quantity must be non-negative").optional().default(0),
+  qty_vipAdultDrinksRate: z.coerce.number().min(0, "Quantity must be non-negative").optional().default(0),
+  qty_royalChildRate: z.coerce.number().min(0, "Quantity must be non-negative").optional().default(0),
+  qty_royalAdultRate: z.coerce.number().min(0, "Quantity must be non-negative").optional().default(0),
+  qty_royalDrinksRate: z.coerce.number().min(0, "Quantity must be non-negative").optional().default(0),
 
-  othersAmtCake: z.coerce.number().optional().default(0), // Quantity for custom charge - allow negative
+  othersAmtCake: z.coerce.number().min(0, "Quantity must be non-negative").optional().default(0), // Quantity for custom charge
 
   totalAmount: z.coerce.number().default(0),
   commissionPercentage: z.coerce.number().min(0, "Commission must be non-negative").max(100, "Commission cannot exceed 100%").default(0),
   commissionAmount: z.coerce.number().optional().default(0),
   netAmount: z.coerce.number().default(0),
-  paidAmount: z.coerce.number().default(0), // Allow negative for refunds/adjustments
+  paidAmount: z.coerce.number().min(0, "Paid amount must be non-negative").default(0),
   balanceAmount: z.coerce.number().default(0),
   createdAt: z.string().optional(),
   updatedAt: z.string().optional(),
@@ -187,7 +187,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
   const watchedCustomChargeQty = form.watch(customChargeConfig.qtyKey);
   const watchedPaidAmount = form.watch('paidAmount');
 
- useEffect(() => {
+  useEffect(() => {
     console.log('[CalcDebug] Calculation useEffect triggered.');
 
     const selectedAgent = agents.find(a => a.id === watchedAgentId);
@@ -206,7 +206,6 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
       console.log('[CalcDebug] No Yacht Selected or Yacht not found.');
     }
 
-
     const agentDiscountRate = Number(selectedAgent?.discount || 0);
     if (form.getValues('commissionPercentage') !== agentDiscountRate) {
       form.setValue('commissionPercentage', agentDiscountRate, { shouldValidate: true, shouldDirty: true });
@@ -222,7 +221,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
         const rate = Number(selectedYacht[pkgConfig.rateKey as keyof Yacht] || 0);
         
         console.log(`[CalcDebug] Package: ${pkgConfig.label}, Qty: ${quantity}, Rate: ${rate}`);
-        if (rate > 0) { // Only add to total if rate is positive, quantity can be negative for adjustments
+        if (rate > 0 && quantity > 0) { // Only add to total if rate and quantity are positive
           currentTotalAmount += quantity * rate;
         }
         if (pkgConfig.isGuestCount && quantity > 0) { // Only positive quantities contribute to guest count
@@ -233,7 +232,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
       const customChargeQtyValue = Number(form.getValues(customChargeConfig.qtyKey) || 0);
       const customChargeRateValue = Number(selectedYacht[customChargeConfig.rateKey as keyof Yacht] || 0);
       console.log(`[CalcDebug] Custom Charge: Qty: ${customChargeQtyValue}, Rate: ${customChargeRateValue}`);
-      if (customChargeRateValue > 0) { // Only add if rate is positive
+      if (customChargeRateValue > 0 && customChargeQtyValue > 0) { // Only add if rate and quantity are positive
         currentTotalAmount += customChargeQtyValue * customChargeRateValue;
       }
     }
@@ -244,23 +243,19 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
     form.setValue('totalAmount', currentTotalAmount, { shouldValidate: true, shouldDirty: true });
     console.log('[CalcDebug] Set Total Amount:', currentTotalAmount);
 
-
     const currentCommissionAmount = (currentTotalAmount * agentDiscountRate) / 100;
     form.setValue('commissionAmount', currentCommissionAmount, { shouldValidate: true, shouldDirty: true });
     console.log('[CalcDebug] Set Commission Amount:', currentCommissionAmount);
 
-
     const currentNetAmount = currentTotalAmount - currentCommissionAmount;
     form.setValue('netAmount', currentNetAmount, { shouldValidate: true, shouldDirty: true });
     console.log('[CalcDebug] Set Net Amount:', currentNetAmount);
-
     
     const paidAmt = Number(watchedPaidAmount || 0);
     const currentBalanceAmount = currentNetAmount - paidAmt;
     form.setValue('balanceAmount', currentBalanceAmount, { shouldValidate: true, shouldDirty: true });
     console.log('[CalcDebug] Paid Amount from form:', paidAmt);
     console.log('[CalcDebug] Set Balance Amount:', currentBalanceAmount);
-
 
   }, [
     watchedAgentId, watchedYachtId, 
@@ -308,15 +303,15 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
         form.reset(defaultVals);
       }
       
-      const currentAgentId = form.getValues('agent');
-      if (currentAgentId && agents.length > 0) {
-        const selectedAgent = agents.find(a => a.id === currentAgentId);
-        form.setValue('commissionPercentage', Number(selectedAgent?.discount || 0), { shouldValidate: true, shouldDirty: true });
-      } else if (!currentAgentId && !lead) { 
+      const currentAgentIdOnReset = form.getValues('agent');
+      if (currentAgentIdOnReset && agents.length > 0) {
+        const selectedAgentOnReset = agents.find(a => a.id === currentAgentIdOnReset);
+        form.setValue('commissionPercentage', Number(selectedAgentOnReset?.discount || 0), { shouldValidate: true, shouldDirty: true });
+      } else if (!currentAgentIdOnReset && !lead) { 
          form.setValue('commissionPercentage', 0, { shouldValidate: true, shouldDirty: true });
       }
     }
-  }, [lead, form, isOpen, agents, yachts]);
+  }, [lead, form, isOpen, agents, yachts]); // Added agents, yachts to ensure commission set correctly if lists load after dialog opens
 
   function onSubmit(data: LeadFormData) {
     const currentUserId = 'DO-user1'; 
@@ -426,9 +421,12 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
                   <FormItem className="flex flex-col">
                     <FormLabel>Lead/Event Date</FormLabel>
                     <DatePicker
-                        date={field.value}
+                        date={field.value ? (isValid(field.value) ? field.value : new Date()) : new Date()}
                         setDate={(date) => {
                             field.onChange(date);
+                            if (date && isValid(date)) {
+                                // Optionally, auto-update a YYYY-MM field if you re-add it
+                            }
                         }}
                         placeholder="Pick event date"
                     />
@@ -513,7 +511,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
                           <FormItem>
                           <FormLabel>{pkgFieldConfig.label} {rateDisplay}</FormLabel>
                           <FormControl>
-                              <Input type="number" placeholder="0" {...field} onChange={e => field.onChange(parseInt(e.target.value,10))} />
+                              <Input type="number" min="0" placeholder="0" {...field} onChange={e => field.onChange(parseInt(e.target.value,10))} />
                           </FormControl>
                           <FormMessage />
                           </FormItem>
@@ -543,7 +541,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
                         return (
                             <FormItem>
                                 <FormLabel>{labelText} {rateDisplay}</FormLabel>
-                                <FormControl><Input type="number" placeholder="0" {...field} onChange={e => field.onChange(parseInt(e.target.value))} /></FormControl>
+                                <FormControl><Input type="number" min="0" placeholder="0" {...field} onChange={e => field.onChange(parseInt(e.target.value))} /></FormControl>
                                 <FormMessage />
                             </FormItem>
                         );
@@ -633,7 +631,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Paid Amount (AED)</FormLabel>
-                      <FormControl><Input type="number" placeholder="0.00" {...field} onChange={e => field.onChange(parseFloat(e.target.value))} /></FormControl>
+                      <FormControl><Input type="number" min="0" placeholder="0.00" {...field} onChange={e => field.onChange(parseFloat(e.target.value))} /></FormControl>
                       <FormDescription>Amount paid by client</FormDescription>
                       <FormMessage />
                     </FormItem>
@@ -665,5 +663,3 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
     </Dialog>
   );
 }
-
-    

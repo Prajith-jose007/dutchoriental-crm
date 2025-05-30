@@ -30,16 +30,15 @@ type LeadTableColumn = {
   header: string;
   isCurrency?: boolean;
   isPercentage?: boolean;
-  isNumeric?: boolean; // Will use formatShortNumber
+  isNumeric?: boolean;
   isDate?: boolean;
-  isShortDate?: boolean; // For dd/MM/yyyy format
+  isShortDate?: boolean;
   isNotes?: boolean;
   isUserLookup?: boolean;
   isAgentLookup?: boolean;
   isYachtLookup?: boolean;
 };
 
-// Updated column headers for package quantities
 const leadColumns: LeadTableColumn[] = [
   { accessorKey: 'select', header: '' },
   { accessorKey: 'id', header: 'ID' },
@@ -120,37 +119,11 @@ export function LeadsTable({
     return `${value.toFixed(1)}%`;
   }
 
-  const formatShortNumber = (num?: number | null): string => {
+  const formatNumeric = (num?: number | null): string => {
     if (num === null || num === undefined || isNaN(num)) {
-      return '0'; // Default for quantities
+      return '-'; 
     }
-    if (num === 0) return '0';
-  
-    const absNum = Math.abs(num);
-    const sign = num < 0 ? '-' : '';
-  
-    if (absNum < 1000) {
-      return String(num); // No suffix for numbers less than 1000
-    }
-  
-    const suffixes = ["", "K", "M", "B", "T"]; // K for thousands, M for millions, etc.
-    const i = Math.floor(Math.log10(absNum) / 3);
-  
-    if (i >= suffixes.length) { // Handle numbers larger than what suffixes cover
-        return sign + num.toExponential(1); // Fallback to exponential for very large numbers
-    }
-
-    const shortValue = (absNum / Math.pow(1000, i));
-    let formattedShortValue;
-    
-    // Show one decimal place if it's not .0, otherwise no decimal place
-    if (shortValue % 1 !== 0) {
-      formattedShortValue = shortValue.toFixed(1);
-    } else {
-      formattedShortValue = shortValue.toFixed(0);
-    }
-    
-    return sign + formattedShortValue + suffixes[i];
+    return String(num);
   };
 
 
@@ -174,15 +147,15 @@ export function LeadsTable({
 
   const calculateTotalGuests = (lead: Lead): number => {
     let total = 0;
-    total += lead.qty_childRate ?? 0;
-    total += lead.qty_adultStandardRate ?? 0;
-    total += lead.qty_adultStandardDrinksRate ?? 0;
-    total += lead.qty_vipChildRate ?? 0;
-    total += lead.qty_vipAdultRate ?? 0;
-    total += lead.qty_vipAdultDrinksRate ?? 0;
-    total += lead.qty_royalChildRate ?? 0;
-    total += lead.qty_royalAdultRate ?? 0;
-    total += lead.qty_royalDrinksRate ?? 0;
+    total += Number(lead.qty_childRate || 0);
+    total += Number(lead.qty_adultStandardRate || 0);
+    total += Number(lead.qty_adultStandardDrinksRate || 0);
+    total += Number(lead.qty_vipChildRate || 0);
+    total += Number(lead.qty_vipAdultRate || 0);
+    total += Number(lead.qty_vipAdultDrinksRate || 0);
+    total += Number(lead.qty_royalChildRate || 0);
+    total += Number(lead.qty_royalAdultRate || 0);
+    total += Number(lead.qty_royalDrinksRate || 0);
     return total;
   };
 
@@ -190,7 +163,7 @@ export function LeadsTable({
     const value = lead[column.accessorKey as keyof Lead];
 
     if (column.accessorKey === 'totalGuests') {
-      return formatShortNumber(calculateTotalGuests(lead));
+      return formatNumeric(calculateTotalGuests(lead));
     }
     if (column.accessorKey === 'id') {
       return (
@@ -222,8 +195,8 @@ export function LeadsTable({
     if (column.isPercentage) {
       return formatPercentage(value as number | undefined);
     }
-    if (column.isNumeric) { // This will now use formatShortNumber
-      return formatShortNumber(value as number | undefined);
+    if (column.isNumeric) { 
+      return formatNumeric(value as number | undefined);
     }
     if (column.isNotes) {
       return formatNotes(value as string | undefined);
@@ -302,5 +275,3 @@ export function LeadsTable({
     </ScrollArea>
   );
 }
-
-    

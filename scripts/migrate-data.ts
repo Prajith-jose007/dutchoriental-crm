@@ -79,7 +79,7 @@ async function createYachtsTable() {
       imageUrl VARCHAR(255),
       capacity INT,
       status VARCHAR(50),
-      category VARCHAR(255),
+      category VARCHAR(255) DEFAULT 'Private Cruise',
       packages_json TEXT DEFAULT NULL,
       customPackageInfo TEXT
     );
@@ -157,7 +157,6 @@ async function createInvoicesTable() {
 // --- Data Migration Functions ---
 async function migrateUsers() {
   console.log('Migrating Users...');
-  // await createUsersTable(); // Table creation moved to main() to ensure order
   for (const user of placeholderUsers) {
     const sql = 'INSERT INTO users (id, name, email, designation, avatarUrl, websiteUrl, status, password) VALUES (?, ?, ?, ?, ?, ?, ?, ?)';
     try {
@@ -181,7 +180,6 @@ async function migrateUsers() {
 
 async function migrateAgents() {
   console.log('Migrating Agents...');
-  // await createAgentsTable(); 
   for (const agent of placeholderAgents) {
     const sql = 'INSERT INTO agents (id, name, agency_code, address, phone_no, email, status, TRN_number, customer_type_id, discount, websiteUrl) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
     try {
@@ -208,7 +206,6 @@ async function migrateAgents() {
 
 async function migrateYachts() {
   console.log('Migrating Yachts...');
-  // await createYachtsTable();
   for (const yacht of placeholderYachts) {
     const sql = `
       INSERT INTO ${MYSQL_TABLE_NAMES.yachts} (
@@ -237,7 +234,6 @@ async function migrateYachts() {
 
 async function migrateLeads() {
   console.log('Migrating Leads...');
-  // await createLeadsTable(); 
   for (const lead of placeholderLeads) {
     const sql = `
       INSERT INTO leads (
@@ -288,7 +284,7 @@ async function migrateLeads() {
         lead.commissionAmount || 0,
         lead.netAmount,
         lead.paidAmount,
-        Math.abs(lead.balanceAmount || 0), 
+        lead.balanceAmount || 0, // Storing signed balance
         createdAtDate,
         updatedAtDate,
         lead.lastModifiedByUserId || null,
@@ -304,7 +300,6 @@ async function migrateLeads() {
 
 async function migrateInvoices() {
   console.log('Migrating Invoices...');
-  // await createInvoicesTable(); 
   for (const invoice of placeholderInvoices) {
     const sql = 'INSERT INTO invoices (id, leadId, clientName, amount, dueDate, status, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?)';
     try {
@@ -348,24 +343,22 @@ async function main() {
   } catch (error) {
       console.error("A critical error occurred during table creation or migration process, aborting further steps:", (error as Error).message);
   } finally {
-    // Attempt to close the pool
-    // This might need adjustment depending on how your db.ts exports the pool
     const dbModule = await import('../src/lib/db'); 
-    if (dbModule.default && typeof (dbModule.default as any).end === 'function') { // Check if pool itself is default export
+    if (dbModule.default && typeof (dbModule.default as any).end === 'function') { 
         try {
             await (dbModule.default as any).end();
             console.log('MySQL pool closed by script in finally block.');
         } catch (e) {
             console.error('Error closing pool in finally block:', e);
         }
-    } else if (dbModule.default && typeof (dbModule.default as any).pool?.end === 'function') { // Check if pool is nested
+    } else if (dbModule.default && typeof (dbModule.default as any).pool?.end === 'function') { 
         try {
             await (dbModule.default as any).pool.end();
             console.log('MySQL pool (nested) closed by script in finally block.');
         } catch (e) {
             console.error('Error closing nested pool in finally block:', e);
         }
-    } else if (typeof (dbModule as any).end === 'function') { // Check if exported directly (not default)
+    } else if (typeof (dbModule as any).end === 'function') { 
          try {
             await (dbModule as any).end();
             console.log('MySQL pool (direct export) closed by script in finally block.');
@@ -373,13 +366,11 @@ async function main() {
             console.error('Error closing direct export pool in finally block:', e);
         }
     }
-    // Add other checks if your db.ts exports pool differently
   }
 }
 
 main().catch(async err => {
   console.error('Migration script failed:', err);
-  // Attempt to close pool on script failure as well
   try {
     const dbModule = await import('../src/lib/db');
      if (dbModule.default && typeof (dbModule.default as any).end === 'function') {

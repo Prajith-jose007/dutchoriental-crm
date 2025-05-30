@@ -80,7 +80,7 @@ export async function GET(request: NextRequest) {
         commissionAmount: parseFloat(dbLead.commissionAmount || 0),
         netAmount: parseFloat(dbLead.netAmount || 0),
         paidAmount: parseFloat(dbLead.paidAmount || 0),
-        balanceAmount: parseFloat(dbLead.balanceAmount || 0),
+        balanceAmount: parseFloat(dbLead.balanceAmount || 0), // Stored signed, displayed absolute
 
         createdAt: dbLead.createdAt ? ensureISOFormat(dbLead.createdAt)! : formatISO(new Date()),
         updatedAt: dbLead.updatedAt ? ensureISOFormat(dbLead.updatedAt)! : formatISO(new Date()),
@@ -99,7 +99,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const newLeadData = await request.json() as Partial<Lead>; 
+    const newLeadData = await request.json() as Lead; // Expect full Lead object
     console.log('[API POST /api/leads] Received newLeadData:', JSON.stringify(newLeadData, null, 2));
 
     if (!newLeadData.clientName || !newLeadData.agent || !newLeadData.yacht || !newLeadData.month) {
@@ -127,7 +127,7 @@ export async function POST(request: NextRequest) {
     
     const packageQuantitiesJson = newLeadData.packageQuantities ? JSON.stringify(newLeadData.packageQuantities) : null;
 
-    const leadToStore: Omit<Lead, 'packageQuantities'> & { package_quantities_json?: string | null } = {
+    const leadToStore = {
       id: leadId!,
       clientName: newLeadData.clientName,
       agent: newLeadData.agent,
@@ -146,7 +146,7 @@ export async function POST(request: NextRequest) {
       commissionAmount: Number(newLeadData.commissionAmount || 0),
       netAmount: Number(newLeadData.netAmount || 0),
       paidAmount: Number(newLeadData.paidAmount || 0),
-      balanceAmount: Number(newLeadData.balanceAmount || 0),
+      balanceAmount: Number(newLeadData.balanceAmount || 0), // Stores signed value
 
       createdAt: formattedCreatedAt,
       updatedAt: formattedUpdatedAt,
@@ -184,8 +184,11 @@ export async function POST(request: NextRequest) {
       if (insertedLeadData.length > 0) {
         const dbLead = insertedLeadData[0];
         let pq: LeadPackageQuantity[] = [];
-        if(dbLead.package_quantities_json) {
-            try { pq = JSON.parse(dbLead.package_quantities_json); } catch(e){ console.warn("Error parsing PQ_JSON on fetch after insert");}
+        if(dbLead.package_quantities_json && typeof dbLead.package_quantities_json === 'string') {
+            try { 
+              const parsedPQs = JSON.parse(dbLead.package_quantities_json);
+              if(Array.isArray(parsedPQs)) pq = parsedPQs;
+            } catch(e){ console.warn("Error parsing PQ_JSON on fetch after insert for lead:", dbLead.id, e);}
         }
         const finalLead: Lead = { 
             id: String(dbLead.id || ''), clientName: String(dbLead.clientName || ''), agent: String(dbLead.agent || ''), yacht: String(dbLead.yacht || ''), 

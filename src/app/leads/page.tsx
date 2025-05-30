@@ -16,9 +16,9 @@ import { DatePicker } from '@/components/ui/date-picker';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format, parseISO, isWithinInterval, isValid, formatISO, getYear, getMonth as getMonthIndex } from 'date-fns'; 
 
-const SIMULATED_CURRENT_USER_ID = 'DO-user1'; 
+const SIMULATED_CURRENT_USER_ID = 'DO-user1'; // Example: Naufal
 
-// Updated CSV Header Mapping for dynamic packageQuantities
+// Updated CSV Header Mapping
 const csvHeaderMapping: { [csvHeaderKey: string]: keyof Omit<Lead, 'packageQuantities'> | 'package_quantities_json' } = {
   'id': 'id',
   'clientname': 'clientName', 'client name': 'clientName',
@@ -31,7 +31,7 @@ const csvHeaderMapping: { [csvHeaderKey: string]: keyof Omit<Lead, 'packageQuant
   'transactionid': 'transactionId', 'transaction id': 'transactionId',
   'modeofpayment': 'modeOfPayment', 'payment mode': 'modeOfPayment',
   
-  'package_quantities_json': 'package_quantities_json', // For importing the JSON string
+  'package_quantities_json': 'package_quantities_json',
 
   'totalamount': 'totalAmount',
   'commissionpercentage': 'commissionPercentage',
@@ -45,7 +45,6 @@ const csvHeaderMapping: { [csvHeaderKey: string]: keyof Omit<Lead, 'packageQuant
   'owneruserid': 'ownerUserId',
 };
 
-// Updated convertCsvValue
 const convertCsvValue = (key: keyof Omit<Lead, 'packageQuantities'> | 'package_quantities_json', value: string): any => {
   const trimmedValue = value ? String(value).trim() : '';
 
@@ -56,11 +55,11 @@ const convertCsvValue = (key: keyof Omit<Lead, 'packageQuantities'> | 'package_q
         return 0;
       case 'modeOfPayment': return 'Online';
       case 'status': return 'Upcoming';
-      case 'type': return 'Private Cruise' as LeadType;
+      case 'type': return 'Private Cruise' as LeadType; // Ensure valid LeadType
       case 'notes': return '';
       case 'month': return formatISO(new Date()); 
       case 'createdAt': case 'updatedAt': return formatISO(new Date());
-      case 'package_quantities_json': return null; // Default to null if empty
+      case 'package_quantities_json': return null;
       default: return undefined;
     }
   }
@@ -71,11 +70,11 @@ const convertCsvValue = (key: keyof Omit<Lead, 'packageQuantities'> | 'package_q
       const num = parseFloat(trimmedValue);
       return isNaN(num) ? 0 : num;
     case 'modeOfPayment':
-      return modeOfPaymentOptions.includes(trimmedValue as ExportedModeOfPayment) ? trimmedValue : 'Online';
+      return modeOfPaymentOptions.includes(trimmedValue as ModeOfPayment) ? trimmedValue : 'Online';
     case 'status':
-      return leadStatusOptions.includes(trimmedValue as ExportedLeadStatus) ? trimmedValue : 'Upcoming';
+      return leadStatusOptions.includes(trimmedValue as LeadStatus) ? trimmedValue : 'Upcoming';
     case 'type':
-      return leadTypeOptions.includes(trimmedValue as ExportedLeadType) ? trimmedValue : 'Private Cruise';
+      return leadTypeOptions.includes(trimmedValue as LeadType) ? trimmedValue : 'Private Cruise'; // Ensure valid LeadType
     case 'month': 
     case 'createdAt':
     case 'updatedAt':
@@ -85,17 +84,13 @@ const convertCsvValue = (key: keyof Omit<Lead, 'packageQuantities'> | 'package_q
       } catch (e) { /* ignore ISO parse error */ }
       
       try {
+        // Attempt to parse DD/MM/YY or DD.MM.YY or DD-MM-YY
         const parts = trimmedValue.split(/[\/\-\.]/); 
         if (parts.length === 3) {
-            let day, month, year;
-            if (parseInt(parts[0]) > 12 && parseInt(parts[1]) <= 12) { 
-                day = parseInt(parts[0]); month = parseInt(parts[1]); year = parseInt(parts[2]);
-            } else if (parseInt(parts[0]) <=12 && parseInt(parts[1]) > 12) { 
-                month = parseInt(parts[0]); day = parseInt(parts[1]); year = parseInt(parts[2]);
-            } else { 
-                 month = parseInt(parts[0]); day = parseInt(parts[1]); year = parseInt(parts[2]); 
-            }
-             if (String(year).length === 2) year += 2000; 
+            let day = parseInt(parts[0]);
+            let month = parseInt(parts[1]);
+            let year = parseInt(parts[2]);
+            if (String(year).length === 2) year += 2000; 
             
             if (!isNaN(day) && !isNaN(month) && !isNaN(year) && year > 1900 && year < 2100 && month >=1 && month <=12 && day >=1 && day <=31) {
                  const dateObj = new Date(year, month - 1, day); 
@@ -108,7 +103,7 @@ const convertCsvValue = (key: keyof Omit<Lead, 'packageQuantities'> | 'package_q
     case 'package_quantities_json':
       try {
         const parsed = JSON.parse(trimmedValue);
-        return Array.isArray(parsed) ? parsed : null; // Ensure it's an array or null
+        return Array.isArray(parsed) ? parsed : null;
       } catch (e) {
         console.warn(`[CSV Import] Could not parse package_quantities_json: "${trimmedValue}". Defaulting to null.`);
         return null;
@@ -135,7 +130,6 @@ export default function LeadsPage() {
 
   const [startDate, setStartDate] = useState<Date | undefined>(undefined);
   const [endDate, setEndDate] = useState<Date | undefined>(undefined);
-  
   const [statusFilter, setStatusFilter] = useState<LeadStatus | 'all'>('all');
   const [selectedYachtId, setSelectedYachtId] = useState<string>('all');
   const [selectedAgentId, setSelectedAgentId] = useState<string>('all');
@@ -217,14 +211,13 @@ export default function LeadsPage() {
       packageQuantities: submittedLeadData.packageQuantities?.map(pq => ({
         ...pq, 
         quantity: Number(pq.quantity || 0),
-        rate: Number(pq.rate || 0) // Ensure rate is number
+        rate: Number(pq.rate || 0)
       })) || []
     };
     
     if (!editingLead) { 
       payload.ownerUserId = SIMULATED_CURRENT_USER_ID;
       payload.createdAt = new Date().toISOString();
-      // ID generation is now handled by the backend API for new leads
       delete payload.id;
     } else { 
       payload.ownerUserId = editingLead.ownerUserId || SIMULATED_CURRENT_USER_ID; 
@@ -327,10 +320,11 @@ export default function LeadsPage() {
         console.log("[CSV Import Leads] Detected Normalized Headers:", fileHeaders);
 
         const newLeadsFromCsv: Lead[] = [];
+        const currentLeadIds = new Set(allLeads.map(l => l.id));
         
         for (let i = 1; i < lines.length; i++) {
           let data = lines[i].split(',');
-          if (data.length > fileHeaders.length) {
+           if (data.length > fileHeaders.length) {
             const extraColumns = data.slice(fileHeaders.length);
             const allExtraAreEmpty = extraColumns.every(col => (col || '').trim() === '');
             if (allExtraAreEmpty) {
@@ -353,7 +347,7 @@ export default function LeadsPage() {
                 console.warn(`[CSV Import Leads] Unknown header "${fileHeader}" in CSV row ${i+1}. Skipping this column.`);
             }
           });
-          if (i === 1) console.log("[CSV Import Leads] Processing Row 1 - Parsed (after mapping & convertCsvValue):", JSON.parse(JSON.stringify(parsedRow)));
+          if (i <= 2) console.log(`[CSV Import Leads] Processing Row ${i} - Parsed:`, JSON.parse(JSON.stringify(parsedRow)));
 
           let packageQuantities: LeadPackageQuantity[] = [];
           if (parsedRow.package_quantities_json) {
@@ -373,7 +367,7 @@ export default function LeadsPage() {
           }
           
           const fullLead: Lead = {
-            id: parsedRow.id || '', // ID will be generated by backend if empty
+            id: parsedRow.id || `imported-lead-${Date.now()}-${i}`, 
             clientName: parsedRow.clientName || 'N/A from CSV',
             agent: parsedRow.agent || '',
             yacht: parsedRow.yacht || '',
@@ -389,28 +383,33 @@ export default function LeadsPage() {
             commissionAmount: parsedRow.commissionAmount ?? 0,
             netAmount: parsedRow.netAmount ?? 0,
             paidAmount: parsedRow.paidAmount ?? 0,
-            balanceAmount: parsedRow.balanceAmount ?? 0,
+            balanceAmount: parsedRow.balanceAmount ?? 0, // Signed
             createdAt: parsedRow.createdAt || formatISO(new Date()),
             updatedAt: formatISO(new Date()),
             lastModifiedByUserId: SIMULATED_CURRENT_USER_ID,
-            ownerUserId: SIMULATED_CURRENT_USER_ID, 
+            ownerUserId: parsedRow.ownerUserId || SIMULATED_CURRENT_USER_ID, 
           };
-          if (i === 1) console.log("[CSV Import Leads] Processing Row 1 - Full Lead Object (to be POSTed):", JSON.parse(JSON.stringify(fullLead)));
+          if (i <= 2) console.log(`[CSV Import Leads] Processing Row ${i} - Full Lead:`, JSON.parse(JSON.stringify(fullLead)));
           
           if (!fullLead.clientName || !fullLead.agent || !fullLead.yacht || !fullLead.month) {
              console.warn(`[CSV Import Leads] Skipping lead due to missing required fields (clientName, agent, yacht, month/event date) at CSV row ${i+1}. Lead data:`, fullLead);
              skippedCount++;
              continue;
           }
+          if (currentLeadIds.has(fullLead.id) || newLeadsFromCsv.some(l => l.id === fullLead.id)) {
+             console.warn(`[CSV Import Leads] Skipping lead with duplicate ID "${fullLead.id}" from CSV row ${i+1}.`);
+             skippedCount++;
+             continue;
+          }
+
           newLeadsFromCsv.push(fullLead);
         }
 
         if (newLeadsFromCsv.length > 0) {
           for (const leadToImport of newLeadsFromCsv) {
             try {
-              // Remove ID if it was auto-generated or meant for backend to generate
               const payload = { ...leadToImport };
-              if (!payload.id || payload.id.startsWith('imported-lead-')) { // A simple check for client-side temp IDs
+              if (payload.id.startsWith('imported-lead-')) { // Backend will generate ID
                 delete payload.id;
               }
 
@@ -457,19 +456,19 @@ export default function LeadsPage() {
   
   const filteredLeads = useMemo(() => {
     return allLeads.filter(lead => {
-      let leadCreationDate: Date | null = null;
+      let leadEventDate: Date | null = null;
       try {
-        if (lead.createdAt && isValid(parseISO(lead.createdAt))) {
-          leadCreationDate = parseISO(lead.createdAt);
+        if (lead.month && isValid(parseISO(lead.month))) {
+          leadEventDate = parseISO(lead.month);
         }
-      } catch (e) { console.warn(`Invalid createdAt date for lead ${lead.id}: ${lead.createdAt}`); }
+      } catch (e) { console.warn(`Invalid month/event date for lead ${lead.id}: ${lead.month}`); }
 
-      if (startDate && endDate && leadCreationDate) {
-        if (!isWithinInterval(leadCreationDate, { start: startDate, end: endDate })) return false;
-      } else if (startDate && leadCreationDate) {
-        if (leadCreationDate < startDate) return false;
-      } else if (endDate && leadCreationDate) {
-        if (leadCreationDate > endDate) return false;
+      if (startDate && endDate && leadEventDate) {
+        if (!isWithinInterval(leadEventDate, { start: startDate, end: endDate })) return false;
+      } else if (startDate && leadEventDate) {
+        if (leadEventDate < startDate) return false;
+      } else if (endDate && leadEventDate) {
+        if (leadEventDate > endDate) return false;
       }
       
       if (selectedYachtId !== 'all' && lead.yacht !== selectedYachtId) return false;
@@ -488,39 +487,6 @@ export default function LeadsPage() {
     setSelectedUserId('all');
     setStatusFilter('all');
   };
-
-  if (isLoading && allLeads.length === 0 && allAgents.length === 0 && allYachts.length === 0) { 
-    return (
-      <div className="container mx-auto py-2">
-        <PageHeader
-          title="Leads Management"
-          description="Track and manage all your sales leads."
-          actions={
-            <div className="flex items-center gap-2">
-              <Skeleton className="h-10 w-32" />
-              <Skeleton className="h-10 w-32" />
-              <Skeleton className="h-10 w-28" />
-            </div>
-          }
-        />
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-6 p-4 border rounded-lg shadow-sm">
-          {[...Array(7)].map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}
-        </div>
-        <div className="space-y-2">
-          {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}
-        </div>
-      </div>
-    );
-  }
-
-  if (fetchError && allLeads.length === 0 && allAgents.length === 0 && allYachts.length === 0) {
-    return (
-      <div className="container mx-auto py-2">
-        <PageHeader title="Leads Management" description="Error loading data." />
-        <p className="text-destructive text-center py-10">Failed to load essential data for this page: {fetchError}</p>
-      </div>
-    );
-  }
 
   const handleCsvExport = () => {
     if (filteredLeads.length === 0) {
@@ -547,7 +513,7 @@ export default function LeadsPage() {
           try {
               const date = parseISO(stringValue);
               if (isValid(date)) {
-                stringValue = format(date, 'dd/MM/yyyy HH:mm:ss');
+                stringValue = format(date, 'yyyy-MM-dd HH:mm:ss'); // Consistent ISO-like format for export
               }
           } catch (e) { /* ignore */ }
       }
@@ -561,7 +527,10 @@ export default function LeadsPage() {
       ...filteredLeads.map(lead => {
         const leadForExport = {...lead} as any;
         if (lead.packageQuantities) {
+          // Ensure packageQuantities is stringified for the 'package_quantities_json' header
           leadForExport.package_quantities_json = JSON.stringify(lead.packageQuantities);
+        } else {
+          leadForExport.package_quantities_json = ''; // Or '[]' if preferred for empty
         }
         return headers.map(header => escapeCsvCell(leadForExport[header], header)).join(',')
       })
@@ -584,6 +553,41 @@ export default function LeadsPage() {
     }
   };
 
+
+  if (isLoading) { 
+    return (
+      <div className="container mx-auto py-2">
+        <PageHeader
+          title="Leads Management"
+          description="Track and manage all your sales leads."
+          actions={
+            <div className="flex items-center gap-2">
+              <Skeleton className="h-10 w-32" />
+              <Skeleton className="h-10 w-32" />
+              <Skeleton className="h-10 w-28" />
+            </div>
+          }
+        />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-6 p-4 border rounded-lg shadow-sm">
+          {[...Array(7)].map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}
+        </div>
+        <div className="space-y-2">
+          {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}
+        </div>
+      </div>
+    );
+  }
+
+  if (fetchError) {
+    return (
+      <div className="container mx-auto py-2">
+        <PageHeader title="Leads Management" description="Error loading data." />
+        <p className="text-destructive text-center py-10">Failed to load essential data for this page: {fetchError}</p>
+      </div>
+    );
+  }
+
+
   return (
     <div className="container mx-auto py-2">
       <PageHeader
@@ -597,11 +601,11 @@ export default function LeadsPage() {
       />
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-6 p-4 border rounded-lg shadow-sm">
         <div>
-          <Label htmlFor="start-date-leads">Start Date (Created)</Label>
+          <Label htmlFor="start-date-leads">Start Date (Event)</Label>
           <DatePicker date={startDate} setDate={setStartDate} placeholder="Start Date" />
         </div>
         <div>
-          <Label htmlFor="end-date-leads">End Date (Created)</Label>
+          <Label htmlFor="end-date-leads">End Date (Event)</Label>
           <DatePicker date={endDate} setDate={setEndDate} placeholder="End Date" disabled={(date) => startDate ? date < startDate : false} />
         </div>
         <div>
@@ -653,21 +657,15 @@ export default function LeadsPage() {
         </div>
       </div>
 
-      {isLoading && allLeads.length === 0 ? (
-        <div className="space-y-2 mt-4">
-          {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}
-        </div>
-      ) : (
-        <LeadsTable
-          leads={filteredLeads}
-          onEditLead={handleEditLeadClick}
-          onDeleteLead={handleDeleteLead}
-          userMap={userMap}
-          agentMap={agentMap}
-          yachtMap={yachtMap}
-          currentUserId={SIMULATED_CURRENT_USER_ID}
-        />
-      )}
+      <LeadsTable
+        leads={filteredLeads}
+        onEditLead={handleEditLeadClick}
+        onDeleteLead={handleDeleteLead}
+        userMap={userMap}
+        agentMap={agentMap}
+        yachtMap={yachtMap}
+        currentUserId={SIMULATED_CURRENT_USER_ID}
+      />
       
       {isLeadDialogOpen && (
         <LeadFormDialog

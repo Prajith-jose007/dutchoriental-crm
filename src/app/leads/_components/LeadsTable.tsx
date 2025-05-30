@@ -52,14 +52,14 @@ const leadColumns: LeadTableColumn[] = [
   { accessorKey: 'modeOfPayment', header: 'Payment Mode' },
   
   { accessorKey: 'totalGuests', header: 'Total Guests', isNumeric: true },
-  { accessorKey: 'packageSummary', header: 'Packages (Qty)' }, // New column for package summary
+  { accessorKey: 'packageSummary', header: 'Packages (Qty)' }, 
 
   { accessorKey: 'totalAmount', header: 'Total Amt', isCurrency: true },
   { accessorKey: 'commissionPercentage', header: 'Agent Disc. %', isPercentage: true },
   { accessorKey: 'commissionAmount', header: 'Comm Amt', isCurrency: true },
   { accessorKey: 'netAmount', header: 'Net Amt', isCurrency: true },
   { accessorKey: 'paidAmount', header: 'Paid Amt', isCurrency: true },
-  { accessorKey: 'balanceAmount', header: 'Balance', isCurrency: true },
+  { accessorKey: 'balanceAmount', header: 'Balance', isCurrency: true }, // Shows signed value
   { accessorKey: 'notes', header: 'Notes', isNotes: true },
   { accessorKey: 'lastModifiedByUserId', header: 'Modified By', isUserLookup: true },
   { accessorKey: 'ownerUserId', header: 'Lead Owner', isUserLookup: true },
@@ -182,7 +182,11 @@ export function LeadsTable({
       return formatDateValue(value as string | undefined);
     }
     if (column.isCurrency) {
-      return formatCurrency(value as number | undefined);
+      // For balanceAmount, display signed value
+      if (column.accessorKey === 'balanceAmount') {
+        return formatCurrency(value as number | undefined);
+      }
+      return formatCurrency(Math.abs(value as number | undefined));
     }
     if (column.isPercentage) {
       return formatPercentage(value as number | undefined);
@@ -244,6 +248,7 @@ export function LeadsTable({
                       <DropdownMenuLabel>Actions</DropdownMenuLabel>
                       <DropdownMenuItem
                         onClick={() => onEditLead(lead)}
+                        // Admin can always edit, user can edit if they are the owner.
                         disabled={!!currentUserId && !!lead.ownerUserId && lead.ownerUserId !== currentUserId && currentUserId !== 'DO-admin'}
                       >
                         Edit Lead

@@ -22,11 +22,11 @@ const ensureISOFormat = (dateString?: string | Date): string | null => {
   }
 };
 
-function buildLeadUpdateSetClause(data: Partial<Omit<Lead, 'id' | 'createdAt'>>): { clause: string, values: any[] } {
+function buildLeadUpdateSetClause(data: Partial<Omit<Lead, 'id' | 'createdAt' | 'packageQuantities'>> & { package_quantities_json?: string | null }): { clause: string, values: any[] } {
   const fieldsToUpdate: string[] = [];
   const valuesToUpdate: any[] = [];
   
-  const allowedKeys: (keyof Omit<Lead, 'id' | 'createdAt' | 'packageQuantities'> | 'package_quantities_json')[] = [
+  const allowedKeys: (keyof Lead | 'package_quantities_json')[] = [ // Added package_quantities_json
     'clientName', 'agent', 'yacht', 'status', 'month', 'notes', 'type', 'transactionId', 'modeOfPayment',
     'package_quantities_json', // Store serialized array here
     'totalAmount', 'commissionPercentage', 'commissionAmount',
@@ -34,27 +34,20 @@ function buildLeadUpdateSetClause(data: Partial<Omit<Lead, 'id' | 'createdAt'>>)
     'lastModifiedByUserId', 'ownerUserId'
   ];
 
-  const tempUpdatedData = { ...data } as any;
-  if (data.packageQuantities) {
-    tempUpdatedData.package_quantities_json = JSON.stringify(data.packageQuantities);
-    delete tempUpdatedData.packageQuantities;
-  }
-
-
-  Object.entries(tempUpdatedData).forEach(([key, value]) => {
+  Object.entries(data).forEach(([key, value]) => {
     if (allowedKeys.includes(key as any) && value !== undefined) {
       fieldsToUpdate.push(`${key} = ?`); 
-      if (['month', 'updatedAt'].includes(key)) {
+      if (['month', 'updatedAt', 'createdAt'].includes(key)) { // Added createdAt here just in case, though it shouldn't be updated
         valuesToUpdate.push(ensureISOFormat(value as string) || null);
       } else if (typeof value === 'string' && value.trim() === '' && 
                  ['notes', 'transactionId', 'lastModifiedByUserId', 'ownerUserId', 'agent', 'yacht'].includes(key)) {
         valuesToUpdate.push(null); 
       } else if (typeof value === 'number' && isNaN(value)) {
         valuesToUpdate.push(0);
-      } else if (typeof value === 'number') {
-        valuesToUpdate.push(Number(value));
+      } else if (key === 'package_quantities_json') {
+        valuesToUpdate.push(value); // This is already a string or null
       }
-      else {
+       else {
         valuesToUpdate.push(value);
       }
     }
@@ -110,7 +103,7 @@ export async function GET(
         commissionAmount: parseFloat(dbLead.commissionAmount || 0),
         netAmount: parseFloat(dbLead.netAmount || 0),
         paidAmount: parseFloat(dbLead.paidAmount || 0),
-        balanceAmount: parseFloat(dbLead.balanceAmount || 0),
+        balanceAmount: parseFloat(dbLead.balanceAmount || 0), // Stored signed
 
         createdAt: dbLead.createdAt ? ensureISOFormat(dbLead.createdAt)! : formatISO(new Date()),
         updatedAt: dbLead.updatedAt ? ensureISOFormat(dbLead.updatedAt)! : formatISO(new Date()),
@@ -135,22 +128,26 @@ export async function PUT(
 ) {
   try {
     const id = params.id;
-    const updatedLeadDataFromClient = await request.json() as Partial<Lead>;
+    const updatedLeadDataFromClient = await request.json() as Lead; // Expect full Lead object
     console.log(`[API PUT /api/leads/${id}] Received updatedLeadData:`, JSON.stringify(updatedLeadDataFromClient, null, 2));
 
-    const existingLeadResult: any[] = await query('SELECT ownerUserId, lastModifiedByUserId, month FROM leads WHERE id = ?', [id]);
+    const existingLeadResult: any[] = await query('SELECT ownerUserId, lastModifiedByUserId, month, createdAt FROM leads WHERE id = ?', [id]);
     if (existingLeadResult.length === 0) {
       console.log(`[API PUT /api/leads/${id}] Lead not found for update.`);
       return NextResponse.json({ message: 'Lead not found' }, { status: 404 });
     }
     const existingLeadDbInfo = existingLeadResult[0];
 
-    const dataToUpdate: Partial<Omit<Lead, 'id' | 'createdAt'>> = {
-      ...updatedLeadDataFromClient,
+    const dataToUpdate: Partial<Omit<Lead, 'id' | 'createdAt' | 'packageQuantities'>> & { package_quantities_json?: string | null } = {
+      ...updatedLeadDataFromClient, // Spread all fields from client
       updatedAt: formatISO(new Date()), 
       lastModifiedByUserId: updatedLeadDataFromClient.lastModifiedByUserId || SIMULATED_CURRENT_USER_ID_API,
-      ownerUserId: updatedLeadDataFromClient.ownerUserId || existingLeadDbInfo.ownerUserId, 
+      ownerUserId: updatedLeadDataFromClient.ownerUserId || existingLeadDbInfo.ownerUserId,
+      // createdAt should not be updated
     };
+    // Ensure 'id' and 'createdAt' are not in dataToUpdate
+    delete (dataToUpdate as any).id;
+    delete (dataToUpdate as any).createdAt;
     
     if (dataToUpdate.month && typeof dataToUpdate.month === 'string') { 
         dataToUpdate.month = ensureISOFormat(dataToUpdate.month) || existingLeadDbInfo.month;
@@ -159,16 +156,16 @@ export async function PUT(
     }
 
     // Handle packageQuantities serialization for DB
-    let packageQuantitiesJson: string | null = null;
     if (updatedLeadDataFromClient.packageQuantities) {
-        packageQuantitiesJson = JSON.stringify(updatedLeadDataFromClient.packageQuantities);
+        dataToUpdate.package_quantities_json = JSON.stringify(updatedLeadDataFromClient.packageQuantities);
+    } else if (updatedLeadDataFromClient.packageQuantities === null || updatedLeadDataFromClient.packageQuantities === undefined) {
+        dataToUpdate.package_quantities_json = null;
     }
-    // Create a version of dataToUpdate for buildLeadUpdateSetClause that includes package_quantities_json
-    const dataForClause = { ...dataToUpdate, package_quantities_json: packageQuantitiesJson } as any;
-    delete dataForClause.packageQuantities; // Remove the array version
+    // Remove the array version from dataForClause to avoid confusion with buildLeadUpdateSetClause
+    delete (dataToUpdate as any).packageQuantities;
 
 
-    const { clause, values: updateValues } = buildLeadUpdateSetClause(dataForClause);
+    const { clause, values: updateValues } = buildLeadUpdateSetClause(dataToUpdate);
 
     if (clause.length === 0) {
        console.log(`[API PUT /api/leads/${id}] No valid fields to update.`);
@@ -193,8 +190,11 @@ export async function PUT(
     }
     const dbLead = updatedLeadFromDbResult[0];
     let pq: LeadPackageQuantity[] = [];
-    if(dbLead.package_quantities_json) {
-        try { pq = JSON.parse(dbLead.package_quantities_json); } catch(e){ console.warn("Error parsing PQ_JSON on fetch after update");}
+    if(dbLead.package_quantities_json && typeof dbLead.package_quantities_json === 'string') {
+        try { 
+            const parsedPQs = JSON.parse(dbLead.package_quantities_json);
+            if(Array.isArray(parsedPQs)) pq = parsedPQs;
+        } catch(e){ console.warn("Error parsing PQ_JSON on fetch after update for lead:", dbLead.id, e);}
     }
     const finalUpdatedLead: Lead = {
         id: String(dbLead.id || ''), clientName: String(dbLead.clientName || ''), agent: String(dbLead.agent || ''), yacht: String(dbLead.yacht || ''), 

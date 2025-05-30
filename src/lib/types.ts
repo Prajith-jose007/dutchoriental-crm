@@ -7,7 +7,7 @@ export interface User {
   avatarUrl?: string;
   websiteUrl?: string;
   status?: 'Active' | 'Inactive' | 'Archived';
-  password?: string; // Only used for form data, not directly stored as-is
+  password?: string;
 }
 
 export interface Agent {
@@ -25,7 +25,7 @@ export interface Agent {
 }
 
 export interface YachtPackageItem {
-  id: string; // Client-side unique ID
+  id: string; // Client-side unique ID for form management, or DB ID if persisted
   name: string;
   rate: number;
 }
@@ -40,8 +40,9 @@ export interface Yacht {
   capacity: number;
   status: 'Available' | 'Booked' | 'Maintenance';
   category: YachtCategory;
-  packages?: YachtPackageItem[]; // Array of custom packages for this yacht
-  customPackageInfo?: string; // General notes about packages
+  packages?: YachtPackageItem[];
+  customPackageInfo?: string;
+  // other_charges_json is a DB implementation detail, not directly in the type
 }
 
 export interface Invoice {
@@ -49,7 +50,7 @@ export interface Invoice {
   leadId: string;
   clientName: string;
   amount: number;
-  dueDate: string; // YYYY-MM-DD format for MySQL DATE compatibility
+  dueDate: string; // YYYY-MM-DD format
   status: 'Paid' | 'Pending' | 'Overdue';
   createdAt: string; // ISO Date string
 }
@@ -60,23 +61,22 @@ export const leadStatusOptions: LeadStatus[] = ['Balance', 'Closed', 'Conformed'
 export type ModeOfPayment = 'Online' | 'Credit' | 'Cash/Card';
 export const modeOfPaymentOptions: ModeOfPayment[] = ['Online', 'Credit', 'Cash/Card'];
 
-// Updated LeadType
 export type LeadType = 'Dinner Cruise' | 'Superyacht Sightseeing Cruise' | 'Private Cruise';
 export const leadTypeOptions: LeadType[] = ['Dinner Cruise', 'Superyacht Sightseeing Cruise', 'Private Cruise'];
 
-// New interface for storing package quantities on a lead
+
 export interface LeadPackageQuantity {
-  packageId: string;    // ID of the package from the selected Yacht (YachtPackageItem.id)
+  packageId: string;    // ID of the package from the selected Yacht.packages
   packageName: string;  // Name of the package from the Yacht (for display/record)
   quantity: number;
-  rate: number;         // Rate of the package at the time of booking (for historical record)
+  rate: number;         // Rate of that package at the time of booking (copied from Yacht.packages[...].rate)
 }
 
 export interface Lead {
   id: string;
   agent: string; // Agent ID
   status: LeadStatus;
-  month: string; // Primary Lead/Event Date as ISO string (e.g., "2024-08-15T00:00:00.000Z")
+  month: string; // Primary Lead/Event Date as ISO string
   notes?: string;
   yacht: string; // Yacht ID
   type: LeadType;
@@ -84,14 +84,14 @@ export interface Lead {
   modeOfPayment: ModeOfPayment;
   clientName: string;
 
-  packageQuantities?: LeadPackageQuantity[]; // Stores quantities for dynamically selected packages
+  packageQuantities?: LeadPackageQuantity[]; // Array of selected packages and their quantities
 
   totalAmount: number;
   commissionPercentage: number;
   commissionAmount?: number;
   netAmount: number;
   paidAmount: number;
-  balanceAmount: number;
+  balanceAmount: number; // This will store the signed value
 
   createdAt: string; // ISO Date string
   updatedAt: string; // ISO Date string
@@ -121,5 +121,5 @@ export interface BookingsByAgentData {
   bookings: number;
 }
 
-// Re-exporting for easier import in CSV parser (though CSV for dynamic packages is complex)
+// Re-exporting for easier import in CSV parser
 export type { LeadStatus as ExportedLeadStatus, ModeOfPayment as ExportedModeOfPayment, LeadType as ExportedLeadType };

@@ -12,7 +12,8 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { DatePicker } from '@/components/ui/date-picker';
 import { Skeleton } from '@/components/ui/skeleton';
-import type { Lead, Invoice, Yacht, Agent, User } from '@/lib/types';
+import type { Lead, Invoice, Yacht, Agent, User, LeadStatus } from '@/lib/types';
+import { leadStatusOptions } from '@/lib/types'; // Import leadStatusOptions
 import { format, parseISO, isWithinInterval, startOfMonth, endOfMonth, startOfYear, endOfYear, isValid, getYear as getFullYear, getMonth as getMonthIndex } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 
@@ -33,6 +34,7 @@ export default function ReportsPage() {
   const [selectedYachtId, setSelectedYachtId] = useState<string>('all');
   const [selectedAgentId, setSelectedAgentId] = useState<string>('all');
   const [selectedUserId, setSelectedUserId] = useState<string>('all');
+  const [selectedStatusFilter, setSelectedStatusFilter] = useState<LeadStatus | 'all'>('all'); // New state for status filter
 
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 5 }, (_, i) => currentYear - i);
@@ -91,11 +93,15 @@ export default function ReportsPage() {
       }
     };
     fetchAllData();
-  }, [toast]);
+  }, []); // Removed toast from dependencies
 
 
-  const initiallyFilteredLeads = useMemo(() => {
-    return allLeads.filter(lead => {
+  const filteredLeads = useMemo(() => {
+    console.log(`[ReportsPage] Initial leads count: ${allLeads.length}`);
+    let leadsToFilter = allLeads;
+
+    // Apply primary filters
+    leadsToFilter = leadsToFilter.filter(lead => {
       let leadEventDate: Date | null = null;
       try {
         if(lead.month && isValid(parseISO(lead.month))) {
@@ -103,7 +109,6 @@ export default function ReportsPage() {
         }
       } catch(e) { console.warn(`Invalid event date for lead ${lead.id} in reports: ${lead.month}`); }
 
-      // Date range filter (takes precedence)
       if (startDate && endDate && leadEventDate) {
          if (!isWithinInterval(leadEventDate, { start: startDate, end: endDate })) return false;
       } else if (startDate && leadEventDate) {
@@ -111,7 +116,6 @@ export default function ReportsPage() {
       } else if (endDate && leadEventDate) {
          if (leadEventDate > endDate) return false;
       }
-      // Month/Year filter (if no date range)
       else if (!startDate && !endDate) {
         if (leadEventDate) {
             const leadYear = String(getFullYear(leadEventDate));
@@ -119,10 +123,8 @@ export default function ReportsPage() {
 
             if (selectedReportYear !== 'all' && leadYear !== selectedReportYear) return false;
             if (selectedReportMonth !== 'all' && selectedReportYear !== 'all' && leadMonth !== selectedReportMonth) return false;
-             // If only month is selected, filter by that month across all years (unless year is also selected)
             if (selectedReportMonth !== 'all' && selectedReportYear === 'all' && leadMonth !== selectedReportMonth) return false;
         } else if (selectedReportMonth !== 'all' || selectedReportYear !== 'all') {
-            // If filtering by month/year but lead has no valid event date, exclude it
             return false;
         }
       }
@@ -130,23 +132,27 @@ export default function ReportsPage() {
       if (selectedYachtId !== 'all' && lead.yacht !== selectedYachtId) return false;
       if (selectedAgentId !== 'all' && lead.agent !== selectedAgentId) return false;
       if (selectedUserId !== 'all' && lead.lastModifiedByUserId !== selectedUserId) return false;
+      // Apply the new status filter
+      if (selectedStatusFilter !== 'all' && lead.status !== selectedStatusFilter) return false;
+      
       return true;
     });
-  }, [allLeads, startDate, endDate, selectedReportMonth, selectedReportYear, selectedYachtId, selectedAgentId, selectedUserId]);
+    console.log(`[ReportsPage] Leads after primary filters (including new status filter): ${leadsToFilter.length}`);
+    
+    // Determine if we should apply the "Closed or Conformed" logic
+    // This applies if the new status filter is 'all', or if it specifically targets 'Closed' or 'Conformed'.
+    // Or, more simply, the charts should just reflect the leads that pass ALL active filters.
+    // The page description can be adjusted if needed.
+    // For now, the charts will show data for whatever leads pass ALL filters.
 
-  const filteredLeads = useMemo(() => {
-    const leadsFromClosedOrConformed = initiallyFilteredLeads.filter(
-        lead => lead.status === 'Closed' || lead.status === 'Conformed'
-    );
-    console.log(`[ReportsPage] Initially filtered leads: ${initiallyFilteredLeads.length}, Closed/Conformed leads: ${leadsFromClosedOrConformed.length}`);
-    return leadsFromClosedOrConformed;
-  }, [initiallyFilteredLeads]);
+    return leadsToFilter;
+  }, [allLeads, startDate, endDate, selectedReportMonth, selectedReportYear, selectedYachtId, selectedAgentId, selectedUserId, selectedStatusFilter]);
 
   const filteredInvoices = useMemo(() => {
-    const closedOrConformedLeadIds = new Set(filteredLeads.map(lead => lead.id));
-    console.log(`[ReportsPage] Lead IDs for Closed/Conformed leads:`, Array.from(closedOrConformedLeadIds));
+    const relevantLeadIds = new Set(filteredLeads.map(lead => lead.id));
+    console.log(`[ReportsPage] Lead IDs for Invoice filtering (from filteredLeads):`, Array.from(relevantLeadIds));
 
-    const invoicesForFilteredLeads = allInvoices.filter(invoice => {
+    const invoicesToFilter = allInvoices.filter(invoice => {
        let invoiceCreationDate: Date | null = null;
        try {
           if(invoice.createdAt && isValid(parseISO(invoice.createdAt))) {
@@ -161,7 +167,6 @@ export default function ReportsPage() {
        } else if (endDate && invoiceCreationDate) {
          if (invoiceCreationDate > endDate) return false;
        }
-        // Month/Year filter (if no date range) for invoices based on createdAt
        else if (!startDate && !endDate) {
         if (invoiceCreationDate) {
             const invoiceYear = String(getFullYear(invoiceCreationDate));
@@ -176,11 +181,10 @@ export default function ReportsPage() {
         }
       }
       
-      // Finally, check if the invoice is linked to one of the "Closed" or "Conformed" leads
-      return closedOrConformedLeadIds.has(invoice.leadId);
+      return relevantLeadIds.has(invoice.leadId);
     });
-    console.log(`[ReportsPage] Total invoices: ${allInvoices.length}, Invoices for Closed/Conformed leads matching filters: ${invoicesForFilteredLeads.length}`);
-    return invoicesForFilteredLeads;
+    console.log(`[ReportsPage] Total invoices: ${allInvoices.length}, Invoices for filtered leads: ${invoicesToFilter.length}`);
+    return invoicesToFilter;
   }, [allInvoices, filteredLeads, startDate, endDate, selectedReportMonth, selectedReportYear]);
 
 
@@ -192,14 +196,15 @@ export default function ReportsPage() {
     setSelectedYachtId('all');
     setSelectedAgentId('all');
     setSelectedUserId('all');
+    setSelectedStatusFilter('all'); // Reset new status filter
   };
 
   if (isLoading) {
     return (
       <div className="container mx-auto py-2">
         <PageHeader title="CRM Reports" description="Loading report data..." />
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-6 p-4 border rounded-lg shadow-sm">
-          {[...Array(7)].map((_,i) => <Skeleton key={i} className="h-10 w-full" />)}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 gap-4 mb-6 p-4 border rounded-lg shadow-sm">
+          {[...Array(8)].map((_,i) => <Skeleton key={i} className="h-10 w-full" />)}
         </div>
         <div className="grid gap-6">
           <Skeleton className="h-[350px] w-full" />
@@ -226,10 +231,10 @@ export default function ReportsPage() {
     <div className="container mx-auto py-2">
       <PageHeader 
         title="CRM Reports" 
-        description="Key metrics for 'Closed' or 'Conformed' leads. Use filters to refine your view." 
+        description="Filter and view key metrics for your leads and invoices." 
       />
       
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-6 p-4 border rounded-lg shadow-sm">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 gap-4 mb-6 p-4 border rounded-lg shadow-sm">
         <div>
           <Label htmlFor="start-date-report">Start Date (Lead Event / Invoice Creation)</Label>
           <DatePicker date={startDate} setDate={setStartDate} placeholder="Start Date" />
@@ -255,6 +260,20 @@ export default function ReportsPage() {
             <SelectContent>
               <SelectItem value="all">All Years</SelectItem>
               {years.map(year => <SelectItem key={year} value={String(year)}>{year}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label htmlFor="status-filter-report">Status</Label>
+          <Select value={selectedStatusFilter} onValueChange={(value) => setSelectedStatusFilter(value as LeadStatus | 'all')}>
+            <SelectTrigger id="status-filter-report" className="w-full">
+              <SelectValue placeholder="All Statuses" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Statuses</SelectItem>
+              {leadStatusOptions.map(status => (
+                <SelectItem key={status} value={status}>{status}</SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
@@ -288,7 +307,7 @@ export default function ReportsPage() {
             </SelectContent>
           </Select>
         </div>
-        <div className="flex items-end">
+        <div className="flex items-end md:col-span-full lg:col-span-1">
             <Button onClick={resetFilters} variant="outline" className="w-full">Reset Filters</Button>
         </div>
       </div>
@@ -308,3 +327,4 @@ export default function ReportsPage() {
     </div>
   );
 }
+    

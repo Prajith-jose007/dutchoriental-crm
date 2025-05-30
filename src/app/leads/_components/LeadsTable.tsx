@@ -46,7 +46,7 @@ const leadColumns: LeadTableColumn[] = [
   { accessorKey: 'agent', header: 'Agent', isAgentLookup: true },
   { accessorKey: 'yacht', header: 'Yacht', isYachtLookup: true },
   { accessorKey: 'status', header: 'Status' },
-  { accessorKey: 'month', header: 'Lead/Event Date', isShortDate: true },
+  { accessorKey: 'month', header: 'Lead/Event Date', isShortDate: true }, // This is the primary event date
   { accessorKey: 'type', header: 'Type' },
   { accessorKey: 'transactionId', header: 'Transaction ID' },
   { accessorKey: 'modeOfPayment', header: 'Payment Mode' },
@@ -55,7 +55,7 @@ const leadColumns: LeadTableColumn[] = [
 
   { accessorKey: 'qty_childRate', header: 'CHILD', isNumeric: true },
   { accessorKey: 'qty_adultStandardRate', header: 'STD', isNumeric: true },
-  { accessorKey: 'qty_adultStandardDrinksRate', header: 'STD DRK', isNumeric: true },
+  { accessorKey: 'qty_adultStandardDrinksRate', header: 'STD AL', isNumeric: true }, // Updated Header
   { accessorKey: 'qty_vipChildRate', header: 'VIP CH', isNumeric: true },
   { accessorKey: 'qty_vipAdultRate', header: 'VIP', isNumeric: true },
   { accessorKey: 'qty_vipAdultDrinksRate', header: 'VIP AL', isNumeric: true },
@@ -235,8 +235,8 @@ export function LeadsTable({
                 <TableCell>
                   <Checkbox aria-label={`Select row ${lead.id}`} disabled />
                 </TableCell>
-                {leadColumns.slice(1, -1).map(col => (
-                  <TableCell key={col.accessorKey}>
+                {leadColumns.slice(1, -1).map(col => ( // Exclude select and actions columns from dynamic rendering
+                  <TableCell key={`${lead.id}-${col.accessorKey}`}>
                     {renderCellContent(lead, col)}
                   </TableCell>
                 ))}

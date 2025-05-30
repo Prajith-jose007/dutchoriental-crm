@@ -7,26 +7,24 @@ import { query } from '@/lib/db';
 export async function GET(request: NextRequest) {
   console.log('[API GET /api/yachts] Received request');
   try {
-    // TODO: Replace with actual database query
-    // const yachtsDataDb: any[] = await query('SELECT * FROM yachts ORDER BY name ASC');
     const yachtsDataDb: any[] = await query(
-      `SELECT id, name, imageUrl, capacity, status, customPackageInfo, 
+      `SELECT id, name, imageUrl, capacity, status, 
               childRate, adultStandardRate, adultStandardDrinksRate, 
               vipChildRate, vipAdultRate, vipAdultDrinksRate, 
               royalChildRate, royalAdultRate, royalDrinksRate, 
-              otherChargeName, otherChargeRate 
+              otherChargeName, otherChargeRate, customPackageInfo 
        FROM yachts ORDER BY name ASC`
     );
-
     console.log('[API GET /api/yachts] Raw DB Data (first item):', yachtsDataDb.length > 0 ? yachtsDataDb[0] : "No yachts from DB");
 
     const yachts: Yacht[] = yachtsDataDb.map(dbYacht => ({
       id: dbYacht.id,
-      name: dbYacht.name,
+      name: dbYacht.name || '',
       imageUrl: dbYacht.imageUrl || undefined,
       capacity: Number(dbYacht.capacity || 0),
       status: dbYacht.status || 'Available',
       customPackageInfo: dbYacht.customPackageInfo || undefined,
+      
       childRate: parseFloat(dbYacht.childRate || 0),
       adultStandardRate: parseFloat(dbYacht.adultStandardRate || 0),
       adultStandardDrinksRate: parseFloat(dbYacht.adultStandardDrinksRate || 0),
@@ -36,6 +34,7 @@ export async function GET(request: NextRequest) {
       royalChildRate: parseFloat(dbYacht.royalChildRate || 0),
       royalAdultRate: parseFloat(dbYacht.royalAdultRate || 0),
       royalDrinksRate: parseFloat(dbYacht.royalDrinksRate || 0),
+      
       otherChargeName: dbYacht.otherChargeName || undefined,
       otherChargeRate: parseFloat(dbYacht.otherChargeRate || 0),
     }));
@@ -50,26 +49,27 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   console.log('[API POST /api/yachts] Received request');
   try {
-    const newYachtData = await request.json() as Yacht;
+    const newYachtData = await request.json() as Omit<Yacht, 'id'> & { id?: string };
     console.log('[API POST /api/yachts] Received data:', newYachtData);
 
     if (!newYachtData.id || !newYachtData.name || newYachtData.capacity === undefined) {
       return NextResponse.json({ message: 'Missing required yacht fields (id, name, capacity)' }, { status: 400 });
     }
 
-    // TODO: Check if yacht with this ID already exists in the database
-    // const existingYacht: any = await query('SELECT id FROM yachts WHERE id = ?', [newYachtData.id]);
-    // if (existingYacht.length > 0) {
-    //   return NextResponse.json({ message: `Yacht with ID ${newYachtData.id} already exists.` }, { status: 409 });
-    // }
+    // Check if yacht with this ID already exists
+    const existingYacht: any = await query('SELECT id FROM yachts WHERE id = ?', [newYachtData.id]);
+    if (existingYacht.length > 0) {
+      return NextResponse.json({ message: `Yacht with ID ${newYachtData.id} already exists.` }, { status: 409 });
+    }
 
-    const yachtToStore = {
+    const yachtToStore: Yacht = {
       id: newYachtData.id,
       name: newYachtData.name,
       imageUrl: newYachtData.imageUrl || null,
       capacity: Number(newYachtData.capacity),
       status: newYachtData.status || 'Available',
       customPackageInfo: newYachtData.customPackageInfo || null,
+
       childRate: Number(newYachtData.childRate || 0),
       adultStandardRate: Number(newYachtData.adultStandardRate || 0),
       adultStandardDrinksRate: Number(newYachtData.adultStandardDrinksRate || 0),
@@ -79,6 +79,7 @@ export async function POST(request: NextRequest) {
       royalChildRate: Number(newYachtData.royalChildRate || 0),
       royalAdultRate: Number(newYachtData.royalAdultRate || 0),
       royalDrinksRate: Number(newYachtData.royalDrinksRate || 0),
+      
       otherChargeName: newYachtData.otherChargeName || null,
       otherChargeRate: Number(newYachtData.otherChargeRate || 0),
     };
@@ -101,25 +102,36 @@ export async function POST(request: NextRequest) {
     ];
 
     console.log('[API POST /api/yachts] Executing SQL:', sql, 'with params:', params);
-    // TODO: Replace with actual database query
     const result: any = await query(sql, params);
     console.log('[API POST /api/yachts] DB Insert Result:', result);
 
     if (result.affectedRows === 1) {
-      // Fetch the created yacht to return it
-      // TODO: Replace with actual database query
-      // const createdYachtData: any[] = await query('SELECT * FROM yachts WHERE id = ?', [yachtToStore.id]);
-      // if (createdYachtData.length > 0) {
-      //    const dbYacht = createdYachtData[0];
-      //    const finalYacht: Yacht = { /* map dbYacht to Yacht type */ };
-      //    return NextResponse.json(finalYacht, { status: 201 });
-      // }
-      return NextResponse.json(yachtToStore, { status: 201 }); // Return input data for now
+      const createdYacht: any = await query('SELECT * FROM yachts WHERE id = ?', [yachtToStore.id]);
+      if (createdYacht.length > 0) {
+        const dbYacht = createdYacht[0];
+         const finalYacht: Yacht = {
+            id: dbYacht.id, name: dbYacht.name || '', imageUrl: dbYacht.imageUrl || undefined,
+            capacity: Number(dbYacht.capacity || 0), status: dbYacht.status || 'Available',
+            customPackageInfo: dbYacht.customPackageInfo || undefined,
+            childRate: parseFloat(dbYacht.childRate || 0),
+            adultStandardRate: parseFloat(dbYacht.adultStandardRate || 0),
+            adultStandardDrinksRate: parseFloat(dbYacht.adultStandardDrinksRate || 0),
+            vipChildRate: parseFloat(dbYacht.vipChildRate || 0),
+            vipAdultRate: parseFloat(dbYacht.vipAdultRate || 0),
+            vipAdultDrinksRate: parseFloat(dbYacht.vipAdultDrinksRate || 0),
+            royalChildRate: parseFloat(dbYacht.royalChildRate || 0),
+            royalAdultRate: parseFloat(dbYacht.royalAdultRate || 0),
+            royalDrinksRate: parseFloat(dbYacht.royalDrinksRate || 0),
+            otherChargeName: dbYacht.otherChargeName || undefined,
+            otherChargeRate: parseFloat(dbYacht.otherChargeRate || 0),
+        };
+        return NextResponse.json(finalYacht, { status: 201 });
+      }
+      return NextResponse.json(yachtToStore, { status: 201 }); // Fallback
     } else {
       console.error('[API POST /api/yachts] Failed to insert yacht into database, affectedRows not 1.');
       throw new Error('Failed to insert yacht into database');
     }
-
   } catch (error) {
     console.error('[API POST /api/yachts] Failed to create yacht:', error);
     return NextResponse.json({ message: 'Failed to create yacht', error: (error as Error).message }, { status: 500 });

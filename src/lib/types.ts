@@ -7,7 +7,7 @@ export interface User {
   avatarUrl?: string;
   websiteUrl?: string;
   status?: 'Active' | 'Inactive' | 'Archived';
-  password?: string;
+  password?: string; // Only used for form data, not directly stored as-is
 }
 
 export interface Agent {
@@ -30,7 +30,7 @@ export interface Yacht {
   imageUrl?: string;
   capacity: number;
   status: 'Available' | 'Booked' | 'Maintenance';
-  customPackageInfo?: string; // General notes about packages
+  customPackageInfo?: string;
 
   // 9 Standardized Package Rates
   childRate?: number;
@@ -43,9 +43,8 @@ export interface Yacht {
   royalAdultRate?: number;
   royalDrinksRate?: number;
 
-  // Custom Other Charge
-  otherChargeName?: string;
-  otherChargeRate?: number;
+  // New: Array for multiple custom other charges
+  otherCharges?: Array<{ id: string; name: string; rate: number }>;
 }
 
 export interface Invoice {
@@ -53,7 +52,7 @@ export interface Invoice {
   leadId: string;
   clientName: string;
   amount: number;
-  dueDate: string; // ISO Date string YYYY-MM-DD
+  dueDate: string; // YYYY-MM-DD format for MySQL DATE compatibility
   status: 'Paid' | 'Pending' | 'Overdue';
   createdAt: string; // ISO Date string
 }
@@ -72,7 +71,7 @@ export interface Lead {
   id:string;
   agent: string; // Agent ID
   status: LeadStatus;
-  month: string; // Primary Lead/Event Date as ISO string (YYYY-MM-DDTHH:mm:ss.sssZ)
+  month: string; // Primary Lead/Event Date as ISO string (YYYY-MM-DDTHH:mm:ss.sssZ or YYYY-MM-DD)
   notes?: string;
   yacht: string; // Yacht ID
   type: LeadType;
@@ -91,7 +90,8 @@ export interface Lead {
   qty_royalAdultRate?: number;
   qty_royalDrinksRate?: number;
 
-  othersAmtCake?: number; // Quantity for the custom 'otherChargeRate' on the Yacht
+  // This will be re-evaluated in Phase 2 to link to specific otherCharges from the yacht
+  othersAmtCake?: number; // Currently acts as a quantity for the yacht's single custom charge
 
   totalAmount: number;
   commissionPercentage: number;

@@ -38,6 +38,12 @@ import { useEffect } from 'react';
 import { Trash2, PlusCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
+const otherChargeItemSchema = z.object({
+  id: z.string(), // client-side generated
+  name: z.string().min(1, 'Charge name is required'),
+  rate: z.coerce.number().min(0, 'Rate must be non-negative'),
+});
+
 const yachtFormSchema = z.object({
   id: z.string().min(1, 'Yacht ID is required'),
   name: z.string().min(2, 'Yacht name must be at least 2 characters'),
@@ -47,19 +53,18 @@ const yachtFormSchema = z.object({
   customPackageInfo: z.string().optional(),
 
   // 9 Standardized Package Rates
-  childRate: z.coerce.number().min(0, "Rate must be non-negative").optional(),
-  adultStandardRate: z.coerce.number().min(0, "Rate must be non-negative").optional(),
-  adultStandardDrinksRate: z.coerce.number().min(0, "Rate must be non-negative").optional(),
-  vipChildRate: z.coerce.number().min(0, "Rate must be non-negative").optional(),
-  vipAdultRate: z.coerce.number().min(0, "Rate must be non-negative").optional(),
-  vipAdultDrinksRate: z.coerce.number().min(0, "Rate must be non-negative").optional(),
-  royalChildRate: z.coerce.number().min(0, "Rate must be non-negative").optional(),
-  royalAdultRate: z.coerce.number().min(0, "Rate must be non-negative").optional(),
-  royalDrinksRate: z.coerce.number().min(0, "Rate must be non-negative").optional(),
+  childRate: z.coerce.number().min(0, "Rate must be non-negative").optional().default(0),
+  adultStandardRate: z.coerce.number().min(0, "Rate must be non-negative").optional().default(0),
+  adultStandardDrinksRate: z.coerce.number().min(0, "Rate must be non-negative").optional().default(0),
+  vipChildRate: z.coerce.number().min(0, "Rate must be non-negative").optional().default(0),
+  vipAdultRate: z.coerce.number().min(0, "Rate must be non-negative").optional().default(0),
+  vipAdultDrinksRate: z.coerce.number().min(0, "Rate must be non-negative").optional().default(0),
+  royalChildRate: z.coerce.number().min(0, "Rate must be non-negative").optional().default(0),
+  royalAdultRate: z.coerce.number().min(0, "Rate must be non-negative").optional().default(0),
+  royalDrinksRate: z.coerce.number().min(0, "Rate must be non-negative").optional().default(0),
 
-  // Custom Other Charge
-  otherChargeName: z.string().optional(),
-  otherChargeRate: z.coerce.number().min(0, "Rate must be non-negative").optional(),
+  // Custom Other Charges - Array
+  otherCharges: z.array(otherChargeItemSchema).optional().default([]),
 });
 
 export type YachtFormData = z.infer<typeof yachtFormSchema>;
@@ -90,11 +95,9 @@ const getDefaultYachtFormValues = (): YachtFormData => ({
   royalChildRate: 0,
   royalAdultRate: 0,
   royalDrinksRate: 0,
-  otherChargeName: '',
-  otherChargeRate: 0,
+  otherCharges: [],
 });
 
-// Helper for package rate fields
 const packageRateFields: Array<{ name: keyof YachtFormData; label: string }> = [
   { name: 'childRate', label: 'Child Rate' },
   { name: 'adultStandardRate', label: 'Adult Standard Rate' },
@@ -116,12 +119,17 @@ export function YachtFormDialog({ isOpen, onOpenChange, yacht, onSubmitSuccess, 
     defaultValues: getDefaultYachtFormValues(),
   });
 
+  const { fields: otherChargesFields, append: appendOtherCharge, remove: removeOtherCharge } = useFieldArray({
+    control: form.control,
+    name: "otherCharges",
+  });
+
   useEffect(() => {
     if (isOpen) {
       const defaultVals = getDefaultYachtFormValues();
       if (yacht) {
         form.reset({
-          ...defaultVals, // Start with defaults to ensure all fields are present
+          ...defaultVals,
           ...yacht,
           imageUrl: yacht.imageUrl || '',
           customPackageInfo: yacht.customPackageInfo || '',
@@ -134,8 +142,7 @@ export function YachtFormDialog({ isOpen, onOpenChange, yacht, onSubmitSuccess, 
           royalChildRate: yacht.royalChildRate ?? 0,
           royalAdultRate: yacht.royalAdultRate ?? 0,
           royalDrinksRate: yacht.royalDrinksRate ?? 0,
-          otherChargeName: yacht.otherChargeName || '',
-          otherChargeRate: yacht.otherChargeRate ?? 0,
+          otherCharges: Array.isArray(yacht.otherCharges) ? yacht.otherCharges.map(oc => ({ ...oc, id: oc.id || `oc-${Date.now()}-${Math.random()}`})) : [],
         } as YachtFormData);
       } else {
         form.reset(defaultVals);
@@ -149,24 +156,16 @@ export function YachtFormDialog({ isOpen, onOpenChange, yacht, onSubmitSuccess, 
       onOpenChange(false);
       return;
     }
-
-    const submittedYacht: Yacht = {
-      ...data,
-      imageUrl: data.imageUrl || undefined,
-      customPackageInfo: data.customPackageInfo || undefined,
-      childRate: data.childRate ?? 0,
-      adultStandardRate: data.adultStandardRate ?? 0,
-      adultStandardDrinksRate: data.adultStandardDrinksRate ?? 0,
-      vipChildRate: data.vipChildRate ?? 0,
-      vipAdultRate: data.vipAdultRate ?? 0,
-      vipAdultDrinksRate: data.vipAdultDrinksRate ?? 0,
-      royalChildRate: data.royalChildRate ?? 0,
-      royalAdultRate: data.royalAdultRate ?? 0,
-      royalDrinksRate: data.royalDrinksRate ?? 0,
-      otherChargeName: data.otherChargeName || undefined,
-      otherChargeRate: data.otherChargeRate ?? 0,
+    // Ensure otherCharges have valid IDs if they were just added client-side
+    const processedData = {
+        ...data,
+        otherCharges: data.otherCharges?.map(oc => ({
+            ...oc,
+            id: oc.id.startsWith('new-') ? `db-${Date.now()}-${Math.random().toString(36).substring(2, 7)}` : oc.id // Example: assign server-like ID or keep existing
+        })) || []
     };
-    onSubmitSuccess(submittedYacht);
+
+    onSubmitSuccess(processedData as Yacht); // Cast as Yacht, API will handle it
     onOpenChange(false);
   }
 
@@ -196,7 +195,7 @@ export function YachtFormDialog({ isOpen, onOpenChange, yacht, onSubmitSuccess, 
                           placeholder="e.g., YACHT001"
                           {...field}
                           readOnly={!!yacht || !isAdmin}
-                          className={(!!yacht || !isAdmin) ? "bg-muted/50 cursor-not-allowed" : ""}
+                          className={cn(!isAdmin && "bg-muted/50 cursor-not-allowed", !!yacht && "bg-muted/50")}
                         />
                       </FormControl>
                       <FormMessage />
@@ -306,6 +305,7 @@ export function YachtFormDialog({ isOpen, onOpenChange, yacht, onSubmitSuccess, 
                             <Input
                               type="number"
                               min="0"
+                              step="0.01"
                               placeholder="0.00"
                               {...field}
                               readOnly={!isAdmin}
@@ -321,50 +321,74 @@ export function YachtFormDialog({ isOpen, onOpenChange, yacht, onSubmitSuccess, 
                 </div>
               </div>
 
-              {/* Custom Other Charge Section */}
+              {/* Manage Other Charges Section */}
               <div className="pt-4 border-t mt-6">
-                <h3 className="text-lg font-medium mb-2">Custom Other Charge</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="otherChargeName"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Charge Name (Optional)</FormLabel>
-                        <FormControl>
-                          <Input
-                            placeholder="e.g., Cake Setup Fee"
-                            {...field}
-                            value={field.value || ''}
-                            readOnly={!isAdmin}
-                            className={!isAdmin ? "bg-muted/50 cursor-not-allowed" : ""}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
+                <div className="flex justify-between items-center mb-2">
+                    <h3 className="text-lg font-medium">Manage Other Charges</h3>
+                    {isAdmin && (
+                        <Button type="button" size="sm" variant="outline" onClick={() => appendOtherCharge({ id: `new-${Date.now()}`, name: '', rate: 0 })}>
+                            <PlusCircle className="mr-2 h-4 w-4" /> Add Other Charge
+                        </Button>
                     )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="otherChargeRate"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Charge Rate (AED)</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="number"
-                            min="0"
-                            placeholder="0.00"
-                            {...field}
-                            readOnly={!isAdmin}
-                            className={!isAdmin ? "bg-muted/50 cursor-not-allowed" : ""}
-                            onChange={e => field.onChange(parseFloat(e.target.value) || 0)}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                </div>
+                {otherChargesFields.length === 0 && <p className="text-sm text-muted-foreground">No other charges added yet.</p>}
+                <div className="space-y-4">
+                {otherChargesFields.map((field, index) => (
+                    <div key={field.id} className="grid grid-cols-[1fr_auto_auto] items-end gap-2 p-3 border rounded-md">
+                        <FormField
+                            control={form.control}
+                            name={`otherCharges.${index}.name`}
+                            render={({ field: nameField }) => (
+                                <FormItem>
+                                    <FormLabel>Charge Name</FormLabel>
+                                    <FormControl>
+                                        <Input 
+                                            placeholder="e.g., Catering Upgrade" 
+                                            {...nameField} 
+                                            readOnly={!isAdmin}
+                                            className={!isAdmin ? "bg-muted/50 cursor-not-allowed" : ""}
+                                        />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name={`otherCharges.${index}.rate`}
+                            render={({ field: rateField }) => (
+                                <FormItem>
+                                    <FormLabel>Rate (AED)</FormLabel>
+                                    <FormControl>
+                                        <Input 
+                                            type="number" 
+                                            min="0"
+                                            step="0.01"
+                                            placeholder="0.00" 
+                                            {...rateField} 
+                                            readOnly={!isAdmin}
+                                            className={!isAdmin ? "bg-muted/50 cursor-not-allowed" : ""}
+                                            onChange={e => rateField.onChange(parseFloat(e.target.value) || 0)}
+                                        />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                         {isAdmin && (
+                            <Button 
+                                type="button" 
+                                variant="ghost" 
+                                size="icon" 
+                                onClick={() => removeOtherCharge(index)}
+                                className="text-destructive hover:bg-destructive/10"
+                                aria-label="Remove other charge"
+                            >
+                                <Trash2 className="h-4 w-4" />
+                            </Button>
+                        )}
+                    </div>
+                ))}
                 </div>
               </div>
 

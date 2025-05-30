@@ -13,19 +13,24 @@ function buildYachtUpdateSetClause(data: Partial<Omit<Yacht, 'id'>>): { clause: 
     'childRate', 'adultStandardRate', 'adultStandardDrinksRate',
     'vipChildRate', 'vipAdultRate', 'vipAdultDrinksRate',
     'royalChildRate', 'royalAdultRate', 'royalDrinksRate',
-    'otherChargeName', 'otherChargeRate'
+    'otherCharges' // This will be stringified
   ];
 
   Object.entries(data).forEach(([key, value]) => {
     if (allowedKeys.includes(key as any) && value !== undefined) {
-      fieldsToUpdate.push(`${key} = ?`);
-      if (['capacity', 'childRate', 'adultStandardRate', 'adultStandardDrinksRate', 'vipChildRate', 'vipAdultRate', 'vipAdultDrinksRate', 'royalChildRate', 'royalAdultRate', 'royalDrinksRate', 'otherChargeRate'].includes(key)) {
-        valuesToUpdate.push(Number(value || 0)); // Ensure numeric, default to 0 if falsy
-      } else if (value === '' && ['imageUrl', 'customPackageInfo', 'otherChargeName'].includes(key)) {
-         valuesToUpdate.push(null);
-      }
-      else {
-        valuesToUpdate.push(value);
+      if (key === 'otherCharges') {
+        fieldsToUpdate.push(`other_charges_json = ?`); // DB column name
+        valuesToUpdate.push(Array.isArray(value) ? JSON.stringify(value) : null);
+      } else {
+        fieldsToUpdate.push(`${key} = ?`);
+        if (['capacity', 'childRate', 'adultStandardRate', 'adultStandardDrinksRate', 'vipChildRate', 'vipAdultRate', 'vipAdultDrinksRate', 'royalChildRate', 'royalAdultRate', 'royalDrinksRate'].includes(key)) {
+          valuesToUpdate.push(Number(value || 0));
+        } else if (value === '' && ['imageUrl', 'customPackageInfo'].includes(key)) {
+           valuesToUpdate.push(null);
+        }
+        else {
+          valuesToUpdate.push(value);
+        }
       }
     }
   });
@@ -44,13 +49,25 @@ export async function GET(
               childRate, adultStandardRate, adultStandardDrinksRate,
               vipChildRate, vipAdultRate, vipAdultDrinksRate,
               royalChildRate, royalAdultRate, royalDrinksRate,
-              otherChargeName, otherChargeRate
-       FROM yachts WHERE id = ?`, [id]
+              other_charges_json
+       FROM yachts WHERE id = ?`, [id] // Updated to other_charges_json
     );
     console.log(`[API GET /api/yachts/${id}] Raw DB Data:`, yachtDataDb.length > 0 ? yachtDataDb[0] : "No yacht found from DB");
 
     if (yachtDataDb.length > 0) {
       const dbYacht = yachtDataDb[0];
+      let parsedOtherCharges = [];
+      if (dbYacht.other_charges_json) {
+        try {
+          parsedOtherCharges = JSON.parse(dbYacht.other_charges_json);
+           if (!Array.isArray(parsedOtherCharges)) {
+            parsedOtherCharges = [];
+          }
+        } catch (e) {
+          console.warn(`[API GET /api/yachts/${id}] Failed to parse other_charges_json:`, e);
+          parsedOtherCharges = [];
+        }
+      }
       const yacht: Yacht = {
         id: String(dbYacht.id || ''),
         name: String(dbYacht.name || ''),
@@ -67,8 +84,7 @@ export async function GET(
         royalChildRate: Number(dbYacht.royalChildRate || 0),
         royalAdultRate: Number(dbYacht.royalAdultRate || 0),
         royalDrinksRate: Number(dbYacht.royalDrinksRate || 0),
-        otherChargeName: dbYacht.otherChargeName || undefined,
-        otherChargeRate: Number(dbYacht.otherChargeRate || 0),
+        otherCharges: parsedOtherCharges,
       };
       console.log(`[API GET /api/yachts/${id}] Mapped Yacht Data:`, yacht);
       return NextResponse.json(yacht, { status: 200 });
@@ -117,6 +133,12 @@ export async function PUT(
     const finalUpdatedYachtQuery: any[] = await query('SELECT * FROM yachts WHERE id = ?', [id]);
     if (finalUpdatedYachtQuery.length > 0) {
        const dbYacht = finalUpdatedYachtQuery[0];
+       let parsedOtherCharges = [];
+        if (dbYacht.other_charges_json) {
+            try {
+                parsedOtherCharges = JSON.parse(dbYacht.other_charges_json);
+            } catch (e) { /* ignore */ }
+        }
        const finalYacht: Yacht = {
         id: String(dbYacht.id || ''),
         name: String(dbYacht.name || ''),
@@ -133,8 +155,7 @@ export async function PUT(
         royalChildRate: Number(dbYacht.royalChildRate || 0),
         royalAdultRate: Number(dbYacht.royalAdultRate || 0),
         royalDrinksRate: Number(dbYacht.royalDrinksRate || 0),
-        otherChargeName: dbYacht.otherChargeName || undefined,
-        otherChargeRate: Number(dbYacht.otherChargeRate || 0),
+        otherCharges: parsedOtherCharges,
        };
        console.log(`[API PUT /api/yachts/${id}] Successfully updated yacht.`);
        return NextResponse.json(finalYacht, { status: 200 });
@@ -155,6 +176,7 @@ export async function DELETE(
   const id = params.id;
   console.log(`[API DELETE /api/yachts/${id}] Received request`);
   try {
+    // TODO: Check for related leads before deleting a yacht?
     const result: any = await query('DELETE FROM yachts WHERE id = ?', [id]);
     console.log(`[API DELETE /api/yachts/${id}] DB Delete Result:`, result);
 

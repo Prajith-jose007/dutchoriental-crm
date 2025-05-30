@@ -88,8 +88,7 @@ async function createYachtsTable() {
       royalChildRate DECIMAL(10, 2) DEFAULT 0.00,
       royalAdultRate DECIMAL(10, 2) DEFAULT 0.00,
       royalDrinksRate DECIMAL(10, 2) DEFAULT 0.00,
-      otherChargeName VARCHAR(255),
-      otherChargeRate DECIMAL(10, 2) DEFAULT 0.00
+      other_charges_json TEXT DEFAULT NULL
     );
   `;
   try {
@@ -126,7 +125,7 @@ async function createLeadsTable() {
       qty_royalAdultRate INT DEFAULT 0,
       qty_royalDrinksRate INT DEFAULT 0,
 
-      othersAmtCake INT DEFAULT 0, -- This is quantity for custom charge
+      othersAmtCake INT DEFAULT 0, // Quantity for custom charge
 
       totalAmount DECIMAL(10, 2) NOT NULL,
       commissionPercentage DECIMAL(5, 2) DEFAULT 0.00,
@@ -175,9 +174,9 @@ async function createInvoicesTable() {
 // --- Data Migration Functions ---
 async function migrateUsers() {
   console.log('Migrating Users...');
-  await createUsersTable(); // Ensure table exists
+  await createUsersTable(); 
   for (const user of placeholderUsers) {
-    const sql = `INSERT INTO ${MYSQL_TABLE_NAMES.users} (id, name, email, designation, avatarUrl, websiteUrl, status, password) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
+    const sql = 'INSERT INTO users (id, name, email, designation, avatarUrl, websiteUrl, status, password) VALUES (?, ?, ?, ?, ?, ?, ?, ?)';
     try {
       await query(sql, [
         user.id,
@@ -187,7 +186,7 @@ async function migrateUsers() {
         user.avatarUrl || null,
         user.websiteUrl || null,
         user.status || 'Active',
-        user.password || null, // In real app, hash password before storing
+        user.password || null, 
       ]);
       console.log(`Inserted user: ${user.name} (ID: ${user.id})`);
     } catch (error) {
@@ -199,9 +198,9 @@ async function migrateUsers() {
 
 async function migrateAgents() {
   console.log('Migrating Agents...');
-  await createAgentsTable(); // Ensure table exists
+  await createAgentsTable(); 
   for (const agent of placeholderAgents) {
-    const sql = `INSERT INTO ${MYSQL_TABLE_NAMES.agents} (id, name, agency_code, address, phone_no, email, status, TRN_number, customer_type_id, discount, websiteUrl) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+    const sql = 'INSERT INTO agents (id, name, agency_code, address, phone_no, email, status, TRN_number, customer_type_id, discount, websiteUrl) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
     try {
       await query(sql, [
         agent.id,
@@ -226,7 +225,7 @@ async function migrateAgents() {
 
 async function migrateYachts() {
   console.log('Migrating Yachts...');
-  await createYachtsTable(); // Ensure table exists
+  await createYachtsTable();
   for (const yacht of placeholderYachts) {
     const sql = `
       INSERT INTO ${MYSQL_TABLE_NAMES.yachts} (
@@ -234,10 +233,11 @@ async function migrateYachts() {
         childRate, adultStandardRate, adultStandardDrinksRate,
         vipChildRate, vipAdultRate, vipAdultDrinksRate,
         royalChildRate, royalAdultRate, royalDrinksRate,
-        otherChargeName, otherChargeRate
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `;
+        other_charges_json
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `; // Updated to other_charges_json
     try {
+      const otherChargesJson = yacht.otherCharges ? JSON.stringify(yacht.otherCharges) : null;
       await query(sql, [
         yacht.id,
         yacht.name,
@@ -254,8 +254,7 @@ async function migrateYachts() {
         yacht.royalChildRate ?? 0,
         yacht.royalAdultRate ?? 0,
         yacht.royalDrinksRate ?? 0,
-        yacht.otherChargeName || null,
-        yacht.otherChargeRate ?? 0,
+        otherChargesJson, // Store as JSON string
       ]);
       console.log(`Inserted yacht: ${yacht.name} (ID: ${yacht.id})`);
     } catch (error) {
@@ -267,10 +266,10 @@ async function migrateYachts() {
 
 async function migrateLeads() {
   console.log('Migrating Leads...');
-  await createLeadsTable(); // Ensure table exists
+  await createLeadsTable(); 
   for (const lead of placeholderLeads) {
     const sql = `
-      INSERT INTO ${MYSQL_TABLE_NAMES.leads} (
+      INSERT INTO leads (
         id, clientName, agent, yacht, status, month, notes, type, transactionId, modeOfPayment,
         qty_childRate, qty_adultStandardRate, qty_adultStandardDrinksRate,
         qty_vipChildRate, qty_vipAdultRate, qty_vipAdultDrinksRate,
@@ -323,7 +322,7 @@ async function migrateLeads() {
         lead.qty_royalChildRate ?? 0,
         lead.qty_royalAdultRate ?? 0,
         lead.qty_royalDrinksRate ?? 0,
-        lead.othersAmtCake ?? 0, // This is a quantity
+        lead.othersAmtCake ?? 0, 
         lead.totalAmount,
         lead.commissionPercentage,
         lead.commissionAmount || 0,
@@ -345,11 +344,10 @@ async function migrateLeads() {
 
 async function migrateInvoices() {
   console.log('Migrating Invoices...');
-  await createInvoicesTable(); // Ensure table exists
+  await createInvoicesTable(); 
   for (const invoice of placeholderInvoices) {
-    const sql = `INSERT INTO ${MYSQL_TABLE_NAMES.invoices} (id, leadId, clientName, amount, dueDate, status, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?)`;
+    const sql = 'INSERT INTO invoices (id, leadId, clientName, amount, dueDate, status, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?)';
     try {
-        // Ensure dueDate is 'YYYY-MM-DD' format for MySQL DATE column
         const dueDateFormatted = invoice.dueDate && isValid(parseISO(invoice.dueDate)) ? format(parseISO(invoice.dueDate), 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd');
         const createdAtFormatted = invoice.createdAt && isValid(parseISO(invoice.createdAt)) ? formatISO(parseISO(invoice.createdAt)) : formatISO(new Date());
       await query(sql, [
@@ -373,7 +371,13 @@ async function main() {
   console.log('Starting data migration with table creation checks...');
   try {
     // Call table creation functions first to ensure schema exists
-    // These now run createTable functions internally if needed
+    await createUsersTable();
+    await createAgentsTable();
+    await createYachtsTable();
+    await createLeadsTable();
+    await createInvoicesTable();
+    
+    // Then migrate data
     await migrateUsers();
     await migrateAgents();
     await migrateYachts();
@@ -383,7 +387,6 @@ async function main() {
   } catch (error) {
       console.error("A critical error occurred during table creation or migration process, aborting further steps:", (error as Error).message);
   } finally {
-    // Attempt to close the pool
     const dbModule = await import('../src/lib/db');
     if (dbModule.default && typeof dbModule.default.end === 'function') {
         try {
@@ -393,7 +396,6 @@ async function main() {
             console.error('Error closing pool in finally block:', e);
         }
     } else if (dbModule.default && typeof (dbModule.default as any).pool?.end === 'function') {
-        // If pool is nested e.g. { default: { pool: ... } }
         try {
             await (dbModule.default as any).pool.end();
             console.log('MySQL pool (nested) closed by script in finally block.');
@@ -406,7 +408,6 @@ async function main() {
 
 main().catch(async err => {
   console.error('Migration script failed:', err);
-  // Ensure pool is closed on script failure too
   try {
     const dbModule = await import('../src/lib/db');
      if (dbModule.default && typeof dbModule.default.end === 'function') {

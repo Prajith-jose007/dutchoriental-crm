@@ -24,12 +24,11 @@ export interface Agent {
   websiteUrl?: string;
 }
 
-// Removed dynamic YachtPackageItem, reverting to fixed rates on Yacht
-// export interface YachtPackageItem {
-//   id: string; 
-//   name: string;
-//   rate: number;
-// }
+export interface YachtPackageItem {
+  id: string; // Client-side unique ID, e.g., new-package-${Date.now()} or a UUID
+  name: string;
+  rate: number;
+}
 
 export interface Yacht {
   id: string;
@@ -38,21 +37,7 @@ export interface Yacht {
   capacity: number;
   status: 'Available' | 'Booked' | 'Maintenance';
   customPackageInfo?: string; // General notes about packages
-  
-  // Re-added 9 fixed package rate fields
-  childRate?: number;
-  adultStandardRate?: number;
-  adultStandardDrinksRate?: number;
-  vipChildRate?: number;
-  vipAdultRate?: number;
-  vipAdultDrinksRate?: number;
-  royalChildRate?: number;
-  royalAdultRate?: number;
-  royalDrinksRate?: number;
-
-  // Re-added other charge fields
-  otherChargeName?: string;
-  otherChargeRate?: number;
+  packages?: YachtPackageItem[]; // Array of custom packages
 }
 
 export interface Invoice {
@@ -83,7 +68,7 @@ export interface Lead {
   notes?: string;
   yacht: string; // Yacht ID
   type: LeadType;
-  transactionId?: string; // Renamed from invoiceId
+  transactionId?: string;
   modeOfPayment: ModeOfPayment;
   clientName: string;
 
@@ -98,7 +83,7 @@ export interface Lead {
   qty_royalAdultRate?: number;
   qty_royalDrinksRate?: number;
 
-  othersAmtCake?: number; // Quantity for the custom charge from yacht
+  othersAmtCake?: number; // This is quantity for yacht.otherChargeRate
 
   totalAmount: number;
   commissionPercentage: number;

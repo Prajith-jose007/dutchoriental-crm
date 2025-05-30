@@ -24,12 +24,6 @@ export interface Agent {
   websiteUrl?: string;
 }
 
-export interface YachtPackageItem {
-  id: string; // Client-side unique ID, e.g., new-package-${Date.now()} or a UUID
-  name: string;
-  rate: number;
-}
-
 export interface Yacht {
   id: string;
   name: string;
@@ -37,7 +31,21 @@ export interface Yacht {
   capacity: number;
   status: 'Available' | 'Booked' | 'Maintenance';
   customPackageInfo?: string; // General notes about packages
-  packages?: YachtPackageItem[]; // Array of custom packages
+
+  // 9 Standardized Package Rates
+  childRate?: number;
+  adultStandardRate?: number;
+  adultStandardDrinksRate?: number;
+  vipChildRate?: number;
+  vipAdultRate?: number;
+  vipAdultDrinksRate?: number;
+  royalChildRate?: number;
+  royalAdultRate?: number;
+  royalDrinksRate?: number;
+
+  // Custom Other Charge
+  otherChargeName?: string;
+  otherChargeRate?: number;
 }
 
 export interface Invoice {
@@ -64,7 +72,7 @@ export interface Lead {
   id:string;
   agent: string; // Agent ID
   status: LeadStatus;
-  month: string; // Primary Lead/Event Date as ISO string (YYYY-MM-DDTHH:mm:ss.sssZ or YYYY-MM-DD)
+  month: string; // Primary Lead/Event Date as ISO string (e.g., "2024-08-15T00:00:00.000Z")
   notes?: string;
   yacht: string; // Yacht ID
   type: LeadType;
@@ -72,7 +80,7 @@ export interface Lead {
   modeOfPayment: ModeOfPayment;
   clientName: string;
 
-  // Standardized 9 Package Quantities
+  // Standardized 9 Package Quantities from Yacht
   qty_childRate?: number;
   qty_adultStandardRate?: number;
   qty_adultStandardDrinksRate?: number;

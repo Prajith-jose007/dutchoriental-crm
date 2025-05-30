@@ -80,7 +80,17 @@ async function createYachtsTable() {
       capacity INT,
       status VARCHAR(50),
       customPackageInfo TEXT,
-      packages_json TEXT DEFAULT NULL 
+      childRate DECIMAL(10, 2) DEFAULT 0.00,
+      adultStandardRate DECIMAL(10, 2) DEFAULT 0.00,
+      adultStandardDrinksRate DECIMAL(10, 2) DEFAULT 0.00,
+      vipChildRate DECIMAL(10, 2) DEFAULT 0.00,
+      vipAdultRate DECIMAL(10, 2) DEFAULT 0.00,
+      vipAdultDrinksRate DECIMAL(10, 2) DEFAULT 0.00,
+      royalChildRate DECIMAL(10, 2) DEFAULT 0.00,
+      royalAdultRate DECIMAL(10, 2) DEFAULT 0.00,
+      royalDrinksRate DECIMAL(10, 2) DEFAULT 0.00,
+      otherChargeName VARCHAR(255),
+      otherChargeRate DECIMAL(10, 2) DEFAULT 0.00
     );
   `;
   try {
@@ -165,7 +175,7 @@ async function createInvoicesTable() {
 // --- Data Migration Functions ---
 async function migrateUsers() {
   console.log('Migrating Users...');
-  await createUsersTable(); // Ensure table exists
+  await createUsersTable(); 
   for (const user of placeholderUsers) {
     const sql = 'INSERT INTO users (id, name, email, designation, avatarUrl, websiteUrl, status, password) VALUES (?, ?, ?, ?, ?, ?, ?, ?)';
     try {
@@ -189,7 +199,7 @@ async function migrateUsers() {
 
 async function migrateAgents() {
   console.log('Migrating Agents...');
-  await createAgentsTable(); // Ensure table exists
+  await createAgentsTable(); 
   for (const agent of placeholderAgents) {
     const sql = 'INSERT INTO agents (id, name, agency_code, address, phone_no, email, status, TRN_number, customer_type_id, discount, websiteUrl) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
     try {
@@ -216,15 +226,18 @@ async function migrateAgents() {
 
 async function migrateYachts() {
   console.log('Migrating Yachts...');
-  await createYachtsTable(); // Ensure table exists
+  await createYachtsTable();
   for (const yacht of placeholderYachts) {
     const sql = `
       INSERT INTO ${MYSQL_TABLE_NAMES.yachts} (
-        id, name, imageUrl, capacity, status, customPackageInfo, packages_json
-      ) VALUES (?, ?, ?, ?, ?, ?, ?)
+        id, name, imageUrl, capacity, status, customPackageInfo,
+        childRate, adultStandardRate, adultStandardDrinksRate,
+        vipChildRate, vipAdultRate, vipAdultDrinksRate,
+        royalChildRate, royalAdultRate, royalDrinksRate,
+        otherChargeName, otherChargeRate
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `; 
     try {
-      const packagesJson = yacht.packages ? JSON.stringify(yacht.packages) : null;
       await query(sql, [
         yacht.id,
         yacht.name,
@@ -232,7 +245,17 @@ async function migrateYachts() {
         yacht.capacity,
         yacht.status,
         yacht.customPackageInfo || null,
-        packagesJson,
+        yacht.childRate || 0,
+        yacht.adultStandardRate || 0,
+        yacht.adultStandardDrinksRate || 0,
+        yacht.vipChildRate || 0,
+        yacht.vipAdultRate || 0,
+        yacht.vipAdultDrinksRate || 0,
+        yacht.royalChildRate || 0,
+        yacht.royalAdultRate || 0,
+        yacht.royalDrinksRate || 0,
+        yacht.otherChargeName || null,
+        yacht.otherChargeRate || 0,
       ]);
       console.log(`Inserted yacht: ${yacht.name} (ID: ${yacht.id})`);
     } catch (error) {
@@ -244,7 +267,7 @@ async function migrateYachts() {
 
 async function migrateLeads() {
   console.log('Migrating Leads...');
-  await createLeadsTable(); // Ensure table exists
+  await createLeadsTable(); 
   for (const lead of placeholderLeads) {
     const sql = `
       INSERT INTO leads (
@@ -322,7 +345,7 @@ async function migrateLeads() {
 
 async function migrateInvoices() {
   console.log('Migrating Invoices...');
-  await createInvoicesTable(); // Ensure table exists
+  await createInvoicesTable(); 
   for (const invoice of placeholderInvoices) {
     const sql = 'INSERT INTO invoices (id, leadId, clientName, amount, dueDate, status, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?)';
     try {
@@ -348,7 +371,7 @@ async function migrateInvoices() {
 async function main() {
   console.log('Starting data migration with table creation checks...');
   try {
-    // Create tables first
+    // Create tables first to ensure they exist with the correct schema
     await createUsersTable();
     await createAgentsTable();
     await createYachtsTable();
@@ -366,6 +389,7 @@ async function main() {
       console.error("A critical error occurred during table creation or migration process, aborting further steps:", (error as Error).message);
   } finally {
     // Attempt to safely close the pool if your db.ts exports a pool or an end function
+    // This is important for scripts to not hang
     const dbModule = await import('../src/lib/db'); 
     if (dbModule.default && typeof dbModule.default.end === 'function') {
         try {
@@ -375,6 +399,7 @@ async function main() {
             console.error('Error closing pool in finally block:', e);
         }
     } else if (dbModule.default && typeof (dbModule.default as any).pool?.end === 'function') {
+        // If the pool is nested (e.g., dbModule.default.pool.end)
         try {
             await (dbModule.default as any).pool.end();
             console.log('MySQL pool (nested) closed by script in finally block.');
@@ -388,6 +413,7 @@ async function main() {
 main().catch(async err => {
   console.error('Migration script failed:', err);
   try {
+    // Also attempt to close pool on script failure
     const dbModule = await import('../src/lib/db');
      if (dbModule.default && typeof dbModule.default.end === 'function') {
         await dbModule.default.end();

@@ -2,7 +2,7 @@
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
-import { BookOpenCheck, Banknote, CircleDollarSign, AlertTriangle } from 'lucide-react'; 
+import { BookOpenCheck, Banknote, CircleDollarSign, AlertTriangle } from 'lucide-react';
 import {
   Card,
   CardContent,
@@ -52,13 +52,13 @@ interface PerformanceSummaryProps {
 }
 
 export function PerformanceSummary({ leads, invoices, isLoading, error }: PerformanceSummaryProps) {
-  const { totalConfirmedBookings, totalConfirmedEarnings } = useMemo(() => {
-    const confirmedLeads = leads.filter(lead => lead.status === 'Conformed');
-    const totalBookings = confirmedLeads.length;
-    const totalEarnings = confirmedLeads.reduce((sum, lead) => sum + (lead.netAmount || 0), 0);
+  const { totalSuccessfulBookings, totalSuccessfulEarnings } = useMemo(() => {
+    const successfulLeads = leads.filter(lead => lead.status === 'Conformed' || lead.status === 'Closed');
+    const totalBookings = successfulLeads.length;
+    const totalEarnings = successfulLeads.reduce((sum, lead) => sum + (lead.netAmount || 0), 0);
     return {
-      totalConfirmedBookings: totalBookings,
-      totalConfirmedEarnings: totalEarnings,
+      totalSuccessfulBookings: totalBookings,
+      totalSuccessfulEarnings: totalEarnings,
     };
   }, [leads]);
 
@@ -74,24 +74,24 @@ export function PerformanceSummary({ leads, invoices, isLoading, error }: Perfor
   return (
     <div className="grid gap-4 md:grid-cols-1 lg:grid-cols-3">
       <SummaryCard
-        title="Total Confirmed Bookings"
-        value={error ? 'Error' : totalConfirmedBookings}
+        title="Total Successful Bookings"
+        value={error ? 'Error' : totalSuccessfulBookings}
         icon={<BookOpenCheck className="h-5 w-5 text-muted-foreground" />}
-        description={error ? error : "Number of 'Conformed' leads"}
+        description={error ? error : "Number of 'Conformed' or 'Closed' leads"}
         isLoading={isLoading}
       />
       <SummaryCard
-        title="Total Confirmed Earnings"
-        value={error ? 'Error' : `${totalConfirmedEarnings.toLocaleString()} AED`}
+        title="Total Successful Earnings"
+        value={error ? 'Error' : `${totalSuccessfulEarnings.toLocaleString()} AED`}
         icon={<Banknote className="h-5 w-5 text-muted-foreground" />}
-        description={error ? error : "Sum of net amounts for 'Conformed' leads"}
+        description={error ? error : "Sum of net amounts for 'Conformed' or 'Closed' leads"}
         isLoading={isLoading}
       />
       <SummaryCard
         title="Pending Payments"
-        value={error ? 'Error' : `${totalPendingPayments.toLocaleString()} AED`}
+        value={error && invoices.length === 0 ? 'Error' : `${totalPendingPayments.toLocaleString()} AED`}
         icon={<CircleDollarSign className="h-5 w-5 text-muted-foreground" />}
-        description={error ? error : "Total from pending and overdue invoices"}
+        description={error && invoices.length === 0 ? error : "Total from pending and overdue invoices"}
         isLoading={isLoading}
       />
     </div>

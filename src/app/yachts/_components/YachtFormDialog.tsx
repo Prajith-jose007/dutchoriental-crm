@@ -2,7 +2,7 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useForm, Controller } from 'react-hook-form';
+import { useForm, Controller, useFieldArray } from 'react-hook-form';
 import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import {
@@ -33,9 +33,17 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
-import type { Yacht } from '@/lib/types';
+import type { Yacht, YachtPackageItem, YachtCategory } from '@/lib/types';
+import { yachtCategoryOptions } from '@/lib/types';
 import { useEffect } from 'react';
 import { cn } from '@/lib/utils';
+import { PlusCircle, Trash2 } from 'lucide-react';
+
+const yachtPackageItemSchema = z.object({
+  id: z.string(), // For react-hook-form key management
+  name: z.string().min(1, 'Package name is required'),
+  rate: z.coerce.number().min(0, 'Rate must be non-negative'),
+});
 
 const yachtFormSchema = z.object({
   id: z.string().min(1, 'Yacht ID is required'),
@@ -43,20 +51,9 @@ const yachtFormSchema = z.object({
   imageUrl: z.string().url({ message: "Invalid URL format" }).optional().or(z.literal('')),
   capacity: z.coerce.number().min(1, 'Capacity must be at least 1'),
   status: z.enum(['Available', 'Booked', 'Maintenance']),
+  category: z.enum(yachtCategoryOptions, { required_error: "Yacht category is required."}),
+  packages: z.array(yachtPackageItemSchema).optional().default([]),
   customPackageInfo: z.string().optional(),
-  // 9 Standardized Package Rates
-  childRate: z.coerce.number().min(0, "Rate must be non-negative").optional().default(0),
-  adultStandardRate: z.coerce.number().min(0, "Rate must be non-negative").optional().default(0),
-  adultStandardDrinksRate: z.coerce.number().min(0, "Rate must be non-negative").optional().default(0),
-  vipChildRate: z.coerce.number().min(0, "Rate must be non-negative").optional().default(0),
-  vipAdultRate: z.coerce.number().min(0, "Rate must be non-negative").optional().default(0),
-  vipAdultDrinksRate: z.coerce.number().min(0, "Rate must be non-negative").optional().default(0),
-  royalChildRate: z.coerce.number().min(0, "Rate must be non-negative").optional().default(0),
-  royalAdultRate: z.coerce.number().min(0, "Rate must be non-negative").optional().default(0),
-  royalDrinksRate: z.coerce.number().min(0, "Rate must be non-negative").optional().default(0),
-  // Custom Other Charge
-  otherChargeName: z.string().optional(),
-  otherChargeRate: z.coerce.number().min(0, "Rate must be non-negative").optional().default(0),
 });
 
 export type YachtFormData = z.infer<typeof yachtFormSchema>;
@@ -77,18 +74,9 @@ const getDefaultYachtFormValues = (): YachtFormData => ({
   imageUrl: '',
   capacity: 0,
   status: 'Available',
+  category: 'Private Cruise',
+  packages: [],
   customPackageInfo: '',
-  childRate: 0,
-  adultStandardRate: 0,
-  adultStandardDrinksRate: 0,
-  vipChildRate: 0,
-  vipAdultRate: 0,
-  vipAdultDrinksRate: 0,
-  royalChildRate: 0,
-  royalAdultRate: 0,
-  royalDrinksRate: 0,
-  otherChargeName: '',
-  otherChargeRate: 0,
 });
 
 export function YachtFormDialog({ isOpen, onOpenChange, yacht, onSubmitSuccess, isAdmin }: YachtFormDialogProps) {
@@ -99,28 +87,23 @@ export function YachtFormDialog({ isOpen, onOpenChange, yacht, onSubmitSuccess, 
     defaultValues: getDefaultYachtFormValues(),
   });
 
+  const { fields: packageFields, append: appendPackage, remove: removePackage } = useFieldArray({
+    control: form.control,
+    name: "packages",
+  });
+
   useEffect(() => {
     if (isOpen) {
       const defaultVals = getDefaultYachtFormValues();
       if (yacht) {
         form.reset({
-          ...defaultVals, // Start with defaults to ensure all fields are present
-          ...yacht,       // Override with existing yacht data
+          ...defaultVals,
+          ...yacht,
           imageUrl: yacht.imageUrl || '',
           customPackageInfo: yacht.customPackageInfo || '',
-          otherChargeName: yacht.otherChargeName || '',
-          // Ensure all numeric fields are numbers
+          packages: yacht.packages?.map(p => ({ ...p, id: p.id || `pkg-${Date.now()}` })) || [], // Ensure each package has an ID for useFieldArray
+          category: yacht.category || 'Private Cruise',
           capacity: Number(yacht.capacity || 0),
-          childRate: Number(yacht.childRate || 0),
-          adultStandardRate: Number(yacht.adultStandardRate || 0),
-          adultStandardDrinksRate: Number(yacht.adultStandardDrinksRate || 0),
-          vipChildRate: Number(yacht.vipChildRate || 0),
-          vipAdultRate: Number(yacht.vipAdultRate || 0),
-          vipAdultDrinksRate: Number(yacht.vipAdultDrinksRate || 0),
-          royalChildRate: Number(yacht.royalChildRate || 0),
-          royalAdultRate: Number(yacht.royalAdultRate || 0),
-          royalDrinksRate: Number(yacht.royalDrinksRate || 0),
-          otherChargeRate: Number(yacht.otherChargeRate || 0),
         } as YachtFormData);
       } else {
         form.reset(defaultVals);
@@ -138,16 +121,7 @@ export function YachtFormDialog({ isOpen, onOpenChange, yacht, onSubmitSuccess, 
     const processedData: Yacht = {
         ...data,
         capacity: Number(data.capacity || 0),
-        childRate: Number(data.childRate || 0),
-        adultStandardRate: Number(data.adultStandardRate || 0),
-        adultStandardDrinksRate: Number(data.adultStandardDrinksRate || 0),
-        vipChildRate: Number(data.vipChildRate || 0),
-        vipAdultRate: Number(data.vipAdultRate || 0),
-        vipAdultDrinksRate: Number(data.vipAdultDrinksRate || 0),
-        royalChildRate: Number(data.royalChildRate || 0),
-        royalAdultRate: Number(data.royalAdultRate || 0),
-        royalDrinksRate: Number(data.royalDrinksRate || 0),
-        otherChargeRate: Number(data.otherChargeRate || 0),
+        packages: data.packages?.map(p => ({...p, rate: Number(p.rate || 0)})) || [],
     };
     onSubmitSuccess(processedData);
     onOpenChange(false);
@@ -270,98 +244,88 @@ export function YachtFormDialog({ isOpen, onOpenChange, yacht, onSubmitSuccess, 
                     </FormItem>
                   )}
                 />
+                 <FormField
+                  control={form.control}
+                  name="category"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Yacht Category</FormLabel>
+                      <Select
+                        onValueChange={field.onChange}
+                        value={field.value || undefined}
+                        defaultValue={field.value}
+                        disabled={!isAdmin}
+                      >
+                        <FormControl>
+                          <SelectTrigger className={!isAdmin ? "bg-muted/50 cursor-not-allowed" : ""}>
+                            <SelectValue placeholder="Select category" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {yachtCategoryOptions.map(option => (
+                            <SelectItem key={option} value={option}>{option}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               </div>
 
-              {/* Standardized Package Rates Section */}
+              {/* Manage Custom Packages Section */}
               <div className="pt-4 border-t mt-6">
-                <h3 className="text-lg font-medium mb-3">Standard Package Rates (AED)</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {[
-                        { name: 'childRate', label: 'Child Rate' },
-                        { name: 'adultStandardRate', label: 'Adult Standard Rate' },
-                        { name: 'adultStandardDrinksRate', label: 'Adult Standard Drinks Rate' },
-                        { name: 'vipChildRate', label: 'VIP Child Rate' },
-                        { name: 'vipAdultRate', label: 'VIP Adult Rate' },
-                        { name: 'vipAdultDrinksRate', label: 'VIP Adult Drinks Rate' },
-                        { name: 'royalChildRate', label: 'Royal Child Rate' },
-                        { name: 'royalAdultRate', label: 'Royal Adult Rate' },
-                        { name: 'royalDrinksRate', label: 'Royal Drinks Rate' },
-                    ].map(pkg => (
-                        <FormField
-                            key={pkg.name}
-                            control={form.control}
-                            name={pkg.name as keyof YachtFormData}
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>{pkg.label}</FormLabel>
-                                    <FormControl>
-                                        <Input
-                                            type="number"
-                                            placeholder="0.00"
-                                            min="0"
-                                            step="0.01"
-                                            {...field}
-                                            readOnly={!isAdmin}
-                                            className={!isAdmin ? "bg-muted/50 cursor-not-allowed" : ""}
-                                            onChange={e => field.onChange(parseFloat(e.target.value) || 0)}
-                                        />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                    ))}
-                </div>
+                <h3 className="text-lg font-medium mb-3">Manage Custom Packages</h3>
+                {packageFields.map((field, index) => (
+                  <div key={field.id} className="grid grid-cols-[1fr_auto_auto] items-end gap-2 mb-2 p-2 border rounded-md">
+                    <FormField
+                      control={form.control}
+                      name={`packages.${index}.name`}
+                      render={({ field: nameField }) => (
+                        <FormItem>
+                          <FormLabel className="text-xs">Package Name</FormLabel>
+                          <FormControl>
+                            <Input placeholder="e.g., Child Day Pass" {...nameField} readOnly={!isAdmin} className={!isAdmin ? "bg-muted/50" : ""} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name={`packages.${index}.rate`}
+                      render={({ field: rateField }) => (
+                        <FormItem>
+                          <FormLabel className="text-xs">Rate (AED)</FormLabel>
+                          <FormControl>
+                            <Input type="number" placeholder="0.00" min="0" step="0.01" {...rateField} readOnly={!isAdmin} className={!isAdmin ? "bg-muted/50" : ""} onChange={e => rateField.onChange(parseFloat(e.target.value) || 0)} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    {isAdmin && (
+                      <Button type="button" variant="ghost" size="icon" onClick={() => removePackage(index)} className="text-destructive hover:bg-destructive/10">
+                        <Trash2 className="h-4 w-4" />
+                        <span className="sr-only">Remove Package</span>
+                      </Button>
+                    )}
+                  </div>
+                ))}
+                {isAdmin && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => appendPackage({ id: `new-${Date.now()}`, name: '', rate: 0 })}
+                    className="mt-2"
+                  >
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                    Add New Package
+                  </Button>
+                )}
               </div>
               
-              {/* Custom Other Charge Section */}
-              <div className="pt-4 border-t mt-6">
-                <h3 className="text-lg font-medium mb-3">Custom Other Charge</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <FormField
-                        control={form.control}
-                        name="otherChargeName"
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Charge Name (Optional)</FormLabel>
-                                <FormControl>
-                                    <Input
-                                        placeholder="e.g., Cake Setup Fee"
-                                        {...field}
-                                        value={field.value || ''}
-                                        readOnly={!isAdmin}
-                                        className={!isAdmin ? "bg-muted/50 cursor-not-allowed" : ""}
-                                    />
-                                </FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
-                    <FormField
-                        control={form.control}
-                        name="otherChargeRate"
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Charge Rate (AED)</FormLabel>
-                                <FormControl>
-                                    <Input
-                                        type="number"
-                                        placeholder="0.00"
-                                        min="0"
-                                        step="0.01"
-                                        {...field}
-                                        readOnly={!isAdmin}
-                                        className={!isAdmin ? "bg-muted/50 cursor-not-allowed" : ""}
-                                        onChange={e => field.onChange(parseFloat(e.target.value) || 0)}
-                                    />
-                                </FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
-                </div>
-              </div>
-
               <FormField
                 control={form.control}
                 name="customPackageInfo"

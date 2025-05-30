@@ -1,31 +1,31 @@
 
 // src/app/api/yachts/[id]/route.ts
 import { NextResponse, type NextRequest } from 'next/server';
-import type { Yacht } from '@/lib/types';
+import type { Yacht, YachtPackageItem } from '@/lib/types';
 import { query } from '@/lib/db';
-import { formatISO, parseISO, isValid } from 'date-fns';
 
 // Helper function to build the SET clause for UPDATE queries
 function buildYachtUpdateSetClause(data: Partial<Omit<Yacht, 'id'>>): { clause: string, values: any[] } {
   const fieldsToUpdate: string[] = [];
   const valuesToUpdate: any[] = [];
   const allowedKeys: (keyof Omit<Yacht, 'id'>)[] = [
-    'name', 'imageUrl', 'capacity', 'status', 'customPackageInfo',
-    'childRate', 'adultStandardRate', 'adultStandardDrinksRate',
-    'vipChildRate', 'vipAdultRate', 'vipAdultDrinksRate',
-    'royalChildRate', 'royalAdultRate', 'royalDrinksRate',
-    'otherChargeName', 'otherChargeRate'
+    'name', 'imageUrl', 'capacity', 'status', 'category', 'packages', 'customPackageInfo'
   ];
 
   Object.entries(data).forEach(([key, value]) => {
     if (allowedKeys.includes(key as any) && value !== undefined) {
-      fieldsToUpdate.push(`${key} = ?`);
-      if (['capacity', 'childRate', 'adultStandardRate', 'adultStandardDrinksRate', 'vipChildRate', 'vipAdultRate', 'vipAdultDrinksRate', 'royalChildRate', 'royalAdultRate', 'royalDrinksRate', 'otherChargeRate'].includes(key)) {
-        valuesToUpdate.push(Number(value || 0));
-      } else if (value === '' && ['imageUrl', 'customPackageInfo', 'otherChargeName'].includes(key)) {
-         valuesToUpdate.push(null);
+      if (key === 'packages') {
+        fieldsToUpdate.push(`packages_json = ?`);
+        valuesToUpdate.push(value ? JSON.stringify(value) : null);
       } else {
-        valuesToUpdate.push(value);
+        fieldsToUpdate.push(`${key} = ?`);
+        if (key === 'capacity') {
+          valuesToUpdate.push(Number(value || 0));
+        } else if (value === '' && ['imageUrl', 'customPackageInfo'].includes(key)) {
+           valuesToUpdate.push(null);
+        } else {
+          valuesToUpdate.push(value);
+        }
       }
     }
   });
@@ -40,11 +40,7 @@ export async function GET(
   console.log(`[API GET /api/yachts/${id}] Received request`);
   try {
     const sql = `
-      SELECT id, name, imageUrl, capacity, status, customPackageInfo,
-             childRate, adultStandardRate, adultStandardDrinksRate,
-             vipChildRate, vipAdultRate, vipAdultDrinksRate,
-             royalChildRate, royalAdultRate, royalDrinksRate,
-             otherChargeName, otherChargeRate
+      SELECT id, name, imageUrl, capacity, status, category, packages_json, customPackageInfo
       FROM yachts WHERE id = ?
     `;
     console.log(`[API GET /api/yachts/${id}] Executing SQL:`, sql.trim(), 'with ID:', id);
@@ -53,24 +49,33 @@ export async function GET(
 
     if (yachtDataDb.length > 0) {
       const dbYacht = yachtDataDb[0];
+      let packages: YachtPackageItem[] = [];
+      if (dbYacht.packages_json && typeof dbYacht.packages_json === 'string') {
+        try {
+          const parsedPackages = JSON.parse(dbYacht.packages_json);
+          if (Array.isArray(parsedPackages)) {
+            packages = parsedPackages.map((pkg: any) => ({
+              id: String(pkg.id || `pkg-${Date.now()}-${Math.random()}`),
+              name: String(pkg.name || 'Unnamed Package'),
+              rate: Number(pkg.rate || 0),
+            }));
+          } else {
+            console.warn(`[API GET /api/yachts/${id}] Parsed packages_json for yacht ${dbYacht.id} is not an array.`);
+          }
+        } catch (e) {
+          console.warn(`[API GET /api/yachts/${id}] Failed to parse packages_json for yacht ${dbYacht.id}. Error:`, (e as Error).message);
+        }
+      }
+
       const yacht: Yacht = {
         id: String(dbYacht.id || ''),
         name: String(dbYacht.name || ''),
         imageUrl: dbYacht.imageUrl || undefined,
         capacity: Number(dbYacht.capacity || 0),
         status: (dbYacht.status || 'Available') as Yacht['status'],
+        category: (dbYacht.category || 'Private Cruise') as Yacht['category'],
+        packages: packages,
         customPackageInfo: dbYacht.customPackageInfo || undefined,
-        childRate: Number(dbYacht.childRate || 0),
-        adultStandardRate: Number(dbYacht.adultStandardRate || 0),
-        adultStandardDrinksRate: Number(dbYacht.adultStandardDrinksRate || 0),
-        vipChildRate: Number(dbYacht.vipChildRate || 0),
-        vipAdultRate: Number(dbYacht.vipAdultRate || 0),
-        vipAdultDrinksRate: Number(dbYacht.vipAdultDrinksRate || 0),
-        royalChildRate: Number(dbYacht.royalChildRate || 0),
-        royalAdultRate: Number(dbYacht.royalAdultRate || 0),
-        royalDrinksRate: Number(dbYacht.royalDrinksRate || 0),
-        otherChargeName: dbYacht.otherChargeName || undefined,
-        otherChargeRate: Number(dbYacht.otherChargeRate || 0),
       };
       console.log(`[API GET /api/yachts/${id}] Mapped Yacht Data:`, yacht);
       return NextResponse.json(yacht, { status: 200 });
@@ -117,28 +122,27 @@ export async function PUT(
        console.warn(`[API PUT /api/yachts/${id}] Yacht not found during update or no changes made to the row.`);
     }
 
-    // Fetch and return the updated yacht
     const finalUpdatedYachtQuery: any[] = await query('SELECT * FROM yachts WHERE id = ?', [id]);
     if (finalUpdatedYachtQuery.length > 0) {
        const dbYacht = finalUpdatedYachtQuery[0];
+        let packages: YachtPackageItem[] = [];
+        if (dbYacht.packages_json && typeof dbYacht.packages_json === 'string') {
+            try {
+                packages = JSON.parse(dbYacht.packages_json);
+            } catch (e) {
+                console.warn(`[API PUT /api/yachts/${id}] Failed to parse packages_json for updated yacht ${dbYacht.id}.`);
+                packages = [];
+            }
+        }
        const finalYacht: Yacht = {
         id: String(dbYacht.id || ''),
         name: String(dbYacht.name || ''),
         imageUrl: dbYacht.imageUrl || undefined,
         capacity: Number(dbYacht.capacity || 0),
         status: (dbYacht.status || 'Available') as Yacht['status'],
+        category: (dbYacht.category || 'Private Cruise') as Yacht['category'],
+        packages: packages,
         customPackageInfo: dbYacht.customPackageInfo || undefined,
-        childRate: Number(dbYacht.childRate || 0),
-        adultStandardRate: Number(dbYacht.adultStandardRate || 0),
-        adultStandardDrinksRate: Number(dbYacht.adultStandardDrinksRate || 0),
-        vipChildRate: Number(dbYacht.vipChildRate || 0),
-        vipAdultRate: Number(dbYacht.vipAdultRate || 0),
-        vipAdultDrinksRate: Number(dbYacht.vipAdultDrinksRate || 0),
-        royalChildRate: Number(dbYacht.royalChildRate || 0),
-        royalAdultRate: Number(dbYacht.royalAdultRate || 0),
-        royalDrinksRate: Number(dbYacht.royalDrinksRate || 0),
-        otherChargeName: dbYacht.otherChargeName || undefined,
-        otherChargeRate: Number(dbYacht.otherChargeRate || 0),
        };
        console.log(`[API PUT /api/yachts/${id}] Successfully updated yacht.`);
        return NextResponse.json(finalYacht, { status: 200 });

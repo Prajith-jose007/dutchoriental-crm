@@ -8,7 +8,7 @@ import {
   placeholderLeads,
   placeholderInvoices,
 } from '../src/lib/placeholder-data'; // Adjusted path
-import type { Agent, Lead, Yacht, Invoice, User } from '../src/lib/types';
+import type { Agent, Lead, Yacht, Invoice, User, YachtPackageItem } from '../src/lib/types';
 import { formatISO, parseISO, isValid, format } from 'date-fns';
 import 'dotenv/config'; // Ensures .env.local is loaded
 
@@ -79,18 +79,9 @@ async function createYachtsTable() {
       imageUrl VARCHAR(255),
       capacity INT,
       status VARCHAR(50),
-      customPackageInfo TEXT,
-      childRate DECIMAL(10, 2) DEFAULT 0.00,
-      adultStandardRate DECIMAL(10, 2) DEFAULT 0.00,
-      adultStandardDrinksRate DECIMAL(10, 2) DEFAULT 0.00,
-      vipChildRate DECIMAL(10, 2) DEFAULT 0.00,
-      vipAdultRate DECIMAL(10, 2) DEFAULT 0.00,
-      vipAdultDrinksRate DECIMAL(10, 2) DEFAULT 0.00,
-      royalChildRate DECIMAL(10, 2) DEFAULT 0.00,
-      royalAdultRate DECIMAL(10, 2) DEFAULT 0.00,
-      royalDrinksRate DECIMAL(10, 2) DEFAULT 0.00,
-      otherChargeName VARCHAR(255),
-      otherChargeRate DECIMAL(10, 2) DEFAULT 0.00
+      category VARCHAR(255),
+      packages_json TEXT DEFAULT NULL,
+      customPackageInfo TEXT
     );
   `;
   try {
@@ -104,6 +95,7 @@ async function createYachtsTable() {
 
 async function createLeadsTable() {
   const tableName = MYSQL_TABLE_NAMES.leads;
+  // Note: Lead package quantity columns will be removed in Phase 2 of dynamic packages
   const createTableSql = `
     CREATE TABLE IF NOT EXISTS ${tableName} (
       id VARCHAR(191) PRIMARY KEY,
@@ -230,13 +222,10 @@ async function migrateYachts() {
   for (const yacht of placeholderYachts) {
     const sql = `
       INSERT INTO ${MYSQL_TABLE_NAMES.yachts} (
-        id, name, imageUrl, capacity, status, customPackageInfo,
-        childRate, adultStandardRate, adultStandardDrinksRate,
-        vipChildRate, vipAdultRate, vipAdultDrinksRate,
-        royalChildRate, royalAdultRate, royalDrinksRate,
-        otherChargeName, otherChargeRate
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        id, name, imageUrl, capacity, status, category, packages_json, customPackageInfo
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `; 
+    const packagesJson = yacht.packages ? JSON.stringify(yacht.packages) : null;
     try {
       await query(sql, [
         yacht.id,
@@ -244,18 +233,9 @@ async function migrateYachts() {
         yacht.imageUrl || null,
         yacht.capacity,
         yacht.status,
+        yacht.category,
+        packagesJson,
         yacht.customPackageInfo || null,
-        yacht.childRate || 0,
-        yacht.adultStandardRate || 0,
-        yacht.adultStandardDrinksRate || 0,
-        yacht.vipChildRate || 0,
-        yacht.vipAdultRate || 0,
-        yacht.vipAdultDrinksRate || 0,
-        yacht.royalChildRate || 0,
-        yacht.royalAdultRate || 0,
-        yacht.royalDrinksRate || 0,
-        yacht.otherChargeName || null,
-        yacht.otherChargeRate || 0,
       ]);
       console.log(`Inserted yacht: ${yacht.name} (ID: ${yacht.id})`);
     } catch (error) {
@@ -329,7 +309,7 @@ async function migrateLeads() {
         lead.commissionAmount || 0,
         lead.netAmount,
         lead.paidAmount,
-        lead.balanceAmount,
+        Math.abs(lead.balanceAmount || 0), // Store absolute value of balance
         createdAtDate,
         updatedAtDate,
         lead.lastModifiedByUserId || null,
@@ -388,23 +368,27 @@ async function main() {
   } catch (error) {
       console.error("A critical error occurred during table creation or migration process, aborting further steps:", (error as Error).message);
   } finally {
-    // Attempt to safely close the pool if your db.ts exports a pool or an end function
-    // This is important for scripts to not hang
     const dbModule = await import('../src/lib/db'); 
-    if (dbModule.default && typeof dbModule.default.end === 'function') {
+    if (dbModule.default && typeof (dbModule.default as any).end === 'function') { // Check if pool itself is default export
         try {
-            await dbModule.default.end();
+            await (dbModule.default as any).end();
             console.log('MySQL pool closed by script in finally block.');
         } catch (e) {
             console.error('Error closing pool in finally block:', e);
         }
-    } else if (dbModule.default && typeof (dbModule.default as any).pool?.end === 'function') {
-        // If the pool is nested (e.g., dbModule.default.pool.end)
+    } else if (dbModule.default && typeof (dbModule.default as any).pool?.end === 'function') { // Check if pool is nested
         try {
             await (dbModule.default as any).pool.end();
             console.log('MySQL pool (nested) closed by script in finally block.');
         } catch (e) {
             console.error('Error closing nested pool in finally block:', e);
+        }
+    } else if (typeof (dbModule as any).end === 'function') { // Check if exported directly (not default)
+         try {
+            await (dbModule as any).end();
+            console.log('MySQL pool (direct export) closed by script in finally block.');
+        } catch (e) {
+            console.error('Error closing direct export pool in finally block:', e);
         }
     }
   }
@@ -413,14 +397,16 @@ async function main() {
 main().catch(async err => {
   console.error('Migration script failed:', err);
   try {
-    // Also attempt to close pool on script failure
     const dbModule = await import('../src/lib/db');
-     if (dbModule.default && typeof dbModule.default.end === 'function') {
-        await dbModule.default.end();
+     if (dbModule.default && typeof (dbModule.default as any).end === 'function') {
+        await (dbModule.default as any).end();
         console.log('MySQL pool closed due to script failure.');
     } else if (dbModule.default && typeof (dbModule.default as any).pool?.end === 'function') {
          await (dbModule.default as any).pool.end();
          console.log('MySQL pool (nested) closed due to script failure.');
+    } else if (typeof (dbModule as any).end === 'function') {
+        await (dbModule as any).end();
+        console.log('MySQL pool (direct export) closed due to script failure.');
     }
   } catch (e) {
     console.error('Error closing pool after script failure:', e);

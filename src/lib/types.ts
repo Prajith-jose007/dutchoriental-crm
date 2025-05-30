@@ -24,28 +24,24 @@ export interface Agent {
   websiteUrl?: string;
 }
 
+export interface YachtPackageItem {
+  id: string; // Client-side unique ID (e.g., `new-${Date.now()}`)
+  name: string;
+  rate: number;
+}
+
+export type YachtCategory = 'Dinner Cruise' | 'Superyacht Sightseeing Cruise' | 'Private Cruise';
+export const yachtCategoryOptions: YachtCategory[] = ['Dinner Cruise', 'Superyacht Sightseeing Cruise', 'Private Cruise'];
+
 export interface Yacht {
   id: string;
   name: string;
   imageUrl?: string;
   capacity: number;
   status: 'Available' | 'Booked' | 'Maintenance';
+  category: YachtCategory;
+  packages?: YachtPackageItem[];
   customPackageInfo?: string; // General notes about packages
-
-  // 9 Standardized Package Rates
-  childRate?: number;
-  adultStandardRate?: number;
-  adultStandardDrinksRate?: number;
-  vipChildRate?: number;
-  vipAdultRate?: number;
-  vipAdultDrinksRate?: number;
-  royalChildRate?: number;
-  royalAdultRate?: number;
-  royalDrinksRate?: number;
-
-  // Custom Other Charge
-  otherChargeName?: string;
-  otherChargeRate?: number;
 }
 
 export interface Invoice {
@@ -64,6 +60,7 @@ export const leadStatusOptions: LeadStatus[] = ['Balance', 'Closed', 'Conformed'
 export type ModeOfPayment = 'Online' | 'Credit' | 'Cash/Card';
 export const modeOfPaymentOptions: ModeOfPayment[] = ['Online', 'Credit', 'Cash/Card'];
 
+// This LeadType will be updated in Phase 2 to match YachtCategory
 export type LeadType = 'Dinner Cruise' | 'Sunset Cruise' | 'Private';
 export const leadTypeOptions: LeadType[] = ['Dinner Cruise', 'Sunset Cruise', 'Private'];
 
@@ -75,12 +72,12 @@ export interface Lead {
   month: string; // Primary Lead/Event Date as ISO string (e.g., "2024-08-15T00:00:00.000Z")
   notes?: string;
   yacht: string; // Yacht ID
-  type: LeadType;
+  type: LeadType; // To be updated in Phase 2
   transactionId?: string;
   modeOfPayment: ModeOfPayment;
   clientName: string;
 
-  // Standardized 9 Package Quantities from Yacht
+  // These 9 fixed quantity fields will be replaced in Phase 2
   qty_childRate?: number;
   qty_adultStandardRate?: number;
   qty_adultStandardDrinksRate?: number;
@@ -91,7 +88,7 @@ export interface Lead {
   qty_royalAdultRate?: number;
   qty_royalDrinksRate?: number;
 
-  othersAmtCake?: number; // This is quantity for yacht.otherChargeRate
+  othersAmtCake?: number; // This is quantity for a custom charge
 
   totalAmount: number;
   commissionPercentage: number;

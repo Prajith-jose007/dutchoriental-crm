@@ -24,26 +24,20 @@ export interface Agent {
   websiteUrl?: string;
 }
 
+export interface YachtPackageItem {
+  id: string; // Unique ID for the package item (e.g., client-generated UUID or timestamp)
+  name: string;
+  rate: number;
+}
+
 export interface Yacht {
   id: string;
   name: string;
   imageUrl?: string;
   capacity: number;
   status: 'Available' | 'Booked' | 'Maintenance';
-  customPackageInfo?: string;
-
-  // Standardized 9 Package Rates + Custom Other Charge
-  childRate?: number;
-  adultStandardRate?: number;
-  adultStandardDrinksRate?: number;
-  vipChildRate?: number;
-  vipAdultRate?: number;
-  vipAdultDrinksRate?: number;
-  royalChildRate?: number;
-  royalAdultRate?: number;
-  royalDrinksRate?: number;
-  otherChargeName?: string;
-  otherChargeRate?: number;
+  customPackageInfo?: string; // General notes about packages
+  packages: YachtPackageItem[]; // Array of custom packages
 }
 
 export interface Invoice {
@@ -51,7 +45,7 @@ export interface Invoice {
   leadId: string;
   clientName: string;
   amount: number;
-  dueDate: string; // ISO Date string
+  dueDate: string; // ISO Date string YYYY-MM-DD
   status: 'Paid' | 'Pending' | 'Overdue';
   createdAt: string; // ISO Date string
 }
@@ -71,14 +65,14 @@ export interface Lead {
   agent: string; // Agent ID
   status: LeadStatus;
   month: string; // Primary Lead/Event Date as ISO string (YYYY-MM-DDTHH:mm:ss.sssZ)
-  notes?: string; // For user feed/notes about the lead
+  notes?: string;
   yacht: string; // Yacht ID
   type: LeadType;
   transactionId?: string;
   modeOfPayment: ModeOfPayment;
   clientName: string;
 
-  // Standardized 9 Package Quantities directly corresponding to Yacht rates
+  // Standardized 9 Package Quantities based on yacht's fixed rates
   qty_childRate?: number;
   qty_adultStandardRate?: number;
   qty_adultStandardDrinksRate?: number;
@@ -98,14 +92,14 @@ export interface Lead {
   paidAmount: number;
   balanceAmount: number;
 
-  createdAt: string;
-  updatedAt: string;
+  createdAt: string; // ISO Date string
+  updatedAt: string; // ISO Date string
   lastModifiedByUserId?: string;
   ownerUserId?: string;
 }
 
 export interface BookingReportData {
-  month: string;
+  month: string; // "MMM yyyy"
   bookings: number;
 }
 

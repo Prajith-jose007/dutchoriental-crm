@@ -2,11 +2,11 @@
 // scripts/migrate-data.ts
 import { query } from '../src/lib/db'; // Adjusted path
 import {
-  placeholderAgents,
-  placeholderLeads,
-  placeholderYachts,
-  placeholderInvoices,
   placeholderUsers,
+  placeholderAgents,
+  placeholderYachts,
+  placeholderLeads,
+  placeholderInvoices,
 } from '../src/lib/placeholder-data'; // Adjusted path
 import type { Agent, Lead, Yacht, Invoice, User } from '../src/lib/types';
 import { formatISO, parseISO, isValid, format } from 'date-fns';
@@ -87,7 +87,7 @@ async function createYachtsTable() {
       royalChildRate DECIMAL(10, 2) DEFAULT 0.00,
       royalAdultRate DECIMAL(10, 2) DEFAULT 0.00,
       royalDrinksRate DECIMAL(10, 2) DEFAULT 0.00,
-      other_charges_json TEXT DEFAULT NULL,
+      other_charges_json TEXT DEFAULT NULL, -- Changed from otherChargeName and otherChargeRate
       customPackageInfo TEXT
     );
   `;
@@ -125,7 +125,7 @@ async function createLeadsTable() {
       qty_royalAdultRate INT DEFAULT 0,
       qty_royalDrinksRate INT DEFAULT 0,
 
-      othersAmtCake INT DEFAULT 0,
+      othersAmtCake INT DEFAULT 0, -- This is a quantity
 
       totalAmount DECIMAL(10, 2) NOT NULL,
       commissionPercentage DECIMAL(5, 2) DEFAULT 0.00,
@@ -235,9 +235,9 @@ async function migrateYachts() {
         royalChildRate, royalAdultRate, royalDrinksRate,
         other_charges_json, customPackageInfo
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `; // Removed otherChargeName, otherChargeRate
+    `; // Changed to other_charges_json
     try {
-      const otherChargesJson = yacht.otherCharges ? JSON.stringify(yacht.otherCharges) : null;
+      const otherChargesJsonString = yacht.otherCharges && yacht.otherCharges.length > 0 ? JSON.stringify(yacht.otherCharges) : null;
       await query(sql, [
         yacht.id,
         yacht.name,
@@ -253,7 +253,7 @@ async function migrateYachts() {
         yacht.royalChildRate ?? 0,
         yacht.royalAdultRate ?? 0,
         yacht.royalDrinksRate ?? 0,
-        otherChargesJson,
+        otherChargesJsonString, // Use the stringified JSON
         yacht.customPackageInfo || null,
       ]);
       console.log(`Inserted yacht: ${yacht.name} (ID: ${yacht.id})`);
@@ -388,9 +388,8 @@ async function main() {
   } catch (error) {
       console.error("A critical error occurred during table creation or migration process, aborting further steps:", (error as Error).message);
   } finally {
-    const dbModule = await import('../src/lib/db'); // Dynamic import to get the pool instance
+    const dbModule = await import('../src/lib/db'); 
     if (dbModule.default && typeof dbModule.default.end === 'function') {
-        // This assumes your db.ts exports the pool as default and it has an end method
         try {
             await dbModule.default.end();
             console.log('MySQL pool closed by script in finally block.');
@@ -398,7 +397,6 @@ async function main() {
             console.error('Error closing pool in finally block:', e);
         }
     } else if (dbModule.default && typeof (dbModule.default as any).pool?.end === 'function') {
-         // If pool is nested, e.g. export default { pool }
         try {
             await (dbModule.default as any).pool.end();
             console.log('MySQL pool (nested) closed by script in finally block.');

@@ -24,27 +24,20 @@ export interface Agent {
   websiteUrl?: string;
 }
 
+export interface YachtPackageItem {
+  id: string; // Client-side generated unique ID for form management
+  name: string;
+  rate: number;
+}
+
 export interface Yacht {
   id: string;
   name: string;
   imageUrl?: string;
   capacity: number;
   status: 'Available' | 'Booked' | 'Maintenance';
-  customPackageInfo?: string;
-
-  // 9 Standardized Package Rates
-  childRate?: number;
-  adultStandardRate?: number;
-  adultStandardDrinksRate?: number;
-  vipChildRate?: number;
-  vipAdultRate?: number;
-  vipAdultDrinksRate?: number;
-  royalChildRate?: number;
-  royalAdultRate?: number;
-  royalDrinksRate?: number;
-
-  // New: Array for multiple custom other charges
-  otherCharges?: Array<{ id: string; name: string; rate: number }>;
+  customPackageInfo?: string; // General notes about packages
+  packages?: YachtPackageItem[]; // Array for custom packages
 }
 
 export interface Invoice {
@@ -79,7 +72,7 @@ export interface Lead {
   modeOfPayment: ModeOfPayment;
   clientName: string;
 
-  // Standardized 9 Package Quantities that map to Yacht rates
+  // These 9 will be replaced in Phase 2 of dynamic lead packages
   qty_childRate?: number;
   qty_adultStandardRate?: number;
   qty_adultStandardDrinksRate?: number;
@@ -90,8 +83,7 @@ export interface Lead {
   qty_royalAdultRate?: number;
   qty_royalDrinksRate?: number;
 
-  // This will be re-evaluated in Phase 2 to link to specific otherCharges from the yacht
-  othersAmtCake?: number; // Currently acts as a quantity for the yacht's single custom charge
+  othersAmtCake?: number; // Quantity for the single custom charge from yacht
 
   totalAmount: number;
   commissionPercentage: number;
@@ -106,6 +98,7 @@ export interface Lead {
   ownerUserId?: string;
 }
 
+// For Dashboard and Reports
 export interface BookingReportData {
   month: string; // "MMM yyyy"
   bookings: number;

@@ -33,14 +33,14 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
-import type { Yacht } from '@/lib/types';
+import type { Yacht, YachtPackageItem } from '@/lib/types';
 import { useEffect } from 'react';
 import { Trash2, PlusCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-const otherChargeItemSchema = z.object({
-  id: z.string(), // client-side generated
-  name: z.string().min(1, 'Charge name is required'),
+const yachtPackageItemSchema = z.object({
+  id: z.string(), // client-side generated for react-hook-form key
+  name: z.string().min(1, 'Package name is required'),
   rate: z.coerce.number().min(0, 'Rate must be non-negative'),
 });
 
@@ -51,20 +51,7 @@ const yachtFormSchema = z.object({
   capacity: z.coerce.number().min(1, 'Capacity must be at least 1'),
   status: z.enum(['Available', 'Booked', 'Maintenance']),
   customPackageInfo: z.string().optional(),
-
-  // 9 Standardized Package Rates
-  childRate: z.coerce.number().min(0, "Rate must be non-negative").optional().default(0),
-  adultStandardRate: z.coerce.number().min(0, "Rate must be non-negative").optional().default(0),
-  adultStandardDrinksRate: z.coerce.number().min(0, "Rate must be non-negative").optional().default(0),
-  vipChildRate: z.coerce.number().min(0, "Rate must be non-negative").optional().default(0),
-  vipAdultRate: z.coerce.number().min(0, "Rate must be non-negative").optional().default(0),
-  vipAdultDrinksRate: z.coerce.number().min(0, "Rate must be non-negative").optional().default(0),
-  royalChildRate: z.coerce.number().min(0, "Rate must be non-negative").optional().default(0),
-  royalAdultRate: z.coerce.number().min(0, "Rate must be non-negative").optional().default(0),
-  royalDrinksRate: z.coerce.number().min(0, "Rate must be non-negative").optional().default(0),
-
-  // Custom Other Charges - Array
-  otherCharges: z.array(otherChargeItemSchema).optional().default([]),
+  packages: z.array(yachtPackageItemSchema).optional().default([]),
 });
 
 export type YachtFormData = z.infer<typeof yachtFormSchema>;
@@ -86,30 +73,8 @@ const getDefaultYachtFormValues = (): YachtFormData => ({
   capacity: 0,
   status: 'Available',
   customPackageInfo: '',
-  childRate: 0,
-  adultStandardRate: 0,
-  adultStandardDrinksRate: 0,
-  vipChildRate: 0,
-  vipAdultRate: 0,
-  vipAdultDrinksRate: 0,
-  royalChildRate: 0,
-  royalAdultRate: 0,
-  royalDrinksRate: 0,
-  otherCharges: [],
+  packages: [],
 });
-
-const packageRateFields: Array<{ name: keyof YachtFormData; label: string }> = [
-  { name: 'childRate', label: 'Child Rate' },
-  { name: 'adultStandardRate', label: 'Adult Standard Rate' },
-  { name: 'adultStandardDrinksRate', label: 'Adult Standard + Drinks Rate' },
-  { name: 'vipChildRate', label: 'VIP Child Rate' },
-  { name: 'vipAdultRate', label: 'VIP Adult Rate' },
-  { name: 'vipAdultDrinksRate', label: 'VIP Adult + Drinks Rate' },
-  { name: 'royalChildRate', label: 'Royal Child Rate' },
-  { name: 'royalAdultRate', label: 'Royal Adult Rate' },
-  { name: 'royalDrinksRate', label: 'Royal Adult + Drinks Rate' },
-];
-
 
 export function YachtFormDialog({ isOpen, onOpenChange, yacht, onSubmitSuccess, isAdmin }: YachtFormDialogProps) {
   const { toast } = useToast();
@@ -119,9 +84,9 @@ export function YachtFormDialog({ isOpen, onOpenChange, yacht, onSubmitSuccess, 
     defaultValues: getDefaultYachtFormValues(),
   });
 
-  const { fields: otherChargesFields, append: appendOtherCharge, remove: removeOtherCharge } = useFieldArray({
+  const { fields: packageFields, append: appendPackage, remove: removePackage } = useFieldArray({
     control: form.control,
-    name: "otherCharges",
+    name: "packages",
   });
 
   useEffect(() => {
@@ -133,16 +98,7 @@ export function YachtFormDialog({ isOpen, onOpenChange, yacht, onSubmitSuccess, 
           ...yacht,
           imageUrl: yacht.imageUrl || '',
           customPackageInfo: yacht.customPackageInfo || '',
-          childRate: yacht.childRate ?? 0,
-          adultStandardRate: yacht.adultStandardRate ?? 0,
-          adultStandardDrinksRate: yacht.adultStandardDrinksRate ?? 0,
-          vipChildRate: yacht.vipChildRate ?? 0,
-          vipAdultRate: yacht.vipAdultRate ?? 0,
-          vipAdultDrinksRate: yacht.vipAdultDrinksRate ?? 0,
-          royalChildRate: yacht.royalChildRate ?? 0,
-          royalAdultRate: yacht.royalAdultRate ?? 0,
-          royalDrinksRate: yacht.royalDrinksRate ?? 0,
-          otherCharges: Array.isArray(yacht.otherCharges) ? yacht.otherCharges.map(oc => ({ ...oc, id: oc.id || `oc-${Date.now()}-${Math.random()}`})) : [],
+          packages: Array.isArray(yacht.packages) ? yacht.packages.map(p => ({ ...p, id: p.id || `pkg-${Date.now()}-${Math.random()}`})) : [],
         } as YachtFormData);
       } else {
         form.reset(defaultVals);
@@ -156,16 +112,16 @@ export function YachtFormDialog({ isOpen, onOpenChange, yacht, onSubmitSuccess, 
       onOpenChange(false);
       return;
     }
-    // Ensure otherCharges have valid IDs if they were just added client-side
+    
     const processedData = {
         ...data,
-        otherCharges: data.otherCharges?.map(oc => ({
-            ...oc,
-            id: oc.id.startsWith('new-') ? `db-${Date.now()}-${Math.random().toString(36).substring(2, 7)}` : oc.id // Example: assign server-like ID or keep existing
+        // Ensure packages have a persistent-like ID if newly added, or keep existing
+        packages: data.packages?.map(pkg => ({
+            ...pkg,
+            id: pkg.id.startsWith('new-') ? `pkg-${Date.now()}-${Math.random().toString(36).substring(2, 7)}` : pkg.id
         })) || []
     };
-
-    onSubmitSuccess(processedData as Yacht); // Cast as Yacht, API will handle it
+    onSubmitSuccess(processedData as Yacht);
     onOpenChange(false);
   }
 
@@ -289,61 +245,29 @@ export function YachtFormDialog({ isOpen, onOpenChange, yacht, onSubmitSuccess, 
                 />
               </div>
 
-              {/* Fixed Package Rates Section */}
-              <div className="pt-4 border-t mt-6">
-                <h3 className="text-lg font-medium mb-2">Standard Package Rates (AED)</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {packageRateFields.map(pkg => (
-                    <FormField
-                      key={pkg.name}
-                      control={form.control}
-                      name={pkg.name}
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>{pkg.label}</FormLabel>
-                          <FormControl>
-                            <Input
-                              type="number"
-                              min="0"
-                              step="0.01"
-                              placeholder="0.00"
-                              {...field}
-                              readOnly={!isAdmin}
-                              className={!isAdmin ? "bg-muted/50 cursor-not-allowed" : ""}
-                              onChange={e => field.onChange(parseFloat(e.target.value) || 0)}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  ))}
-                </div>
-              </div>
-
-              {/* Manage Other Charges Section */}
+              {/* Manage Custom Packages Section */}
               <div className="pt-4 border-t mt-6">
                 <div className="flex justify-between items-center mb-2">
-                    <h3 className="text-lg font-medium">Manage Other Charges</h3>
+                    <h3 className="text-lg font-medium">Manage Custom Packages</h3>
                     {isAdmin && (
-                        <Button type="button" size="sm" variant="outline" onClick={() => appendOtherCharge({ id: `new-${Date.now()}`, name: '', rate: 0 })}>
-                            <PlusCircle className="mr-2 h-4 w-4" /> Add Other Charge
+                        <Button type="button" size="sm" variant="outline" onClick={() => appendPackage({ id: `new-${Date.now()}`, name: '', rate: 0 })}>
+                            <PlusCircle className="mr-2 h-4 w-4" /> Add Package
                         </Button>
                     )}
                 </div>
-                {otherChargesFields.length === 0 && <p className="text-sm text-muted-foreground">No other charges added yet.</p>}
+                {packageFields.length === 0 && <p className="text-sm text-muted-foreground">No custom packages added yet.</p>}
                 <div className="space-y-4">
-                {otherChargesFields.map((field, index) => (
+                {packageFields.map((field, index) => (
                     <div key={field.id} className="grid grid-cols-[1fr_auto_auto] items-end gap-2 p-3 border rounded-md">
                         <FormField
                             control={form.control}
-                            name={`otherCharges.${index}.name`}
+                            name={`packages.${index}.name`}
                             render={({ field: nameField }) => (
                                 <FormItem>
-                                    <FormLabel>Charge Name</FormLabel>
+                                    <FormLabel>Package Name</FormLabel>
                                     <FormControl>
                                         <Input 
-                                            placeholder="e.g., Catering Upgrade" 
+                                            placeholder="e.g., Child Pass, VIP Experience" 
                                             {...nameField} 
                                             readOnly={!isAdmin}
                                             className={!isAdmin ? "bg-muted/50 cursor-not-allowed" : ""}
@@ -355,7 +279,7 @@ export function YachtFormDialog({ isOpen, onOpenChange, yacht, onSubmitSuccess, 
                         />
                         <FormField
                             control={form.control}
-                            name={`otherCharges.${index}.rate`}
+                            name={`packages.${index}.rate`}
                             render={({ field: rateField }) => (
                                 <FormItem>
                                     <FormLabel>Rate (AED)</FormLabel>
@@ -380,9 +304,9 @@ export function YachtFormDialog({ isOpen, onOpenChange, yacht, onSubmitSuccess, 
                                 type="button" 
                                 variant="ghost" 
                                 size="icon" 
-                                onClick={() => removeOtherCharge(index)}
+                                onClick={() => removePackage(index)}
                                 className="text-destructive hover:bg-destructive/10"
-                                aria-label="Remove other charge"
+                                aria-label="Remove package"
                             >
                                 <Trash2 className="h-4 w-4" />
                             </Button>
@@ -397,7 +321,7 @@ export function YachtFormDialog({ isOpen, onOpenChange, yacht, onSubmitSuccess, 
                 name="customPackageInfo"
                 render={({ field }) => (
                   <FormItem className="pt-4 border-t mt-6">
-                    <FormLabel>Additional Custom Package Info/Notes (Optional)</FormLabel>
+                    <FormLabel>Additional General Package Info/Notes (Optional)</FormLabel>
                     <FormControl>
                       <Textarea
                         placeholder="Enter any general custom package details or notes here..."
@@ -419,7 +343,7 @@ export function YachtFormDialog({ isOpen, onOpenChange, yacht, onSubmitSuccess, 
                 {isAdmin && (
                   <Button type="submit">{yacht ? 'Save Changes' : 'Add Yacht'}</Button>
                 )}
-                 {!isAdmin && yacht && (
+                 {!isAdmin && yacht && ( // Show a "Close" button for non-admins when viewing
                     <Button type="button" onClick={() => onOpenChange(false)} variant="outline">Close</Button>
                  )}
               </DialogFooter>

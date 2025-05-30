@@ -79,7 +79,7 @@ async function createYachtsTable() {
       capacity INT,
       status VARCHAR(50),
       customPackageInfo TEXT,
-      other_charges_json TEXT DEFAULT NULL 
+      packages_json TEXT DEFAULT NULL 
     );
   `;
   try {
@@ -93,6 +93,9 @@ async function createYachtsTable() {
 
 async function createLeadsTable() {
   const tableName = MYSQL_TABLE_NAMES.leads;
+  // Note: Removed old package quantity fields, assuming these will be handled differently
+  // if the lead structure changes significantly due to dynamic yacht packages.
+  // For now, keeping the 9 standardized qty fields as they are on Lead type.
   const createTableSql = `
     CREATE TABLE IF NOT EXISTS ${tableName} (
       id VARCHAR(191) PRIMARY KEY,
@@ -100,7 +103,7 @@ async function createLeadsTable() {
       agent VARCHAR(255),
       yacht VARCHAR(255),
       status VARCHAR(50),
-      month DATETIME, 
+      month DATETIME,
       notes TEXT,
       type VARCHAR(255),
       transactionId VARCHAR(255),
@@ -218,11 +221,11 @@ async function migrateYachts() {
     const sql = `
       INSERT INTO ${MYSQL_TABLE_NAMES.yachts} (
         id, name, imageUrl, capacity, status,
-        customPackageInfo, other_charges_json
+        customPackageInfo, packages_json
       ) VALUES (?, ?, ?, ?, ?, ?, ?)
     `; 
     try {
-      const otherChargesJsonString = yacht.otherCharges && yacht.otherCharges.length > 0 ? JSON.stringify(yacht.otherCharges) : null;
+      const packagesJsonString = yacht.packages && yacht.packages.length > 0 ? JSON.stringify(yacht.packages) : null;
       await query(sql, [
         yacht.id,
         yacht.name,
@@ -230,7 +233,7 @@ async function migrateYachts() {
         yacht.capacity,
         yacht.status,
         yacht.customPackageInfo || null,
-        otherChargesJsonString, 
+        packagesJsonString, 
       ]);
       console.log(`Inserted yacht: ${yacht.name} (ID: ${yacht.id})`);
     } catch (error) {
@@ -359,7 +362,8 @@ async function main() {
   } catch (error) {
       console.error("A critical error occurred during table creation or migration process, aborting further steps:", (error as Error).message);
   } finally {
-    const dbModule = await import('../src/lib/db'); 
+    // Attempt to safely close the pool if your db.ts exports a pool or an end function
+    const dbModule = await import('../src/lib/db'); // Ensure path is correct
     if (dbModule.default && typeof dbModule.default.end === 'function') {
         try {
             await dbModule.default.end();
@@ -368,6 +372,7 @@ async function main() {
             console.error('Error closing pool in finally block:', e);
         }
     } else if (dbModule.default && typeof (dbModule.default as any).pool?.end === 'function') {
+        // If the pool is nested (e.g., db.pool.end())
         try {
             await (dbModule.default as any).pool.end();
             console.log('MySQL pool (nested) closed by script in finally block.');
@@ -394,4 +399,3 @@ main().catch(async err => {
   }
   process.exit(1);
 });
-

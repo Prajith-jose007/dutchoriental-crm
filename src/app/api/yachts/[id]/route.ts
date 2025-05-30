@@ -1,7 +1,7 @@
 
 // src/app/api/yachts/[id]/route.ts
 import { NextResponse, type NextRequest } from 'next/server';
-import type { Yacht } from '@/lib/types';
+import type { Yacht, YachtPackageItem } from '@/lib/types';
 import { query } from '@/lib/db';
 
 // Helper function to build the SET clause for UPDATE queries
@@ -9,21 +9,17 @@ function buildYachtUpdateSetClause(data: Partial<Omit<Yacht, 'id'>>): { clause: 
   const fieldsToUpdate: string[] = [];
   const valuesToUpdate: any[] = [];
   const allowedKeys: (keyof Omit<Yacht, 'id'>)[] = [
-    'name', 'imageUrl', 'capacity', 'status', 'customPackageInfo',
-    'childRate', 'adultStandardRate', 'adultStandardDrinksRate',
-    'vipChildRate', 'vipAdultRate', 'vipAdultDrinksRate',
-    'royalChildRate', 'royalAdultRate', 'royalDrinksRate',
-    'otherCharges' // This will be stringified
+    'name', 'imageUrl', 'capacity', 'status', 'customPackageInfo', 'packages'
   ];
 
   Object.entries(data).forEach(([key, value]) => {
     if (allowedKeys.includes(key as any) && value !== undefined) {
-      if (key === 'otherCharges') {
-        fieldsToUpdate.push(`other_charges_json = ?`); // DB column name
+      if (key === 'packages') {
+        fieldsToUpdate.push(`packages_json = ?`);
         valuesToUpdate.push(Array.isArray(value) ? JSON.stringify(value) : null);
       } else {
         fieldsToUpdate.push(`${key} = ?`);
-        if (['capacity', 'childRate', 'adultStandardRate', 'adultStandardDrinksRate', 'vipChildRate', 'vipAdultRate', 'vipAdultDrinksRate', 'royalChildRate', 'royalAdultRate', 'royalDrinksRate'].includes(key)) {
+        if (key === 'capacity') {
           valuesToUpdate.push(Number(value || 0));
         } else if (value === '' && ['imageUrl', 'customPackageInfo'].includes(key)) {
            valuesToUpdate.push(null);
@@ -45,29 +41,31 @@ export async function GET(
   console.log(`[API GET /api/yachts/${id}] Received request`);
   try {
     const yachtDataDb: any[] = await query(
-      `SELECT id, name, imageUrl, capacity, status, customPackageInfo,
-              childRate, adultStandardRate, adultStandardDrinksRate,
-              vipChildRate, vipAdultRate, vipAdultDrinksRate,
-              royalChildRate, royalAdultRate, royalDrinksRate,
-              other_charges_json
-       FROM yachts WHERE id = ?`, [id] // Updated to other_charges_json
+      `SELECT id, name, imageUrl, capacity, status, customPackageInfo, packages_json
+       FROM yachts WHERE id = ?`, [id]
     );
     console.log(`[API GET /api/yachts/${id}] Raw DB Data:`, yachtDataDb.length > 0 ? yachtDataDb[0] : "No yacht found from DB");
 
     if (yachtDataDb.length > 0) {
       const dbYacht = yachtDataDb[0];
-      let parsedOtherCharges = [];
-      if (dbYacht.other_charges_json) {
+      let parsedPackages: YachtPackageItem[] = [];
+      if (dbYacht.packages_json && typeof dbYacht.packages_json === 'string') {
         try {
-          parsedOtherCharges = JSON.parse(dbYacht.other_charges_json);
-           if (!Array.isArray(parsedOtherCharges)) {
-            parsedOtherCharges = [];
+          const tempParsed = JSON.parse(dbYacht.packages_json);
+          if (Array.isArray(tempParsed)) {
+             parsedPackages = tempParsed.map((item: any, index: number) => ({
+              id: String(item.id || `pkg-${dbYacht.id}-${index}-${Date.now()}`),
+              name: String(item.name || 'Unnamed Package'),
+              rate: Number(item.rate || 0),
+            }));
+          } else {
+            console.warn(`[API GET /api/yachts/${id}] Parsed packages_json is not an array.`);
           }
         } catch (e) {
-          console.warn(`[API GET /api/yachts/${id}] Failed to parse other_charges_json:`, e);
-          parsedOtherCharges = [];
+          console.warn(`[API GET /api/yachts/${id}] Failed to parse packages_json:`, (e as Error).message);
         }
       }
+
       const yacht: Yacht = {
         id: String(dbYacht.id || ''),
         name: String(dbYacht.name || ''),
@@ -75,16 +73,7 @@ export async function GET(
         capacity: Number(dbYacht.capacity || 0),
         status: (dbYacht.status || 'Available') as Yacht['status'],
         customPackageInfo: dbYacht.customPackageInfo || undefined,
-        childRate: Number(dbYacht.childRate || 0),
-        adultStandardRate: Number(dbYacht.adultStandardRate || 0),
-        adultStandardDrinksRate: Number(dbYacht.adultStandardDrinksRate || 0),
-        vipChildRate: Number(dbYacht.vipChildRate || 0),
-        vipAdultRate: Number(dbYacht.vipAdultRate || 0),
-        vipAdultDrinksRate: Number(dbYacht.vipAdultDrinksRate || 0),
-        royalChildRate: Number(dbYacht.royalChildRate || 0),
-        royalAdultRate: Number(dbYacht.royalAdultRate || 0),
-        royalDrinksRate: Number(dbYacht.royalDrinksRate || 0),
-        otherCharges: parsedOtherCharges,
+        packages: parsedPackages,
       };
       console.log(`[API GET /api/yachts/${id}] Mapped Yacht Data:`, yacht);
       return NextResponse.json(yacht, { status: 200 });
@@ -133,10 +122,11 @@ export async function PUT(
     const finalUpdatedYachtQuery: any[] = await query('SELECT * FROM yachts WHERE id = ?', [id]);
     if (finalUpdatedYachtQuery.length > 0) {
        const dbYacht = finalUpdatedYachtQuery[0];
-       let parsedOtherCharges = [];
-        if (dbYacht.other_charges_json) {
+       let parsedPackages: YachtPackageItem[] = [];
+        if (dbYacht.packages_json && typeof dbYacht.packages_json === 'string') {
             try {
-                parsedOtherCharges = JSON.parse(dbYacht.other_charges_json);
+                parsedPackages = JSON.parse(dbYacht.packages_json);
+                if (!Array.isArray(parsedPackages)) parsedPackages = [];
             } catch (e) { /* ignore */ }
         }
        const finalYacht: Yacht = {
@@ -146,16 +136,7 @@ export async function PUT(
         capacity: Number(dbYacht.capacity || 0),
         status: (dbYacht.status || 'Available') as Yacht['status'],
         customPackageInfo: dbYacht.customPackageInfo || undefined,
-        childRate: Number(dbYacht.childRate || 0),
-        adultStandardRate: Number(dbYacht.adultStandardRate || 0),
-        adultStandardDrinksRate: Number(dbYacht.adultStandardDrinksRate || 0),
-        vipChildRate: Number(dbYacht.vipChildRate || 0),
-        vipAdultRate: Number(dbYacht.vipAdultRate || 0),
-        vipAdultDrinksRate: Number(dbYacht.vipAdultDrinksRate || 0),
-        royalChildRate: Number(dbYacht.royalChildRate || 0),
-        royalAdultRate: Number(dbYacht.royalAdultRate || 0),
-        royalDrinksRate: Number(dbYacht.royalDrinksRate || 0),
-        otherCharges: parsedOtherCharges,
+        packages: parsedPackages,
        };
        console.log(`[API PUT /api/yachts/${id}] Successfully updated yacht.`);
        return NextResponse.json(finalYacht, { status: 200 });
@@ -176,7 +157,6 @@ export async function DELETE(
   const id = params.id;
   console.log(`[API DELETE /api/yachts/${id}] Received request`);
   try {
-    // TODO: Check for related leads before deleting a yacht?
     const result: any = await query('DELETE FROM yachts WHERE id = ?', [id]);
     console.log(`[API DELETE /api/yachts/${id}] DB Delete Result:`, result);
 
@@ -187,7 +167,8 @@ export async function DELETE(
 
     console.log(`[API DELETE /api/yachts/${id}] Successfully deleted yacht.`);
     return NextResponse.json({ message: 'Yacht deleted successfully' }, { status: 200 });
-  } catch (error) {
+  } catch (error)
+{
     console.error(`[API DELETE /api/yachts/${id}] Failed to delete yacht:`, error);
     return NextResponse.json({ message: 'Failed to delete yacht', error: (error as Error).message }, { status: 500 });
   }

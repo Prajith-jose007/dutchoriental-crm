@@ -1,39 +1,37 @@
 
 // src/app/api/yachts/route.ts
 import { NextResponse, type NextRequest } from 'next/server';
-import type { Yacht } from '@/lib/types';
+import type { Yacht, YachtPackageItem } from '@/lib/types';
 import { query } from '@/lib/db';
 
 export async function GET(request: NextRequest) {
   console.log('[API GET /api/yachts] Received request');
   try {
-    // Explicitly list columns to match the current Yacht type which uses other_charges_json
     const yachtsDataDb: any[] = await query(
-      `SELECT id, name, imageUrl, capacity, status, customPackageInfo, other_charges_json
+      `SELECT id, name, imageUrl, capacity, status, customPackageInfo, packages_json
        FROM yachts ORDER BY name ASC`
     );
     console.log('[API GET /api/yachts] Raw DB Data (first item if any):', yachtsDataDb.length > 0 ? yachtsDataDb[0] : "No yachts from DB");
 
     const yachts: Yacht[] = yachtsDataDb.map(dbYacht => {
-      let parsedOtherCharges: Array<{ id: string; name: string; rate: number }> = [];
-      if (dbYacht.other_charges_json && typeof dbYacht.other_charges_json === 'string') {
+      let parsedPackages: YachtPackageItem[] = [];
+      if (dbYacht.packages_json && typeof dbYacht.packages_json === 'string') {
         try {
-          const tempParsed = JSON.parse(dbYacht.other_charges_json);
+          const tempParsed = JSON.parse(dbYacht.packages_json);
           if (Array.isArray(tempParsed)) {
-            // Ensure each item in the array has the correct structure
-            parsedOtherCharges = tempParsed.map((item: any, index: number) => ({
-              id: String(item.id || `charge-${dbYacht.id}-${index}`), 
-              name: String(item.name || 'Unnamed Charge'), 
-              rate: Number(item.rate || 0), 
+            parsedPackages = tempParsed.map((item: any, index: number) => ({
+              id: String(item.id || `pkg-${dbYacht.id}-${index}-${Date.now()}`),
+              name: String(item.name || 'Unnamed Package'),
+              rate: Number(item.rate || 0),
             }));
           } else {
-            console.warn(`[API GET /api/yachts] Parsed other_charges_json for yacht ${dbYacht.id} is not an array. Found:`, tempParsed);
+            console.warn(`[API GET /api/yachts] Parsed packages_json for yacht ${dbYacht.id} is not an array. Found:`, tempParsed);
           }
         } catch (e) {
-          console.warn(`[API GET /api/yachts] Failed to parse other_charges_json for yacht ${dbYacht.id}:`, (e as Error).message, "Raw JSON:", dbYacht.other_charges_json);
+          console.warn(`[API GET /api/yachts] Failed to parse packages_json for yacht ${dbYacht.id}:`, (e as Error).message, "Raw JSON:", dbYacht.packages_json);
         }
-      } else if (dbYacht.other_charges_json) { // If it exists but not a string
-         console.warn(`[API GET /api/yachts] other_charges_json for yacht ${dbYacht.id} is not a string. Found:`, typeof dbYacht.other_charges_json, "Value:", dbYacht.other_charges_json);
+      } else if (dbYacht.packages_json) {
+         console.warn(`[API GET /api/yachts] packages_json for yacht ${dbYacht.id} is not a string. Found:`, typeof dbYacht.packages_json, "Value:", dbYacht.packages_json);
       }
 
       return {
@@ -43,7 +41,7 @@ export async function GET(request: NextRequest) {
         capacity: Number(dbYacht.capacity || 0),
         status: (dbYacht.status || 'Available') as Yacht['status'],
         customPackageInfo: dbYacht.customPackageInfo || undefined,
-        otherCharges: parsedOtherCharges, // This now correctly maps to the type
+        packages: parsedPackages,
       };
     });
 
@@ -67,14 +65,14 @@ export async function POST(request: NextRequest) {
     if (!newYachtData.id || !newYachtData.name || newYachtData.capacity === undefined) {
       return NextResponse.json({ message: 'Missing required yacht fields (id, name, capacity)' }, { status: 400 });
     }
-    
-    const otherChargesJsonString = newYachtData.otherCharges && Array.isArray(newYachtData.otherCharges)
-      ? JSON.stringify(newYachtData.otherCharges)
+
+    const packagesJsonString = newYachtData.packages && Array.isArray(newYachtData.packages)
+      ? JSON.stringify(newYachtData.packages)
       : null;
 
     const sql = `
       INSERT INTO yachts (
-        id, name, imageUrl, capacity, status, customPackageInfo, other_charges_json
+        id, name, imageUrl, capacity, status, customPackageInfo, packages_json
       ) VALUES (?, ?, ?, ?, ?, ?, ?)
     `;
     const params = [
@@ -84,7 +82,7 @@ export async function POST(request: NextRequest) {
       Number(newYachtData.capacity || 0),
       newYachtData.status || 'Available',
       newYachtData.customPackageInfo || null,
-      otherChargesJsonString,
+      packagesJsonString,
     ];
 
     console.log('[API POST /api/yachts] Executing SQL:', sql.trim(), 'with params:', params);
@@ -95,14 +93,14 @@ export async function POST(request: NextRequest) {
       const createdYachtQuery: any[] = await query('SELECT * FROM yachts WHERE id = ?', [newYachtData.id]);
       if (createdYachtQuery.length > 0) {
         const dbYacht = createdYachtQuery[0];
-        let parsedOtherCharges: Array<{ id: string; name: string; rate: number }> = [];
-         if (dbYacht.other_charges_json && typeof dbYacht.other_charges_json === 'string') {
+        let parsedPackages: YachtPackageItem[] = [];
+         if (dbYacht.packages_json && typeof dbYacht.packages_json === 'string') {
           try {
-            parsedOtherCharges = JSON.parse(dbYacht.other_charges_json);
-            if (!Array.isArray(parsedOtherCharges)) parsedOtherCharges = [];
-          } catch (e) { 
-            console.warn(`[API POST /api/yachts] Error parsing other_charges_json for newly created yacht ${dbYacht.id}:`, (e as Error).message);
-            parsedOtherCharges = [];
+            parsedPackages = JSON.parse(dbYacht.packages_json);
+            if (!Array.isArray(parsedPackages)) parsedPackages = [];
+          } catch (e) {
+            console.warn(`[API POST /api/yachts] Error parsing packages_json for newly created yacht ${dbYacht.id}:`, (e as Error).message);
+            parsedPackages = [];
           }
         }
         const finalYacht: Yacht = {
@@ -112,14 +110,13 @@ export async function POST(request: NextRequest) {
             capacity: Number(dbYacht.capacity || 0),
             status: (dbYacht.status || 'Available') as Yacht['status'],
             customPackageInfo: dbYacht.customPackageInfo || undefined,
-            otherCharges: parsedOtherCharges,
+            packages: parsedPackages,
         };
         console.log('[API POST /api/yachts] Successfully created yacht:', finalYacht.id);
         return NextResponse.json(finalYacht, { status: 201 });
       }
       console.warn('[API POST /api/yachts] Yacht inserted, but failed to fetch for confirmation.');
-      // Fallback: Return the input data, ensuring otherCharges is an array
-      const fallbackYacht = { ...newYachtData, id: newYachtData.id!, otherCharges: newYachtData.otherCharges || [] };
+      const fallbackYacht = { ...newYachtData, id: newYachtData.id!, packages: newYachtData.packages || [] };
       return NextResponse.json(fallbackYacht, { status: 201 });
     } else {
       console.error('[API POST /api/yachts] Failed to insert yacht into database, affectedRows not 1.');

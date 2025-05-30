@@ -18,10 +18,10 @@ import {
 } from '@/components/ui/sidebar';
 import { Logo } from '@/components/icons/Logo';
 import { Button } from '@/components/ui/button';
-import { LogOut, UserCircle, Briefcase } from 'lucide-react'; // Briefcase for Agents icon
+import { LogOut, UserCircle } from 'lucide-react'; 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation'; // Import useRouter for logout
-import { useToast } from '@/hooks/use-toast'; // Import useToast for logout
+import { useRouter } from 'next/navigation'; 
+import { useToast } from '@/hooks/use-toast'; 
 
 const USER_ROLE_STORAGE_KEY = 'currentUserRole';
 const USER_EMAIL_STORAGE_KEY = 'currentUserEmail';
@@ -31,8 +31,8 @@ export function SidebarNav() {
   const { state } = useSidebar();
   const [isAdmin, setIsAdmin] = useState(false);
   const [mounted, setMounted] = useState(false);
-  const router = useRouter(); // For logout
-  const { toast } = useToast(); // For logout
+  const router = useRouter(); 
+  const { toast } = useToast(); 
 
   const [loggedInUserName, setLoggedInUserName] = useState<string | null>(null);
   const [loggedInUserEmail, setLoggedInUserEmail] = useState<string | null>(null);
@@ -59,19 +59,32 @@ export function SidebarNav() {
         try {
           const response = await fetch('/api/users');
           if (!response.ok) {
-            throw new Error('Failed to fetch users');
+            let errorData = { message: `Failed to fetch users. Status: ${response.status}` };
+            try {
+              // Attempt to parse the error response as JSON
+              const apiError = await response.json();
+              errorData.message = apiError.message || apiError.error || errorData.message;
+            } catch (e) {
+              // If response is not JSON, use the status text
+              console.warn("Failed to parse error response from /api/users as JSON. Response body might not be JSON.", e);
+              errorData.message = `Failed to fetch users. Status: ${response.status} - ${response.statusText || 'No status text'}`;
+            }
+            console.error("[SidebarNav] Error fetching users from API:", errorData, "Full response status:", response.status);
+            throw new Error(errorData.message);
           }
           const users: User[] = await response.json();
-          const currentUser = users.find(user => user.email.toLowerCase() === loggedInUserEmail.toLowerCase());
+          const currentUser = users.find(user => user.email && user.email.toLowerCase() === loggedInUserEmail.toLowerCase());
           if (currentUser) {
             setLoggedInUserName(currentUser.name);
           } else {
             setLoggedInUserName('User'); // Fallback name
-            console.warn(`User with email ${loggedInUserEmail} not found.`);
+            console.warn(`[SidebarNav] User with email ${loggedInUserEmail} not found in fetched users list.`);
           }
         } catch (error) {
-          console.error('Error fetching user details for sidebar:', error);
+          console.error('[SidebarNav] Error fetching user details for sidebar:', error);
           setLoggedInUserName('User'); // Fallback name on error
+          // Optionally show a toast, but be careful not to spam if this happens often
+          // toast({ title: "Error", description: "Could not load user details.", variant: "destructive" });
         } finally {
           setIsLoadingUserDetails(false);
         }
@@ -89,15 +102,16 @@ export function SidebarNav() {
     try {
       localStorage.removeItem(USER_ROLE_STORAGE_KEY);
       localStorage.removeItem(USER_EMAIL_STORAGE_KEY);
-      toast({
-        title: 'Logged Out',
-        description: 'You have been successfully logged out.',
-      });
-      // Reset local state for sidebar display
+      
       setLoggedInUserName('Guest');
       setLoggedInUserEmail('Not logged in');
       setIsAdmin(false);
+      
       router.push('/login');
+      toast({ // Show toast after redirection is initiated
+        title: 'Logged Out',
+        description: 'You have been successfully logged out.',
+      });
     } catch (error) {
       console.error("Error during logout:", error);
       toast({
@@ -116,11 +130,11 @@ export function SidebarNav() {
       <SidebarContent>
         <SidebarMenu>
           {mainNavItems.map((item) => {
-            if (item.title === 'Agents' && mounted && !isAdmin) {
-              return null;
+            if (item.adminOnly && mounted && !isAdmin) {
+              return null; 
             }
-            if (item.title === 'Agents' && !mounted) {
-              return null;
+            if (item.adminOnly && !mounted) {
+              return null; 
             }
 
             const isActive = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href));
@@ -145,7 +159,7 @@ export function SidebarNav() {
       <SidebarFooter className="p-2 border-t border-sidebar-border">
         <div className="flex items-center p-2 gap-2">
           <UserCircle className="h-8 w-8 text-sidebar-foreground" />
-          <div className={cn("flex flex-col", state === "expanded" ? "opacity-100" : "opacity-0", "transition-opacity duration-300")}>
+          <div className={cn("flex flex-col", state === "expanded" ? "opacity-100" : "opacity-0", "transition-opacity duration-300 overflow-hidden")}>
             {isLoadingUserDetails ? (
               <>
                 <span className="text-sm font-medium text-sidebar-foreground">Loading...</span>
@@ -169,7 +183,7 @@ export function SidebarNav() {
             "w-full justify-start gap-2 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
             state === "collapsed" && "justify-center"
           )}
-          onClick={handleLogout} // Call handleLogout
+          onClick={handleLogout} 
         >
           <LogOut className="h-4 w-4" />
           <span className={cn(state === "expanded" ? "opacity-100" : "opacity-0", "transition-opacity duration-300")}>

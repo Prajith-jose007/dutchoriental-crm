@@ -8,6 +8,7 @@ export interface NavItem {
   icon: LucideIcon;
   disabled?: boolean;
   external?: boolean;
+  adminOnly?: boolean; // Added for role-based visibility
 }
 
 export const mainNavItems: NavItem[] = [
@@ -30,11 +31,13 @@ export const mainNavItems: NavItem[] = [
     title: 'Agents',
     href: '/agents',
     icon: Briefcase,
+    adminOnly: true, // Mark as admin only
   },
   {
     title: 'Users',
     href: '/users',
     icon: Users,
+    adminOnly: true, // Mark as admin only
   },
   {
     title: 'Yachts',
@@ -50,9 +53,8 @@ export const mainNavItems: NavItem[] = [
     title: 'Settings',
     href: '/settings',
     icon: Settings,
+    adminOnly: true, // Mark as admin only
   },
 ];
 
-// AppLogo constant (e.g. Ship from lucide-react) is no longer exported from here
-// as the Logo.tsx component now uses /icon.svg by default.
 export const AppName = "DutchOriental CRM";

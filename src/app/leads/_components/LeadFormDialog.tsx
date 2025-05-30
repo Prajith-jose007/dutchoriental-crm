@@ -45,7 +45,7 @@ const leadFormSchema = z.object({
   id: z.string().optional(),
   agent: z.string().min(1, 'Agent is required'),
   status: z.enum(leadStatusOptions),
-  month: z.date({ required_error: "Lead/Event Date is required." }),
+  month: z.date({ required_error: "Lead/Event Date is required." }), // This is the primary Lead/Event Date
   notes: z.string().optional(),
   yacht: z.string().min(1, 'Yacht selection is required'),
   type: z.enum(leadTypeOptions, { required_error: "Lead type is required."}),
@@ -64,7 +64,7 @@ const leadFormSchema = z.object({
   qty_royalAdultRate: z.coerce.number().min(0).optional().default(0),
   qty_royalDrinksRate: z.coerce.number().min(0).optional().default(0),
 
-  othersAmtCake: z.coerce.number().min(0).optional().default(0), // Quantity for custom charge
+  othersAmtCake: z.coerce.number().min(0).optional().default(0), // Quantity for custom charge (linked to yacht.otherChargeRate)
 
   totalAmount: z.coerce.number().min(0).default(0),
   commissionPercentage: z.coerce.number().min(0).max(100).default(0),
@@ -87,7 +87,12 @@ interface LeadFormDialogProps {
   onSubmitSuccess: (data: Lead) => void;
 }
 
-const allPackageItemConfigs: { qtyKey: keyof LeadFormData; rateKey: keyof Yacht; label: string; isGuestCount?: boolean }[] = [
+const allPackageItemConfigs: {
+  qtyKey: keyof LeadFormData;
+  rateKey: keyof Yacht;
+  label: string;
+  isGuestCount?: boolean;
+}[] = [
   { qtyKey: 'qty_childRate', rateKey: 'childRate', label: 'Child Package', isGuestCount: true },
   { qtyKey: 'qty_adultStandardRate', rateKey: 'adultStandardRate', label: 'Adult Standard Package', isGuestCount: true },
   { qtyKey: 'qty_adultStandardDrinksRate', rateKey: 'adultStandardDrinksRate', label: 'Adult Standard Drinks Package', isGuestCount: true },
@@ -100,9 +105,9 @@ const allPackageItemConfigs: { qtyKey: keyof LeadFormData; rateKey: keyof Yacht;
 ];
 
 const customChargeConfig = {
-  qtyKey: 'othersAmtCake' as keyof LeadFormData,
-  rateKey: 'otherChargeRate' as keyof Yacht, // From yacht.otherChargeRate
-  nameKey: 'otherChargeName' as keyof Yacht // From yacht.otherChargeName
+  qtyKey: 'othersAmtCake' as keyof LeadFormData, // This is the quantity field on the Lead
+  rateKey: 'otherChargeRate' as keyof Yacht,    // This is the rate field on the Yacht
+  nameKey: 'otherChargeName' as keyof Yacht     // This is the name field on the Yacht
 };
 
 const getDefaultFormValues = (): LeadFormData => ({
@@ -161,41 +166,53 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
       }
     };
     fetchDropdownData();
-  }, [isOpen]); // Removed toast from dependency
+  }, [isOpen, toast]);
 
 
   const watchedAgentId = form.watch('agent');
   const watchedYachtId = form.watch('yacht');
-  const watchedPackageQuantities = allPackageItemConfigs.map(config => form.watch(config.qtyKey as keyof LeadFormData));
+  
+  // Explicitly watch all 9 package quantities for the calculation useEffect
+  const qty_childRate = form.watch('qty_childRate');
+  const qty_adultStandardRate = form.watch('qty_adultStandardRate');
+  const qty_adultStandardDrinksRate = form.watch('qty_adultStandardDrinksRate');
+  const qty_vipChildRate = form.watch('qty_vipChildRate');
+  const qty_vipAdultRate = form.watch('qty_vipAdultRate');
+  const qty_vipAdultDrinksRate = form.watch('qty_vipAdultDrinksRate');
+  const qty_royalChildRate = form.watch('qty_royalChildRate');
+  const qty_royalAdultRate = form.watch('qty_royalAdultRate');
+  const qty_royalDrinksRate = form.watch('qty_royalDrinksRate');
+
   const watchedCustomChargeQty = form.watch(customChargeConfig.qtyKey);
   const watchedPaidAmount = form.watch('paidAmount');
-  // const watchedMonth = form.watch('month'); // No longer needed directly in this useEffect, but good to be aware of
 
  useEffect(() => {
-    console.log('[CalcDebug] useEffect triggered. Watched values:', {
-        watchedAgentId,
-        watchedYachtId,
-        watchedPackageQuantities,
-        watchedCustomChargeQty,
-        watchedPaidAmount,
-    });
+    console.log('[CalcDebug] Calculation useEffect triggered.');
 
     const selectedAgent = agents.find(a => a.id === watchedAgentId);
     const selectedYacht = yachts.find(y => y.id === watchedYachtId);
 
-    console.log('[CalcDebug] Selected Agent:', selectedAgent);
-    console.log('[CalcDebug] Selected Yacht:', selectedYacht);
+    console.log('[CalcDebug] Selected Agent:', selectedAgent ? {id: selectedAgent.id, name: selectedAgent.name, discount: selectedAgent.discount} : null);
+    console.log('[CalcDebug] Selected Yacht:', selectedYacht ? {id: selectedYacht.id, name: selectedYacht.name, rates: 'check rates object below'} : null);
+    if(selectedYacht) console.log('[CalcDebug] Selected Yacht Rates:', {
+        childRate: selectedYacht.childRate, adultStandardRate: selectedYacht.adultStandardRate, /* etc. for all 9 */
+        otherChargeRate: selectedYacht.otherChargeRate
+    });
+
 
     const agentDiscountRate = Number(selectedAgent?.discount || 0);
-    form.setValue('commissionPercentage', agentDiscountRate, { shouldValidate: true, shouldDirty: true });
-    console.log('[CalcDebug] Agent Discount Rate Set:', agentDiscountRate);
+    // Set commissionPercentage once when agent changes, or if it's not already set by the form values from an existing lead
+    if (form.getValues('commissionPercentage') !== agentDiscountRate) {
+      form.setValue('commissionPercentage', agentDiscountRate, { shouldValidate: true, shouldDirty: true });
+    }
+    console.log('[CalcDebug] Agent Discount Rate Set in form:', agentDiscountRate);
 
     let currentTotalAmount = 0;
     let currentTotalGuests = 0;
 
     if (selectedYacht) {
-      allPackageItemConfigs.forEach((pkgConfig, index) => {
-        const quantity = Number(watchedPackageQuantities[index] || 0);
+      allPackageItemConfigs.forEach((pkgConfig) => {
+        const quantity = Number(form.getValues(pkgConfig.qtyKey as keyof LeadFormData) || 0);
         const rate = Number(selectedYacht[pkgConfig.rateKey as keyof Yacht] || 0);
         
         console.log(`[CalcDebug] Package: ${pkgConfig.label}, Qty: ${quantity}, Rate: ${rate}`);
@@ -207,7 +224,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
         }
       });
 
-      const customChargeQtyValue = Number(watchedCustomChargeQty || 0);
+      const customChargeQtyValue = Number(form.getValues(customChargeConfig.qtyKey) || 0);
       const customChargeRateValue = Number(selectedYacht[customChargeConfig.rateKey as keyof Yacht] || 0);
       console.log(`[CalcDebug] Custom Charge: Qty: ${customChargeQtyValue}, Rate: ${customChargeRateValue}`);
       if (customChargeQtyValue > 0 && customChargeRateValue > 0) {
@@ -216,30 +233,33 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
     }
     
     console.log('[CalcDebug] Calculated Total Guests:', currentTotalGuests);
-    console.log('[CalcDebug] Calculated Total Amount (before commission):', currentTotalAmount);
-
     setCalculatedTotalGuests(currentTotalGuests);
+    
+    console.log('[CalcDebug] Calculated Total Amount (before commission):', currentTotalAmount);
     form.setValue('totalAmount', currentTotalAmount, { shouldValidate: true, shouldDirty: true });
 
     const currentCommissionAmount = (currentTotalAmount * agentDiscountRate) / 100;
-    form.setValue('commissionAmount', currentCommissionAmount, { shouldValidate: true, shouldDirty: true });
     console.log('[CalcDebug] Calculated Commission Amount:', currentCommissionAmount);
+    form.setValue('commissionAmount', currentCommissionAmount, { shouldValidate: true, shouldDirty: true });
 
     const currentNetAmount = currentTotalAmount - currentCommissionAmount;
-    form.setValue('netAmount', currentNetAmount, { shouldValidate: true, shouldDirty: true });
     console.log('[CalcDebug] Calculated Net Amount:', currentNetAmount);
+    form.setValue('netAmount', currentNetAmount, { shouldValidate: true, shouldDirty: true });
     
-    const paidAmt = Number(watchedPaidAmount || 0);
-    const currentBalanceAmount = currentNetAmount - paidAmt;
-    form.setValue('balanceAmount', currentBalanceAmount, { shouldValidate: true, shouldDirty: true });
-    console.log('[CalcDebug] Paid Amount:', paidAmt);
+    const paidAmt = Number(watchedPaidAmount || 0); // watchedPaidAmount is already a number due to form.watch
+    const currentBalanceAmount = currentNetAmount - paidAmt; // Balance = Net Amount - Paid Amount
+    console.log('[CalcDebug] Paid Amount from form:', paidAmt);
     console.log('[CalcDebug] Calculated Balance Amount:', currentBalanceAmount);
+    form.setValue('balanceAmount', currentBalanceAmount, { shouldValidate: true, shouldDirty: true });
 
   }, [
     watchedAgentId, watchedYachtId, 
-    ...watchedPackageQuantities, // Spread operator to include all watched quantities
+    qty_childRate, qty_adultStandardRate, qty_adultStandardDrinksRate,
+    qty_vipChildRate, qty_vipAdultRate, qty_vipAdultDrinksRate,
+    qty_royalChildRate, qty_royalAdultRate, qty_royalDrinksRate,
     watchedCustomChargeQty, watchedPaidAmount, 
-    form, agents, yachts // Include form, agents, yachts as they are used in calculations
+    form, // form methods like setValue and getValues are stable, but form state might change
+    agents, yachts
   ]);
 
 
@@ -247,16 +267,16 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
     if (isOpen) {
       const defaultVals = getDefaultFormValues();
       if (lead) {
+        // When editing, parse the ISO string from lead.month to a Date object for the DatePicker
         const leadMonthDate = lead.month && isValid(parseISO(lead.month)) ? parseISO(lead.month) : defaultVals.month;
         
         const resetValues: LeadFormData = {
           ...defaultVals, // Start with defaults
           ...lead,        // Overlay existing lead data
-          month: leadMonthDate,
+          month: leadMonthDate, // Ensure month is a Date object
           transactionId: lead.transactionId || defaultVals.transactionId,
           notes: lead.notes || defaultVals.notes,
           
-          // Ensure all package quantities are explicitly set from lead or defaulted
           qty_childRate: lead.qty_childRate || 0,
           qty_adultStandardRate: lead.qty_adultStandardRate || 0,
           qty_adultStandardDrinksRate: lead.qty_adultStandardDrinksRate || 0,
@@ -268,9 +288,8 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
           qty_royalDrinksRate: lead.qty_royalDrinksRate || 0,
           othersAmtCake: lead.othersAmtCake || 0,
           
-          // Financials might be recalculated, but good to set from lead initially if available
           totalAmount: lead.totalAmount || 0,
-          commissionPercentage: lead.commissionPercentage || 0,
+          commissionPercentage: lead.commissionPercentage || 0, // Will be potentially overridden by agent's discount
           commissionAmount: lead.commissionAmount || 0,
           netAmount: lead.netAmount || 0,
           paidAmount: lead.paidAmount || 0,
@@ -287,18 +306,18 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
       if (currentAgentId && agents.length > 0) {
         const selectedAgent = agents.find(a => a.id === currentAgentId);
         form.setValue('commissionPercentage', Number(selectedAgent?.discount || 0), { shouldValidate: true, shouldDirty: true });
-      } else if (!currentAgentId) {
+      } else if (!currentAgentId && !lead) { // Only reset to 0 if it's a new lead form and no agent is selected
          form.setValue('commissionPercentage', 0, { shouldValidate: true, shouldDirty: true });
       }
     }
-  }, [lead, form, isOpen, agents, yachts]); // Added agents & yachts
+  }, [lead, form, isOpen, agents, yachts]);
 
   function onSubmit(data: LeadFormData) {
     const currentUserId = 'DO-user1'; // Placeholder for actual logged-in user ID
 
     const submittedLead: Lead = {
       ...data,
-      month: data.month ? formatISO(data.month) : formatISO(new Date()),
+      month: data.month ? formatISO(data.month) : formatISO(new Date()), // Convert Date to ISO string for submission
       id: lead?.id || data.id, 
       createdAt: lead?.createdAt || formatISO(new Date()),
       updatedAt: formatISO(new Date()),
@@ -402,9 +421,10 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
                   <FormItem className="flex flex-col">
                     <FormLabel>Lead/Event Date</FormLabel>
                     <DatePicker
-                        date={field.value instanceof Date ? field.value : (field.value && isValid(parseISO(field.value as unknown as string)) ? parseISO(field.value as unknown as string) : undefined)}
+                        date={field.value} // field.value should be a Date object here
                         setDate={(date) => {
                             field.onChange(date);
+                             // Auto-update month text field if needed (though not strictly required anymore)
                         }}
                         placeholder="Pick event date"
                     />
@@ -642,3 +662,4 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
   );
 }
 
+    

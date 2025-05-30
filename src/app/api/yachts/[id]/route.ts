@@ -16,7 +16,7 @@ function buildYachtUpdateSetClause(data: Partial<Omit<Yacht, 'id'>>): { clause: 
     if (allowedKeys.includes(key as any) && value !== undefined) {
       if (key === 'packages') {
         fieldsToUpdate.push(`packages_json = ?`);
-        valuesToUpdate.push(value ? JSON.stringify(value) : null);
+        valuesToUpdate.push(value && Array.isArray(value) ? JSON.stringify(value) : null);
       } else {
         fieldsToUpdate.push(`${key} = ?`);
         if (key === 'capacity') {
@@ -39,10 +39,7 @@ export async function GET(
   const id = params.id;
   console.log(`[API GET /api/yachts/${id}] Received request`);
   try {
-    const sql = `
-      SELECT id, name, imageUrl, capacity, status, category, packages_json, customPackageInfo
-      FROM yachts WHERE id = ?
-    `;
+    const sql = `SELECT * FROM yachts WHERE id = ?`;
     console.log(`[API GET /api/yachts/${id}] Executing SQL:`, sql.trim(), 'with ID:', id);
     const yachtDataDb: any[] = await query(sql, [id]);
     console.log(`[API GET /api/yachts/${id}] Raw DB Data:`, yachtDataDb.length > 0 ? yachtDataDb[0] : "No yacht found from DB");
@@ -54,8 +51,8 @@ export async function GET(
         try {
           const parsedPackages = JSON.parse(dbYacht.packages_json);
           if (Array.isArray(parsedPackages)) {
-            packages = parsedPackages.map((pkg: any) => ({
-              id: String(pkg.id || `pkg-${Date.now()}-${Math.random()}`),
+            packages = parsedPackages.map((pkg: any, index: number) => ({
+              id: String(pkg.id || `db-pkg-${dbYacht.id}-${index}`),
               name: String(pkg.name || 'Unnamed Package'),
               rate: Number(pkg.rate || 0),
             }));
@@ -128,10 +125,16 @@ export async function PUT(
         let packages: YachtPackageItem[] = [];
         if (dbYacht.packages_json && typeof dbYacht.packages_json === 'string') {
             try {
-                packages = JSON.parse(dbYacht.packages_json);
+                const parsedPackages = JSON.parse(dbYacht.packages_json);
+                if (Array.isArray(parsedPackages)) {
+                    packages = parsedPackages.map((pkg: any, index: number) => ({
+                        id: String(pkg.id || `db-pkg-${dbYacht.id}-${index}`),
+                        name: String(pkg.name || 'Unnamed Package'),
+                        rate: Number(pkg.rate || 0),
+                    }));
+                }
             } catch (e) {
                 console.warn(`[API PUT /api/yachts/${id}] Failed to parse packages_json for updated yacht ${dbYacht.id}.`);
-                packages = [];
             }
         }
        const finalYacht: Yacht = {

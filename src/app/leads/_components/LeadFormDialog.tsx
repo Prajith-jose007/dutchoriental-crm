@@ -35,17 +35,17 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Textarea } from '@/components/ui/textarea';
 import { DatePicker } from '@/components/ui/date-picker';
 import type { Lead, Agent, Yacht, ModeOfPayment, LeadStatus, LeadType, LeadPackageQuantity, YachtPackageItem } from '@/lib/types';
-import { leadStatusOptions, modeOfPaymentOptions, leadTypeOptions } from '@/lib/types';
+import { leadStatusOptions, modeOfPaymentOptions, leadTypeOptions, yachtCategoryOptions } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { useEffect, useState, useMemo } from 'react';
 import { format, formatISO, parseISO, isValid } from 'date-fns';
 import { PlusCircle, Trash2 } from 'lucide-react';
 
 const leadPackageQuantitySchema = z.object({
-  packageId: z.string(),
+  packageId: z.string(), // ID from Yacht.packages
   packageName: z.string(),
   quantity: z.coerce.number().min(0, "Quantity must be non-negative").default(0),
-  rate: z.coerce.number().min(0).default(0),
+  rate: z.coerce.number().min(0).default(0), // Rate at the time of booking
 });
 
 const leadFormSchema = z.object({
@@ -67,7 +67,7 @@ const leadFormSchema = z.object({
   commissionAmount: z.coerce.number().optional().default(0),
   netAmount: z.coerce.number().default(0),
   paidAmount: z.coerce.number().min(0, "Paid amount must be non-negative").default(0),
-  balanceAmount: z.coerce.number().default(0), // Will store absolute value for display
+  balanceAmount: z.coerce.number().default(0), // Will display absolute value
   createdAt: z.string().optional(),
   updatedAt: z.string().optional(),
   lastModifiedByUserId: z.string().optional(),
@@ -115,6 +115,12 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
     name: "packageQuantities",
   });
 
+  const watchedLeadType = form.watch('type');
+  const watchedYachtId = form.watch('yacht');
+  const watchedPackageQuantities = form.watch('packageQuantities');
+  const watchedAgentId = form.watch('agent');
+  const watchedPaidAmount = form.watch('paidAmount');
+
   useEffect(() => {
     const fetchDropdownData = async () => {
       if (!isOpen) return;
@@ -132,8 +138,10 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
         
         setAllAgents(Array.isArray(agentsData) ? agentsData : []);
         setAllYachts(Array.isArray(yachtsData) ? yachtsData : []);
-        console.log('[LeadForm] Fetched Agents:', agentsData);
-        console.log('[LeadForm] Fetched Yachts:', yachtsData);
+        console.log('[LeadForm] Fetched Agents:', agentsData.length > 0 ? agentsData[0] : 'No agents');
+        console.log('[LeadForm] Fetched Yachts:', yachtsData.length > 0 ? yachtsData[0] : 'No yachts');
+        console.log('[LeadForm] First yacht packages (if any):', yachtsData.length > 0 ? yachtsData[0].packages : 'N/A');
+
 
       } catch (error) {
         console.error("Error fetching dropdown data for Lead Form:", error);
@@ -143,44 +151,45 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
       }
     };
     fetchDropdownData();
-  }, [isOpen]);
+  }, [isOpen, toast]);
 
 
-  const watchedAgentId = form.watch('agent');
-  const watchedYachtId = form.watch('yacht');
-  const watchedLeadType = form.watch('type');
-  const watchedPackageQuantities = form.watch('packageQuantities'); // Watch the entire array
-  const watchedPaidAmount = form.watch('paidAmount');
+  const filteredYachts = useMemo(() => {
+    if (!watchedLeadType || allYachts.length === 0) return allYachts;
+    return allYachts.filter(yacht => yacht.category === watchedLeadType);
+  }, [watchedLeadType, allYachts]);
 
 
   // Effect to update package quantities when yacht changes
   useEffect(() => {
+    console.log('[LeadForm PQ Effect] Yacht ID changed to:', watchedYachtId);
     if (!watchedYachtId || allYachts.length === 0) {
+      console.log('[LeadForm PQ Effect] No yacht selected or yachts not loaded, clearing packageQuantities.');
       replacePackageQuantities([]);
       return;
     }
     const selectedYacht = allYachts.find(y => y.id === watchedYachtId);
-    console.log('[LeadForm] Yacht selected for packages:', selectedYacht);
+    console.log('[LeadForm PQ Effect] Selected Yacht for packages:', selectedYacht);
 
-    if (selectedYacht && selectedYacht.packages && selectedYacht.packages.length > 0) {
-      const newPQs = selectedYacht.packages.map(pkg => {
-        // Check if this package already exists in the form's current packageQuantities (e.g., when editing a lead)
-        const existingPQInForm = form.getValues('packageQuantities')?.find(fpq => fpq.packageId === pkg.id);
+    if (selectedYacht && selectedYacht.packages && Array.isArray(selectedYacht.packages) && selectedYacht.packages.length > 0) {
+      const newPQs = selectedYacht.packages.map(yachtPkg => {
+        // If editing, try to find an existing quantity for this packageId
+        const existingLeadPQ = lead?.packageQuantities?.find(lpq => lpq.packageId === yachtPkg.id);
         return {
-          packageId: pkg.id,
-          packageName: pkg.name,
-          quantity: existingPQInForm?.quantity || 0, // Use existing quantity if available, else 0
-          rate: Number(pkg.rate || 0),
+          packageId: String(yachtPkg.id), // Ensure ID is a string
+          packageName: String(yachtPkg.name || 'Unnamed Package'),
+          quantity: existingLeadPQ ? Number(existingLeadPQ.quantity || 0) : 0,
+          rate: Number(yachtPkg.rate || 0),
         };
       });
       replacePackageQuantities(newPQs);
-      console.log('[LeadForm] Populated packageQuantities based on selected yacht:', newPQs);
+      console.log('[LeadForm PQ Effect] Populated packageQuantities based on selected yacht:', newPQs);
     } else {
+      console.log('[LeadForm PQ Effect] Selected yacht has no packages or packages array is invalid, clearing packageQuantities.');
       replacePackageQuantities([]);
-       console.log('[LeadForm] Cleared packageQuantities as selected yacht has no packages.');
     }
-  }, [watchedYachtId, allYachts, replacePackageQuantities, form]); // form added to dependency
-
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [watchedYachtId, allYachts, replacePackageQuantities, lead]); // Added `lead` to ensure existing quantities are considered on edit
 
   // Effect for financial calculations
   useEffect(() => {
@@ -189,13 +198,12 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
     console.log('[CalcDebug] Current form data for calculation:', JSON.parse(JSON.stringify(currentFormData)));
 
     const selectedAgent = allAgents.find(a => a.id === currentFormData.agent);
-    console.log('[CalcDebug] Selected Agent:', selectedAgent ? {id: selectedAgent.id, name: selectedAgent.name, discount: selectedAgent.discount} : null);
+    console.log('[CalcDebug] Selected Agent:', selectedAgent ? {id: selectedAgent.id, name: selectedAgent.name, discount: selectedAgent.discount} : 'None');
     
-    const agentDiscountRate = Number(selectedAgent?.discount || 0);
-    // Only set commissionPercentage if it's different or agent changed
-    if (form.getValues('commissionPercentage') !== agentDiscountRate || currentFormData.agent !== form.watch('agent')) {
+    const agentDiscountRate = selectedAgent ? Number(selectedAgent.discount || 0) : 0;
+    if (form.getValues('commissionPercentage') !== agentDiscountRate) {
         form.setValue('commissionPercentage', agentDiscountRate, { shouldValidate: true, shouldDirty: true });
-        console.log('[CalcDebug] Agent Discount Rate Set in form:', agentDiscountRate);
+        console.log('[CalcDebug] Set Agent Discount Rate in form:', agentDiscountRate);
     }
 
     let currentTotalAmount = 0;
@@ -205,16 +213,16 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
       console.log('[CalcDebug] Calculating from packageQuantities:', currentFormData.packageQuantities);
       currentFormData.packageQuantities.forEach((pqItem, index) => {
         const quantity = Number(pqItem.quantity || 0);
-        const rate = Number(pqItem.rate || 0);
+        const rate = Number(pqItem.rate || 0); // Rate is now from the form's packageQuantities item
         console.log(`[CalcDebug] PackageItem ${index}: Name='${pqItem.packageName}', Qty=${quantity}, Rate=${rate}`);
         if (quantity > 0 && rate > 0) {
           currentTotalAmount += quantity * rate;
         }
-        // Assuming all package quantities contribute to guest count. Adjust if some packages are non-guest items.
+        // Assuming all package quantities contribute to guest count.
         currentTotalGuestsFromPackages += quantity;
       });
     } else {
-      console.log('[CalcDebug] No packageQuantities to calculate from.');
+      console.log('[CalcDebug] No packageQuantities to calculate from or array is empty.');
     }
     
     setCalculatedTotalGuests(currentTotalGuestsFromPackages);
@@ -234,18 +242,18 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
     console.log('[CalcDebug] Set Net Amount:', currentNetAmount);
     
     const paidAmt = Number(currentFormData.paidAmount || 0);
-    const actualBalanceAmount = currentNetAmount - paidAmt; // This is the signed balance
-    form.setValue('balanceAmount', Math.abs(actualBalanceAmount), { shouldValidate: true, shouldDirty: true }); 
+    const actualSignedBalanceAmount = currentNetAmount - paidAmt;
+    form.setValue('balanceAmount', Math.abs(actualSignedBalanceAmount), { shouldValidate: true, shouldDirty: true }); 
     console.log('[CalcDebug] Paid Amount from form:', paidAmt);
-    console.log('[CalcDebug] Raw Signed Balance Amount:', actualBalanceAmount);
-    console.log('[CalcDebug] Set (Absolute) Balance Amount for display:', Math.abs(actualBalanceAmount));
+    console.log('[CalcDebug] Raw Signed Balance Amount:', actualSignedBalanceAmount);
+    console.log('[CalcDebug] Set (Absolute) Balance Amount for display:', Math.abs(actualSignedBalanceAmount));
 
   }, [
-    watchedPackageQuantities, // This should effectively watch changes in the array items
+    watchedPackageQuantities,
     watchedAgentId, 
     watchedPaidAmount, 
-    form, // form itself can be a dependency if getValues/setValue are used
-    allAgents, // Needed to find selectedAgent
+    form, 
+    allAgents,
   ]);
 
 
@@ -255,38 +263,23 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
       if (lead) {
         const leadMonthDate = lead.month && isValid(parseISO(lead.month)) ? parseISO(lead.month) : defaultVals.month;
         
-        // Prepare packageQuantities for the form, ensuring they match yacht's packages if yacht is set
         let leadSpecificPackageQuantities: LeadPackageQuantity[] = [];
-        if (lead.yacht && allYachts.length > 0) {
-            const selectedYachtOnLoad = allYachts.find(y => y.id === lead.yacht);
-            if (selectedYachtOnLoad && selectedYachtOnLoad.packages) {
-                leadSpecificPackageQuantities = selectedYachtOnLoad.packages.map(ypkg => {
-                    const existingLeadPQ = lead.packageQuantities?.find(lpq => lpq.packageId === ypkg.id);
-                    return {
-                        packageId: ypkg.id,
-                        packageName: ypkg.name,
-                        quantity: existingLeadPQ?.quantity || 0,
-                        rate: Number(ypkg.rate || 0),
-                    };
-                });
-            }
-        } else if (lead.packageQuantities) {
-             // Fallback if yacht not found yet, but lead has PQs (e.g. if yachts haven't loaded)
-            leadSpecificPackageQuantities = lead.packageQuantities.map(pq => ({
-                ...pq,
-                quantity: Number(pq.quantity || 0),
-                rate: Number(pq.rate || 0)
-            }));
+        if (lead.packageQuantities && Array.isArray(lead.packageQuantities)) {
+          leadSpecificPackageQuantities = lead.packageQuantities.map(pq => ({
+            packageId: String(pq.packageId || ''),
+            packageName: String(pq.packageName || 'Unknown Package'),
+            quantity: Number(pq.quantity || 0),
+            rate: Number(pq.rate || 0),
+          }));
         }
-
-
+        
         const resetValues: LeadFormData = {
           ...defaultVals, 
           ...lead,        
           month: leadMonthDate, 
           transactionId: lead.transactionId || defaultVals.transactionId,
           notes: lead.notes || defaultVals.notes,
-          packageQuantities: leadSpecificPackageQuantities, // Use intelligently prepared PQs
+          packageQuantities: leadSpecificPackageQuantities,
           totalAmount: lead.totalAmount || 0,
           commissionPercentage: lead.commissionPercentage || 0,
           commissionAmount: lead.commissionAmount || 0,
@@ -297,32 +290,34 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
         form.reset(resetValues);
         console.log('[LeadForm] Form reset for editing lead:', JSON.parse(JSON.stringify(resetValues)));
 
-      } else {
+      } else { // New lead
         form.reset(defaultVals);
         replacePackageQuantities([]); // Ensure packages are cleared for new lead
         console.log('[LeadForm] Form reset for new lead.');
       }
       
+      // Set initial commission percentage if an agent is pre-selected (e.g., when editing)
       const currentAgentIdOnReset = form.getValues('agent');
       if (currentAgentIdOnReset && allAgents.length > 0) {
         const selectedAgentOnReset = allAgents.find(a => a.id === currentAgentIdOnReset);
-        form.setValue('commissionPercentage', Number(selectedAgentOnReset?.discount || 0), { shouldValidate: true, shouldDirty: true });
-      } else if (!currentAgentIdOnReset && !lead) {
-         form.setValue('commissionPercentage', 0, { shouldValidate: true, shouldDirty: true });
+        form.setValue('commissionPercentage', Number(selectedAgentOnReset?.discount || 0), { shouldValidate: true });
+      } else if (!currentAgentIdOnReset && !lead) { // New lead, no agent selected yet
+         form.setValue('commissionPercentage', 0, { shouldValidate: true });
       }
     }
-  }, [lead, form, isOpen, allAgents, allYachts, replacePackageQuantities]); // Added allYachts here
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lead, form, isOpen, allAgents, allYachts, replacePackageQuantities]);
 
 
   function onSubmit(data: LeadFormData) {
-    const currentUserId = 'DO-user1'; // Placeholder for actual logged-in user ID
+    const currentUserId = 'DO-user1'; // Placeholder
 
-    // Recalculate financials one last time based on submitted data to ensure accuracy
+    // Recalculate financials one last time to ensure accuracy with submitted data
     let finalTotalAmount = 0;
     if (data.packageQuantities && data.packageQuantities.length > 0) {
       data.packageQuantities.forEach(pqItem => {
         const quantity = Number(pqItem.quantity || 0);
-        const rate = Number(pqItem.rate || 0);
+        const rate = Number(pqItem.rate || 0); // Rate is now from the form's packageQuantities item
         if (quantity > 0 && rate > 0) {
           finalTotalAmount += quantity * rate;
         }
@@ -338,15 +333,16 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
     const submittedLead: Lead = {
       ...data,
       month: data.month ? formatISO(data.month) : formatISO(new Date()),
-      id: lead?.id || data.id, // Use existing ID if editing, or ID from form if new (API generates if not provided)
+      id: lead?.id || data.id, 
       createdAt: lead?.createdAt || formatISO(new Date()),
       updatedAt: formatISO(new Date()),
       lastModifiedByUserId: currentUserId,
       ownerUserId: lead?.ownerUserId || currentUserId,
-      packageQuantities: data.packageQuantities?.map(pq => ({ // Ensure types are correct
-        ...pq,
+      packageQuantities: data.packageQuantities?.map(pq => ({
+        packageId: String(pq.packageId),
+        packageName: String(pq.packageName),
         quantity: Number(pq.quantity || 0),
-        rate: Number(pq.rate || 0) 
+        rate: Number(pq.rate || 0),
       })) || [],
       totalAmount: finalTotalAmount,
       commissionPercentage: finalCommissionPercentage,
@@ -359,16 +355,6 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
     onSubmitSuccess(submittedLead);
     onOpenChange(false);
   }
-
-  const filteredYachts = useMemo(() => {
-    if (!watchedLeadType || allYachts.length === 0) return allYachts;
-    if (watchedLeadType === 'Private Cruise' || watchedLeadType === 'Dinner Cruise' || watchedLeadType === 'Superyacht Sightseeing Cruise') {
-        const filtered = allYachts.filter(yacht => yacht.category === watchedLeadType);
-        console.log(`[LeadForm] Filtered yachts for type "${watchedLeadType}":`, filtered);
-        return filtered;
-    }
-    return allYachts; // Fallback if lead type is not one of the known categories
-  }, [watchedLeadType, allYachts]);
 
 
   if (isLoadingDropdowns && isOpen) {
@@ -465,8 +451,8 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
                      <Select 
                         onValueChange={(value) => {
                             field.onChange(value);
-                            form.setValue('yacht', ''); // Reset yacht selection when lead type changes
-                            replacePackageQuantities([]); // Clear dynamic packages
+                            form.setValue('yacht', ''); 
+                            replacePackageQuantities([]);
                         }} 
                         value={field.value || undefined} 
                         defaultValue={field.value}
@@ -489,25 +475,13 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
                     <Select 
                         onValueChange={(value) => {
                             field.onChange(value);
-                            // When yacht changes, repopulate packageQuantities based on the new yacht's packages
-                            const selectedYacht = allYachts.find(y => y.id === value);
-                            if (selectedYacht && selectedYacht.packages) {
-                                const newPQs = selectedYacht.packages.map(pkg => ({
-                                    packageId: pkg.id,
-                                    packageName: pkg.name,
-                                    quantity: 0, // Default new quantities to 0
-                                    rate: Number(pkg.rate || 0),
-                                }));
-                                replacePackageQuantities(newPQs);
-                            } else {
-                                replacePackageQuantities([]);
-                            }
+                            // This logic is now handled by the dedicated useEffect for packageQuantities
                         }} 
                         value={field.value || undefined} 
                         defaultValue={field.value} 
-                        disabled={!watchedLeadType}
+                        disabled={!watchedLeadType || filteredYachts.length === 0}
                     >
-                      <FormControl><SelectTrigger><SelectValue placeholder={!watchedLeadType ? "Select Lead Type first" : "Select a yacht"} /></SelectTrigger></FormControl>
+                      <FormControl><SelectTrigger><SelectValue placeholder={!watchedLeadType ? "Select Lead Type first" : (filteredYachts.length === 0 ? "No yachts for this type" : "Select a yacht")} /></SelectTrigger></FormControl>
                       <SelectContent>
                         {filteredYachts.map((yacht) => (<SelectItem key={yacht.id} value={yacht.id}>{yacht.name}</SelectItem>))}
                       </SelectContent>
@@ -547,32 +521,37 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
 
             {/* Dynamic Package Item Quantities Section */}
             {watchedYachtId && packageQuantityFields.length > 0 && (
-              <div>
-                  <h3 className="text-lg font-medium pt-4 border-t mt-6 mb-2">Package Item Quantities</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-2">
-                    {packageQuantityFields.map((fieldItem, index) => (
-                      <FormField
-                        key={fieldItem.id} // This is the id from useFieldArray
-                        control={form.control}
-                        name={`packageQuantities.${index}.quantity`}
-                        render={({ field: qtyField }) => {
-                          // Get the corresponding package details (name, rate) from the form's packageQuantities array
-                          const currentPackage = form.getValues(`packageQuantities.${index}`);
-                          const rateDisplay = currentPackage?.rate !== undefined ? `(Rate: ${currentPackage.rate} AED)` : '(Rate N/A)';
-                          return (
+              <div className="pt-4 border-t mt-6">
+                  <h3 className="text-lg font-medium mb-3">Package Item Quantities</h3>
+                   <p className="text-sm text-muted-foreground mb-3">Enter quantities for packages offered by the selected yacht. Rates are shown for reference.</p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-6 mt-2">
+                    {packageQuantityFields.map((fieldItem, index) => {
+                      // fieldItem has { id, packageId, packageName, rate, quantity }
+                      const rateDisplay = typeof fieldItem.rate === 'number' ? `(Rate: ${fieldItem.rate.toFixed(2)} AED)` : '(Rate N/A)';
+                      return (
+                        <FormField
+                          key={fieldItem.id} // This is the id from useFieldArray
+                          control={form.control}
+                          name={`packageQuantities.${index}.quantity`}
+                          render={({ field: qtyField }) => (
                             <FormItem>
-                              <FormLabel>{currentPackage?.packageName || 'Package'} {rateDisplay}</FormLabel>
+                              <FormLabel>{fieldItem.packageName || 'Package'} {rateDisplay}</FormLabel>
                               <FormControl>
                                   <Input type="number" min="0" placeholder="0" {...qtyField} onChange={e => qtyField.onChange(parseInt(e.target.value,10) || 0)} />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
-                          );
-                        }}
-                      />
-                    ))}
+                          )}
+                        />
+                      );
+                    })}
                   </div>
               </div>
+            )}
+             {watchedYachtId && packageQuantityFields.length === 0 && (
+                <div className="pt-4 border-t mt-6">
+                    <p className="text-muted-foreground">No packages defined for the selected yacht. Please add packages in the Yacht Management section.</p>
+                </div>
             )}
             
 
@@ -690,5 +669,3 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
     </Dialog>
   );
 }
-
-    

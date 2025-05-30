@@ -10,6 +10,7 @@ import {
 } from '../src/lib/placeholder-data'; // Adjusted path
 import type { Agent, Lead, Yacht, Invoice, User } from '../src/lib/types';
 import { formatISO, parseISO, isValid, format } from 'date-fns';
+import 'dotenv/config'; // Ensures .env.local is loaded
 
 const MYSQL_TABLE_NAMES = {
   users: 'users',
@@ -127,7 +128,7 @@ async function createLeadsTable() {
       qty_royalAdultRate INT DEFAULT 0,
       qty_royalDrinksRate INT DEFAULT 0,
 
-      othersAmtCake INT DEFAULT 0, // This is quantity for otherChargeRate
+      othersAmtCake INT DEFAULT 0,
 
       totalAmount DECIMAL(10, 2) NOT NULL,
       commissionPercentage DECIMAL(5, 2) DEFAULT 0.00,
@@ -371,14 +372,14 @@ async function main() {
     // Create tables first
     await createUsersTable();
     await createAgentsTable();
-    await createYachtsTable(); // This will now create the table with fixed rate columns
+    await createYachtsTable();
     await createLeadsTable();
     await createInvoicesTable();
     
     // Then migrate data
     await migrateUsers();
     await migrateAgents();
-    await migrateYachts(); // This will insert into the table with fixed rate columns
+    await migrateYachts();
     await migrateLeads();
     await migrateInvoices();
     console.log('Data migration complete! Make sure to close the DB connection if your db.ts doesn\'t do it automatically after a pool query.');
@@ -421,3 +422,4 @@ main().catch(async err => {
   }
   process.exit(1);
 });
+

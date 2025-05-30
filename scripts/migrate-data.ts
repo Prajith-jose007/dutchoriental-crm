@@ -78,7 +78,6 @@ async function createYachtsTable() {
       imageUrl VARCHAR(255),
       capacity INT,
       status VARCHAR(50),
-      customPackageInfo TEXT,
       childRate DECIMAL(10, 2) DEFAULT 0.00,
       adultStandardRate DECIMAL(10, 2) DEFAULT 0.00,
       adultStandardDrinksRate DECIMAL(10, 2) DEFAULT 0.00,
@@ -88,7 +87,8 @@ async function createYachtsTable() {
       royalChildRate DECIMAL(10, 2) DEFAULT 0.00,
       royalAdultRate DECIMAL(10, 2) DEFAULT 0.00,
       royalDrinksRate DECIMAL(10, 2) DEFAULT 0.00,
-      other_charges_json TEXT DEFAULT NULL
+      other_charges_json TEXT DEFAULT NULL,
+      customPackageInfo TEXT
     );
   `;
   try {
@@ -109,7 +109,7 @@ async function createLeadsTable() {
       agent VARCHAR(255),
       yacht VARCHAR(255),
       status VARCHAR(50),
-      month DATETIME, -- This is the primary Lead/Event Date
+      month DATETIME, 
       notes TEXT,
       type VARCHAR(255),
       transactionId VARCHAR(255),
@@ -125,7 +125,7 @@ async function createLeadsTable() {
       qty_royalAdultRate INT DEFAULT 0,
       qty_royalDrinksRate INT DEFAULT 0,
 
-      othersAmtCake INT DEFAULT 0, // Quantity for custom charge
+      othersAmtCake INT DEFAULT 0,
 
       totalAmount DECIMAL(10, 2) NOT NULL,
       commissionPercentage DECIMAL(5, 2) DEFAULT 0.00,
@@ -174,7 +174,7 @@ async function createInvoicesTable() {
 // --- Data Migration Functions ---
 async function migrateUsers() {
   console.log('Migrating Users...');
-  await createUsersTable(); 
+  // await createUsersTable(); No need to call create here, main() does it
   for (const user of placeholderUsers) {
     const sql = 'INSERT INTO users (id, name, email, designation, avatarUrl, websiteUrl, status, password) VALUES (?, ?, ?, ?, ?, ?, ?, ?)';
     try {
@@ -198,7 +198,7 @@ async function migrateUsers() {
 
 async function migrateAgents() {
   console.log('Migrating Agents...');
-  await createAgentsTable(); 
+  // await createAgentsTable(); No need to call create here, main() does it
   for (const agent of placeholderAgents) {
     const sql = 'INSERT INTO agents (id, name, agency_code, address, phone_no, email, status, TRN_number, customer_type_id, discount, websiteUrl) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
     try {
@@ -225,17 +225,17 @@ async function migrateAgents() {
 
 async function migrateYachts() {
   console.log('Migrating Yachts...');
-  await createYachtsTable();
+  // await createYachtsTable(); No need to call create here, main() does it
   for (const yacht of placeholderYachts) {
     const sql = `
       INSERT INTO ${MYSQL_TABLE_NAMES.yachts} (
-        id, name, imageUrl, capacity, status, customPackageInfo,
+        id, name, imageUrl, capacity, status,
         childRate, adultStandardRate, adultStandardDrinksRate,
         vipChildRate, vipAdultRate, vipAdultDrinksRate,
         royalChildRate, royalAdultRate, royalDrinksRate,
-        other_charges_json
+        other_charges_json, customPackageInfo
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `; // Updated to other_charges_json
+    `; // Removed otherChargeName, otherChargeRate
     try {
       const otherChargesJson = yacht.otherCharges ? JSON.stringify(yacht.otherCharges) : null;
       await query(sql, [
@@ -244,7 +244,6 @@ async function migrateYachts() {
         yacht.imageUrl || null,
         yacht.capacity,
         yacht.status,
-        yacht.customPackageInfo || null,
         yacht.childRate ?? 0,
         yacht.adultStandardRate ?? 0,
         yacht.adultStandardDrinksRate ?? 0,
@@ -254,7 +253,8 @@ async function migrateYachts() {
         yacht.royalChildRate ?? 0,
         yacht.royalAdultRate ?? 0,
         yacht.royalDrinksRate ?? 0,
-        otherChargesJson, // Store as JSON string
+        otherChargesJson,
+        yacht.customPackageInfo || null,
       ]);
       console.log(`Inserted yacht: ${yacht.name} (ID: ${yacht.id})`);
     } catch (error) {
@@ -266,7 +266,7 @@ async function migrateYachts() {
 
 async function migrateLeads() {
   console.log('Migrating Leads...');
-  await createLeadsTable(); 
+  // await createLeadsTable(); No need to call create here, main() does it
   for (const lead of placeholderLeads) {
     const sql = `
       INSERT INTO leads (
@@ -285,7 +285,7 @@ async function migrateLeads() {
       )
     `;
     try {
-      let monthDate = formatISO(new Date()); // Default if lead.month is invalid
+      let monthDate = formatISO(new Date()); 
       if (lead.month) {
           try {
               const parsedMonth = parseISO(lead.month);
@@ -344,10 +344,11 @@ async function migrateLeads() {
 
 async function migrateInvoices() {
   console.log('Migrating Invoices...');
-  await createInvoicesTable(); 
+  // await createInvoicesTable(); No need to call create here, main() does it
   for (const invoice of placeholderInvoices) {
     const sql = 'INSERT INTO invoices (id, leadId, clientName, amount, dueDate, status, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?)';
     try {
+        // Ensure dueDate is formatted as YYYY-MM-DD for MySQL DATE column
         const dueDateFormatted = invoice.dueDate && isValid(parseISO(invoice.dueDate)) ? format(parseISO(invoice.dueDate), 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd');
         const createdAtFormatted = invoice.createdAt && isValid(parseISO(invoice.createdAt)) ? formatISO(parseISO(invoice.createdAt)) : formatISO(new Date());
       await query(sql, [
@@ -387,8 +388,9 @@ async function main() {
   } catch (error) {
       console.error("A critical error occurred during table creation or migration process, aborting further steps:", (error as Error).message);
   } finally {
-    const dbModule = await import('../src/lib/db');
+    const dbModule = await import('../src/lib/db'); // Dynamic import to get the pool instance
     if (dbModule.default && typeof dbModule.default.end === 'function') {
+        // This assumes your db.ts exports the pool as default and it has an end method
         try {
             await dbModule.default.end();
             console.log('MySQL pool closed by script in finally block.');
@@ -396,6 +398,7 @@ async function main() {
             console.error('Error closing pool in finally block:', e);
         }
     } else if (dbModule.default && typeof (dbModule.default as any).pool?.end === 'function') {
+         // If pool is nested, e.g. export default { pool }
         try {
             await (dbModule.default as any).pool.end();
             console.log('MySQL pool (nested) closed by script in finally block.');
@@ -422,3 +425,4 @@ main().catch(async err => {
   }
   process.exit(1);
 });
+

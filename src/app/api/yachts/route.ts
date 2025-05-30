@@ -5,8 +5,7 @@ import type { Yacht } from '@/lib/types';
 import { query } from '@/lib/db';
 import { formatISO, parseISO, isValid } from 'date-fns';
 
-
-// Helper to ensure date strings are in a consistent format for DB or client
+// Helper to ensure date strings are in a consistent format for DB or client (not used for yachts currently)
 const ensureISOFormat = (dateString?: string | Date): string | null => {
   if (!dateString) return null;
   if (dateString instanceof Date) {
@@ -16,17 +15,15 @@ const ensureISOFormat = (dateString?: string | Date): string | null => {
   try {
     const parsed = parseISO(dateString);
     if (isValid(parsed)) return formatISO(parsed);
-    return dateString; 
+    return dateString;
   } catch {
     return dateString;
   }
 };
 
-
 export async function GET(request: NextRequest) {
   console.log('[API GET /api/yachts] Received request');
   try {
-    // Reverted to select all 9 fixed rate fields and otherChargeName/Rate
     const sql = `
       SELECT id, name, imageUrl, capacity, status, customPackageInfo,
              childRate, adultStandardRate, adultStandardDrinksRate,
@@ -35,8 +32,12 @@ export async function GET(request: NextRequest) {
              otherChargeName, otherChargeRate
       FROM yachts ORDER BY name ASC
     `;
+    console.log('[API GET /api/yachts] Executing SQL:', sql.trim());
     const yachtsDataDb: any[] = await query(sql);
-    console.log('[API GET /api/yachts] Raw DB Data (first item if any):', yachtsDataDb.length > 0 ? yachtsDataDb[0] : "No yachts from DB");
+    console.log('[API GET /api/yachts] Raw DB Data (count):', yachtsDataDb.length);
+    if (yachtsDataDb.length > 0) {
+        console.log('[API GET /api/yachts] Raw DB Data Sample (first item):', yachtsDataDb[0]);
+    }
 
     const yachts: Yacht[] = yachtsDataDb.map(dbYacht => {
       return {
@@ -56,12 +57,16 @@ export async function GET(request: NextRequest) {
         royalChildRate: Number(dbYacht.royalChildRate || 0),
         royalAdultRate: Number(dbYacht.royalAdultRate || 0),
         royalDrinksRate: Number(dbYacht.royalDrinksRate || 0),
+        
         otherChargeName: dbYacht.otherChargeName || undefined,
         otherChargeRate: Number(dbYacht.otherChargeRate || 0),
       };
     });
 
-    console.log('[API GET /api/yachts] Mapped Yachts Data (first item if any):', yachts.length > 0 ? yachts[0] : "No yachts mapped");
+    console.log('[API GET /api/yachts] Mapped Yachts Data (count):', yachts.length);
+    if (yachts.length > 0) {
+        console.log('[API GET /api/yachts] Mapped Yachts Data Sample (first item):', yachts[0]);
+    }
     return NextResponse.json(yachts, { status: 200 });
   } catch (error) {
     console.error('[API GET /api/yachts] Failed to fetch yachts:', error);
@@ -82,7 +87,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: 'Missing required yacht fields (id, name, capacity)' }, { status: 400 });
     }
     
-    // Check for existing yacht by ID
     const existingYacht: any[] = await query('SELECT id FROM yachts WHERE id = ?', [newYachtData.id]);
     if (existingYacht.length > 0) {
         return NextResponse.json({ message: `Yacht with ID ${newYachtData.id} already exists.` }, { status: 409 });

@@ -2,30 +2,29 @@
 // src/app/api/agents/route.ts
 import { NextResponse, type NextRequest } from 'next/server';
 import type { Agent } from '@/lib/types';
-import { query } from '@/lib/db'; // Assuming db.ts is in src/lib
-
-const MYSQL_TABLE_NAMES = {
-  agents: 'agents',
-};
+import { query } from '@/lib/db';
 
 export async function GET(request: NextRequest) {
   try {
-    const agentsData: any[] = await query(`SELECT * FROM ${MYSQL_TABLE_NAMES.agents} ORDER BY name ASC`);
-    console.log('[API GET /api/agents] Raw DB Data:', agentsData.length > 0 ? agentsData[0] : 'No agents found');
-    const agents: Agent[] = agentsData.map((agent: any) => ({
-      id: agent.id,
-      name: agent.name,
-      agency_code: agent.agency_code,
-      address: agent.address,
-      phone_no: agent.phone_no,
-      email: agent.email,
-      status: agent.status || 'Active',
-      TRN_number: agent.TRN_number,
-      customer_type_id: agent.customer_type_id,
-      discount: parseFloat(agent.discount || 0), 
-      websiteUrl: agent.websiteUrl,
+    console.log('[API GET /api/agents] Received request');
+    const agentsDataDb: any[] = await query('SELECT * FROM agents ORDER BY name ASC');
+    console.log('[API GET /api/agents] Raw DB Data (first item):', agentsDataDb.length > 0 ? agentsDataDb[0] : 'No agents found from DB');
+
+    const agents: Agent[] = agentsDataDb.map(dbAgent => ({
+      id: String(dbAgent.id || ''),
+      name: dbAgent.name || '',
+      agency_code: dbAgent.agency_code || undefined,
+      address: dbAgent.address || undefined,
+      phone_no: dbAgent.phone_no || undefined,
+      email: dbAgent.email || '',
+      status: dbAgent.status || 'Active',
+      TRN_number: dbAgent.TRN_number || undefined,
+      customer_type_id: dbAgent.customer_type_id || undefined,
+      discount: parseFloat(dbAgent.discount || 0),
+      websiteUrl: dbAgent.websiteUrl || undefined,
     }));
-    console.log('[API GET /api/agents] Mapped Agents Data:', agents.length > 0 ? agents[0] : 'No agents mapped');
+
+    console.log('[API GET /api/agents] Mapped Agents Data (first item):', agents.length > 0 ? agents[0] : 'No agents mapped');
     return NextResponse.json(agents, { status: 200 });
   } catch (error) {
     console.error('[API GET /api/agents] Error fetching agents:', error);
@@ -35,7 +34,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const newAgentData = await request.json() as Omit<Agent, 'id'> & { id?: string };
+    const newAgentData = await request.json() as Omit<Agent, 'id'> & { id?: string }; // Allow ID to be optional for creation
     console.log('[API POST /api/agents] Received newAgentData:', newAgentData);
 
     if (!newAgentData.id || !newAgentData.name || !newAgentData.email || newAgentData.discount === undefined) {
@@ -43,15 +42,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: 'Missing required agent fields (id, name, email, discount)' }, { status: 400 });
     }
 
-    // Check if agent with this ID or email already exists
-    const existingAgentCheck: any = await query(`SELECT id FROM ${MYSQL_TABLE_NAMES.agents} WHERE id = ? OR email = ?`, [newAgentData.id, newAgentData.email]);
+    const existingAgentCheck: any = await query('SELECT id FROM agents WHERE id = ? OR email = ?', [newAgentData.id, newAgentData.email]);
     if (existingAgentCheck.length > 0) {
       console.warn(`[API POST /api/agents] Conflict: Agent with ID ${newAgentData.id} or email ${newAgentData.email} already exists.`);
       return NextResponse.json({ message: 'Agent with this ID or email already exists.' }, { status: 409 });
     }
     
     const agentToStore: Agent = {
-      id: newAgentData.id,
+      id: newAgentData.id, // ID must be provided by client as per form logic
       name: newAgentData.name,
       agency_code: newAgentData.agency_code || null,
       address: newAgentData.address || null,
@@ -60,13 +58,14 @@ export async function POST(request: NextRequest) {
       status: newAgentData.status || 'Active',
       TRN_number: newAgentData.TRN_number || null,
       customer_type_id: newAgentData.customer_type_id || null,
-      discount: Number(newAgentData.discount),
+      discount: Number(newAgentData.discount), // Ensure discount is a number
       websiteUrl: newAgentData.websiteUrl || null,
     };
     
     console.log('[API POST /api/agents] Agent object to store:', agentToStore);
     const result: any = await query(
-      `INSERT INTO ${MYSQL_TABLE_NAMES.agents} (id, name, agency_code, address, phone_no, email, status, TRN_number, customer_type_id, discount, websiteUrl) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO agents (id, name, agency_code, address, phone_no, email, status, TRN_number, customer_type_id, discount, websiteUrl) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         agentToStore.id, agentToStore.name, agentToStore.agency_code, agentToStore.address,
         agentToStore.phone_no, agentToStore.email, agentToStore.status, agentToStore.TRN_number,
@@ -77,7 +76,16 @@ export async function POST(request: NextRequest) {
 
     if (result.affectedRows === 1) {
        console.log(`[API POST /api/agents] Successfully created agent: ${agentToStore.id}`);
-       return NextResponse.json(agentToStore, { status: 201 });
+       // Fetch and return the created agent to ensure consistency
+       const createdAgentDb: any[] = await query('SELECT * FROM agents WHERE id = ?', [agentToStore.id]);
+       if (createdAgentDb.length > 0) {
+         const createdAgent: Agent = {
+            ...createdAgentDb[0],
+            discount: parseFloat(createdAgentDb[0].discount || 0)
+         };
+         return NextResponse.json(createdAgent, { status: 201 });
+       }
+       return NextResponse.json(agentToStore, { status: 201 }); // Fallback
     } else {
        console.error('[API POST /api/agents] Database insert failed, affectedRows was not 1.');
        throw new Error('Failed to insert agent into database');
@@ -98,7 +106,12 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ message: 'Agent IDs are required for bulk delete' }, { status: 400 });
     }
 
-    const result: any = await query(`DELETE FROM ${MYSQL_TABLE_NAMES.agents} WHERE id IN (?)`, [ids]);
+    // Parameterized query for IN clause
+    const placeholders = ids.map(() => '?').join(',');
+    const sql = `DELETE FROM agents WHERE id IN (${placeholders})`;
+    
+    console.log(`[API DELETE /api/agents] Executing SQL: ${sql} with IDs:`, ids);
+    const result: any = await query(sql, ids);
     const deletedCount = result.affectedRows;
     console.log(`[API DELETE /api/agents] DB Delete Result: ${deletedCount} rows affected.`);
 

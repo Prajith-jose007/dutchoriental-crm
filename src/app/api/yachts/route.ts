@@ -18,14 +18,13 @@ export async function GET(request: NextRequest) {
     console.log('[API GET /api/yachts] Raw DB Data (first item):', yachtsDataDb.length > 0 ? yachtsDataDb[0] : "No yachts from DB");
 
     const yachts: Yacht[] = yachtsDataDb.map(dbYacht => ({
-      id: String(dbYacht.id || ''), // Ensure ID is a string
+      id: String(dbYacht.id || ''),
       name: String(dbYacht.name || ''),
       imageUrl: dbYacht.imageUrl || undefined,
       capacity: Number(dbYacht.capacity || 0),
       status: (dbYacht.status || 'Available') as Yacht['status'],
       customPackageInfo: dbYacht.customPackageInfo || undefined,
       
-      // Ensure all 9 fixed rates are numbers, defaulting to 0 if null/undefined
       childRate: Number(dbYacht.childRate || 0),
       adultStandardRate: Number(dbYacht.adultStandardRate || 0),
       adultStandardDrinksRate: Number(dbYacht.adultStandardDrinksRate || 0),
@@ -50,7 +49,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   console.log('[API POST /api/yachts] Received request');
   try {
-    const newYachtData = await request.json() as Partial<Omit<Yacht, 'id'>> & { id?: string };
+    const newYachtData = await request.json() as Omit<Yacht, 'id'> & { id?: string };
     console.log('[API POST /api/yachts] Received data:', newYachtData);
 
     if (!newYachtData.id || !newYachtData.name || newYachtData.capacity === undefined) {
@@ -66,7 +65,7 @@ export async function POST(request: NextRequest) {
       id: newYachtData.id,
       name: newYachtData.name,
       imageUrl: newYachtData.imageUrl || null,
-      capacity: Number(newYachtData.capacity),
+      capacity: Number(newYachtData.capacity || 0),
       status: newYachtData.status || 'Available',
       customPackageInfo: newYachtData.customPackageInfo || null,
 

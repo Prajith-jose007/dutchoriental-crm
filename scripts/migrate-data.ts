@@ -1,24 +1,25 @@
 
 // scripts/migrate-data.ts
-import { query } from '../src/lib/db';
+import { query } from '../src/lib/db'; // Adjusted path
 import {
   placeholderAgents,
   placeholderLeads,
   placeholderYachts,
   placeholderInvoices,
   placeholderUsers,
-} from '../src/lib/placeholder-data';
+} from '../src/lib/placeholder-data'; // Adjusted path
 import type { Agent, Lead, Yacht, Invoice, User } from '../src/lib/types';
 import { formatISO, parseISO, isValid, format } from 'date-fns';
 
 const MYSQL_TABLE_NAMES = {
-  agents: 'agents',
-  leads: 'leads',
-  yachts: 'yachts',
-  invoices: 'invoices',
   users: 'users',
+  agents: 'agents',
+  yachts: 'yachts',
+  leads: 'leads',
+  invoices: 'invoices',
 };
 
+// --- Table Creation Functions ---
 async function createUsersTable() {
   const tableName = MYSQL_TABLE_NAMES.users;
   const createTableSql = `
@@ -30,7 +31,7 @@ async function createUsersTable() {
       avatarUrl VARCHAR(255),
       websiteUrl VARCHAR(255),
       status VARCHAR(50),
-      password VARCHAR(255)
+      password VARCHAR(255) 
     );
   `;
   try {
@@ -38,7 +39,7 @@ async function createUsersTable() {
     console.log(`Table ${tableName} checked/created successfully.`);
   } catch (error) {
     console.error(`Error creating table ${tableName}:`, (error as Error).message);
-    throw error;
+    throw error; // Rethrow to stop migration if table creation fails
   }
 }
 
@@ -59,7 +60,7 @@ async function createAgentsTable() {
       websiteUrl VARCHAR(255)
     );
   `;
-  try {
+   try {
     await query(createTableSql);
     console.log(`Table ${tableName} checked/created successfully.`);
   } catch (error) {
@@ -112,7 +113,7 @@ async function createLeadsTable() {
       month DATETIME, -- This is the primary Lead/Event Date
       notes TEXT,
       type VARCHAR(255),
-      transactionId VARCHAR(255),
+      transactionId VARCHAR(255), -- Renamed from invoiceId
       modeOfPayment VARCHAR(50),
 
       qty_childRate INT DEFAULT 0,
@@ -156,7 +157,7 @@ async function createInvoicesTable() {
       leadId VARCHAR(255),
       clientName VARCHAR(255),
       amount DECIMAL(10, 2),
-      dueDate DATE,
+      dueDate DATE, -- Storing as DATE
       status VARCHAR(50),
       createdAt DATETIME
     );
@@ -171,6 +172,7 @@ async function createInvoicesTable() {
 }
 
 
+// --- Data Migration Functions ---
 async function migrateUsers() {
   console.log('Migrating Users...');
   for (const user of placeholderUsers) {
@@ -184,7 +186,7 @@ async function migrateUsers() {
         user.avatarUrl || null,
         user.websiteUrl || null,
         user.status || 'Active',
-        user.password || null,
+        user.password || null, // Store password as is (Hashing should be done in a real app)
       ]);
       console.log(`Inserted user: ${user.name} (ID: ${user.id})`);
     } catch (error) {
@@ -209,7 +211,7 @@ async function migrateAgents() {
         agent.status,
         agent.TRN_number || null,
         agent.customer_type_id || null,
-        agent.discount,
+        agent.discount, // Already a number
         agent.websiteUrl || null,
       ]);
       console.log(`Inserted agent: ${agent.name} (ID: ${agent.id})`);
@@ -280,14 +282,19 @@ async function migrateLeads() {
       )
     `;
     try {
-      let monthDate = formatISO(new Date());
+      // Ensure dates are correctly formatted as ISO strings for DATETIME columns
+      let monthDate = formatISO(new Date()); // Default if lead.month is invalid
       if (lead.month) {
           try {
               const parsedMonth = parseISO(lead.month);
               if (isValid(parsedMonth)) {
                   monthDate = formatISO(parsedMonth);
+              } else {
+                  console.warn(`Invalid month date string for lead ${lead.id}: ${lead.month}. Using current date as fallback.`);
               }
-          } catch(e) { /* monthDate remains default if parsing fails */ }
+          } catch(e) {
+              console.warn(`Error parsing month date string for lead ${lead.id}: ${lead.month}. Using current date as fallback. Error: ${(e as Error).message}`);
+          }
       }
 
       const createdAtDate = lead.createdAt && isValid(parseISO(lead.createdAt)) ? formatISO(parseISO(lead.createdAt)) : formatISO(new Date());
@@ -299,10 +306,10 @@ async function migrateLeads() {
         lead.agent,
         lead.yacht,
         lead.status,
-        monthDate,
+        monthDate, // Primary Lead/Event Date
         lead.notes || null,
         lead.type,
-        lead.transactionId || null,
+        lead.transactionId || null, // Renamed from invoiceId
         lead.modeOfPayment,
         lead.qty_childRate || 0,
         lead.qty_adultStandardRate || 0,
@@ -313,7 +320,7 @@ async function migrateLeads() {
         lead.qty_royalChildRate || 0,
         lead.qty_royalAdultRate || 0,
         lead.qty_royalDrinksRate || 0,
-        lead.othersAmtCake || 0, // This is a quantity
+        lead.othersAmtCake || 0, // This is quantity, should be INT in DB
         lead.totalAmount,
         lead.commissionPercentage,
         lead.commissionAmount || 0,
@@ -338,7 +345,9 @@ async function migrateInvoices() {
   for (const invoice of placeholderInvoices) {
     const sql = `INSERT INTO ${MYSQL_TABLE_NAMES.invoices} (id, leadId, clientName, amount, dueDate, status, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?)`;
     try {
+        // Format dueDate to YYYY-MM-DD for MySQL DATE column
         const dueDateFormatted = invoice.dueDate && isValid(parseISO(invoice.dueDate)) ? format(parseISO(invoice.dueDate), 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd');
+        // createdAt is DATETIME, so full ISO string is fine
         const createdAtFormatted = invoice.createdAt && isValid(parseISO(invoice.createdAt)) ? formatISO(parseISO(invoice.createdAt)) : formatISO(new Date());
       await query(sql, [
         invoice.id,
@@ -360,12 +369,14 @@ async function migrateInvoices() {
 async function main() {
   console.log('Starting data migration with table creation checks...');
   try {
+    // Create tables first if they don't exist
     await createUsersTable();
     await createAgentsTable();
     await createYachtsTable();
     await createLeadsTable();
     await createInvoicesTable();
 
+    // Then migrate data
     await migrateUsers();
     await migrateAgents();
     await migrateYachts();
@@ -375,7 +386,8 @@ async function main() {
   } catch (error) {
       console.error("A critical error occurred during table creation or migration process, aborting further steps:", (error as Error).message);
   } finally {
-    const dbModule = await import('../src/lib/db');
+    // Attempt to gracefully close the pool
+    const dbModule = await import('../src/lib/db'); // Adjust path if needed
     if (dbModule.default && typeof dbModule.default.end === 'function') {
         try {
             await dbModule.default.end();
@@ -384,6 +396,7 @@ async function main() {
             console.error('Error closing pool in finally block:', e);
         }
     } else if (dbModule.default && typeof (dbModule.default as any).pool?.end === 'function') {
+        // If pool is nested, e.g., module.exports = { pool, query }
         try {
             await (dbModule.default as any).pool.end();
             console.log('MySQL pool (nested) closed by script in finally block.');
@@ -396,8 +409,9 @@ async function main() {
 
 main().catch(async err => {
   console.error('Migration script failed:', err);
+  // Attempt to close pool on failure as well
   try {
-    const dbModule = await import('../src/lib/db');
+    const dbModule = await import('../src/lib/db'); // Adjust path
      if (dbModule.default && typeof dbModule.default.end === 'function') {
         await dbModule.default.end();
         console.log('MySQL pool closed due to script failure.');

@@ -4,7 +4,6 @@ import { NextResponse, type NextRequest } from 'next/server';
 import type { Lead, LeadStatus, ModeOfPayment, LeadType } from '@/lib/types';
 import { query } from '@/lib/db';
 import { formatISO, parseISO, isValid } from 'date-fns';
-import { placeholderLeads } from '@/lib/placeholder-data'; // For ID generation logic if DB is empty
 
 const SIMULATED_CURRENT_USER_ID_API = 'DO-user-api'; // Placeholder for server-side user ID
 
@@ -17,26 +16,41 @@ const ensureISOFormat = (dateString?: string | Date): string | null => {
   try {
     const parsed = parseISO(dateString);
     if (isValid(parsed)) return formatISO(parsed);
-    return dateString; 
+    return dateString; // Return original if not parsable as ISO, might be already correct or different format
   } catch {
-    return dateString;
+    return dateString; // Return original on error
   }
 };
+
+function generateNewLeadId(existingLeadIds: string[]): string {
+  const prefix = "DO-";
+  let maxNum = 0;
+  existingLeadIds.forEach(id => {
+    if (id && id.startsWith(prefix)) {
+      const numPart = parseInt(id.substring(prefix.length), 10);
+      if (!isNaN(numPart) && numPart > maxNum) {
+        maxNum = numPart;
+      }
+    }
+  });
+  const nextNum = maxNum + 1;
+  return `${prefix}${String(nextNum).padStart(3, '0')}`;
+}
 
 export async function GET(request: NextRequest) {
   console.log('[API GET /api/leads] Received request');
   try {
-    const leadsData: any[] = await query('SELECT * FROM leads ORDER BY createdAt DESC');
-    console.log('[API GET /api/leads] Raw DB Data Sample (first item):', leadsData.length > 0 ? leadsData[0] : 'No leads found');
+    const leadsDataDb: any[] = await query('SELECT * FROM leads ORDER BY createdAt DESC');
+    console.log('[API GET /api/leads] Raw DB Data Sample (first item):', leadsDataDb.length > 0 ? leadsDataDb[0] : 'No leads found');
 
-    const leads: Lead[] = leadsData.map(dbLead => {
+    const leads: Lead[] = leadsDataDb.map(dbLead => {
       const leadTyped: Lead = {
-        id: dbLead.id,
+        id: String(dbLead.id || ''),
         clientName: dbLead.clientName || '',
         agent: dbLead.agent || '',
         yacht: dbLead.yacht || '',
         status: (dbLead.status || 'Upcoming') as LeadStatus,
-        month: dbLead.month ? ensureISOFormat(dbLead.month)! : formatISO(new Date()), // Event Date
+        month: dbLead.month ? ensureISOFormat(dbLead.month)! : formatISO(new Date()),
         notes: dbLead.notes || undefined,
         type: (dbLead.type || 'Private') as LeadType,
         transactionId: dbLead.transactionId || undefined,
@@ -52,7 +66,7 @@ export async function GET(request: NextRequest) {
         qty_royalAdultRate: Number(dbLead.qty_royalAdultRate || 0),
         qty_royalDrinksRate: Number(dbLead.qty_royalDrinksRate || 0),
         
-        othersAmtCake: Number(dbLead.othersAmtCake || 0), // Quantity for custom charge
+        othersAmtCake: Number(dbLead.othersAmtCake || 0), // This is quantity
 
         totalAmount: parseFloat(dbLead.totalAmount || 0),
         commissionPercentage: parseFloat(dbLead.commissionPercentage || 0),
@@ -76,28 +90,11 @@ export async function GET(request: NextRequest) {
   }
 }
 
-function generateNewLeadId(existingLeads: Lead[]): string {
-  const prefix = "DO-";
-  let maxNum = 0;
-  existingLeads.forEach(lead => {
-    if (lead.id && lead.id.startsWith(prefix)) {
-      const numPart = parseInt(lead.id.substring(prefix.length), 10);
-      if (!isNaN(numPart) && numPart > maxNum) {
-        maxNum = numPart;
-      }
-    }
-  });
-  const nextNum = maxNum + 1;
-  return `${prefix}${String(nextNum).padStart(3, '0')}`;
-}
-
-
 export async function POST(request: NextRequest) {
   try {
     const newLeadData = await request.json() as Partial<Lead>; // Use Partial<Lead> as not all fields might be sent
     console.log('[API POST /api/leads] Received newLeadData:', JSON.stringify(newLeadData, null, 2));
 
-    // Basic validation for required fields
     if (!newLeadData.clientName || !newLeadData.agent || !newLeadData.yacht || !newLeadData.month) {
       console.error('[API POST /api/leads] Validation Error: Missing required fields (clientName, agent, yacht, month/event date).');
       return NextResponse.json({ message: 'Missing required lead fields (clientName, agent, yacht, month/event date)' }, { status: 400 });
@@ -105,31 +102,31 @@ export async function POST(request: NextRequest) {
     
     let leadId = newLeadData.id;
     if (!leadId) {
+      // Fetch existing lead IDs that match the "DO-XXX" pattern to generate the next one
       const currentLeadsFromDB: any[] = await query('SELECT id FROM leads WHERE id LIKE "DO-%"');
       const existingLeadIds = currentLeadsFromDB.map(l => l.id as string);
-      leadId = generateNewLeadId(existingLeadIds.map(id => ({id} as Lead)));
+      leadId = generateNewLeadId(existingLeadIds);
       console.log(`[API POST /api/leads] Generated new Lead ID: ${leadId}`);
     }
-
 
     const now = new Date();
     const formattedMonth = newLeadData.month ? ensureISOFormat(newLeadData.month) : formatISO(now);
     if (!formattedMonth || !isValid(parseISO(formattedMonth))) {
-        console.warn(`[API POST /api/leads] Invalid month/event date provided for new lead ${leadId}, defaulting to now:`, newLeadData.month);
+        console.warn(`[API POST /api/leads] Invalid month/event date provided for new lead ${leadId}, value:`, newLeadData.month);
         return NextResponse.json({ message: 'Invalid month/event date format. Expected ISO string.' }, { status: 400 });
     }
     
     const formattedCreatedAt = newLeadData.createdAt && isValid(parseISO(newLeadData.createdAt)) ? ensureISOFormat(newLeadData.createdAt)! : formatISO(now);
-    const formattedUpdatedAt = formatISO(now);
+    const formattedUpdatedAt = formatISO(now); // Always set updatedAt to now for new leads
     
     const leadToStore: Lead = {
       id: leadId!,
-      clientName: newLeadData.clientName, // Already validated
-      agent: newLeadData.agent,           // Already validated
-      yacht: newLeadData.yacht,           // Already validated
+      clientName: newLeadData.clientName,
+      agent: newLeadData.agent,
+      yacht: newLeadData.yacht,
       status: newLeadData.status || 'Upcoming',
       month: formattedMonth, 
-      notes: newLeadData.notes || null, // Use null for empty optional strings in DB
+      notes: newLeadData.notes || null,
       type: newLeadData.type || 'Private',
       transactionId: newLeadData.transactionId || null,
       modeOfPayment: newLeadData.modeOfPayment || 'Online',
@@ -144,7 +141,7 @@ export async function POST(request: NextRequest) {
       qty_royalAdultRate: Number(newLeadData.qty_royalAdultRate || 0),
       qty_royalDrinksRate: Number(newLeadData.qty_royalDrinksRate || 0),
       
-      othersAmtCake: Number(newLeadData.othersAmtCake || 0),
+      othersAmtCake: Number(newLeadData.othersAmtCake || 0), // This is quantity
       
       totalAmount: Number(newLeadData.totalAmount || 0),
       commissionPercentage: Number(newLeadData.commissionPercentage || 0),
@@ -179,7 +176,7 @@ export async function POST(request: NextRequest) {
       leadToStore.qty_childRate, leadToStore.qty_adultStandardRate, leadToStore.qty_adultStandardDrinksRate,
       leadToStore.qty_vipChildRate, leadToStore.qty_vipAdultRate, leadToStore.qty_vipAdultDrinksRate,
       leadToStore.qty_royalChildRate, leadToStore.qty_royalAdultRate, leadToStore.qty_royalDrinksRate,
-      leadToStore.othersAmtCake,
+      leadToStore.othersAmtCake, // This is quantity
       leadToStore.totalAmount, leadToStore.commissionPercentage, leadToStore.commissionAmount, leadToStore.netAmount,
       leadToStore.paidAmount, leadToStore.balanceAmount,
       leadToStore.createdAt, leadToStore.updatedAt, leadToStore.lastModifiedByUserId, leadToStore.ownerUserId
@@ -191,13 +188,11 @@ export async function POST(request: NextRequest) {
     console.log('[API POST /api/leads] DB Insert Result:', result);
 
     if (result.affectedRows === 1) {
-      // Fetch the inserted lead to return it, ensuring all fields are as stored
       const insertedLeadData: any[] = await query('SELECT * FROM leads WHERE id = ?', [leadToStore.id]);
       if (insertedLeadData.length > 0) {
         const dbLead = insertedLeadData[0];
-        // Map dbLead to Lead type correctly (similar to GET handler)
-        const finalLead: Lead = {
-            id: dbLead.id, clientName: dbLead.clientName || '', agent: dbLead.agent || '', yacht: dbLead.yacht || '', 
+        const finalLead: Lead = { // Map dbLead to Lead type correctly
+            id: String(dbLead.id || ''), clientName: dbLead.clientName || '', agent: dbLead.agent || '', yacht: dbLead.yacht || '', 
             status: (dbLead.status || 'Upcoming') as LeadStatus,
             month: dbLead.month ? ensureISOFormat(dbLead.month)! : formatISO(new Date()), 
             notes: dbLead.notes || undefined, type: (dbLead.type || 'Private') as LeadType, 
@@ -212,7 +207,7 @@ export async function POST(request: NextRequest) {
             qty_royalChildRate: Number(dbLead.qty_royalChildRate || 0), 
             qty_royalAdultRate: Number(dbLead.qty_royalAdultRate || 0),
             qty_royalDrinksRate: Number(dbLead.qty_royalDrinksRate || 0), 
-            othersAmtCake: Number(dbLead.othersAmtCake || 0),
+            othersAmtCake: Number(dbLead.othersAmtCake || 0), // This is quantity
             totalAmount: parseFloat(dbLead.totalAmount || 0), 
             commissionPercentage: parseFloat(dbLead.commissionPercentage || 0),
             commissionAmount: parseFloat(dbLead.commissionAmount || 0), 
@@ -239,4 +234,3 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ message: 'Failed to create lead', error: errorMessage }, { status: 500 });
   }
 }
-

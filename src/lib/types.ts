@@ -25,7 +25,7 @@ export interface Agent {
 }
 
 export interface YachtPackageItem {
-  id: string; // Client-side unique ID (e.g., `new-${Date.now()}`)
+  id: string; // Client-side unique ID
   name: string;
   rate: number;
 }
@@ -40,7 +40,7 @@ export interface Yacht {
   capacity: number;
   status: 'Available' | 'Booked' | 'Maintenance';
   category: YachtCategory;
-  packages?: YachtPackageItem[];
+  packages?: YachtPackageItem[]; // Array of custom packages for this yacht
   customPackageInfo?: string; // General notes about packages
 }
 
@@ -60,35 +60,31 @@ export const leadStatusOptions: LeadStatus[] = ['Balance', 'Closed', 'Conformed'
 export type ModeOfPayment = 'Online' | 'Credit' | 'Cash/Card';
 export const modeOfPaymentOptions: ModeOfPayment[] = ['Online', 'Credit', 'Cash/Card'];
 
-// This LeadType will be updated in Phase 2 to match YachtCategory
-export type LeadType = 'Dinner Cruise' | 'Sunset Cruise' | 'Private';
-export const leadTypeOptions: LeadType[] = ['Dinner Cruise', 'Sunset Cruise', 'Private'];
+// Updated LeadType
+export type LeadType = 'Dinner Cruise' | 'Superyacht Sightseeing Cruise' | 'Private Cruise';
+export const leadTypeOptions: LeadType[] = ['Dinner Cruise', 'Superyacht Sightseeing Cruise', 'Private Cruise'];
 
+// New interface for storing package quantities on a lead
+export interface LeadPackageQuantity {
+  packageId: string;    // ID of the package from the selected Yacht (YachtPackageItem.id)
+  packageName: string;  // Name of the package from the Yacht (for display/record)
+  quantity: number;
+  rate: number;         // Rate of the package at the time of booking (for historical record)
+}
 
 export interface Lead {
-  id:string;
+  id: string;
   agent: string; // Agent ID
   status: LeadStatus;
   month: string; // Primary Lead/Event Date as ISO string (e.g., "2024-08-15T00:00:00.000Z")
   notes?: string;
   yacht: string; // Yacht ID
-  type: LeadType; // To be updated in Phase 2
+  type: LeadType;
   transactionId?: string;
   modeOfPayment: ModeOfPayment;
   clientName: string;
 
-  // These 9 fixed quantity fields will be replaced in Phase 2
-  qty_childRate?: number;
-  qty_adultStandardRate?: number;
-  qty_adultStandardDrinksRate?: number;
-  qty_vipChildRate?: number;
-  qty_vipAdultRate?: number;
-  qty_vipAdultDrinksRate?: number;
-  qty_royalChildRate?: number;
-  qty_royalAdultRate?: number;
-  qty_royalDrinksRate?: number;
-
-  othersAmtCake?: number; // This is quantity for a custom charge
+  packageQuantities?: LeadPackageQuantity[]; // Stores quantities for dynamically selected packages
 
   totalAmount: number;
   commissionPercentage: number;
@@ -125,5 +121,5 @@ export interface BookingsByAgentData {
   bookings: number;
 }
 
-// Re-exporting for easier import in CSV parser
+// Re-exporting for easier import in CSV parser (though CSV for dynamic packages is complex)
 export type { LeadStatus as ExportedLeadStatus, ModeOfPayment as ExportedModeOfPayment, LeadType as ExportedLeadType };

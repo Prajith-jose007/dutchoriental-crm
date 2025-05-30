@@ -1,7 +1,7 @@
 
 // src/app/api/leads/[id]/route.ts
 import { NextResponse, type NextRequest } from 'next/server';
-import type { Lead, LeadStatus, ModeOfPayment, LeadType } from '@/lib/types';
+import type { Lead, LeadStatus, ModeOfPayment, LeadType, LeadPackageQuantity } from '@/lib/types';
 import { query } from '@/lib/db';
 import { formatISO, parseISO, isValid } from 'date-fns';
 
@@ -25,30 +25,34 @@ const ensureISOFormat = (dateString?: string | Date): string | null => {
 function buildLeadUpdateSetClause(data: Partial<Omit<Lead, 'id' | 'createdAt'>>): { clause: string, values: any[] } {
   const fieldsToUpdate: string[] = [];
   const valuesToUpdate: any[] = [];
-  // Ensure all fields from Lead type (except id and createdAt) are here
-  const allowedKeys: (keyof Omit<Lead, 'id' | 'createdAt'>)[] = [
+  
+  const allowedKeys: (keyof Omit<Lead, 'id' | 'createdAt' | 'packageQuantities'> | 'package_quantities_json')[] = [
     'clientName', 'agent', 'yacht', 'status', 'month', 'notes', 'type', 'transactionId', 'modeOfPayment',
-    'qty_childRate', 'qty_adultStandardRate', 'qty_adultStandardDrinksRate',
-    'qty_vipChildRate', 'qty_vipAdultRate', 'qty_vipAdultDrinksRate',
-    'qty_royalChildRate', 'qty_royalAdultRate', 'qty_royalDrinksRate',
-    'othersAmtCake', // This is quantity
+    'package_quantities_json', // Store serialized array here
     'totalAmount', 'commissionPercentage', 'commissionAmount',
     'netAmount', 'paidAmount', 'balanceAmount', 'updatedAt', 
     'lastModifiedByUserId', 'ownerUserId'
   ];
 
-  Object.entries(data).forEach(([key, value]) => {
-    if (allowedKeys.includes(key as keyof Omit<Lead, 'id' | 'createdAt'>) && value !== undefined) {
+  const tempUpdatedData = { ...data } as any;
+  if (data.packageQuantities) {
+    tempUpdatedData.package_quantities_json = JSON.stringify(data.packageQuantities);
+    delete tempUpdatedData.packageQuantities;
+  }
+
+
+  Object.entries(tempUpdatedData).forEach(([key, value]) => {
+    if (allowedKeys.includes(key as any) && value !== undefined) {
       fieldsToUpdate.push(`${key} = ?`); 
-      if (['month', 'updatedAt'].includes(key)) { // createdAt should not be updated here
+      if (['month', 'updatedAt'].includes(key)) {
         valuesToUpdate.push(ensureISOFormat(value as string) || null);
       } else if (typeof value === 'string' && value.trim() === '' && 
                  ['notes', 'transactionId', 'lastModifiedByUserId', 'ownerUserId', 'agent', 'yacht'].includes(key)) {
         valuesToUpdate.push(null); 
       } else if (typeof value === 'number' && isNaN(value)) {
-        valuesToUpdate.push(0); // Default NaN numbers to 0
+        valuesToUpdate.push(0);
       } else if (typeof value === 'number') {
-        valuesToUpdate.push(Number(value)); // Ensure numeric types are numbers
+        valuesToUpdate.push(Number(value));
       }
       else {
         valuesToUpdate.push(value);
@@ -70,29 +74,36 @@ export async function GET(
     
     if (leadDataDb.length > 0) {
       const dbLead = leadDataDb[0];
+      let packageQuantities: LeadPackageQuantity[] = [];
+      if (dbLead.package_quantities_json && typeof dbLead.package_quantities_json === 'string') {
+        try {
+          const parsedPQs = JSON.parse(dbLead.package_quantities_json);
+           if (Array.isArray(parsedPQs)) {
+            packageQuantities = parsedPQs.map((pq: any) => ({
+              packageId: String(pq.packageId || ''),
+              packageName: String(pq.packageName || 'Unknown Package'),
+              quantity: Number(pq.quantity || 0),
+              rate: Number(pq.rate || 0),
+            }));
+          }
+        } catch (e) {
+          console.warn(`[API GET /api/leads/${id}] Failed to parse package_quantities_json`, e);
+        }
+      }
+
       const lead: Lead = {
         id: String(dbLead.id || ''),
-        clientName: dbLead.clientName || '',
-        agent: dbLead.agent || '',
-        yacht: dbLead.yacht || '',
+        clientName: String(dbLead.clientName || ''),
+        agent: String(dbLead.agent || ''),
+        yacht: String(dbLead.yacht || ''),
         status: (dbLead.status || 'Upcoming') as LeadStatus,
         month: dbLead.month ? ensureISOFormat(dbLead.month)! : formatISO(new Date()),
         notes: dbLead.notes || undefined,
-        type: (dbLead.type || 'Private') as LeadType,
+        type: (dbLead.type || 'Private Cruise') as LeadType,
         transactionId: dbLead.transactionId || undefined,
         modeOfPayment: (dbLead.modeOfPayment || 'Online') as ModeOfPayment,
         
-        qty_childRate: Number(dbLead.qty_childRate || 0),
-        qty_adultStandardRate: Number(dbLead.qty_adultStandardRate || 0),
-        qty_adultStandardDrinksRate: Number(dbLead.qty_adultStandardDrinksRate || 0),
-        qty_vipChildRate: Number(dbLead.qty_vipChildRate || 0),
-        qty_vipAdultRate: Number(dbLead.qty_vipAdultRate || 0),
-        qty_vipAdultDrinksRate: Number(dbLead.qty_vipAdultDrinksRate || 0),
-        qty_royalChildRate: Number(dbLead.qty_royalChildRate || 0),
-        qty_royalAdultRate: Number(dbLead.qty_royalAdultRate || 0),
-        qty_royalDrinksRate: Number(dbLead.qty_royalDrinksRate || 0),
-        
-        othersAmtCake: Number(dbLead.othersAmtCake || 0), // This is quantity
+        packageQuantities: packageQuantities,
 
         totalAmount: parseFloat(dbLead.totalAmount || 0),
         commissionPercentage: parseFloat(dbLead.commissionPercentage || 0),
@@ -124,10 +135,10 @@ export async function PUT(
 ) {
   try {
     const id = params.id;
-    const updatedLeadData = await request.json() as Partial<Omit<Lead, 'id' | 'createdAt'>>; // Don't allow changing id or createdAt
-    console.log(`[API PUT /api/leads/${id}] Received updatedLeadData:`, JSON.stringify(updatedLeadData, null, 2));
+    const updatedLeadDataFromClient = await request.json() as Partial<Lead>;
+    console.log(`[API PUT /api/leads/${id}] Received updatedLeadData:`, JSON.stringify(updatedLeadDataFromClient, null, 2));
 
-    const existingLeadResult: any[] = await query('SELECT ownerUserId, lastModifiedByUserId FROM leads WHERE id = ?', [id]);
+    const existingLeadResult: any[] = await query('SELECT ownerUserId, lastModifiedByUserId, month FROM leads WHERE id = ?', [id]);
     if (existingLeadResult.length === 0) {
       console.log(`[API PUT /api/leads/${id}] Lead not found for update.`);
       return NextResponse.json({ message: 'Lead not found' }, { status: 404 });
@@ -135,11 +146,10 @@ export async function PUT(
     const existingLeadDbInfo = existingLeadResult[0];
 
     const dataToUpdate: Partial<Omit<Lead, 'id' | 'createdAt'>> = {
-      ...updatedLeadData,
+      ...updatedLeadDataFromClient,
       updatedAt: formatISO(new Date()), 
-      lastModifiedByUserId: updatedLeadData.lastModifiedByUserId || SIMULATED_CURRENT_USER_ID_API,
-      // ownerUserId should generally not be changed on update unless specifically intended
-      ownerUserId: updatedLeadData.ownerUserId || existingLeadDbInfo.ownerUserId, 
+      lastModifiedByUserId: updatedLeadDataFromClient.lastModifiedByUserId || SIMULATED_CURRENT_USER_ID_API,
+      ownerUserId: updatedLeadDataFromClient.ownerUserId || existingLeadDbInfo.ownerUserId, 
     };
     
     if (dataToUpdate.month && typeof dataToUpdate.month === 'string') { 
@@ -148,8 +158,17 @@ export async function PUT(
         dataToUpdate.month = formatISO(dataToUpdate.month);
     }
 
+    // Handle packageQuantities serialization for DB
+    let packageQuantitiesJson: string | null = null;
+    if (updatedLeadDataFromClient.packageQuantities) {
+        packageQuantitiesJson = JSON.stringify(updatedLeadDataFromClient.packageQuantities);
+    }
+    // Create a version of dataToUpdate for buildLeadUpdateSetClause that includes package_quantities_json
+    const dataForClause = { ...dataToUpdate, package_quantities_json: packageQuantitiesJson } as any;
+    delete dataForClause.packageQuantities; // Remove the array version
 
-    const { clause, values: updateValues } = buildLeadUpdateSetClause(dataToUpdate);
+
+    const { clause, values: updateValues } = buildLeadUpdateSetClause(dataForClause);
 
     if (clause.length === 0) {
        console.log(`[API PUT /api/leads/${id}] No valid fields to update.`);
@@ -173,16 +192,16 @@ export async function PUT(
         return NextResponse.json({ message: 'Lead updated, but failed to fetch confirmation.' }, { status: 500 });
     }
     const dbLead = updatedLeadFromDbResult[0];
+    let pq: LeadPackageQuantity[] = [];
+    if(dbLead.package_quantities_json) {
+        try { pq = JSON.parse(dbLead.package_quantities_json); } catch(e){ console.warn("Error parsing PQ_JSON on fetch after update");}
+    }
     const finalUpdatedLead: Lead = {
-        id: String(dbLead.id || ''), clientName: dbLead.clientName || '', agent: dbLead.agent || '', yacht: dbLead.yacht || '', 
+        id: String(dbLead.id || ''), clientName: String(dbLead.clientName || ''), agent: String(dbLead.agent || ''), yacht: String(dbLead.yacht || ''), 
         status: (dbLead.status || 'Upcoming') as LeadStatus,
-        month: dbLead.month ? ensureISOFormat(dbLead.month)! : formatISO(new Date()), notes: dbLead.notes || undefined, type: (dbLead.type || 'Private') as LeadType, transactionId: dbLead.transactionId || undefined,
+        month: dbLead.month ? ensureISOFormat(dbLead.month)! : formatISO(new Date()), notes: dbLead.notes || undefined, type: (dbLead.type || 'Private Cruise') as LeadType, transactionId: dbLead.transactionId || undefined,
         modeOfPayment: (dbLead.modeOfPayment || 'Online') as ModeOfPayment,
-        qty_childRate: Number(dbLead.qty_childRate || 0), qty_adultStandardRate: Number(dbLead.qty_adultStandardRate || 0),
-        qty_adultStandardDrinksRate: Number(dbLead.qty_adultStandardDrinksRate || 0), qty_vipChildRate: Number(dbLead.qty_vipChildRate || 0),
-        qty_vipAdultRate: Number(dbLead.qty_vipAdultRate || 0), qty_vipAdultDrinksRate: Number(dbLead.qty_vipAdultDrinksRate || 0),
-        qty_royalChildRate: Number(dbLead.qty_royalChildRate || 0), qty_royalAdultRate: Number(dbLead.qty_royalAdultRate || 0),
-        qty_royalDrinksRate: Number(dbLead.qty_royalDrinksRate || 0), othersAmtCake: Number(dbLead.othersAmtCake || 0), // This is quantity
+        packageQuantities: pq,
         totalAmount: parseFloat(dbLead.totalAmount || 0), commissionPercentage: parseFloat(dbLead.commissionPercentage || 0),
         commissionAmount: parseFloat(dbLead.commissionAmount || 0), netAmount: parseFloat(dbLead.netAmount || 0),
         paidAmount: parseFloat(dbLead.paidAmount || 0), balanceAmount: parseFloat(dbLead.balanceAmount || 0),

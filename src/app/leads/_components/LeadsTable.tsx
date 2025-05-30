@@ -21,12 +21,12 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import type { Lead, LeadStatus } from '@/lib/types';
+import type { Lead, LeadStatus, LeadPackageQuantity } from '@/lib/types';
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { format, parseISO, isValid } from 'date-fns';
 
 type LeadTableColumn = {
-  accessorKey: keyof Lead | 'actions' | 'select' | 'totalGuests';
+  accessorKey: keyof Lead | 'actions' | 'select' | 'totalGuests' | 'packageSummary';
   header: string;
   isCurrency?: boolean;
   isPercentage?: boolean;
@@ -46,23 +46,13 @@ const leadColumns: LeadTableColumn[] = [
   { accessorKey: 'agent', header: 'Agent', isAgentLookup: true },
   { accessorKey: 'yacht', header: 'Yacht', isYachtLookup: true },
   { accessorKey: 'status', header: 'Status' },
-  { accessorKey: 'month', header: 'Lead/Event Date', isShortDate: true }, // This is the primary event date
+  { accessorKey: 'month', header: 'Lead/Event Date', isShortDate: true }, 
   { accessorKey: 'type', header: 'Type' },
   { accessorKey: 'transactionId', header: 'Transaction ID' },
   { accessorKey: 'modeOfPayment', header: 'Payment Mode' },
   
   { accessorKey: 'totalGuests', header: 'Total Guests', isNumeric: true },
-
-  { accessorKey: 'qty_childRate', header: 'CHILD', isNumeric: true },
-  { accessorKey: 'qty_adultStandardRate', header: 'STD', isNumeric: true },
-  { accessorKey: 'qty_adultStandardDrinksRate', header: 'STD AL', isNumeric: true }, // Updated Header
-  { accessorKey: 'qty_vipChildRate', header: 'VIP CH', isNumeric: true },
-  { accessorKey: 'qty_vipAdultRate', header: 'VIP', isNumeric: true },
-  { accessorKey: 'qty_vipAdultDrinksRate', header: 'VIP AL', isNumeric: true },
-  { accessorKey: 'qty_royalChildRate', header: 'RYL CH', isNumeric: true },
-  { accessorKey: 'qty_royalAdultRate', header: 'RYL', isNumeric: true },
-  { accessorKey: 'qty_royalDrinksRate', header: 'RYL DRK', isNumeric: true },
-  { accessorKey: 'othersAmtCake', header: 'Custom Charge Qty', isNumeric: true },
+  { accessorKey: 'packageSummary', header: 'Packages (Qty)' }, // New column for package summary
 
   { accessorKey: 'totalAmount', header: 'Total Amt', isCurrency: true },
   { accessorKey: 'commissionPercentage', header: 'Agent Disc. %', isPercentage: true },
@@ -145,25 +135,27 @@ export function LeadsTable({
     return notes.length > 30 ? notes.substring(0, 27) + '...' : notes;
   }
 
-  const calculateTotalGuests = (lead: Lead): number => {
-    let total = 0;
-    total += Number(lead.qty_childRate || 0);
-    total += Number(lead.qty_adultStandardRate || 0);
-    total += Number(lead.qty_adultStandardDrinksRate || 0);
-    total += Number(lead.qty_vipChildRate || 0);
-    total += Number(lead.qty_vipAdultRate || 0);
-    total += Number(lead.qty_vipAdultDrinksRate || 0);
-    total += Number(lead.qty_royalChildRate || 0);
-    total += Number(lead.qty_royalAdultRate || 0);
-    total += Number(lead.qty_royalDrinksRate || 0);
-    return total;
+  const calculateTotalGuestsFromPackageQuantities = (lead: Lead): number => {
+    if (!lead.packageQuantities || lead.packageQuantities.length === 0) return 0;
+    return lead.packageQuantities.reduce((sum, pq) => sum + (Number(pq.quantity) || 0), 0);
+  };
+
+  const formatPackageSummary = (packageQuantities?: LeadPackageQuantity[]): string => {
+    if (!packageQuantities || packageQuantities.length === 0) return '-';
+    return packageQuantities
+      .filter(pq => (Number(pq.quantity) || 0) > 0)
+      .map(pq => `${pq.packageName} x${pq.quantity}`)
+      .join(', ') || '-';
   };
 
   const renderCellContent = (lead: Lead, column: LeadTableColumn) => {
     const value = lead[column.accessorKey as keyof Lead];
 
     if (column.accessorKey === 'totalGuests') {
-      return formatNumeric(calculateTotalGuests(lead));
+      return formatNumeric(calculateTotalGuestsFromPackageQuantities(lead));
+    }
+     if (column.accessorKey === 'packageSummary') {
+      return formatPackageSummary(lead.packageQuantities);
     }
     if (column.accessorKey === 'id') {
       return (
@@ -235,7 +227,7 @@ export function LeadsTable({
                 <TableCell>
                   <Checkbox aria-label={`Select row ${lead.id}`} disabled />
                 </TableCell>
-                {leadColumns.slice(1, -1).map(col => ( // Exclude select and actions columns from dynamic rendering
+                {leadColumns.slice(1, -1).map(col => ( 
                   <TableCell key={`${lead.id}-${col.accessorKey}`}>
                     {renderCellContent(lead, col)}
                   </TableCell>

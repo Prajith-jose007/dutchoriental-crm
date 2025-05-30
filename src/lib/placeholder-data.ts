@@ -1,5 +1,5 @@
 
-import type { Lead, User, Yacht, Invoice, Agent, YachtCategory, YachtPackageItem } from './types';
+import type { Lead, User, Yacht, Invoice, Agent, YachtCategory, YachtPackageItem, LeadPackageQuantity } from './types';
 import { formatISO, subDays, addDays, format, parseISO } from 'date-fns';
 
 export const placeholderUsers: User[] = [
@@ -101,7 +101,7 @@ export const placeholderYachts: Yacht[] = [
     packages: [
       { id: 'ss-basic', name: 'BASIC', rate: 199 },
       { id: 'ss-premium', name: 'PREMIUM', rate: 299 },
-      { id: 'ss-standard', name: 'STANDARD', rate: 249 }, // Assuming standard is between basic and premium
+      { id: 'ss-standard', name: 'STANDARD', rate: 249 },
       { id: 'ss-vip', name: 'VIP', rate: 399 },
     ],
     customPackageInfo: "Experience Dubai's landmarks from a superyacht."
@@ -123,16 +123,17 @@ export const placeholderLeads: Lead[] = [
     id: 'DO-001',
     clientName: 'Tech Corp',
     agent: 'DO-AGENT-001',
-    yacht: 'DO-yacht-lotus', // Example: Lotus Royale
+    yacht: 'DO-yacht-lotus',
     status: 'Conformed',
     month: formatISO(parseISO('2024-07-15T14:00:00')),
     notes: 'Confirmed booking, client very happy.',
-    type: 'Dinner Cruise', // This will be updated in Phase 2
+    type: 'Dinner Cruise',
     transactionId: 'T20240715001',
     modeOfPayment: 'Online',
-    // Package quantities - to be updated in Phase 2 based on dynamic packages
-    qty_childRate: 0, qty_adultStandardRate: 10, // Assuming mapping to Lotus Adult
-    totalAmount: 2500, // 10 * 250 (Lotus Adult rate)
+    packageQuantities: [
+      { packageId: 'lr-adult', packageName: 'ADULT', quantity: 10, rate: 250 },
+    ],
+    totalAmount: 2500, // 10 * 250
     commissionPercentage: 10,
     commissionAmount: 250,
     netAmount: 2250,
@@ -147,15 +148,16 @@ export const placeholderLeads: Lead[] = [
     id: 'DO-002',
     clientName: 'Innovate Ltd',
     agent: 'DO-AGENT-002',
-    yacht: 'DO-yacht-super', // Example: Superyacht Sightseeing
+    yacht: 'DO-yacht-super',
     status: 'Upcoming',
     month: formatISO(parseISO('2024-07-25T18:30:00')),
     notes: 'Follow up next week.',
-    type: 'Sunset Cruise', // This will be updated in Phase 2
+    type: 'Superyacht Sightseeing Cruise',
     modeOfPayment: 'Credit',
-    // Package quantities - to be updated in Phase 2
-    qty_adultStandardRate: 5, // Assuming mapping to Superyacht Premium
-    totalAmount: 1495, // 5 * 299 (Superyacht Premium rate)
+    packageQuantities: [
+      { packageId: 'ss-premium', packageName: 'PREMIUM', quantity: 5, rate: 299 },
+    ],
+    totalAmount: 1495, // 5 * 299
     commissionPercentage: 15,
     commissionAmount: 224.25,
     netAmount: 1270.75,
@@ -169,6 +171,6 @@ export const placeholderLeads: Lead[] = [
 ];
 
 export const placeholderInvoices: Invoice[] = [
-  { id: 'DO-inv001', leadId: 'DO-001', clientName: 'Tech Corp', amount: 2500, dueDate: format(addDays(parseISO(placeholderLeads[0].month), 15), 'yyyy-MM-dd'), status: 'Paid', createdAt: formatISO(subDays(today, 5)) },
-  { id: 'DO-inv002', leadId: 'DO-002', clientName: 'Innovate Ltd', amount: 1495, dueDate: format(addDays(parseISO(placeholderLeads[1].month), 20), 'yyyy-MM-dd'), status: 'Pending', createdAt: formatISO(subDays(today, 3)) },
+  { id: 'DO-inv001', leadId: 'DO-001', clientName: 'Tech Corp', amount: 2250, dueDate: format(addDays(parseISO(placeholderLeads[0].month), 15), 'yyyy-MM-dd'), status: 'Paid', createdAt: formatISO(subDays(today, 5)) },
+  { id: 'DO-inv002', leadId: 'DO-002', clientName: 'Innovate Ltd', amount: 1270.75, dueDate: format(addDays(parseISO(placeholderLeads[1].month), 20), 'yyyy-MM-dd'), status: 'Pending', createdAt: formatISO(subDays(today, 3)) },
 ];

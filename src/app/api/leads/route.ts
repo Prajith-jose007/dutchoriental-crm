@@ -1,7 +1,7 @@
 
 // src/app/api/leads/route.ts
 import { NextResponse, type NextRequest } from 'next/server';
-import type { Lead, LeadStatus, ModeOfPayment, LeadType } from '@/lib/types';
+import type { Lead, LeadStatus, ModeOfPayment, LeadType, LeadPackageQuantity } from '@/lib/types';
 import { query } from '@/lib/db';
 import { formatISO, parseISO, isValid } from 'date-fns';
 
@@ -16,9 +16,9 @@ const ensureISOFormat = (dateString?: string | Date): string | null => {
   try {
     const parsed = parseISO(dateString);
     if (isValid(parsed)) return formatISO(parsed);
-    return dateString; // Return original if not parsable as ISO, might be already correct or different format
+    return dateString; 
   } catch {
-    return dateString; // Return original on error
+    return dateString;
   }
 };
 
@@ -44,29 +44,36 @@ export async function GET(request: NextRequest) {
     console.log('[API GET /api/leads] Raw DB Data Sample (first item):', leadsDataDb.length > 0 ? leadsDataDb[0] : 'No leads found');
 
     const leads: Lead[] = leadsDataDb.map(dbLead => {
+      let packageQuantities: LeadPackageQuantity[] = [];
+      if (dbLead.package_quantities_json && typeof dbLead.package_quantities_json === 'string') {
+        try {
+          const parsedPQs = JSON.parse(dbLead.package_quantities_json);
+          if (Array.isArray(parsedPQs)) {
+            packageQuantities = parsedPQs.map((pq: any) => ({
+              packageId: String(pq.packageId || ''),
+              packageName: String(pq.packageName || 'Unknown Package'),
+              quantity: Number(pq.quantity || 0),
+              rate: Number(pq.rate || 0),
+            }));
+          }
+        } catch (e) {
+          console.warn(`[API GET /api/leads] Failed to parse package_quantities_json for lead ${dbLead.id}`, e);
+        }
+      }
+
       const leadTyped: Lead = {
         id: String(dbLead.id || ''),
-        clientName: dbLead.clientName || '',
-        agent: dbLead.agent || '',
-        yacht: dbLead.yacht || '',
+        clientName: String(dbLead.clientName || ''),
+        agent: String(dbLead.agent || ''),
+        yacht: String(dbLead.yacht || ''),
         status: (dbLead.status || 'Upcoming') as LeadStatus,
         month: dbLead.month ? ensureISOFormat(dbLead.month)! : formatISO(new Date()),
         notes: dbLead.notes || undefined,
-        type: (dbLead.type || 'Private') as LeadType,
+        type: (dbLead.type || 'Private Cruise') as LeadType,
         transactionId: dbLead.transactionId || undefined,
         modeOfPayment: (dbLead.modeOfPayment || 'Online') as ModeOfPayment,
         
-        qty_childRate: Number(dbLead.qty_childRate || 0),
-        qty_adultStandardRate: Number(dbLead.qty_adultStandardRate || 0),
-        qty_adultStandardDrinksRate: Number(dbLead.qty_adultStandardDrinksRate || 0),
-        qty_vipChildRate: Number(dbLead.qty_vipChildRate || 0),
-        qty_vipAdultRate: Number(dbLead.qty_vipAdultRate || 0),
-        qty_vipAdultDrinksRate: Number(dbLead.qty_vipAdultDrinksRate || 0),
-        qty_royalChildRate: Number(dbLead.qty_royalChildRate || 0),
-        qty_royalAdultRate: Number(dbLead.qty_royalAdultRate || 0),
-        qty_royalDrinksRate: Number(dbLead.qty_royalDrinksRate || 0),
-        
-        othersAmtCake: Number(dbLead.othersAmtCake || 0), // This is quantity
+        packageQuantities: packageQuantities,
 
         totalAmount: parseFloat(dbLead.totalAmount || 0),
         commissionPercentage: parseFloat(dbLead.commissionPercentage || 0),
@@ -92,7 +99,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const newLeadData = await request.json() as Partial<Lead>; // Use Partial<Lead> as not all fields might be sent
+    const newLeadData = await request.json() as Partial<Lead>; 
     console.log('[API POST /api/leads] Received newLeadData:', JSON.stringify(newLeadData, null, 2));
 
     if (!newLeadData.clientName || !newLeadData.agent || !newLeadData.yacht || !newLeadData.month) {
@@ -102,7 +109,6 @@ export async function POST(request: NextRequest) {
     
     let leadId = newLeadData.id;
     if (!leadId) {
-      // Fetch existing lead IDs that match the "DO-XXX" pattern to generate the next one
       const currentLeadsFromDB: any[] = await query('SELECT id FROM leads WHERE id LIKE "DO-%"');
       const existingLeadIds = currentLeadsFromDB.map(l => l.id as string);
       leadId = generateNewLeadId(existingLeadIds);
@@ -117,9 +123,11 @@ export async function POST(request: NextRequest) {
     }
     
     const formattedCreatedAt = newLeadData.createdAt && isValid(parseISO(newLeadData.createdAt)) ? ensureISOFormat(newLeadData.createdAt)! : formatISO(now);
-    const formattedUpdatedAt = formatISO(now); // Always set updatedAt to now for new leads
+    const formattedUpdatedAt = formatISO(now); 
     
-    const leadToStore: Lead = {
+    const packageQuantitiesJson = newLeadData.packageQuantities ? JSON.stringify(newLeadData.packageQuantities) : null;
+
+    const leadToStore: Omit<Lead, 'packageQuantities'> & { package_quantities_json?: string | null } = {
       id: leadId!,
       clientName: newLeadData.clientName,
       agent: newLeadData.agent,
@@ -127,21 +135,11 @@ export async function POST(request: NextRequest) {
       status: newLeadData.status || 'Upcoming',
       month: formattedMonth, 
       notes: newLeadData.notes || null,
-      type: newLeadData.type || 'Private',
+      type: newLeadData.type || 'Private Cruise',
       transactionId: newLeadData.transactionId || null,
       modeOfPayment: newLeadData.modeOfPayment || 'Online',
       
-      qty_childRate: Number(newLeadData.qty_childRate || 0),
-      qty_adultStandardRate: Number(newLeadData.qty_adultStandardRate || 0),
-      qty_adultStandardDrinksRate: Number(newLeadData.qty_adultStandardDrinksRate || 0),
-      qty_vipChildRate: Number(newLeadData.qty_vipChildRate || 0),
-      qty_vipAdultRate: Number(newLeadData.qty_vipAdultRate || 0),
-      qty_vipAdultDrinksRate: Number(newLeadData.qty_vipAdultDrinksRate || 0),
-      qty_royalChildRate: Number(newLeadData.qty_royalChildRate || 0),
-      qty_royalAdultRate: Number(newLeadData.qty_royalAdultRate || 0),
-      qty_royalDrinksRate: Number(newLeadData.qty_royalDrinksRate || 0),
-      
-      othersAmtCake: Number(newLeadData.othersAmtCake || 0), // This is quantity
+      package_quantities_json: packageQuantitiesJson,
       
       totalAmount: Number(newLeadData.totalAmount || 0),
       commissionPercentage: Number(newLeadData.commissionPercentage || 0),
@@ -161,22 +159,16 @@ export async function POST(request: NextRequest) {
     const sql = `
       INSERT INTO leads (
         id, clientName, agent, yacht, status, month, notes, type, transactionId, modeOfPayment,
-        qty_childRate, qty_adultStandardRate, qty_adultStandardDrinksRate,
-        qty_vipChildRate, qty_vipAdultRate, qty_vipAdultDrinksRate,
-        qty_royalChildRate, qty_royalAdultRate, qty_royalDrinksRate,
-        othersAmtCake,
+        package_quantities_json,
         totalAmount, commissionPercentage, commissionAmount, netAmount,
         paidAmount, balanceAmount,
         createdAt, updatedAt, lastModifiedByUserId, ownerUserId
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
     const params = [
       leadToStore.id, leadToStore.clientName, leadToStore.agent, leadToStore.yacht, leadToStore.status, 
       leadToStore.month, leadToStore.notes, leadToStore.type, leadToStore.transactionId, leadToStore.modeOfPayment,
-      leadToStore.qty_childRate, leadToStore.qty_adultStandardRate, leadToStore.qty_adultStandardDrinksRate,
-      leadToStore.qty_vipChildRate, leadToStore.qty_vipAdultRate, leadToStore.qty_vipAdultDrinksRate,
-      leadToStore.qty_royalChildRate, leadToStore.qty_royalAdultRate, leadToStore.qty_royalDrinksRate,
-      leadToStore.othersAmtCake, // This is quantity
+      leadToStore.package_quantities_json,
       leadToStore.totalAmount, leadToStore.commissionPercentage, leadToStore.commissionAmount, leadToStore.netAmount,
       leadToStore.paidAmount, leadToStore.balanceAmount,
       leadToStore.createdAt, leadToStore.updatedAt, leadToStore.lastModifiedByUserId, leadToStore.ownerUserId
@@ -191,23 +183,18 @@ export async function POST(request: NextRequest) {
       const insertedLeadData: any[] = await query('SELECT * FROM leads WHERE id = ?', [leadToStore.id]);
       if (insertedLeadData.length > 0) {
         const dbLead = insertedLeadData[0];
-        const finalLead: Lead = { // Map dbLead to Lead type correctly
-            id: String(dbLead.id || ''), clientName: dbLead.clientName || '', agent: dbLead.agent || '', yacht: dbLead.yacht || '', 
+        let pq: LeadPackageQuantity[] = [];
+        if(dbLead.package_quantities_json) {
+            try { pq = JSON.parse(dbLead.package_quantities_json); } catch(e){ console.warn("Error parsing PQ_JSON on fetch after insert");}
+        }
+        const finalLead: Lead = { 
+            id: String(dbLead.id || ''), clientName: String(dbLead.clientName || ''), agent: String(dbLead.agent || ''), yacht: String(dbLead.yacht || ''), 
             status: (dbLead.status || 'Upcoming') as LeadStatus,
             month: dbLead.month ? ensureISOFormat(dbLead.month)! : formatISO(new Date()), 
-            notes: dbLead.notes || undefined, type: (dbLead.type || 'Private') as LeadType, 
+            notes: dbLead.notes || undefined, type: (dbLead.type || 'Private Cruise') as LeadType, 
             transactionId: dbLead.transactionId || undefined,
             modeOfPayment: (dbLead.modeOfPayment || 'Online') as ModeOfPayment,
-            qty_childRate: Number(dbLead.qty_childRate || 0), 
-            qty_adultStandardRate: Number(dbLead.qty_adultStandardRate || 0),
-            qty_adultStandardDrinksRate: Number(dbLead.qty_adultStandardDrinksRate || 0), 
-            qty_vipChildRate: Number(dbLead.qty_vipChildRate || 0),
-            qty_vipAdultRate: Number(dbLead.qty_vipAdultRate || 0), 
-            qty_vipAdultDrinksRate: Number(dbLead.qty_vipAdultDrinksRate || 0),
-            qty_royalChildRate: Number(dbLead.qty_royalChildRate || 0), 
-            qty_royalAdultRate: Number(dbLead.qty_royalAdultRate || 0),
-            qty_royalDrinksRate: Number(dbLead.qty_royalDrinksRate || 0), 
-            othersAmtCake: Number(dbLead.othersAmtCake || 0), // This is quantity
+            packageQuantities: pq,
             totalAmount: parseFloat(dbLead.totalAmount || 0), 
             commissionPercentage: parseFloat(dbLead.commissionPercentage || 0),
             commissionAmount: parseFloat(dbLead.commissionAmount || 0), 
@@ -222,8 +209,11 @@ export async function POST(request: NextRequest) {
         console.log('[API POST /api/leads] Successfully created lead and returning from DB:', finalLead.id);
         return NextResponse.json(finalLead, { status: 201 });
       }
-      console.warn('[API POST /api/leads] Lead inserted, but failed to fetch for confirmation. Returning original payload.');
-      return NextResponse.json(leadToStore, { status: 201 }); // Fallback
+      console.warn('[API POST /api/leads] Lead inserted, but failed to fetch for confirmation. Returning original payload with adaptations.');
+      // Adapt leadToStore back to Lead type for response
+      const responseLead: Lead = { ...leadToStore, packageQuantities: newLeadData.packageQuantities || [] };
+      delete (responseLead as any).package_quantities_json;
+      return NextResponse.json(responseLead, { status: 201 });
     } else {
       console.error('[API POST /api/leads] Database insert failed, affectedRows was not 1.');
       throw new Error('Failed to insert lead into database');

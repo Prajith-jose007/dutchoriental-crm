@@ -7,7 +7,12 @@ import { query } from '@/lib/db';
 export async function GET(request: NextRequest) {
   console.log('[API GET /api/yachts] Received request');
   try {
-    const yachtsDataDb: any[] = await query('SELECT * FROM yachts ORDER BY name ASC');
+    const sql = `
+      SELECT id, name, imageUrl, capacity, status, category, 
+             customPackageInfo, packages_json 
+      FROM yachts ORDER BY name ASC
+    `;
+    const yachtsDataDb: any[] = await query(sql);
     console.log('[API GET /api/yachts] Raw DB Data Sample (first item if any):', yachtsDataDb.length > 0 ? yachtsDataDb[0] : 'No yachts from DB');
 
     const yachts: Yacht[] = yachtsDataDb.map(dbYacht => {
@@ -17,7 +22,7 @@ export async function GET(request: NextRequest) {
           const parsedPackages = JSON.parse(dbYacht.packages_json);
           if (Array.isArray(parsedPackages)) {
             packages = parsedPackages.map((pkg: any, index: number) => ({
-              id: String(pkg.id || `db-pkg-${dbYacht.id}-${index}`), // Ensure ID exists
+              id: String(pkg.id || `pkg-${dbYacht.id}-${index}`), // Ensure ID for each package item
               name: String(pkg.name || 'Unnamed Package'),
               rate: Number(pkg.rate || 0),
             }));
@@ -68,7 +73,9 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ message: `Yacht with ID ${newYachtData.id} already exists.` }, { status: 409 });
     }
 
-    const packagesJson = newYachtData.packages && Array.isArray(newYachtData.packages) ? JSON.stringify(newYachtData.packages) : null;
+    const packagesJson = newYachtData.packages && Array.isArray(newYachtData.packages) 
+      ? JSON.stringify(newYachtData.packages.map(p => ({id: p.id, name: p.name, rate: Number(p.rate || 0)}))) 
+      : null;
 
     const sql = `
       INSERT INTO yachts (
@@ -100,7 +107,7 @@ export async function POST(request: NextRequest) {
                 const parsedPackages = JSON.parse(dbYacht.packages_json);
                 if (Array.isArray(parsedPackages)) {
                     packages = parsedPackages.map((pkg: any, index: number) => ({
-                        id: String(pkg.id || `db-pkg-${dbYacht.id}-${index}`),
+                        id: String(pkg.id || `pkg-${dbYacht.id}-${index}`),
                         name: String(pkg.name || 'Unnamed Package'),
                         rate: Number(pkg.rate || 0),
                     }));
@@ -123,7 +130,6 @@ export async function POST(request: NextRequest) {
         return NextResponse.json(finalYacht, { status: 201 });
       }
        console.warn('[API POST /api/yachts] Yacht inserted, but failed to fetch for confirmation.');
-       // Construct a fallback yacht based on input data
        const fallbackYacht: Yacht = {
          id: newYachtData.id!,
          name: newYachtData.name,
@@ -131,7 +137,7 @@ export async function POST(request: NextRequest) {
          capacity: Number(newYachtData.capacity || 0),
          status: newYachtData.status || 'Available',
          category: newYachtData.category || 'Private Cruise',
-         packages: newYachtData.packages || [],
+         packages: newYachtData.packages?.map(p => ({...p, rate: Number(p.rate||0)})) || [],
          customPackageInfo: newYachtData.customPackageInfo || undefined,
        };
        return NextResponse.json(fallbackYacht, { status: 201 });

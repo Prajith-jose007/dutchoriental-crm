@@ -24,12 +24,6 @@ export interface Agent {
   websiteUrl?: string;
 }
 
-export interface YachtPackageItem {
-  id: string; // Unique ID for the package item (e.g., client-generated UUID or timestamp)
-  name: string;
-  rate: number;
-}
-
 export interface Yacht {
   id: string;
   name: string;
@@ -37,7 +31,21 @@ export interface Yacht {
   capacity: number;
   status: 'Available' | 'Booked' | 'Maintenance';
   customPackageInfo?: string; // General notes about packages
-  packages: YachtPackageItem[]; // Array of custom packages
+
+  // 9 Standardized Package Rates
+  childRate?: number;
+  adultStandardRate?: number;
+  adultStandardDrinksRate?: number;
+  vipChildRate?: number;
+  vipAdultRate?: number;
+  vipAdultDrinksRate?: number;
+  royalChildRate?: number;
+  royalAdultRate?: number;
+  royalDrinksRate?: number;
+
+  // Custom Other Charge
+  otherChargeName?: string;
+  otherChargeRate?: number;
 }
 
 export interface Invoice {
@@ -72,7 +80,7 @@ export interface Lead {
   modeOfPayment: ModeOfPayment;
   clientName: string;
 
-  // Standardized 9 Package Quantities based on yacht's fixed rates
+  // Standardized 9 Package Quantities that map to Yacht rates
   qty_childRate?: number;
   qty_adultStandardRate?: number;
   qty_adultStandardDrinksRate?: number;

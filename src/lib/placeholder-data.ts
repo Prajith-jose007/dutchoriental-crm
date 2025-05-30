@@ -1,11 +1,11 @@
 
-import type { Lead, User, Yacht, Invoice, Agent, LeadType, ModeOfPayment, LeadStatus, YachtPackageItem } from './types';
+import type { Lead, User, Yacht, Invoice, Agent, LeadType, ModeOfPayment, LeadStatus } from './types';
 import { formatISO, parseISO, subDays, addDays, format } from 'date-fns';
 
 export const placeholderUsers: User[] = [
-  { id: 'DO-user1', name: 'Naufal', email: 'naufal@dutchoriental.com', designation: 'Acounts', avatarUrl: 'https://placehold.co/100x100.png?text=AS', status: 'Active', password: 'password123' },
-  { id: 'DO-user2', name: 'Bob Johnson', email: 'bob@dutchoriental.com', designation: 'Sales Agent', avatarUrl: 'https://placehold.co/100x100.png?text=BJ', status: 'Active', password: 'password123' },
-  { id: 'DO-user3', name: 'Carol White', email: 'carol@dutchoriental.com', designation: 'Admin', avatarUrl: 'https://placehold.co/100x100.png?text=CW', status: 'Active', password: 'password123' },
+  { id: 'DO-user1', name: 'Naufal', email: 'naufal@dutchoriental.com', designation: 'Acounts', avatarUrl: 'https://placehold.co/100x100.png?text=NS', status: 'Active' },
+  { id: 'DO-user2', name: 'Bob Johnson', email: 'bob@dutchoriental.com', designation: 'Sales Agent', avatarUrl: 'https://placehold.co/100x100.png?text=BJ', status: 'Active' },
+  { id: 'DO-user3', name: 'Carol White', email: 'carol@dutchoriental.com', designation: 'Admin', avatarUrl: 'https://placehold.co/100x100.png?text=CW', status: 'Active' },
   { id: 'DO-admin', name: 'Admin User', email: 'admin@dutchoriental.com', designation: 'System Administrator', avatarUrl: 'https://placehold.co/100x100.png?text=AU', status: 'Active', password: 'Dutch@123#' },
 ];
 
@@ -54,108 +54,150 @@ export const placeholderAgents: Agent[] = [
 
 export const placeholderYachts: Yacht[] = [
   {
-    id: 'DO-YACHT-LOTUS', name: 'LOTUS ROYALE', capacity: 150, status: 'Available', imageUrl: 'https://placehold.co/600x400.png?text=Lotus+Royale',
-    customPackageInfo: "Flagship luxury experience. All-inclusive options available.",
-    packages: [
-      { id: 'lotus-child', name: 'LOTUS Child', rate: 150 },
-      { id: 'lotus-adult', name: 'LOTUS Adult', rate: 250 },
-      { id: 'lotus-ad-alc', name: 'LOTUS Adult + Alcohol', rate: 350 },
-      { id: 'lotus-vip-ch', name: 'LOTUS VIP Child', rate: 220 },
-      { id: 'lotus-vip-ad', name: 'LOTUS VIP Adult', rate: 400 },
-      { id: 'lotus-vip-ad-alc', name: 'LOTUS VIP Adult + Alcohol', rate: 550 },
-      { id: 'lotus-royal-ch', name: 'LOTUS Royal Child', rate: 300 },
-      { id: 'lotus-royal-ad', name: 'LOTUS Royal Adult', rate: 600 },
-      { id: 'lotus-royal-alc', name: 'LOTUS Royal Adult + Alcohol', rate: 750 },
-    ]
+    id: 'DO-yacht1', name: 'The Sea Serpent', capacity: 50, status: 'Available', imageUrl: 'https://placehold.co/600x400.png?text=Sea+Serpent',
+    customPackageInfo: "Weekend special: Includes free jet ski for 1 hour (Admin Note)",
+    // Fixed rates
+    childRate: 89,
+    adultStandardRate: 129,
+    adultStandardDrinksRate: 159,
+    vipChildRate: 139,
+    vipAdultRate: 189,
+    vipAdultDrinksRate: 249,
+    royalChildRate: 200,
+    royalAdultRate: 300,
+    royalDrinksRate: 380,
+    otherChargeName: 'Cake Service',
+    otherChargeRate: 150,
   },
   {
-    id: 'DO-YACHT-OCEAN', name: 'OCEAN EMPRESS', capacity: 80, status: 'Available', imageUrl: 'https://placehold.co/600x400.png?text=Ocean+Empress',
-    customPackageInfo: "Perfect for mid-sized corporate events and parties.",
-    packages: [
-      { id: 'ocean-child', name: 'OCEAN Child', rate: 120 },
-      { id: 'ocean-adult', name: 'OCEAN Adult', rate: 200 },
-      { id: 'ocean-ad-alc', name: 'OCEAN Adult + Alcohol', rate: 290 },
-      { id: 'ocean-vip-ch', name: 'OCEAN VIP Child', rate: 180 },
-      { id: 'ocean-vip-ad', name: 'OCEAN VIP Adult', rate: 320 },
-      { id: 'ocean-vip-alc', name: 'OCEAN VIP Adult + Alcohol', rate: 450 },
-    ]
+    id: 'DO-yacht2', name: 'Ocean Voyager', capacity: 100, status: 'Available', imageUrl: 'https://placehold.co/600x400.png?text=Ocean+Voyager',
+    childRate: 95,
+    adultStandardRate: 135,
+    adultStandardDrinksRate: 165,
+    vipChildRate: 145,
+    vipAdultRate: 195,
+    vipAdultDrinksRate: 255,
+    royalChildRate: 220,
+    royalAdultRate: 320,
+    royalDrinksRate: 400,
+    // No other charge for this one
   },
   {
-    id: 'DO-YACHT-ALMANSOUR', name: 'AL MANSOUR DHOW', capacity: 60, status: 'Maintenance', imageUrl: 'https://placehold.co/600x400.png?text=Al+Mansour',
-    customPackageInfo: "Traditional dhow experience. Currently under maintenance.",
-    packages: [
-      { id: 'almansour-child', name: 'AL MANSOUR Child', rate: 90 },
-      { id: 'almansour-adult', name: 'AL MANSOUR Adult', rate: 150 },
-      { id: 'almansour-vip-ch', name: 'AL MANSOUR VIP Child', rate: 130 },
-      { id: 'almansour-vip-ad', name: 'AL MANSOUR VIP Adult', rate: 220 },
-      { id: 'almansour-vip-alc', name: 'AL MANSOUR VIP Adult + Alcohol', rate: 300 },
-    ]
-  },
-  {
-    id: 'DO-YACHT-SIGHTSEE', name: 'SUPERYACHT SIGHTSEEING', capacity: 40, status: 'Available', imageUrl: 'https://placehold.co/600x400.png?text=Sightseeing',
-    customPackageInfo: "Hourly sightseeing tours. Focus on views and comfort.",
-    packages: [
-      { id: 'sightsee-basic', name: 'Sightseeing Basic Pass', rate: 100 },
-      { id: 'sightsee-std', name: 'Sightseeing Standard Pass', rate: 150 },
-      { id: 'sightsee-prem', name: 'Sightseeing Premium Pass', rate: 200 },
-      { id: 'sightsee-vip', name: 'Sightseeing VIP Pass', rate: 300 },
-    ]
-  },
+    id: 'DO-yacht3', name: 'Sunset Cruise Special', capacity: 40, status: 'Maintenance', imageUrl: 'https://placehold.co/600x400.png?text=Sunset+Special',
+    customPackageInfo: "Special evening tours. Currently under scheduled maintenance.",
+    childRate: 70,
+    adultStandardRate: 100,
+    adultStandardDrinksRate: 130,
+    vipChildRate: 100,
+    vipAdultRate: 150,
+    vipAdultDrinksRate: 190,
+    // No royal or other charges for this one
+  }
 ];
 
 const today = new Date();
 
+// Sample leads updated to use the new 9 quantity fields for Lead
 export const placeholderLeads: Lead[] = [
   {
     id: 'DO-001',
-    clientName: 'Tech Solutions Ltd',
+    clientName: 'Tech Corp',
     agent: 'DO-AGENT-001',
-    yacht: 'DO-YACHT-LOTUS',
+    yacht: 'DO-yacht1',
     status: 'Conformed',
-    month: formatISO(parseISO('2024-07-15T14:00:00.000Z')),
-    notes: 'Confirmed booking for Lotus Royale. VIP Adult package for 10 guests.',
+    month: formatISO(parseISO('2024-07-15T14:00:00.000Z')), // Event Date
+    notes: 'Confirmed booking, client very happy.',
     type: 'Corporate Event',
     transactionId: '202400001',
     modeOfPayment: 'Online',
-    qty_vipAdultRate: 10, // Example: This would map to "LOTUS VIP Adult" rate (400) = 4000
-    totalAmount: 4000,    // Assuming only this package for simplicity
-    commissionPercentage: 10, // From agent DO-AGENT-001
-    commissionAmount: 400,
-    netAmount: 3600,
-    paidAmount: 3600,
+    
+    qty_childRate: 0,
+    qty_adultStandardRate: 10, // Example: 10 adults for Sea Serpent
+    qty_adultStandardDrinksRate: 0,
+    qty_vipChildRate: 0,
+    qty_vipAdultRate: 0,
+    qty_vipAdultDrinksRate: 0,
+    qty_royalChildRate: 0,
+    qty_royalAdultRate: 0,
+    qty_royalDrinksRate: 0,
+    othersAmtCake: 0, // No cake for this example
+
+    totalAmount: 10 * 129, // 10 * adultStandardRate (129) = 1290
+    commissionPercentage: 10,
+    commissionAmount: (10 * 129) * 0.10, // 129
+    netAmount: (10 * 129) * 0.90, // 1161
+    paidAmount: 1161,
     balanceAmount: 0,
+
     createdAt: formatISO(parseISO('2024-06-15T10:00:00.000Z')),
-    updatedAt: formatISO(parseISO('2024-07-01T10:00:00.000Z')),
+    updatedAt: formatISO(parseISO('2024-07-01T11:00:00.000Z')),
     lastModifiedByUserId: 'DO-user1',
     ownerUserId: 'DO-user1'
   },
   {
     id: 'DO-002',
-    clientName: 'Innovate Inc.',
+    clientName: 'Innovate Ltd',
     agent: 'DO-AGENT-002',
-    yacht: 'DO-YACHT-SIGHTSEE',
+    yacht: 'DO-yacht2',
     status: 'Upcoming',
-    month: formatISO(parseISO('2024-07-25T14:30:00.000Z')),
-    notes: 'Inquiry for Superyacht Sightseeing, 20 basic passes.',
+    month: formatISO(parseISO('2024-07-25T18:30:00.000Z')), // Event Date
+    notes: 'Follow up next week.',
     type: 'Private',
     transactionId: '202400002',
     modeOfPayment: 'Credit',
-    qty_childRate: 20, // Example mapping to "Sightseeing Basic Pass" (100) = 2000
-                       // This qty_childRate will need remapping in Lead form Phase 2
-    totalAmount: 2000,
+
+    qty_childRate: 0,
+    qty_adultStandardRate: 10, // 10 adults for Ocean Voyager
+    qty_adultStandardDrinksRate: 0,
+    qty_vipChildRate: 0,
+    qty_vipAdultRate: 0,
+    qty_vipAdultDrinksRate: 0,
+    qty_royalChildRate: 0,
+    qty_royalAdultRate: 0,
+    qty_royalDrinksRate: 0,
+    othersAmtCake: 0,
+
+    totalAmount: 10 * 135, // 10 * adultStandardRate (135) = 1350
     commissionPercentage: 15,
-    commissionAmount: 300,
-    netAmount: 1700,
+    commissionAmount: (10 * 135) * 0.15, // 202.5
+    netAmount: (10 * 135) * 0.85, // 1147.5
     paidAmount: 500,
-    balanceAmount: 1200,
-    createdAt: formatISO(parseISO('2024-06-20T10:00:00.000Z')),
-    updatedAt: formatISO(parseISO('2024-07-05T10:00:00.000Z')),
+    balanceAmount: (10 * 135) * 0.85 - 500, // 647.5
+
+    createdAt: formatISO(parseISO('2024-06-20T12:00:00.000Z')),
+    updatedAt: formatISO(parseISO('2024-07-05T15:00:00.000Z')),
     lastModifiedByUserId: 'DO-user2',
     ownerUserId: 'DO-user2'
+  },
+  {
+    id: 'DO-003',
+    clientName: 'Solutions Inc',
+    agent: 'DO-AGENT-001',
+    yacht: 'DO-yacht1',
+    status: 'Conformed',
+    month: formatISO(parseISO('2024-08-10T16:00:00.000Z')),
+    type: 'Corporate Event',
+    modeOfPayment: 'Cash/Card',
+    
+    qty_vipAdultRate: 20, // 20 VIP adults for Sea Serpent
+    othersAmtCake: 1,     // 1 Cake service
+
+    totalAmount: (20 * 189) + (1 * 150), // (20 * vipAdultRate) + (1 * otherChargeRate) = 3780 + 150 = 3930
+    commissionPercentage: 10,
+    commissionAmount: 393,
+    netAmount: 3537,
+    paidAmount: 3537,
+    balanceAmount: 0,
+
+    createdAt: formatISO(parseISO('2024-07-10T09:30:00.000Z')),
+    updatedAt: formatISO(parseISO('2024-07-12T10:15:00.000Z')),
+    lastModifiedByUserId: 'DO-user1',
+    ownerUserId: 'DO-user1'
   },
 ];
 
 export const placeholderInvoices: Invoice[] = [
-  { id: 'DO-inv001', leadId: 'DO-001', clientName: 'Tech Solutions Ltd', amount: 3600, dueDate: format(addDays(today, 15), 'yyyy-MM-dd'), status: 'Paid', createdAt: formatISO(subDays(today, 5)) },
-  { id: 'DO-inv002', leadId: 'DO-002', clientName: 'Innovate Inc.', amount: 1700, dueDate: format(addDays(today, 20), 'yyyy-MM-dd'), status: 'Pending', createdAt: formatISO(subDays(today, 3)) },
+  { id: 'DO-inv001', leadId: 'DO-001', clientName: 'Tech Corp', amount: 1161, dueDate: format(addDays(today, 15), 'yyyy-MM-dd'), status: 'Paid', createdAt: formatISO(subDays(today, 5)) },
+  { id: 'DO-inv002', leadId: 'DO-002', clientName: 'Innovate Ltd', amount: 1147.5, dueDate: format(addDays(today, 20), 'yyyy-MM-dd'), status: 'Pending', createdAt: formatISO(subDays(today, 3)) },
+  { id: 'DO-inv003', leadId: 'DO-003', clientName: 'Solutions Inc', amount: 3537, dueDate: format(addDays(today, 5), 'yyyy-MM-dd'), status: 'Paid', createdAt: formatISO(subDays(today, 1)) },
 ];

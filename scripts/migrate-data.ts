@@ -71,6 +71,7 @@ async function createAgentsTable() {
 
 async function createYachtsTable() {
   const tableName = MYSQL_TABLE_NAMES.yachts;
+  // Reverted to include fixed rate columns and otherChargeName/Rate
   const createTableSql = `
     CREATE TABLE IF NOT EXISTS ${tableName} (
       id VARCHAR(191) PRIMARY KEY,
@@ -79,7 +80,17 @@ async function createYachtsTable() {
       capacity INT,
       status VARCHAR(50),
       customPackageInfo TEXT,
-      packages_json TEXT DEFAULT NULL 
+      childRate DECIMAL(10, 2) DEFAULT 0.00,
+      adultStandardRate DECIMAL(10, 2) DEFAULT 0.00,
+      adultStandardDrinksRate DECIMAL(10, 2) DEFAULT 0.00,
+      vipChildRate DECIMAL(10, 2) DEFAULT 0.00,
+      vipAdultRate DECIMAL(10, 2) DEFAULT 0.00,
+      vipAdultDrinksRate DECIMAL(10, 2) DEFAULT 0.00,
+      royalChildRate DECIMAL(10, 2) DEFAULT 0.00,
+      royalAdultRate DECIMAL(10, 2) DEFAULT 0.00,
+      royalDrinksRate DECIMAL(10, 2) DEFAULT 0.00,
+      otherChargeName VARCHAR(255),
+      otherChargeRate DECIMAL(10, 2) DEFAULT 0.00
     );
   `;
   try {
@@ -93,9 +104,6 @@ async function createYachtsTable() {
 
 async function createLeadsTable() {
   const tableName = MYSQL_TABLE_NAMES.leads;
-  // Note: Removed old package quantity fields, assuming these will be handled differently
-  // if the lead structure changes significantly due to dynamic yacht packages.
-  // For now, keeping the 9 standardized qty fields as they are on Lead type.
   const createTableSql = `
     CREATE TABLE IF NOT EXISTS ${tableName} (
       id VARCHAR(191) PRIMARY KEY,
@@ -119,7 +127,7 @@ async function createLeadsTable() {
       qty_royalAdultRate INT DEFAULT 0,
       qty_royalDrinksRate INT DEFAULT 0,
 
-      othersAmtCake INT DEFAULT 0,
+      othersAmtCake INT DEFAULT 0, // This is quantity for otherChargeRate
 
       totalAmount DECIMAL(10, 2) NOT NULL,
       commissionPercentage DECIMAL(5, 2) DEFAULT 0.00,
@@ -218,14 +226,17 @@ async function migrateAgents() {
 async function migrateYachts() {
   console.log('Migrating Yachts...');
   for (const yacht of placeholderYachts) {
+    // Reverted to insert fixed rate fields and otherChargeName/Rate
     const sql = `
       INSERT INTO ${MYSQL_TABLE_NAMES.yachts} (
-        id, name, imageUrl, capacity, status,
-        customPackageInfo, packages_json
-      ) VALUES (?, ?, ?, ?, ?, ?, ?)
+        id, name, imageUrl, capacity, status, customPackageInfo,
+        childRate, adultStandardRate, adultStandardDrinksRate,
+        vipChildRate, vipAdultRate, vipAdultDrinksRate,
+        royalChildRate, royalAdultRate, royalDrinksRate,
+        otherChargeName, otherChargeRate
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `; 
     try {
-      const packagesJsonString = yacht.packages && yacht.packages.length > 0 ? JSON.stringify(yacht.packages) : null;
       await query(sql, [
         yacht.id,
         yacht.name,
@@ -233,7 +244,17 @@ async function migrateYachts() {
         yacht.capacity,
         yacht.status,
         yacht.customPackageInfo || null,
-        packagesJsonString, 
+        yacht.childRate || 0,
+        yacht.adultStandardRate || 0,
+        yacht.adultStandardDrinksRate || 0,
+        yacht.vipChildRate || 0,
+        yacht.vipAdultRate || 0,
+        yacht.vipAdultDrinksRate || 0,
+        yacht.royalChildRate || 0,
+        yacht.royalAdultRate || 0,
+        yacht.royalDrinksRate || 0,
+        yacht.otherChargeName || null,
+        yacht.otherChargeRate || 0,
       ]);
       console.log(`Inserted yacht: ${yacht.name} (ID: ${yacht.id})`);
     } catch (error) {
@@ -347,15 +368,17 @@ async function migrateInvoices() {
 async function main() {
   console.log('Starting data migration with table creation checks...');
   try {
+    // Create tables first
     await createUsersTable();
     await createAgentsTable();
-    await createYachtsTable();
+    await createYachtsTable(); // This will now create the table with fixed rate columns
     await createLeadsTable();
     await createInvoicesTable();
     
+    // Then migrate data
     await migrateUsers();
     await migrateAgents();
-    await migrateYachts();
+    await migrateYachts(); // This will insert into the table with fixed rate columns
     await migrateLeads();
     await migrateInvoices();
     console.log('Data migration complete! Make sure to close the DB connection if your db.ts doesn\'t do it automatically after a pool query.');
@@ -363,7 +386,7 @@ async function main() {
       console.error("A critical error occurred during table creation or migration process, aborting further steps:", (error as Error).message);
   } finally {
     // Attempt to safely close the pool if your db.ts exports a pool or an end function
-    const dbModule = await import('../src/lib/db'); // Ensure path is correct
+    const dbModule = await import('../src/lib/db'); 
     if (dbModule.default && typeof dbModule.default.end === 'function') {
         try {
             await dbModule.default.end();
@@ -372,7 +395,6 @@ async function main() {
             console.error('Error closing pool in finally block:', e);
         }
     } else if (dbModule.default && typeof (dbModule.default as any).pool?.end === 'function') {
-        // If the pool is nested (e.g., db.pool.end())
         try {
             await (dbModule.default as any).pool.end();
             console.log('MySQL pool (nested) closed by script in finally block.');

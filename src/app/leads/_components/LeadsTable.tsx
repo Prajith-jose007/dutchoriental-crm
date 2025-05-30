@@ -30,15 +30,16 @@ type LeadTableColumn = {
   header: string;
   isCurrency?: boolean;
   isPercentage?: boolean;
-  isNumeric?: boolean;
+  isNumeric?: boolean; // Will use formatShortNumber
   isDate?: boolean;
-  isShortDate?: boolean;
+  isShortDate?: boolean; // For dd/MM/yyyy format
   isNotes?: boolean;
   isUserLookup?: boolean;
   isAgentLookup?: boolean;
   isYachtLookup?: boolean;
 };
 
+// Updated column headers for package quantities
 const leadColumns: LeadTableColumn[] = [
   { accessorKey: 'select', header: '' },
   { accessorKey: 'id', header: 'ID' },
@@ -62,7 +63,7 @@ const leadColumns: LeadTableColumn[] = [
   { accessorKey: 'qty_royalChildRate', header: 'RYL CH', isNumeric: true },
   { accessorKey: 'qty_royalAdultRate', header: 'RYL', isNumeric: true },
   { accessorKey: 'qty_royalDrinksRate', header: 'RYL DRK', isNumeric: true },
-  { accessorKey: 'othersAmtCake', header: 'Custom Charge Qty', isNumeric: true }, // This is the quantity for otherChargeRate from Yacht
+  { accessorKey: 'othersAmtCake', header: 'Custom Charge Qty', isNumeric: true },
 
   { accessorKey: 'totalAmount', header: 'Total Amt', isCurrency: true },
   { accessorKey: 'commissionPercentage', header: 'Agent Disc. %', isPercentage: true },
@@ -109,31 +110,60 @@ export function LeadsTable({
     }
   };
 
-  const formatCurrency = (amount: number | undefined | null) => {
+  const formatCurrency = (amount?: number | null) => {
     if (typeof amount !== 'number' || isNaN(amount)) return '-';
     return `${amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} AED`;
   };
 
-  const formatPercentage = (value: number | undefined | null) => {
+  const formatPercentage = (value?: number | null) => {
     if (typeof value !== 'number' || isNaN(value)) return '-';
     return `${value.toFixed(1)}%`;
   }
 
-  const formatNumeric = (value: number | undefined | null) => {
-    if (value === null || value === undefined || isNaN(value)) return '0'; // Changed from '-' to '0' as these are quantities
-    return String(value);
-  }
+  const formatShortNumber = (num?: number | null): string => {
+    if (num === null || num === undefined || isNaN(num)) {
+      return '0'; // Default for quantities
+    }
+    if (num === 0) return '0';
+  
+    const absNum = Math.abs(num);
+    const sign = num < 0 ? '-' : '';
+  
+    if (absNum < 1000) {
+      return String(num); // No suffix for numbers less than 1000
+    }
+  
+    const suffixes = ["", "K", "M", "B", "T"]; // K for thousands, M for millions, etc.
+    const i = Math.floor(Math.log10(absNum) / 3);
+  
+    if (i >= suffixes.length) { // Handle numbers larger than what suffixes cover
+        return sign + num.toExponential(1); // Fallback to exponential for very large numbers
+    }
+
+    const shortValue = (absNum / Math.pow(1000, i));
+    let formattedShortValue;
+    
+    // Show one decimal place if it's not .0, otherwise no decimal place
+    if (shortValue % 1 !== 0) {
+      formattedShortValue = shortValue.toFixed(1);
+    } else {
+      formattedShortValue = shortValue.toFixed(0);
+    }
+    
+    return sign + formattedShortValue + suffixes[i];
+  };
+
 
   const formatDateValue = (dateString?: string, includeTime: boolean = true) => {
     if (!dateString) return '-';
     try {
       const date = parseISO(dateString);
-      if (!isValid(date)) return dateString; // Return original string if not a valid ISO date
+      if (!isValid(date)) return dateString; 
       const dateFormat = includeTime ? 'dd/MM/yyyy HH:mm' : 'dd/MM/yyyy';
       return format(date, dateFormat);
     } catch (e) {
       console.warn(`Error formatting date: ${dateString}`, e);
-      return dateString; // Return original string on error
+      return dateString; 
     }
   };
 
@@ -144,26 +174,24 @@ export function LeadsTable({
 
   const calculateTotalGuests = (lead: Lead): number => {
     let total = 0;
-    // Summing up all 9 standardized guest-related package quantities
-    total += lead.qty_childRate || 0;
-    total += lead.qty_adultStandardRate || 0;
-    total += lead.qty_adultStandardDrinksRate || 0;
-    total += lead.qty_vipChildRate || 0;
-    total += lead.qty_vipAdultRate || 0;
-    total += lead.qty_vipAdultDrinksRate || 0;
-    total += lead.qty_royalChildRate || 0;
-    total += lead.qty_royalAdultRate || 0;
-    total += lead.qty_royalDrinksRate || 0;
-    // othersAmtCake is a quantity for a custom charge, not typically a direct guest count
+    total += lead.qty_childRate ?? 0;
+    total += lead.qty_adultStandardRate ?? 0;
+    total += lead.qty_adultStandardDrinksRate ?? 0;
+    total += lead.qty_vipChildRate ?? 0;
+    total += lead.qty_vipAdultRate ?? 0;
+    total += lead.qty_vipAdultDrinksRate ?? 0;
+    total += lead.qty_royalChildRate ?? 0;
+    total += lead.qty_royalAdultRate ?? 0;
+    total += lead.qty_royalDrinksRate ?? 0;
     return total;
   };
 
   const renderCellContent = (lead: Lead, column: LeadTableColumn) => {
-    if (column.accessorKey === 'totalGuests') {
-      return formatNumeric(calculateTotalGuests(lead));
-    }
     const value = lead[column.accessorKey as keyof Lead];
 
+    if (column.accessorKey === 'totalGuests') {
+      return formatShortNumber(calculateTotalGuests(lead));
+    }
     if (column.accessorKey === 'id') {
       return (
         <Button variant="link" className="p-0 h-auto font-medium" onClick={() => onEditLead(lead)}>
@@ -194,8 +222,8 @@ export function LeadsTable({
     if (column.isPercentage) {
       return formatPercentage(value as number | undefined);
     }
-    if (column.isNumeric) {
-      return formatNumeric(value as number | undefined);
+    if (column.isNumeric) { // This will now use formatShortNumber
+      return formatShortNumber(value as number | undefined);
     }
     if (column.isNotes) {
       return formatNotes(value as string | undefined);
@@ -215,7 +243,7 @@ export function LeadsTable({
             {leadColumns.map(col => (
               <TableHead key={col.accessorKey} className={col.accessorKey === 'select' ? "w-[40px]" : ""}>
                 {col.accessorKey === 'select' ? (
-                  <Checkbox aria-label="Select all rows" disabled /> // For future bulk actions
+                  <Checkbox aria-label="Select all rows" disabled /> 
                 ) : col.header}
               </TableHead>
             ))}
@@ -231,11 +259,9 @@ export function LeadsTable({
           ) : (
             leads.map((lead) => (
               <TableRow key={lead.id}>
-                {/* Cell for checkbox - for future bulk actions */}
                 <TableCell>
                   <Checkbox aria-label={`Select row ${lead.id}`} disabled />
                 </TableCell>
-                {/* Iterate over columns, excluding the first (checkbox) and last (actions) */}
                 {leadColumns.slice(1, -1).map(col => (
                   <TableCell key={col.accessorKey}>
                     {renderCellContent(lead, col)}
@@ -253,13 +279,14 @@ export function LeadsTable({
                       <DropdownMenuLabel>Actions</DropdownMenuLabel>
                       <DropdownMenuItem
                         onClick={() => onEditLead(lead)}
-                        disabled={!!currentUserId && !!lead.ownerUserId && lead.ownerUserId !== currentUserId && currentUserId !== 'DO-admin'} // Admins can always edit
+                        disabled={!!currentUserId && !!lead.ownerUserId && lead.ownerUserId !== currentUserId && currentUserId !== 'DO-admin'}
                       >
                         Edit Lead
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         className="text-destructive"
                         onClick={() => onDeleteLead(lead.id)}
+                        disabled={!!currentUserId && !!lead.ownerUserId && lead.ownerUserId !== currentUserId && currentUserId !== 'DO-admin'}
                       >
                         Delete Lead
                       </DropdownMenuItem>
@@ -275,3 +302,5 @@ export function LeadsTable({
     </ScrollArea>
   );
 }
+
+    

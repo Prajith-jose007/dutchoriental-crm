@@ -53,25 +53,25 @@ const leadFormSchema = z.object({
   modeOfPayment: z.enum(modeOfPaymentOptions),
   clientName: z.string().min(1, 'Client name is required'),
 
-  // Standardized 9 Package Quantities
-  qty_childRate: z.coerce.number().min(0).optional().default(0),
-  qty_adultStandardRate: z.coerce.number().min(0).optional().default(0),
-  qty_adultStandardDrinksRate: z.coerce.number().min(0).optional().default(0),
-  qty_vipChildRate: z.coerce.number().min(0).optional().default(0),
-  qty_vipAdultRate: z.coerce.number().min(0).optional().default(0),
-  qty_vipAdultDrinksRate: z.coerce.number().min(0).optional().default(0),
-  qty_royalChildRate: z.coerce.number().min(0).optional().default(0),
-  qty_royalAdultRate: z.coerce.number().min(0).optional().default(0),
-  qty_royalDrinksRate: z.coerce.number().min(0).optional().default(0),
+  // Standardized 9 Package Quantities - allow negative numbers
+  qty_childRate: z.coerce.number().optional().default(0),
+  qty_adultStandardRate: z.coerce.number().optional().default(0),
+  qty_adultStandardDrinksRate: z.coerce.number().optional().default(0),
+  qty_vipChildRate: z.coerce.number().optional().default(0),
+  qty_vipAdultRate: z.coerce.number().optional().default(0),
+  qty_vipAdultDrinksRate: z.coerce.number().optional().default(0),
+  qty_royalChildRate: z.coerce.number().optional().default(0),
+  qty_royalAdultRate: z.coerce.number().optional().default(0),
+  qty_royalDrinksRate: z.coerce.number().optional().default(0),
 
-  othersAmtCake: z.coerce.number().min(0).optional().default(0), // Quantity for custom charge (linked to yacht.otherChargeRate)
+  othersAmtCake: z.coerce.number().optional().default(0), // Quantity for custom charge - allow negative
 
-  totalAmount: z.coerce.number().min(0).default(0),
-  commissionPercentage: z.coerce.number().min(0).max(100).default(0),
+  totalAmount: z.coerce.number().default(0),
+  commissionPercentage: z.coerce.number().min(0, "Commission must be non-negative").max(100, "Commission cannot exceed 100%").default(0),
   commissionAmount: z.coerce.number().optional().default(0),
-  netAmount: z.coerce.number().min(0).default(0),
-  paidAmount: z.coerce.number().min(0).default(0),
-  balanceAmount: z.coerce.number().min(0).default(0),
+  netAmount: z.coerce.number().default(0),
+  paidAmount: z.coerce.number().default(0), // Allow negative for refunds/adjustments
+  balanceAmount: z.coerce.number().default(0),
   createdAt: z.string().optional(),
   updatedAt: z.string().optional(),
   lastModifiedByUserId: z.string().optional(),
@@ -87,11 +87,13 @@ interface LeadFormDialogProps {
   onSubmitSuccess: (data: Lead) => void;
 }
 
+// Configuration for the 9 standardized package items
+// This maps form fields to yacht rate fields and provides labels
 const allPackageItemConfigs: {
-  qtyKey: keyof LeadFormData;
-  rateKey: keyof Yacht;
-  label: string;
-  isGuestCount?: boolean;
+  qtyKey: keyof LeadFormData; // Field name in LeadFormData for quantity
+  rateKey: keyof Yacht;      // Field name in Yacht for the corresponding rate
+  label: string;             // User-friendly label for the form
+  isGuestCount?: boolean;    // Does this quantity contribute to total guest count?
 }[] = [
   { qtyKey: 'qty_childRate', rateKey: 'childRate', label: 'Child Package', isGuestCount: true },
   { qtyKey: 'qty_adultStandardRate', rateKey: 'adultStandardRate', label: 'Adult Standard Package', isGuestCount: true },
@@ -105,9 +107,9 @@ const allPackageItemConfigs: {
 ];
 
 const customChargeConfig = {
-  qtyKey: 'othersAmtCake' as keyof LeadFormData, // This is the quantity field on the Lead
-  rateKey: 'otherChargeRate' as keyof Yacht,    // This is the rate field on the Yacht
-  nameKey: 'otherChargeName' as keyof Yacht     // This is the name field on the Yacht
+  qtyKey: 'othersAmtCake' as keyof LeadFormData,
+  rateKey: 'otherChargeRate' as keyof Yacht,
+  nameKey: 'otherChargeName' as keyof Yacht
 };
 
 const getDefaultFormValues = (): LeadFormData => ({
@@ -166,13 +168,12 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
       }
     };
     fetchDropdownData();
-  }, [isOpen, toast]);
+  }, [isOpen]);
 
 
   const watchedAgentId = form.watch('agent');
   const watchedYachtId = form.watch('yacht');
   
-  // Explicitly watch all 9 package quantities for the calculation useEffect
   const qty_childRate = form.watch('qty_childRate');
   const qty_adultStandardRate = form.watch('qty_adultStandardRate');
   const qty_adultStandardDrinksRate = form.watch('qty_adultStandardDrinksRate');
@@ -193,15 +194,20 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
     const selectedYacht = yachts.find(y => y.id === watchedYachtId);
 
     console.log('[CalcDebug] Selected Agent:', selectedAgent ? {id: selectedAgent.id, name: selectedAgent.name, discount: selectedAgent.discount} : null);
-    console.log('[CalcDebug] Selected Yacht:', selectedYacht ? {id: selectedYacht.id, name: selectedYacht.name, rates: 'check rates object below'} : null);
-    if(selectedYacht) console.log('[CalcDebug] Selected Yacht Rates:', {
-        childRate: selectedYacht.childRate, adultStandardRate: selectedYacht.adultStandardRate, /* etc. for all 9 */
+    if(selectedYacht) {
+      console.log('[CalcDebug] Selected Yacht ID:', selectedYacht.id, 'Name:', selectedYacht.name);
+      console.log('[CalcDebug] Selected Yacht Rates:', {
+        childRate: selectedYacht.childRate, adultStandardRate: selectedYacht.adultStandardRate, adultStandardDrinksRate: selectedYacht.adultStandardDrinksRate,
+        vipChildRate: selectedYacht.vipChildRate, vipAdultRate: selectedYacht.vipAdultRate, vipAdultDrinksRate: selectedYacht.vipAdultDrinksRate,
+        royalChildRate: selectedYacht.royalChildRate, royalAdultRate: selectedYacht.royalAdultRate, royalDrinksRate: selectedYacht.royalDrinksRate,
         otherChargeRate: selectedYacht.otherChargeRate
-    });
+      });
+    } else {
+      console.log('[CalcDebug] No Yacht Selected or Yacht not found.');
+    }
 
 
     const agentDiscountRate = Number(selectedAgent?.discount || 0);
-    // Set commissionPercentage once when agent changes, or if it's not already set by the form values from an existing lead
     if (form.getValues('commissionPercentage') !== agentDiscountRate) {
       form.setValue('commissionPercentage', agentDiscountRate, { shouldValidate: true, shouldDirty: true });
     }
@@ -216,10 +222,10 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
         const rate = Number(selectedYacht[pkgConfig.rateKey as keyof Yacht] || 0);
         
         console.log(`[CalcDebug] Package: ${pkgConfig.label}, Qty: ${quantity}, Rate: ${rate}`);
-        if (quantity > 0 && rate > 0) {
+        if (rate > 0) { // Only add to total if rate is positive, quantity can be negative for adjustments
           currentTotalAmount += quantity * rate;
         }
-        if (pkgConfig.isGuestCount) {
+        if (pkgConfig.isGuestCount && quantity > 0) { // Only positive quantities contribute to guest count
           currentTotalGuests += quantity;
         }
       });
@@ -227,7 +233,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
       const customChargeQtyValue = Number(form.getValues(customChargeConfig.qtyKey) || 0);
       const customChargeRateValue = Number(selectedYacht[customChargeConfig.rateKey as keyof Yacht] || 0);
       console.log(`[CalcDebug] Custom Charge: Qty: ${customChargeQtyValue}, Rate: ${customChargeRateValue}`);
-      if (customChargeQtyValue > 0 && customChargeRateValue > 0) {
+      if (customChargeRateValue > 0) { // Only add if rate is positive
         currentTotalAmount += customChargeQtyValue * customChargeRateValue;
       }
     }
@@ -235,22 +241,26 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
     console.log('[CalcDebug] Calculated Total Guests:', currentTotalGuests);
     setCalculatedTotalGuests(currentTotalGuests);
     
-    console.log('[CalcDebug] Calculated Total Amount (before commission):', currentTotalAmount);
     form.setValue('totalAmount', currentTotalAmount, { shouldValidate: true, shouldDirty: true });
+    console.log('[CalcDebug] Set Total Amount:', currentTotalAmount);
+
 
     const currentCommissionAmount = (currentTotalAmount * agentDiscountRate) / 100;
-    console.log('[CalcDebug] Calculated Commission Amount:', currentCommissionAmount);
     form.setValue('commissionAmount', currentCommissionAmount, { shouldValidate: true, shouldDirty: true });
+    console.log('[CalcDebug] Set Commission Amount:', currentCommissionAmount);
+
 
     const currentNetAmount = currentTotalAmount - currentCommissionAmount;
-    console.log('[CalcDebug] Calculated Net Amount:', currentNetAmount);
     form.setValue('netAmount', currentNetAmount, { shouldValidate: true, shouldDirty: true });
+    console.log('[CalcDebug] Set Net Amount:', currentNetAmount);
+
     
-    const paidAmt = Number(watchedPaidAmount || 0); // watchedPaidAmount is already a number due to form.watch
-    const currentBalanceAmount = currentNetAmount - paidAmt; // Balance = Net Amount - Paid Amount
-    console.log('[CalcDebug] Paid Amount from form:', paidAmt);
-    console.log('[CalcDebug] Calculated Balance Amount:', currentBalanceAmount);
+    const paidAmt = Number(watchedPaidAmount || 0);
+    const currentBalanceAmount = currentNetAmount - paidAmt;
     form.setValue('balanceAmount', currentBalanceAmount, { shouldValidate: true, shouldDirty: true });
+    console.log('[CalcDebug] Paid Amount from form:', paidAmt);
+    console.log('[CalcDebug] Set Balance Amount:', currentBalanceAmount);
+
 
   }, [
     watchedAgentId, watchedYachtId, 
@@ -258,8 +268,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
     qty_vipChildRate, qty_vipAdultRate, qty_vipAdultDrinksRate,
     qty_royalChildRate, qty_royalAdultRate, qty_royalDrinksRate,
     watchedCustomChargeQty, watchedPaidAmount, 
-    form, // form methods like setValue and getValues are stable, but form state might change
-    agents, yachts
+    form, agents, yachts
   ]);
 
 
@@ -267,29 +276,28 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
     if (isOpen) {
       const defaultVals = getDefaultFormValues();
       if (lead) {
-        // When editing, parse the ISO string from lead.month to a Date object for the DatePicker
         const leadMonthDate = lead.month && isValid(parseISO(lead.month)) ? parseISO(lead.month) : defaultVals.month;
         
         const resetValues: LeadFormData = {
-          ...defaultVals, // Start with defaults
-          ...lead,        // Overlay existing lead data
-          month: leadMonthDate, // Ensure month is a Date object
+          ...defaultVals, 
+          ...lead,        
+          month: leadMonthDate, 
           transactionId: lead.transactionId || defaultVals.transactionId,
           notes: lead.notes || defaultVals.notes,
           
-          qty_childRate: lead.qty_childRate || 0,
-          qty_adultStandardRate: lead.qty_adultStandardRate || 0,
-          qty_adultStandardDrinksRate: lead.qty_adultStandardDrinksRate || 0,
-          qty_vipChildRate: lead.qty_vipChildRate || 0,
-          qty_vipAdultRate: lead.qty_vipAdultRate || 0,
-          qty_vipAdultDrinksRate: lead.qty_vipAdultDrinksRate || 0,
-          qty_royalChildRate: lead.qty_royalChildRate || 0,
-          qty_royalAdultRate: lead.qty_royalAdultRate || 0,
-          qty_royalDrinksRate: lead.qty_royalDrinksRate || 0,
-          othersAmtCake: lead.othersAmtCake || 0,
+          qty_childRate: lead.qty_childRate ?? 0,
+          qty_adultStandardRate: lead.qty_adultStandardRate ?? 0,
+          qty_adultStandardDrinksRate: lead.qty_adultStandardDrinksRate ?? 0,
+          qty_vipChildRate: lead.qty_vipChildRate ?? 0,
+          qty_vipAdultRate: lead.qty_vipAdultRate ?? 0,
+          qty_vipAdultDrinksRate: lead.qty_vipAdultDrinksRate ?? 0,
+          qty_royalChildRate: lead.qty_royalChildRate ?? 0,
+          qty_royalAdultRate: lead.qty_royalAdultRate ?? 0,
+          qty_royalDrinksRate: lead.qty_royalDrinksRate ?? 0,
+          othersAmtCake: lead.othersAmtCake ?? 0,
           
           totalAmount: lead.totalAmount || 0,
-          commissionPercentage: lead.commissionPercentage || 0, // Will be potentially overridden by agent's discount
+          commissionPercentage: lead.commissionPercentage || 0,
           commissionAmount: lead.commissionAmount || 0,
           netAmount: lead.netAmount || 0,
           paidAmount: lead.paidAmount || 0,
@@ -300,30 +308,27 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
         form.reset(defaultVals);
       }
       
-      // Ensure commission percentage is set based on selected agent if dialog re-opens
-      // This needs 'agents' to be populated
       const currentAgentId = form.getValues('agent');
       if (currentAgentId && agents.length > 0) {
         const selectedAgent = agents.find(a => a.id === currentAgentId);
         form.setValue('commissionPercentage', Number(selectedAgent?.discount || 0), { shouldValidate: true, shouldDirty: true });
-      } else if (!currentAgentId && !lead) { // Only reset to 0 if it's a new lead form and no agent is selected
+      } else if (!currentAgentId && !lead) { 
          form.setValue('commissionPercentage', 0, { shouldValidate: true, shouldDirty: true });
       }
     }
   }, [lead, form, isOpen, agents, yachts]);
 
   function onSubmit(data: LeadFormData) {
-    const currentUserId = 'DO-user1'; // Placeholder for actual logged-in user ID
+    const currentUserId = 'DO-user1'; 
 
     const submittedLead: Lead = {
       ...data,
-      month: data.month ? formatISO(data.month) : formatISO(new Date()), // Convert Date to ISO string for submission
+      month: data.month ? formatISO(data.month) : formatISO(new Date()),
       id: lead?.id || data.id, 
       createdAt: lead?.createdAt || formatISO(new Date()),
       updatedAt: formatISO(new Date()),
       lastModifiedByUserId: currentUserId,
       ownerUserId: lead?.ownerUserId || currentUserId,
-       // Ensure numeric fields are numbers
       totalAmount: Number(data.totalAmount || 0),
       commissionPercentage: Number(data.commissionPercentage || 0),
       commissionAmount: Number(data.commissionAmount || 0),
@@ -416,15 +421,14 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
               />
                <FormField
                 control={form.control}
-                name="month" // This field now stores the full event date
+                name="month" 
                 render={({ field }) => (
                   <FormItem className="flex flex-col">
                     <FormLabel>Lead/Event Date</FormLabel>
                     <DatePicker
-                        date={field.value} // field.value should be a Date object here
+                        date={field.value}
                         setDate={(date) => {
                             field.onChange(date);
-                             // Auto-update month text field if needed (though not strictly required anymore)
                         }}
                         placeholder="Pick event date"
                     />
@@ -499,7 +503,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-2">
                   {allPackageItemConfigs.map(pkgFieldConfig => {
                     const rate = selectedYachtForRateDisplay ? Number(selectedYachtForRateDisplay[pkgFieldConfig.rateKey as keyof Yacht] || 0) : 0;
-                    const rateDisplay = selectedYachtForRateDisplay ? `(Rate: ${rate} AED)` : '(Select Yacht)';
+                    const rateDisplay = selectedYachtForRateDisplay ? `(Rate: ${rate} AED)` : '(Select Yacht for Rate)';
                     return (
                       <FormField
                       key={pkgFieldConfig.qtyKey}
@@ -509,7 +513,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
                           <FormItem>
                           <FormLabel>{pkgFieldConfig.label} {rateDisplay}</FormLabel>
                           <FormControl>
-                              <Input type="number" min="0" placeholder="0" {...field} onChange={e => field.onChange(parseInt(e.target.value,10) || 0)} />
+                              <Input type="number" placeholder="0" {...field} onChange={e => field.onChange(parseInt(e.target.value,10))} />
                           </FormControl>
                           <FormMessage />
                           </FormItem>
@@ -525,7 +529,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 <FormField
                     control={form.control}
-                    name={customChargeConfig.qtyKey} // This is 'othersAmtCake'
+                    name={customChargeConfig.qtyKey} 
                     render={({ field }) => {
                         const customChargeNameOnYacht = selectedYachtForRateDisplay?.[customChargeConfig.nameKey as keyof Yacht];
                         const customChargeRateOnYacht = selectedYachtForRateDisplay ? Number(selectedYachtForRateDisplay[customChargeConfig.rateKey as keyof Yacht] || 0) : 0;
@@ -535,11 +539,11 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
                             : 'Quantity for Custom Charge';
                         const rateDisplay = selectedYachtForRateDisplay && customChargeRateOnYacht > 0
                             ? `(Rate: ${customChargeRateOnYacht} AED)`
-                            : selectedYachtForRateDisplay ? '(No Custom Charge Set on Yacht)' : '(Select Yacht)';
+                            : selectedYachtForRateDisplay ? '(No Custom Charge Set on Yacht)' : '(Select Yacht for Rate)';
                         return (
                             <FormItem>
                                 <FormLabel>{labelText} {rateDisplay}</FormLabel>
-                                <FormControl><Input type="number" min="0" placeholder="0" {...field} onChange={e => field.onChange(parseInt(e.target.value) || 0)} /></FormControl>
+                                <FormControl><Input type="number" placeholder="0" {...field} onChange={e => field.onChange(parseInt(e.target.value))} /></FormControl>
                                 <FormMessage />
                             </FormItem>
                         );
@@ -629,7 +633,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Paid Amount (AED)</FormLabel>
-                      <FormControl><Input type="number" min="0" placeholder="0.00" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl>
+                      <FormControl><Input type="number" placeholder="0.00" {...field} onChange={e => field.onChange(parseFloat(e.target.value))} /></FormControl>
                       <FormDescription>Amount paid by client</FormDescription>
                       <FormMessage />
                     </FormItem>

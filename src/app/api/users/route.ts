@@ -9,30 +9,38 @@ export async function GET(request: NextRequest) {
   try {
     // Ensure password is not selected from the DB
     const usersData: any[] = await query('SELECT id, name, email, designation, avatarUrl, websiteUrl, status FROM users ORDER BY name ASC');
-    console.log('[API GET /api/users] Raw DB Data Sample (first item):', usersData.length > 0 ? usersData[0] : "No users found in DB");
+    console.log('[API GET /api/users] Raw DB Data (length):', usersData.length);
+    if (usersData.length > 0) {
+        console.log('[API GET /api/users] Raw DB Data Sample (first item):', usersData[0]);
+    }
 
     const users: User[] = usersData.map((dbUser: any) => {
       const userTyped: User = {
-        id: String(dbUser.id),
-        name: dbUser.name || '', // Default to empty string if null/undefined
-        email: dbUser.email || '', // Default to empty string
-        designation: dbUser.designation || '', // Default to empty string
+        id: dbUser.id ? String(dbUser.id) : '', // Ensure ID is a string, handle null
+        name: dbUser.name || '', 
+        email: dbUser.email || '', 
+        designation: dbUser.designation || '', 
         avatarUrl: dbUser.avatarUrl || undefined,
         websiteUrl: dbUser.websiteUrl || undefined,
-        status: dbUser.status || 'Active', // Default status if null/undefined
-        // password field is intentionally omitted and should not be sent to client
+        status: dbUser.status || 'Active', 
+        // password field is intentionally omitted
       };
+      if (!userTyped.id && usersData.length > 0) { // Only warn if we actually got some data rows
+        console.warn('[API GET /api/users] Mapping warning: User found with missing or null ID from DB:', dbUser);
+      }
       return userTyped;
     });
-    console.log('[API GET /api/users] Mapped Users Data Sample (first item):', users.length > 0 ? users[0] : "No users mapped");
+    
+    console.log('[API GET /api/users] Mapped Users Data (length):', users.length);
+     if (users.length > 0) {
+        console.log('[API GET /api/users] Mapped Users Data Sample (first item):', users[0]);
+    }
     return NextResponse.json(users, { status: 200 });
   } catch (error) {
-    console.error('[API GET /api/users] Error fetching users:', error);
-    // Provide more details in the error response
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    const errorStack = error instanceof Error ? error.stack : undefined;
+    console.error('[API GET /api/users] Error in GET handler:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error fetching users from API';
     return NextResponse.json(
-      { message: 'Failed to fetch users from API', error: errorMessage, details: errorStack },
+      { message: 'Failed to fetch users. Check server logs for details.', error: errorMessage },
       { status: 500 }
     );
   }
@@ -56,7 +64,6 @@ export async function POST(request: NextRequest) {
     }
     
     // IMPORTANT: Password should be hashed here in a real application before storing
-    // For this prototype, we store it as is if provided.
     const result: any = await query(
       'INSERT INTO users (id, name, email, designation, avatarUrl, websiteUrl, status, password) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
       [
@@ -67,19 +74,17 @@ export async function POST(request: NextRequest) {
         newUser.avatarUrl || null,
         newUser.websiteUrl || null,
         newUser.status || 'Active',
-        newUser.password || null, // Storing plaintext if provided, NULL otherwise
+        newUser.password || null, 
       ]
     );
     console.log('[API POST /api/users] DB Insert Result:', result);
 
     if (result.affectedRows === 1) {
-      // Fetch the created user to return it (excluding password)
       const createdUserQuery: any = await query('SELECT id, name, email, designation, avatarUrl, websiteUrl, status FROM users WHERE id = ?', [newUser.id]);
       if (createdUserQuery.length > 0) {
         console.log(`[API POST /api/users] Successfully created user: ${newUser.id}`);
         return NextResponse.json(createdUserQuery[0] as User, { status: 201 });
       }
-      // Fallback if fetch fails, return input minus password
       const { password, ...userToReturn } = newUser;
       console.warn('[API POST /api/users] User inserted, but failed to fetch confirmation. Returning original payload (minus password).');
       return NextResponse.json(userToReturn as User, { status: 201 });

@@ -504,25 +504,53 @@ export default function LeadsPage() {
       return;
     }
 
-    const allUniquePackageNames = Array.from(
+    const preferredPackageMap: { header: string; dataName: string }[] = [
+      { header: 'CH', dataName: 'CHILD' },
+      { header: 'AD', dataName: 'ADULT' },
+      { header: 'AD ALC', dataName: 'AD ALC' },
+      { header: 'VIP CH', dataName: 'VIP CH' },
+      { header: 'VIP AD', dataName: 'VIP AD' },
+      { header: 'VIP ALC', dataName: 'VIP ALC' },
+      { header: 'ROYAL CH', dataName: 'ROYAL CH' },
+      { header: 'ROYAL AD', dataName: 'ROYAL AD' },
+      { header: 'ROYAL ALC', dataName: 'ROYAL ALC' },
+    ];
+
+    const allActualUniquePackageNames = Array.from(
       new Set(
         allYachts.flatMap(yacht => yacht.packages?.map(pkg => pkg.name.trim()) || []).filter(name => name)
       )
-    ).sort();
+    );
+
+    const finalPackageColumns: { header: string; dataName: string }[] = [];
+    const addedDataNames = new Set<string>();
+
+    preferredPackageMap.forEach(preferredPkg => {
+      if (allActualUniquePackageNames.includes(preferredPkg.dataName)) {
+        finalPackageColumns.push(preferredPkg);
+        addedDataNames.add(preferredPkg.dataName);
+      }
+    });
+
+    allActualUniquePackageNames.sort().forEach(actualName => {
+      if (!addedDataNames.has(actualName)) {
+        finalPackageColumns.push({ header: actualName, dataName: actualName });
+      }
+    });
+    
+    const packageColumnHeaders = finalPackageColumns.map(col => col.header);
 
     const baseHeadersPart1: string[] = [
       'ID', 'Client Name', 'Agent Name', 'Yacht Name', 'Status', 'Lead/Event Date', 'Type',
       'Transaction ID', 'Payment Mode', 'Total Guests',
     ];
     
-    const packageQtyHeaders = allUniquePackageNames.map(pkgName => `${pkgName} Qty`);
-
     const financialAndAuditHeaders: string[] = [
       'Total Amount', 'Agent Discount (%)', 'Commission Amount', 'Net Amount', 'Paid Amount', 'Balance',
       'Notes', 'Modified By', 'Lead Owner', 'Created At', 'Updated At'
     ];
 
-    const finalCsvHeaders = [...baseHeadersPart1, ...packageQtyHeaders, ...financialAndAuditHeaders];
+    const finalCsvHeaders = [...baseHeadersPart1, ...packageColumnHeaders, ...financialAndAuditHeaders];
     
     const escapeCsvCell = (cellData: any): string => {
       if (cellData === null || cellData === undefined) return '';
@@ -537,6 +565,7 @@ export default function LeadsPage() {
       finalCsvHeaders.join(','),
       ...filteredLeads.map(lead => {
         const totalGuests = lead.packageQuantities?.reduce((sum, pq) => sum + (Number(pq.quantity) || 0), 0) || 0;
+        
         const leadPackageMap = new Map<string, number>();
         lead.packageQuantities?.forEach(pq => {
           if ((Number(pq.quantity) || 0) > 0) {
@@ -557,8 +586,8 @@ export default function LeadsPage() {
           escapeCsvCell(totalGuests),
         ];
 
-        const packageQtyValues = allUniquePackageNames.map(uniquePkgName =>
-          escapeCsvCell(leadPackageMap.get(uniquePkgName) || 0)
+        const packageQtyValues = finalPackageColumns.map(col =>
+          escapeCsvCell(leadPackageMap.get(col.dataName) || 0)
         );
         
         const financialAndAuditValues = [
@@ -722,5 +751,3 @@ export default function LeadsPage() {
     </div>
   );
 }
-
-    

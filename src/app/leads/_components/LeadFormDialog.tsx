@@ -134,7 +134,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
     defaultValues: getDefaultFormValues(lead),
   });
 
-  const { fields: packageQuantityFields, replace: replacePackageQuantities, update: updatePackageQuantity } = useFieldArray({
+  const { fields: packageQuantityFields, replace: replacePackageQuantities } = useFieldArray({
     control: form.control,
     name: "packageQuantities",
   });
@@ -206,7 +206,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
     if (selectedYacht && selectedYacht.packages && Array.isArray(selectedYacht.packages)) {
       const newPQs = selectedYacht.packages.map(yachtPkg => {
         const existingLeadPQ = lead?.packageQuantities?.find(lpq => lpq.packageId === yachtPkg.id);
-        const rateFromYacht = Number(yachtPkg.rate || 0);
+        const rateFromYacht = Number(yachtPkg.rate || 0); 
         return {
           packageId: String(yachtPkg.id || `pkg-id-${Date.now()}-${Math.random()}`),
           packageName: String(yachtPkg.name || 'Unnamed Package'),
@@ -216,7 +216,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
       });
       console.log('[LeadForm PQ Effect] Populating packageQuantities based on selected yacht. New PQs:', JSON.parse(JSON.stringify(newPQs)));
       replacePackageQuantities(newPQs);
-      form.trigger(); // Explicitly trigger validation/re-render for RHF if needed
+      form.trigger(); 
     } else {
       console.log('[LeadForm PQ Effect] No valid packages on selected yacht or yacht not found, clearing packageQuantities.');
       replacePackageQuantities([]);
@@ -226,86 +226,78 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
 
 
   useEffect(() => {
-    console.log('[CalcDebug] --- Calculation Effect Start ---');
-    const currentFormData = form.getValues();
-    console.log('[CalcDebug] Watched Yacht ID for calc:', watchedYachtId);
-    console.log('[CalcDebug] Current form yacht ID:', currentFormData.yacht);
+    console.log('[CalcDebug] --- Calculation Effect Fired ---');
+    const currentYachtId = watchedYachtId;
+    const currentAgentId = watchedAgentId;
+    const currentPackageQuantities = watchedPackageQuantities || []; 
+    const currentPaidAmount = watchedPaidAmount;
 
-    const selectedAgentForCalc = allAgents.find(a => a.id === currentFormData.agent);
-    // IMPORTANT: Use watchedYachtId to ensure we get the most up-to-date selected yacht for rate lookup
-    const selectedYachtForCalc = allYachts.find(y => y.id === watchedYachtId); 
+    console.log('[CalcDebug] Watched Values: YachtID=', currentYachtId, 'AgentID=', currentAgentId, 'PaidAmount=', currentPaidAmount);
+    console.log('[CalcDebug] Watched PackageQuantities:', JSON.parse(JSON.stringify(currentPackageQuantities)));
 
-    console.log('[CalcDebug] Selected Agent Discount:', selectedAgentForCalc?.discount);
-    console.log('[CalcDebug] Selected Yacht for Calc:', selectedYachtForCalc ? { id: selectedYachtForCalc.id, name: selectedYachtForCalc.name, packagesCount: selectedYachtForCalc.packages?.length } : 'None');
-    if(selectedYachtForCalc?.packages){
-        console.log('[CalcDebug] Selected Yacht Packages (first 2 for brevity):', JSON.stringify(selectedYachtForCalc.packages.slice(0,2)));
+    const selectedYachtForCalc = allYachts.find(y => y.id === currentYachtId);
+
+    if (!selectedYachtForCalc) {
+      console.warn('[CalcDebug] No yacht selected or found for calc. WatchedYachtID:', currentYachtId);
+      form.setValue('totalAmount', 0, { shouldValidate: true, shouldDirty: true });
+      form.setValue('commissionAmount', 0, { shouldValidate: true, shouldDirty: true });
+      form.setValue('netAmount', 0, { shouldValidate: true, shouldDirty: true });
+      form.setValue('balanceAmount', Math.abs(0 - currentPaidAmount), { shouldValidate: true, shouldDirty: true });
+      setCalculatedTotalGuests(0);
+      return;
     }
+    console.log('[CalcDebug] Using Yacht for Calc:', selectedYachtForCalc.name, 'Packages:', selectedYachtForCalc.packages);
 
-    let currentTotalAmount = 0;
-    let currentTotalGuestsFromPackages = 0;
+    let calculatedTotalAmount = 0;
+    let calculatedTotalGuests = 0;
 
-    if (currentFormData.packageQuantities && Array.isArray(currentFormData.packageQuantities)) {
-      if (selectedYachtForCalc && selectedYachtForCalc.packages) {
-        console.log('[CalcDebug] Yacht has packages. Iterating form package quantities...');
-        currentFormData.packageQuantities.forEach((pqItem, index) => {
-          const quantity = Number(pqItem.quantity || 0);
-          
-          // Explicitly look up the rate from the selected yacht's package list using packageId
-          const yachtPackageDetails = selectedYachtForCalc.packages?.find(p => p.id === pqItem.packageId);
-          const rate = yachtPackageDetails ? Number(yachtPackageDetails.rate || 0) : 0; 
-          
-          console.log(`[CalcDebug] PkgItem[${index}]: ID='${pqItem.packageId}', Name='${pqItem.packageName}', FormStateRate='${pqItem.rate}', Qty=${quantity}, FetchedRateFromYacht=${rate}`);
+    if (selectedYachtForCalc.packages && Array.isArray(selectedYachtForCalc.packages)) {
+      currentPackageQuantities.forEach((pqItem, index) => {
+        const quantity = Number(pqItem.quantity || 0);
+        // Fetch rate directly from the selected yacht's package list
+        const yachtPackageDetails = selectedYachtForCalc.packages.find(p => p.id === pqItem.packageId);
+        const rate = yachtPackageDetails ? Number(yachtPackageDetails.rate || 0) : 0; 
 
-          if (quantity > 0 && rate > 0) { // Use the FetchedRateFromYacht for calculation
-            currentTotalAmount += quantity * rate;
-          }
-          currentTotalGuestsFromPackages += quantity;
-        });
-      } else {
-        console.warn('[CalcDebug] Selected yacht for calc not found or has no packages. Cannot calculate package amounts reliably with direct lookup. Falling back to form state rates if available.');
-        // Fallback: try using rate from pqItem if yacht data is missing,
-        // but this is where the issue might be if pqItem.rate itself is not updated.
-        currentFormData.packageQuantities.forEach((pqItem, index) => {
-            const quantity = Number(pqItem.quantity || 0);
-            const rateFromFormState = Number(pqItem.rate || 0); 
-            console.warn(`[CalcDebug] Fallback PkgItem[${index}]: ID='${pqItem.packageId}', Name='${pqItem.packageName}', FormStateRate='${rateFromFormState}', Qty=${quantity}`);
-            if (quantity > 0 && rateFromFormState > 0) {
-                currentTotalAmount += quantity * rateFromFormState;
-            }
-            currentTotalGuestsFromPackages += quantity;
-        });
-      }
+        console.log(`[CalcDebug] Processing PkgItem[${index}]: ID='${pqItem.packageId}', Name='${pqItem.packageName}', Qty=${quantity}, RateFromYacht=${rate}`);
+        
+        if (quantity > 0 && rate > 0) {
+          calculatedTotalAmount += quantity * rate;
+        }
+        calculatedTotalGuests += quantity;
+      });
     } else {
-      console.log('[CalcDebug] No packageQuantities in form data to calculate.');
+      console.warn('[CalcDebug] Selected yacht has no valid packages array or packages are missing.');
     }
     
-    setCalculatedTotalGuests(currentTotalGuestsFromPackages);
-    form.setValue('totalAmount', currentTotalAmount, { shouldValidate: true, shouldDirty: true });
+    setCalculatedTotalGuests(calculatedTotalGuests);
+    form.setValue('totalAmount', calculatedTotalAmount, { shouldValidate: true, shouldDirty: true });
 
+    const selectedAgentForCalc = allAgents.find(a => a.id === currentAgentId);
     const agentDiscountRate = selectedAgentForCalc ? Number(selectedAgentForCalc.discount || 0) : 0;
+
     if (form.getValues('commissionPercentage') !== agentDiscountRate) {
-        form.setValue('commissionPercentage', agentDiscountRate, { shouldValidate: true, shouldDirty: true });
+      form.setValue('commissionPercentage', agentDiscountRate, { shouldValidate: true, shouldDirty: true });
     }
-    const currentCommissionAmount = (currentTotalAmount * agentDiscountRate) / 100;
-    form.setValue('commissionAmount', currentCommissionAmount, { shouldValidate: true, shouldDirty: true });
 
-    const currentNetAmount = currentTotalAmount - currentCommissionAmount;
-    form.setValue('netAmount', currentNetAmount, { shouldValidate: true, shouldDirty: true });
+    const calculatedCommissionAmount = (calculatedTotalAmount * agentDiscountRate) / 100;
+    form.setValue('commissionAmount', calculatedCommissionAmount, { shouldValidate: true, shouldDirty: true });
+
+    const calculatedNetAmount = calculatedTotalAmount - calculatedCommissionAmount;
+    form.setValue('netAmount', calculatedNetAmount, { shouldValidate: true, shouldDirty: true });
     
-    const paidAmt = Number(currentFormData.paidAmount || 0);
-    const actualSignedBalanceAmount = currentNetAmount - paidAmt;
-    form.setValue('balanceAmount', Math.abs(actualSignedBalanceAmount), { shouldValidate: true, shouldDirty: true }); 
+    const actualSignedBalanceAmount = calculatedNetAmount - currentPaidAmount;
+    form.setValue('balanceAmount', Math.abs(actualSignedBalanceAmount), { shouldValidate: true, shouldDirty: true });
 
-    console.log(`[CalcDebug] Final Amounts: TotalGuests=${currentTotalGuestsFromPackages}, Total=${currentTotalAmount}, CommissionPerc=${agentDiscountRate}%, CommissionAmt=${currentCommissionAmount}, Net=${currentNetAmount}, Paid=${paidAmt}, Balance=${Math.abs(actualSignedBalanceAmount)} (Signed: ${actualSignedBalanceAmount})`);
+    console.log(`[CalcDebug] Final Amounts: TotalGuests=${calculatedTotalGuests}, Total=${calculatedTotalAmount}, CommissionPerc=${agentDiscountRate}%, CommissionAmt=${calculatedCommissionAmount}, Net=${calculatedNetAmount}, Paid=${currentPaidAmount}, Balance=${Math.abs(actualSignedBalanceAmount)} (Signed: ${actualSignedBalanceAmount})`);
     console.log('[CalcDebug] --- Calculation Effect End ---');
 
   }, [
     watchedPackageQuantities, 
+    watchedYachtId, 
     watchedAgentId, 
     watchedPaidAmount, 
-    watchedYachtId, 
-    allAgents, 
     allYachts, 
+    allAgents, 
     form, 
     setCalculatedTotalGuests
   ]);
@@ -330,14 +322,15 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
 
 
   function onSubmit(data: LeadFormData) {
+    // Recalculate financials on submit to ensure consistency, using rates from the selected yacht
     let finalTotalAmount = 0;
     const selectedYachtForSubmit = allYachts.find(y => y.id === data.yacht);
 
     if (data.packageQuantities && Array.isArray(data.packageQuantities) && selectedYachtForSubmit && selectedYachtForSubmit.packages) {
       data.packageQuantities.forEach(pqItem => {
         const quantity = Number(pqItem.quantity || 0);
-        // Use the rate stored with the pqItem in the form state, which should have been set from the yacht package
-        const rate = Number(pqItem.rate || 0); 
+        const yachtPackage = selectedYachtForSubmit.packages.find(p => p.id === pqItem.packageId);
+        const rate = yachtPackage ? Number(yachtPackage.rate || 0) : 0;
         if (quantity > 0 && rate > 0) {
           finalTotalAmount += quantity * rate;
         }
@@ -361,12 +354,13 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
       ownerUserId: lead?.ownerUserId || SIMULATED_CURRENT_USER_ID,
       
       packageQuantities: data.packageQuantities?.map(pq => {
-        // Ensure rate is from the form state pqItem, as that's what was used for calculation confirmation
+        const yachtPackage = selectedYachtForSubmit?.packages?.find(p => p.id === pq.packageId);
+        const rate = yachtPackage ? Number(yachtPackage.rate || 0) : 0;
         return {
           packageId: String(pq.packageId),
           packageName: String(pq.packageName),
           quantity: Number(pq.quantity || 0),
-          rate: Number(pq.rate || 0), 
+          rate: rate, 
         };
       }) || [],
       totalAmount: finalTotalAmount,
@@ -697,4 +691,3 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
     </Dialog>
   );
 }
-

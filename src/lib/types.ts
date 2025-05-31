@@ -25,13 +25,14 @@ export interface Agent {
 }
 
 export interface YachtPackageItem {
-  id: string; // Client-side unique ID for form management, or DB ID if persisted
+  id: string; 
   name: string;
   rate: number;
 }
 
-export type YachtCategory = 'Dinner Cruise' | 'Superyacht Sightseeing Cruise' | 'Private Cruise';
-export const yachtCategoryOptions: YachtCategory[] = ['Dinner Cruise', 'Superyacht Sightseeing Cruise', 'Private Cruise'];
+export const yachtCategoryOptions = ['Dinner Cruise', 'Superyacht Sightseeing Cruise', 'Private Cruise'] as const;
+export type YachtCategory = typeof yachtCategoryOptions[number];
+
 
 export interface Yacht {
   id: string;
@@ -42,7 +43,6 @@ export interface Yacht {
   category: YachtCategory;
   packages?: YachtPackageItem[];
   customPackageInfo?: string;
-  // other_charges_json is a DB implementation detail, not directly in the type
 }
 
 export interface Invoice {
@@ -50,58 +50,58 @@ export interface Invoice {
   leadId: string;
   clientName: string;
   amount: number;
-  dueDate: string; // YYYY-MM-DD format
+  dueDate: string; 
   status: 'Paid' | 'Pending' | 'Overdue';
-  createdAt: string; // ISO Date string
+  createdAt: string; 
 }
 
-export type LeadStatus = 'Balance' | 'Closed' | 'Conformed' | 'Upcoming';
-export const leadStatusOptions: LeadStatus[] = ['Balance', 'Closed', 'Conformed', 'Upcoming'];
+export const leadStatusOptions = ['Balance', 'Closed', 'Conformed', 'Upcoming'] as const;
+export type LeadStatus = typeof leadStatusOptions[number];
 
-export type ModeOfPayment = 'Online' | 'Credit' | 'Cash/Card';
-export const modeOfPaymentOptions: ModeOfPayment[] = ['Online', 'Credit', 'Cash/Card'];
+export const modeOfPaymentOptions = ['Online', 'Credit', 'Cash/Card'] as const;
+export type ModeOfPayment = typeof modeOfPaymentOptions[number];
 
-export type LeadType = 'Dinner Cruise' | 'Superyacht Sightseeing Cruise' | 'Private Cruise';
-export const leadTypeOptions: LeadType[] = ['Dinner Cruise', 'Superyacht Sightseeing Cruise', 'Private Cruise'];
+export const leadTypeOptions = ['Dinner Cruise', 'Superyacht Sightseeing Cruise', 'Private Cruise'] as const;
+export type LeadType = typeof leadTypeOptions[number];
 
 
 export interface LeadPackageQuantity {
-  packageId: string;    // ID of the package from the selected Yacht.packages
-  packageName: string;  // Name of the package from the Yacht (for display/record)
+  packageId: string;    
+  packageName: string;  
   quantity: number;
-  rate: number;         // Rate of that package at the time of booking (copied from Yacht.packages[...].rate)
+  rate: number;         
 }
 
 export interface Lead {
   id: string;
-  agent: string; // Agent ID
+  agent: string; 
   status: LeadStatus;
-  month: string; // Primary Lead/Event Date as ISO string
+  month: string; 
   notes?: string;
-  yacht: string; // Yacht ID
+  yacht: string; 
   type: LeadType;
   transactionId?: string;
   modeOfPayment: ModeOfPayment;
   clientName: string;
 
-  packageQuantities?: LeadPackageQuantity[]; // Array of selected packages and their quantities
+  packageQuantities?: LeadPackageQuantity[]; 
 
   totalAmount: number;
   commissionPercentage: number;
   commissionAmount?: number;
   netAmount: number;
   paidAmount: number;
-  balanceAmount: number; // This will store the signed value
+  balanceAmount: number; 
 
-  createdAt: string; // ISO Date string
-  updatedAt: string; // ISO Date string
+  createdAt: string; 
+  updatedAt: string; 
   lastModifiedByUserId?: string;
   ownerUserId?: string;
 }
 
-// For Dashboard and Reports
+
 export interface BookingReportData {
-  month: string; // "MMM yyyy"
+  month: string; 
   bookings: number;
 }
 
@@ -121,5 +121,5 @@ export interface BookingsByAgentData {
   bookings: number;
 }
 
-// Re-exporting for easier import in CSV parser
+
 export type { LeadStatus as ExportedLeadStatus, ModeOfPayment as ExportedModeOfPayment, LeadType as ExportedLeadType };

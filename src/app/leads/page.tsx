@@ -504,23 +504,26 @@ export default function LeadsPage() {
       return;
     }
 
-    // 1. Collect all unique package names from allYachts
     const allUniquePackageNames = Array.from(
       new Set(
         allYachts.flatMap(yacht => yacht.packages?.map(pkg => pkg.name.trim()) || []).filter(name => name)
       )
     ).sort();
 
-    const baseHeaders: string[] = [
+    const baseHeadersPart1: string[] = [
       'ID', 'Client Name', 'Agent Name', 'Yacht Name', 'Status', 'Lead/Event Date', 'Type',
       'Transaction ID', 'Payment Mode', 'Total Guests',
+    ];
+    
+    const packageQtyHeaders = allUniquePackageNames.map(pkgName => `${pkgName} Qty`);
+
+    const financialAndAuditHeaders: string[] = [
       'Total Amount', 'Agent Discount (%)', 'Commission Amount', 'Net Amount', 'Paid Amount', 'Balance',
       'Notes', 'Modified By', 'Lead Owner', 'Created At', 'Updated At'
     ];
 
-    const packageHeaders = allUniquePackageNames.map(pkgName => `${pkgName} Qty`);
-    const finalCsvHeaders = [...baseHeaders, ...packageHeaders];
-
+    const finalCsvHeaders = [...baseHeadersPart1, ...packageQtyHeaders, ...financialAndAuditHeaders];
+    
     const escapeCsvCell = (cellData: any): string => {
       if (cellData === null || cellData === undefined) return '';
       let stringValue = String(cellData);
@@ -534,7 +537,6 @@ export default function LeadsPage() {
       finalCsvHeaders.join(','),
       ...filteredLeads.map(lead => {
         const totalGuests = lead.packageQuantities?.reduce((sum, pq) => sum + (Number(pq.quantity) || 0), 0) || 0;
-
         const leadPackageMap = new Map<string, number>();
         lead.packageQuantities?.forEach(pq => {
           if ((Number(pq.quantity) || 0) > 0) {
@@ -542,7 +544,7 @@ export default function LeadsPage() {
           }
         });
 
-        const rowData = [
+        const rowDataPart1 = [
           escapeCsvCell(lead.id),
           escapeCsvCell(lead.clientName),
           escapeCsvCell(agentMap[lead.agent] || lead.agent),
@@ -553,6 +555,13 @@ export default function LeadsPage() {
           escapeCsvCell(lead.transactionId),
           escapeCsvCell(lead.modeOfPayment),
           escapeCsvCell(totalGuests),
+        ];
+
+        const packageQtyValues = allUniquePackageNames.map(uniquePkgName =>
+          escapeCsvCell(leadPackageMap.get(uniquePkgName) || 0)
+        );
+        
+        const financialAndAuditValues = [
           escapeCsvCell(lead.totalAmount),
           escapeCsvCell(lead.commissionPercentage),
           escapeCsvCell(lead.commissionAmount),
@@ -565,12 +574,8 @@ export default function LeadsPage() {
           escapeCsvCell(lead.createdAt ? format(parseISO(lead.createdAt), 'dd/MM/yyyy HH:mm') : ''),
           escapeCsvCell(lead.updatedAt ? format(parseISO(lead.updatedAt), 'dd/MM/yyyy HH:mm') : ''),
         ];
-
-        allUniquePackageNames.forEach(uniquePkgName => {
-          rowData.push(escapeCsvCell(leadPackageMap.get(uniquePkgName) || 0));
-        });
-
-        return rowData.join(',');
+        
+        return [...rowDataPart1, ...packageQtyValues, ...financialAndAuditValues].join(',');
       })
     ];
 
@@ -717,3 +722,5 @@ export default function LeadsPage() {
     </div>
   );
 }
+
+    

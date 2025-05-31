@@ -494,39 +494,28 @@ export default function LeadsPage() {
       return;
     }
     
-    const headers: (keyof Omit<Lead, 'packageQuantities'> | 'package_quantities_json')[] = [
-      'id', 'clientName', 'agent', 'yacht', 'status', 'month', 'type', 'transactionId', 'modeOfPayment', 'notes', 
-      'package_quantities_json', 
-      'totalAmount', 'commissionPercentage',
-      'commissionAmount', 'netAmount', 'paidAmount', 'balanceAmount',
-      'createdAt', 'updatedAt', 'lastModifiedByUserId', 'ownerUserId'
+    // Define the shape of the object we're exporting for stricter typing
+    type ExportLeadType = Omit<Lead, 'agent' | 'yacht' | 'packageQuantities' | 'lastModifiedByUserId' | 'ownerUserId'> & {
+      agentName?: string;
+      yachtName?: string;
+      packageSummary?: string;
+      totalGuests?: number;
+      lastModifiedByUser?: string;
+      ownerUser?: string;
+    };
+
+    const headers: (keyof ExportLeadType)[] = [
+      'id', 'clientName', 'agentName', 'yachtName', 'status', 'month', 'type', 
+      'transactionId', 'modeOfPayment', 'totalGuests', 'packageSummary', 
+      'totalAmount', 'commissionPercentage', 'commissionAmount', 'netAmount', 'paidAmount', 'balanceAmount',
+      'notes', 'lastModifiedByUser', 'ownerUser', 'createdAt', 'updatedAt'
     ];
 
-    const escapeCsvCell = (cellData: any, headerKey: (keyof Omit<Lead, 'packageQuantities'> | 'package_quantities_json')): string => {
+    const escapeCsvCell = (cellData: any): string => {
       if (cellData === null || cellData === undefined) return '';
       let stringValue = String(cellData);
       
-      if (headerKey === 'package_quantities_json') {
-        // If cellData is already a string (the JSON string), escape internal quotes with backslashes.
-        // Then, always wrap the result in double quotes for CSV.
-        if (typeof cellData === 'string') {
-          return `"${cellData.replace(/"/g, '\\"')}"`;
-        }
-        // If cellData is an array/object (should have been stringified before this point, but as a fallback):
-        stringValue = JSON.stringify(cellData);
-        return `"${stringValue.replace(/"/g, '\\"')}"`;
-      }
-
-      if (['month', 'createdAt', 'updatedAt'].includes(String(headerKey)) ) {
-          try {
-              const date = parseISO(stringValue);
-              if (isValid(date)) {
-                stringValue = format(date, 'yyyy-MM-dd HH:mm:ss');
-              }
-          } catch (e) { /* ignore */ }
-      }
-
-      // Standard CSV escaping for other fields (double up internal quotes and wrap field in quotes if needed)
+      // Standard CSV escaping
       if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n')) {
         return `"${stringValue.replace(/"/g, '""')}"`;
       }
@@ -534,15 +523,44 @@ export default function LeadsPage() {
     };
 
     const csvRows = [
-      headers.join(','),
+      headers.map(header => { // Capitalize headers for better readability
+        const headerStr = String(header);
+        return headerStr.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase()).trim();
+      }).join(','),
       ...filteredLeads.map(lead => {
-        const leadForExport = {...lead} as any;
-        if (lead.packageQuantities) {
-          leadForExport.package_quantities_json = JSON.stringify(lead.packageQuantities);
-        } else {
-          leadForExport.package_quantities_json = '[]'; // Use empty array string
-        }
-        return headers.map(header => escapeCsvCell(leadForExport[header], header)).join(',')
+        const totalGuests = lead.packageQuantities?.reduce((sum, pq) => sum + (Number(pq.quantity) || 0), 0) || 0;
+        const packageSummary = lead.packageQuantities && lead.packageQuantities.length > 0
+          ? lead.packageQuantities
+              .filter(pq => (Number(pq.quantity) || 0) > 0)
+              .map(pq => `${pq.packageName} x${pq.quantity}`)
+              .join('; ') // Using semicolon to avoid conflict with CSV comma
+          : '';
+
+        const leadForExport: ExportLeadType = {
+          id: lead.id,
+          clientName: lead.clientName,
+          agentName: agentMap[lead.agent] || lead.agent,
+          yachtName: yachtMap[lead.yacht] || lead.yacht,
+          status: lead.status,
+          month: lead.month ? format(parseISO(lead.month), 'dd/MM/yyyy HH:mm') : '',
+          type: lead.type,
+          transactionId: lead.transactionId,
+          modeOfPayment: lead.modeOfPayment,
+          totalGuests: totalGuests,
+          packageSummary: packageSummary,
+          totalAmount: lead.totalAmount,
+          commissionPercentage: lead.commissionPercentage,
+          commissionAmount: lead.commissionAmount,
+          netAmount: lead.netAmount,
+          paidAmount: lead.paidAmount,
+          balanceAmount: lead.balanceAmount,
+          notes: lead.notes,
+          lastModifiedByUser: userMap[lead.lastModifiedByUserId || ''] || lead.lastModifiedByUserId,
+          ownerUser: userMap[lead.ownerUserId || ''] || lead.ownerUserId,
+          createdAt: lead.createdAt ? format(parseISO(lead.createdAt), 'dd/MM/yyyy HH:mm') : '',
+          updatedAt: lead.updatedAt ? format(parseISO(lead.updatedAt), 'dd/MM/yyyy HH:mm') : '',
+        };
+        return headers.map(header => escapeCsvCell(leadForExport[header])).join(',');
       })
     ];
     const csvString = csvRows.join('\n');
@@ -688,3 +706,5 @@ export default function LeadsPage() {
     </div>
   );
 }
+
+    

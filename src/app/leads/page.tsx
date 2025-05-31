@@ -470,10 +470,8 @@ export default function LeadsPage() {
         if (leadEventDate > endDate) return false;
       }
       else if (!startDate && !endDate) { 
-        if (leadEventDate) {
-            const leadYear = String(getFullYear(leadEventDate));
-            const leadMonth = String(getMonthIndex(leadEventDate) + 1).padStart(2, '0');
-        }
+        // If no date range, this lead passes the date filter part unless specific month/year filters apply
+        // (The month/year filter part was previously commented out, assuming it's still intended to be separate or covered by date range)
       }
 
       if (selectedYachtId !== 'all' && lead.yacht !== selectedYachtId) return false;
@@ -498,7 +496,8 @@ export default function LeadsPage() {
       toast({ title: 'No Data', description: 'There are no leads (matching current filters) to export.', variant: 'default' });
       return;
     }
-  
+
+    // Define the preferred package order and their display names
     const preferredPackageMap: { header: string; dataName: string }[] = [
       { header: 'CH', dataName: 'CHILD' },
       { header: 'AD', dataName: 'ADULT' },
@@ -517,24 +516,25 @@ export default function LeadsPage() {
       )
     );
   
-    const finalPackageColumns: { header: string; dataName: string }[] = [];
+    const packageColumnHeaders: string[] = [];
+    const packageDataNamesForLookup: string[] = []; // To map header back to actual data name
     const addedDataNames = new Set<string>();
   
     preferredPackageMap.forEach(preferredPkg => {
       if (allActualUniquePackageNames.includes(preferredPkg.dataName)) {
-        finalPackageColumns.push(preferredPkg);
+        packageColumnHeaders.push(preferredPkg.header);
+        packageDataNamesForLookup.push(preferredPkg.dataName);
         addedDataNames.add(preferredPkg.dataName);
       }
     });
   
     allActualUniquePackageNames.sort().forEach(actualName => {
       if (!addedDataNames.has(actualName)) {
-        finalPackageColumns.push({ header: actualName, dataName: actualName }); // No "Qty" suffix
+        packageColumnHeaders.push(actualName); // Full name for other packages
+        packageDataNamesForLookup.push(actualName);
       }
     });
     
-    const packageColumnHeaders = finalPackageColumns.map(col => col.header);
-  
     const baseHeadersPart1: string[] = [
       'ID', 'Client Name', 'Agent Name', 'Yacht Name', 'Status', 'Lead/Event Date', 'Type',
       'Transaction ID', 'Payment Mode', 'Total Guests',
@@ -563,7 +563,7 @@ export default function LeadsPage() {
         
         const leadPackageMap = new Map<string, number>();
         lead.packageQuantities?.forEach(pq => {
-          if ((Number(pq.quantity) || 0) > 0) {
+          if ((Number(pq.quantity) || 0) > 0) { // Only include packages with quantity > 0
             leadPackageMap.set(pq.packageName.trim(), Number(pq.quantity));
           }
         });
@@ -581,8 +581,8 @@ export default function LeadsPage() {
           escapeCsvCell(totalGuests),
         ];
   
-        const packageQtyValues = finalPackageColumns.map(col =>
-          escapeCsvCell(leadPackageMap.get(col.dataName) || 0)
+        const packageQtyValues = packageDataNamesForLookup.map(dataName =>
+          escapeCsvCell(leadPackageMap.get(dataName) || 0) // Use dataName for lookup
         );
         
         const financialAndAuditValues = [
@@ -747,3 +747,4 @@ export default function LeadsPage() {
     </div>
   );
 }
+

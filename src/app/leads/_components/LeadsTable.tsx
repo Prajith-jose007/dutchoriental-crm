@@ -27,7 +27,7 @@ import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { format, parseISO, isValid } from 'date-fns';
 
 type LeadTableColumn = {
-  accessorKey: string; // Can be keyof Lead or a custom key like 'pkg_CHILD'
+  accessorKey: string; 
   header: string;
   isCurrency?: boolean;
   isPercentage?: boolean;
@@ -38,8 +38,8 @@ type LeadTableColumn = {
   isUserLookup?: boolean;
   isAgentLookup?: boolean;
   isYachtLookup?: boolean;
-  isPackageColumn?: boolean; // To identify dynamic package columns
-  actualPackageName?: string; // Store the original package name for data lookup
+  isPackageColumn?: boolean; 
+  actualPackageName?: string; 
 };
 
 // Define the preferred package order and their display names
@@ -82,10 +82,10 @@ const generateLeadColumns = (allYachts: Yacht[]): LeadTableColumn[] => {
   preferredPackageMap.forEach(preferredPkg => {
     if (allActualUniquePackageNames.includes(preferredPkg.dataName)) {
       dynamicPackageColumns.push({
-        header: preferredPkg.header,
+        header: preferredPkg.header, // Use short header from map
         accessorKey: `pkg_${preferredPkg.dataName.replace(/\s+/g, '_').toLowerCase()}`,
         isPackageColumn: true,
-        actualPackageName: preferredPkg.dataName,
+        actualPackageName: preferredPkg.dataName, // Store actual name for data lookup
         isNumeric: true,
       });
       addedDataNames.add(preferredPkg.dataName);
@@ -119,6 +119,7 @@ const generateLeadColumns = (allYachts: Yacht[]): LeadTableColumn[] => {
     { accessorKey: 'actions', header: 'Actions' },
   ];
 
+  // Insert dynamic package columns after 'Total Guests' and before financial columns
   return [...baseColumnsPart1, ...dynamicPackageColumns, ...financialAndAuditColumns];
 };
 
@@ -130,7 +131,7 @@ interface LeadsTableProps {
   userMap: { [id: string]: string };
   agentMap: { [id: string]: string };
   yachtMap: { [id: string]: string };
-  allYachts: Yacht[]; // Added prop
+  allYachts: Yacht[];
   currentUserId?: string;
 }
 
@@ -170,7 +171,7 @@ export function LeadsTable({
 
   const formatNumeric = (num?: number | null): string => {
     if (num === null || num === undefined || isNaN(num)) {
-      return '0'; // Display 0 for package quantities if not found or invalid
+      return '0'; 
     }
     return String(num);
   };

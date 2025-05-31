@@ -154,18 +154,20 @@ export function LeadsTable({
         .filter(word => word.length > 0)
         .map(word => word.charAt(0))
         .join('')
-        .toUpperCase() || yachtName; // Fallback to full name if abbreviation is empty
+        .toUpperCase() || yachtName; 
 
-    const packageLines = activePackages.map((pq, index) => (
-        <div key={`${lead.id}-pkg-${pq.packageId}-${index}`}>
+    const packageItems = activePackages.map((pq, index) => (
+        <span key={`${lead.id}-pkg-${pq.packageId}-${index}`} className="whitespace-nowrap">
             {`(${yachtAbbreviation} - ${pq.packageName}) x${pq.quantity}`}
-        </div>
+        </span>
     ));
 
     return (
         <div>
             <div style={{ fontWeight: 'bold', marginBottom: '2px' }}>{yachtName}:</div>
-            {packageLines}
+            <div className="flex flex-row flex-wrap gap-x-3 gap-y-1"> 
+                {packageItems}
+            </div>
         </div>
     );
   };

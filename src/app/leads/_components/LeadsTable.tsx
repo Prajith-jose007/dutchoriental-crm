@@ -1,6 +1,7 @@
 
 'use client';
 
+import { useMemo } from 'react';
 import { MoreHorizontal } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -21,12 +22,12 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import type { Lead, LeadStatus, LeadPackageQuantity } from '@/lib/types';
+import type { Lead, LeadStatus, Yacht, YachtPackageItem } from '@/lib/types';
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { format, parseISO, isValid } from 'date-fns';
 
 type LeadTableColumn = {
-  accessorKey: keyof Lead | 'actions' | 'select' | 'totalGuests' | 'packageSummary';
+  accessorKey: string; // Can be keyof Lead or a custom key like 'pkg_CHILD'
   header: string;
   isCurrency?: boolean;
   isPercentage?: boolean;
@@ -37,35 +38,90 @@ type LeadTableColumn = {
   isUserLookup?: boolean;
   isAgentLookup?: boolean;
   isYachtLookup?: boolean;
+  isPackageColumn?: boolean; // To identify dynamic package columns
+  actualPackageName?: string; // Store the original package name for data lookup
 };
 
-const leadColumns: LeadTableColumn[] = [
-  { accessorKey: 'select', header: '' },
-  { accessorKey: 'id', header: 'ID' },
-  { accessorKey: 'clientName', header: 'Client' },
-  { accessorKey: 'agent', header: 'Agent', isAgentLookup: true },
-  { accessorKey: 'yacht', header: 'Yacht', isYachtLookup: true },
-  { accessorKey: 'status', header: 'Status' },
-  { accessorKey: 'month', header: 'Lead/Event Date', isShortDate: true }, 
-  { accessorKey: 'type', header: 'Type' },
-  { accessorKey: 'transactionId', header: 'Transaction ID' },
-  { accessorKey: 'modeOfPayment', header: 'Payment Mode' },
-  { accessorKey: 'notes', header: 'Notes', isNotes: true },
-  { accessorKey: 'lastModifiedByUserId', header: 'Modified By', isUserLookup: true },
-  { accessorKey: 'ownerUserId', header: 'Lead Owner', isUserLookup: true },
-  { accessorKey: 'createdAt', header: 'Created At', isDate: true },
-  { accessorKey: 'updatedAt', header: 'Updated At', isDate: true },
-  // Financial Block - Moved to the end before 'Actions'
-  { accessorKey: 'totalGuests', header: 'Total Guests', isNumeric: true },
-  { accessorKey: 'packageSummary', header: 'Packages (Qty)' }, 
-  { accessorKey: 'totalAmount', header: 'Total Amt', isCurrency: true },
-  { accessorKey: 'commissionPercentage', header: 'Agent Disc. %', isPercentage: true },
-  { accessorKey: 'commissionAmount', header: 'Comm Amt', isCurrency: true },
-  { accessorKey: 'netAmount', header: 'Net Amt', isCurrency: true },
-  { accessorKey: 'paidAmount', header: 'Paid Amt', isCurrency: true },
-  { accessorKey: 'balanceAmount', header: 'Balance', isCurrency: true }, // Shows signed value
-  { accessorKey: 'actions', header: 'Actions' },
+// Define the preferred package order and their display names
+const preferredPackageMap: { header: string; dataName: string }[] = [
+  { header: 'CH', dataName: 'CHILD' },
+  { header: 'AD', dataName: 'ADULT' },
+  { header: 'AD ALC', dataName: 'AD ALC' },
+  { header: 'VIP CH', dataName: 'VIP CH' },
+  { header: 'VIP AD', dataName: 'VIP AD' },
+  { header: 'VIP ALC', dataName: 'VIP ALC' },
+  { header: 'ROYAL CH', dataName: 'ROYAL CH' },
+  { header: 'ROYAL AD', dataName: 'ROYAL AD' },
+  { header: 'ROYAL ALC', dataName: 'ROYAL ALC' },
 ];
+
+const generateLeadColumns = (allYachts: Yacht[]): LeadTableColumn[] => {
+  const baseColumnsPart1: LeadTableColumn[] = [
+    { accessorKey: 'select', header: '' },
+    { accessorKey: 'id', header: 'ID' },
+    { accessorKey: 'clientName', header: 'Client' },
+    { accessorKey: 'agent', header: 'Agent', isAgentLookup: true },
+    { accessorKey: 'yacht', header: 'Yacht', isYachtLookup: true },
+    { accessorKey: 'status', header: 'Status' },
+    { accessorKey: 'month', header: 'Lead/Event Date', isShortDate: true },
+    { accessorKey: 'type', header: 'Type' },
+    { accessorKey: 'transactionId', header: 'Transaction ID' },
+    { accessorKey: 'modeOfPayment', header: 'Payment Mode' },
+    { accessorKey: 'totalGuests', header: 'Total Guests', isNumeric: true },
+  ];
+
+  const allActualUniquePackageNames = Array.from(
+    new Set(
+      allYachts.flatMap(yacht => yacht.packages?.map(pkg => pkg.name.trim()) || []).filter(name => name)
+    )
+  );
+
+  const dynamicPackageColumns: LeadTableColumn[] = [];
+  const addedDataNames = new Set<string>();
+
+  preferredPackageMap.forEach(preferredPkg => {
+    if (allActualUniquePackageNames.includes(preferredPkg.dataName)) {
+      dynamicPackageColumns.push({
+        header: preferredPkg.header,
+        accessorKey: `pkg_${preferredPkg.dataName.replace(/\s+/g, '_').toLowerCase()}`,
+        isPackageColumn: true,
+        actualPackageName: preferredPkg.dataName,
+        isNumeric: true,
+      });
+      addedDataNames.add(preferredPkg.dataName);
+    }
+  });
+
+  allActualUniquePackageNames.sort().forEach(actualName => {
+    if (!addedDataNames.has(actualName)) {
+      dynamicPackageColumns.push({
+        header: actualName, // Full name for other packages
+        accessorKey: `pkg_${actualName.replace(/\s+/g, '_').toLowerCase()}`,
+        isPackageColumn: true,
+        actualPackageName: actualName,
+        isNumeric: true,
+      });
+    }
+  });
+  
+  const financialAndAuditColumns: LeadTableColumn[] = [
+    { accessorKey: 'totalAmount', header: 'Total Amt', isCurrency: true },
+    { accessorKey: 'commissionPercentage', header: 'Agent Disc. %', isPercentage: true },
+    { accessorKey: 'commissionAmount', header: 'Comm Amt', isCurrency: true },
+    { accessorKey: 'netAmount', header: 'Net Amt', isCurrency: true },
+    { accessorKey: 'paidAmount', header: 'Paid Amt', isCurrency: true },
+    { accessorKey: 'balanceAmount', header: 'Balance', isCurrency: true },
+    { accessorKey: 'notes', header: 'Notes', isNotes: true },
+    { accessorKey: 'lastModifiedByUserId', header: 'Modified By', isUserLookup: true },
+    { accessorKey: 'ownerUserId', header: 'Lead Owner', isUserLookup: true },
+    { accessorKey: 'createdAt', header: 'Created At', isDate: true },
+    { accessorKey: 'updatedAt', header: 'Updated At', isDate: true },
+    { accessorKey: 'actions', header: 'Actions' },
+  ];
+
+  return [...baseColumnsPart1, ...dynamicPackageColumns, ...financialAndAuditColumns];
+};
+
 
 interface LeadsTableProps {
   leads: Lead[];
@@ -74,6 +130,7 @@ interface LeadsTableProps {
   userMap: { [id: string]: string };
   agentMap: { [id: string]: string };
   yachtMap: { [id: string]: string };
+  allYachts: Yacht[]; // Added prop
   currentUserId?: string;
 }
 
@@ -84,8 +141,11 @@ export function LeadsTable({
   userMap,
   agentMap,
   yachtMap,
+  allYachts,
   currentUserId
 }: LeadsTableProps) {
+
+  const leadColumns = useMemo(() => generateLeadColumns(allYachts), [allYachts]);
 
   const getStatusVariant = (status?: LeadStatus) => {
     if (!status) return 'outline';
@@ -110,7 +170,7 @@ export function LeadsTable({
 
   const formatNumeric = (num?: number | null): string => {
     if (num === null || num === undefined || isNaN(num)) {
-      return '-'; 
+      return '0'; // Display 0 for package quantities if not found or invalid
     }
     return String(num);
   };
@@ -139,47 +199,16 @@ export function LeadsTable({
     return lead.packageQuantities.reduce((sum, pq) => sum + (Number(pq.quantity) || 0), 0);
   };
 
-  const renderPackageSummary = (lead: Lead, currentYachtMap: { [id: string]: string }): JSX.Element | string => {
-    const activePackages = lead.packageQuantities?.filter(pq => (Number(pq.quantity) || 0) > 0);
-
-    const yachtName = lead.yacht && currentYachtMap[lead.yacht] ? currentYachtMap[lead.yacht] : (lead.yacht || 'Unknown Yacht');
-
-    if (!activePackages || activePackages.length === 0) {
-        return `${yachtName}: -`;
+  const renderCellContent = (lead: Lead, column: LeadTableColumn) => {
+    if (column.isPackageColumn && column.actualPackageName) {
+      const pkgQuantity = lead.packageQuantities?.find(pq => pq.packageName === column.actualPackageName);
+      return formatNumeric(pkgQuantity?.quantity);
     }
     
-    const yachtAbbreviation = yachtName
-        .split(' ')
-        .filter(word => word.length > 0)
-        .map(word => word.charAt(0))
-        .join('')
-        .toUpperCase() || yachtName.substring(0,3).toUpperCase(); 
-
-    const packageItems = activePackages.map((pq, index) => (
-        <span key={`${lead.id}-pkg-${pq.packageId}-${index}`} className="whitespace-nowrap">
-            {`(${yachtAbbreviation} - ${pq.packageName}) x${pq.quantity}`}
-        </span>
-    ));
-
-    return (
-        <div>
-            <div style={{ fontWeight: 'bold', marginBottom: '2px' }}>{yachtName}:</div>
-            <div className="flex flex-row flex-wrap gap-x-3 gap-y-1"> 
-                {packageItems}
-            </div>
-        </div>
-    );
-  };
-
-
-  const renderCellContent = (lead: Lead, column: LeadTableColumn) => {
     const value = lead[column.accessorKey as keyof Lead];
 
     if (column.accessorKey === 'totalGuests') {
       return formatNumeric(calculateTotalGuestsFromPackageQuantities(lead));
-    }
-    if (column.accessorKey === 'packageSummary') {
-      return renderPackageSummary(lead, yachtMap);
     }
     if (column.accessorKey === 'id') {
       return (
@@ -206,7 +235,6 @@ export function LeadsTable({
       return formatDateValue(value as string | undefined);
     }
     if (column.isCurrency) {
-      // For balanceAmount, display signed value
       if (column.accessorKey === 'balanceAmount') {
         return formatCurrency(value as number | undefined);
       }
@@ -215,7 +243,7 @@ export function LeadsTable({
     if (column.isPercentage) {
       return formatPercentage(value as number | undefined);
     }
-    if (column.isNumeric) { 
+    if (column.isNumeric && column.accessorKey !== 'totalGuests' && !column.isPackageColumn) { 
       return formatNumeric(value as number | undefined);
     }
     if (column.isNotes) {
@@ -252,41 +280,40 @@ export function LeadsTable({
           ) : (
             leads.map((lead) => (
               <TableRow key={lead.id}>
-                <TableCell>
-                  <Checkbox aria-label={`Select row ${lead.id}`} disabled />
-                </TableCell>
-                {leadColumns.slice(1, -1).map(col => ( 
+                {leadColumns.map(col => (
                   <TableCell key={`${lead.id}-${col.accessorKey}`}>
-                    {renderCellContent(lead, col)}
+                    {col.accessorKey === 'select' ? (
+                      <Checkbox aria-label={`Select row ${lead.id}`} disabled />
+                    ) : col.accessorKey === 'actions' ? (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" className="h-8 w-8 p-0">
+                            <span className="sr-only">Open menu</span>
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                          <DropdownMenuItem
+                            onClick={() => onEditLead(lead)}
+                            disabled={!!currentUserId && !!lead.ownerUserId && lead.ownerUserId !== currentUserId && currentUserId !== 'DO-admin'}
+                          >
+                            Edit Lead
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            className="text-destructive"
+                            onClick={() => onDeleteLead(lead.id)}
+                            disabled={!!currentUserId && !!lead.ownerUserId && lead.ownerUserId !== currentUserId && currentUserId !== 'DO-admin'}
+                          >
+                            Delete Lead
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    ) : (
+                      renderCellContent(lead, col)
+                    )}
                   </TableCell>
                 ))}
-                <TableCell>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" className="h-8 w-8 p-0">
-                        <span className="sr-only">Open menu</span>
-                        <MoreHorizontal className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                      <DropdownMenuItem
-                        onClick={() => onEditLead(lead)}
-                        // Admin can always edit, user can edit if they are the owner.
-                        disabled={!!currentUserId && !!lead.ownerUserId && lead.ownerUserId !== currentUserId && currentUserId !== 'DO-admin'}
-                      >
-                        Edit Lead
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        className="text-destructive"
-                        onClick={() => onDeleteLead(lead.id)}
-                        disabled={!!currentUserId && !!lead.ownerUserId && lead.ownerUserId !== currentUserId && currentUserId !== 'DO-admin'}
-                      >
-                        Delete Lead
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </TableCell>
               </TableRow>
             ))
           )}
@@ -296,4 +323,3 @@ export function LeadsTable({
     </ScrollArea>
   );
 }
-

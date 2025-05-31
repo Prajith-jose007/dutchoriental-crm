@@ -469,15 +469,10 @@ export default function LeadsPage() {
       } else if (endDate && leadEventDate) {
         if (leadEventDate > endDate) return false;
       }
-      else if (!startDate && !endDate) { // Only apply month/year filter if date range isn't set
+      else if (!startDate && !endDate) { 
         if (leadEventDate) {
             const leadYear = String(getFullYear(leadEventDate));
             const leadMonth = String(getMonthIndex(leadEventDate) + 1).padStart(2, '0');
-
-            // Filter logic for month/year (placeholder, actual implementation removed for brevity)
-            // if (selectedReportYear !== 'all' && leadYear !== selectedReportYear) return false;
-            // if (selectedReportMonth !== 'all' && selectedReportYear !== 'all' && leadMonth !== selectedReportMonth) return false;
-            // if (selectedReportMonth !== 'all' && selectedReportYear === 'all' && leadMonth !== selectedReportMonth) return false;
         }
       }
 
@@ -503,7 +498,7 @@ export default function LeadsPage() {
       toast({ title: 'No Data', description: 'There are no leads (matching current filters) to export.', variant: 'default' });
       return;
     }
-
+  
     const preferredPackageMap: { header: string; dataName: string }[] = [
       { header: 'CH', dataName: 'CHILD' },
       { header: 'AD', dataName: 'ADULT' },
@@ -515,31 +510,31 @@ export default function LeadsPage() {
       { header: 'ROYAL AD', dataName: 'ROYAL AD' },
       { header: 'ROYAL ALC', dataName: 'ROYAL ALC' },
     ];
-
+  
     const allActualUniquePackageNames = Array.from(
       new Set(
         allYachts.flatMap(yacht => yacht.packages?.map(pkg => pkg.name.trim()) || []).filter(name => name)
       )
     );
-
+  
     const finalPackageColumns: { header: string; dataName: string }[] = [];
     const addedDataNames = new Set<string>();
-
+  
     preferredPackageMap.forEach(preferredPkg => {
       if (allActualUniquePackageNames.includes(preferredPkg.dataName)) {
         finalPackageColumns.push(preferredPkg);
         addedDataNames.add(preferredPkg.dataName);
       }
     });
-
+  
     allActualUniquePackageNames.sort().forEach(actualName => {
       if (!addedDataNames.has(actualName)) {
-        finalPackageColumns.push({ header: actualName, dataName: actualName });
+        finalPackageColumns.push({ header: actualName, dataName: actualName }); // No "Qty" suffix
       }
     });
     
     const packageColumnHeaders = finalPackageColumns.map(col => col.header);
-
+  
     const baseHeadersPart1: string[] = [
       'ID', 'Client Name', 'Agent Name', 'Yacht Name', 'Status', 'Lead/Event Date', 'Type',
       'Transaction ID', 'Payment Mode', 'Total Guests',
@@ -549,7 +544,7 @@ export default function LeadsPage() {
       'Total Amount', 'Agent Discount (%)', 'Commission Amount', 'Net Amount', 'Paid Amount', 'Balance',
       'Notes', 'Modified By', 'Lead Owner', 'Created At', 'Updated At'
     ];
-
+  
     const finalCsvHeaders = [...baseHeadersPart1, ...packageColumnHeaders, ...financialAndAuditHeaders];
     
     const escapeCsvCell = (cellData: any): string => {
@@ -560,7 +555,7 @@ export default function LeadsPage() {
       }
       return stringValue;
     };
-
+  
     const csvRows = [
       finalCsvHeaders.join(','),
       ...filteredLeads.map(lead => {
@@ -572,7 +567,7 @@ export default function LeadsPage() {
             leadPackageMap.set(pq.packageName.trim(), Number(pq.quantity));
           }
         });
-
+  
         const rowDataPart1 = [
           escapeCsvCell(lead.id),
           escapeCsvCell(lead.clientName),
@@ -585,7 +580,7 @@ export default function LeadsPage() {
           escapeCsvCell(lead.modeOfPayment),
           escapeCsvCell(totalGuests),
         ];
-
+  
         const packageQtyValues = finalPackageColumns.map(col =>
           escapeCsvCell(leadPackageMap.get(col.dataName) || 0)
         );
@@ -607,7 +602,7 @@ export default function LeadsPage() {
         return [...rowDataPart1, ...packageQtyValues, ...financialAndAuditValues].join(',');
       })
     ];
-
+  
     const csvString = csvRows.join('\n');
     const blob = new Blob(["\uFEFF" + csvString], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
@@ -737,6 +732,7 @@ export default function LeadsPage() {
         userMap={userMap}
         agentMap={agentMap}
         yachtMap={yachtMap}
+        allYachts={allYachts} 
         currentUserId={SIMULATED_CURRENT_USER_ID}
       />
 

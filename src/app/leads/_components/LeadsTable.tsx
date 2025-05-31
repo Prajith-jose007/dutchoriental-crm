@@ -140,14 +140,36 @@ export function LeadsTable({
     return lead.packageQuantities.reduce((sum, pq) => sum + (Number(pq.quantity) || 0), 0);
   };
 
-  const formatPackageSummary = (packageQuantities?: LeadPackageQuantity[]): string => {
-    if (!packageQuantities || packageQuantities.length === 0) return '-';
-    const summary = packageQuantities
-      .filter(pq => (Number(pq.quantity) || 0) > 0)
-      .map(pq => `${pq.packageName} x${pq.quantity}`)
-      .join(', ');
-    return summary || '-'; // Ensure it returns '-' if all quantities are 0
+  const renderPackageSummary = (lead: Lead, currentYachtMap: { [id: string]: string }): JSX.Element | string => {
+    const activePackages = lead.packageQuantities?.filter(pq => (Number(pq.quantity) || 0) > 0);
+
+    const yachtName = lead.yacht && currentYachtMap[lead.yacht] ? currentYachtMap[lead.yacht] : (lead.yacht || 'Unknown Yacht');
+
+    if (!activePackages || activePackages.length === 0) {
+        return `${yachtName}: -`;
+    }
+    
+    const yachtAbbreviation = yachtName
+        .split(' ')
+        .filter(word => word.length > 0)
+        .map(word => word.charAt(0))
+        .join('')
+        .toUpperCase() || yachtName; // Fallback to full name if abbreviation is empty
+
+    const packageLines = activePackages.map((pq, index) => (
+        <div key={`${lead.id}-pkg-${pq.packageId}-${index}`}>
+            {`(${yachtAbbreviation} - ${pq.packageName}) x${pq.quantity}`}
+        </div>
+    ));
+
+    return (
+        <div>
+            <div style={{ fontWeight: 'bold', marginBottom: '2px' }}>{yachtName}:</div>
+            {packageLines}
+        </div>
+    );
   };
+
 
   const renderCellContent = (lead: Lead, column: LeadTableColumn) => {
     const value = lead[column.accessorKey as keyof Lead];
@@ -155,13 +177,8 @@ export function LeadsTable({
     if (column.accessorKey === 'totalGuests') {
       return formatNumeric(calculateTotalGuestsFromPackageQuantities(lead));
     }
-     if (column.accessorKey === 'packageSummary') {
-      const yachtName = lead.yacht && yachtMap[lead.yacht] ? yachtMap[lead.yacht] : (lead.yacht || 'Unknown Yacht');
-      const packageDetails = formatPackageSummary(lead.packageQuantities);
-      if (packageDetails === '-') { // If no packages or all quantities are zero
-        return lead.yacht && yachtMap[lead.yacht] ? `${yachtMap[lead.yacht]}: -` : '-';
-      }
-      return `${yachtName}: ${packageDetails}`;
+    if (column.accessorKey === 'packageSummary') {
+      return renderPackageSummary(lead, yachtMap);
     }
     if (column.accessorKey === 'id') {
       return (

@@ -54,7 +54,7 @@ const convertCsvValue = (key: keyof Omit<Lead, 'packageQuantities'> | 'package_q
       case 'commissionAmount': case 'netAmount': case 'paidAmount': case 'balanceAmount':
         return 0;
       case 'modeOfPayment': return 'Online';
-      case 'status': return 'Upcoming';
+      case 'status': return 'Balance'; // Default to 'Balance'
       case 'type': return 'Private Cruise' as LeadType;
       case 'notes': return '';
       case 'month': return formatISO(new Date());
@@ -72,7 +72,7 @@ const convertCsvValue = (key: keyof Omit<Lead, 'packageQuantities'> | 'package_q
     case 'modeOfPayment':
       return modeOfPaymentOptions.includes(trimmedValue as ModeOfPayment) ? trimmedValue : 'Online';
     case 'status':
-      return leadStatusOptions.includes(trimmedValue as LeadStatus) ? trimmedValue : 'Upcoming';
+      return leadStatusOptions.includes(trimmedValue as LeadStatus) ? trimmedValue : 'Balance'; // Default 'Balance'
     case 'type':
       return leadTypeOptions.includes(trimmedValue as LeadType) ? trimmedValue : 'Private Cruise';
     case 'month':
@@ -370,7 +370,7 @@ export default function LeadsPage() {
             clientName: parsedRow.clientName || 'N/A from CSV',
             agent: parsedRow.agent || '',
             yacht: parsedRow.yacht || '',
-            status: parsedRow.status || 'Upcoming',
+            status: parsedRow.status || 'Balance',
             month: parsedRow.month || formatISO(new Date()),
             notes: parsedRow.notes || undefined,
             type: parsedRow.type || 'Private Cruise',
@@ -471,7 +471,6 @@ export default function LeadsPage() {
       }
       else if (!startDate && !endDate) { 
         // If no date range, this lead passes the date filter part unless specific month/year filters apply
-        // (The month/year filter part was previously commented out, assuming it's still intended to be separate or covered by date range)
       }
 
       if (selectedYachtId !== 'all' && lead.yacht !== selectedYachtId) return false;
@@ -497,7 +496,6 @@ export default function LeadsPage() {
       return;
     }
 
-    // Define the preferred package order and their display names
     const preferredPackageMap: { header: string; dataName: string }[] = [
       { header: 'CH', dataName: 'CHILD' },
       { header: 'AD', dataName: 'ADULT' },
@@ -510,27 +508,27 @@ export default function LeadsPage() {
       { header: 'ROYAL ALC', dataName: 'ROYAL ALC' },
     ];
   
-    const allActualUniquePackageNames = Array.from(
+    const allActualUniquePackageNamesFromYachts = Array.from(
       new Set(
         allYachts.flatMap(yacht => yacht.packages?.map(pkg => pkg.name.trim()) || []).filter(name => name)
       )
     );
   
-    const packageColumnHeaders: string[] = [];
-    const packageDataNamesForLookup: string[] = []; // To map header back to actual data name
+    const packageHeaders: string[] = [];
+    const packageDataNamesForLookup: string[] = []; 
     const addedDataNames = new Set<string>();
   
     preferredPackageMap.forEach(preferredPkg => {
-      if (allActualUniquePackageNames.includes(preferredPkg.dataName)) {
-        packageColumnHeaders.push(preferredPkg.header);
+      if (allActualUniquePackageNamesFromYachts.includes(preferredPkg.dataName)) {
+        packageHeaders.push(preferredPkg.header);
         packageDataNamesForLookup.push(preferredPkg.dataName);
         addedDataNames.add(preferredPkg.dataName);
       }
     });
   
-    allActualUniquePackageNames.sort().forEach(actualName => {
+    allActualUniquePackageNamesFromYachts.sort().forEach(actualName => {
       if (!addedDataNames.has(actualName)) {
-        packageColumnHeaders.push(actualName); // Full name for other packages
+        packageHeaders.push(actualName); 
         packageDataNamesForLookup.push(actualName);
       }
     });
@@ -545,7 +543,7 @@ export default function LeadsPage() {
       'Notes', 'Modified By', 'Lead Owner', 'Created At', 'Updated At'
     ];
   
-    const finalCsvHeaders = [...baseHeadersPart1, ...packageColumnHeaders, ...financialAndAuditHeaders];
+    const finalCsvHeaders = [...baseHeadersPart1, ...packageHeaders, ...financialAndAuditHeaders];
     
     const escapeCsvCell = (cellData: any): string => {
       if (cellData === null || cellData === undefined) return '';
@@ -563,9 +561,7 @@ export default function LeadsPage() {
         
         const leadPackageMap = new Map<string, number>();
         lead.packageQuantities?.forEach(pq => {
-          if ((Number(pq.quantity) || 0) > 0) { // Only include packages with quantity > 0
-            leadPackageMap.set(pq.packageName.trim(), Number(pq.quantity));
-          }
+          leadPackageMap.set(pq.packageName.trim(), Number(pq.quantity || 0));
         });
   
         const rowDataPart1 = [
@@ -582,7 +578,7 @@ export default function LeadsPage() {
         ];
   
         const packageQtyValues = packageDataNamesForLookup.map(dataName =>
-          escapeCsvCell(leadPackageMap.get(dataName) || 0) // Use dataName for lookup
+          escapeCsvCell(leadPackageMap.get(dataName) || 0) 
         );
         
         const financialAndAuditValues = [
@@ -747,4 +743,3 @@ export default function LeadsPage() {
     </div>
   );
 }
-

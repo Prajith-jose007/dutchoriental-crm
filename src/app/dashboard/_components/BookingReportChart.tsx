@@ -36,17 +36,15 @@ export function BookingReportChart({ leads, isLoading, error }: BookingReportCha
     const monthlyBookings: { [monthYear: string]: number } = {};
     const today = new Date();
 
-    // Initialize the last 7 months in monthlyBookings
     for (let i = 6; i >= 0; i--) {
       const date = subMonths(today, i);
-      const monthYearKey = format(date, 'yyyy-MM'); // Key format for aggregation
+      const monthYearKey = format(date, 'yyyy-MM'); 
       monthlyBookings[monthYearKey] = 0;
     }
     
     leads.forEach(lead => {
-      // The lead.month field now stores the full event date as an ISO string
-      // We need to parse it and format to 'yyyy-MM' for grouping
-      if (lead.month) {
+      // Assuming 'Closed' status now signifies a completed/successful booking for reporting
+      if (lead.status === 'Closed' && lead.month) {
         try {
           const eventDate = parseISO(lead.month);
           if (isValid(eventDate)) {
@@ -65,7 +63,7 @@ export function BookingReportChart({ leads, isLoading, error }: BookingReportCha
 
     return Object.entries(monthlyBookings)
       .map(([monthYear, bookings]) => ({
-        month: format(parseISO(monthYear + '-01'), 'MMM yyyy'), // Display format
+        month: format(parseISO(monthYear + '-01'), 'MMM yyyy'), 
         bookings,
       }))
       .sort((a, b) => new Date(a.month).getTime() - new Date(b.month).getTime());
@@ -77,7 +75,7 @@ export function BookingReportChart({ leads, isLoading, error }: BookingReportCha
       <Card>
         <CardHeader>
           <CardTitle>Booking Reports</CardTitle>
-          <CardDescription>Monthly booking trends for the last 7 months.</CardDescription>
+          <CardDescription>Monthly 'Closed' booking trends for the last 7 months.</CardDescription>
         </CardHeader>
         <CardContent className="h-[300px] space-y-3 py-2">
           <Skeleton className="h-8 w-full" />
@@ -95,7 +93,7 @@ export function BookingReportChart({ leads, isLoading, error }: BookingReportCha
         <Card>
             <CardHeader>
                 <CardTitle>Booking Reports</CardTitle>
-                <CardDescription>Monthly booking trends for the last 7 months.</CardDescription>
+                <CardDescription>Monthly 'Closed' booking trends for the last 7 months.</CardDescription>
             </CardHeader>
             <CardContent className="flex items-center justify-center h-[300px]">
                 <p className="text-destructive">Error loading booking report data: {error}</p>
@@ -109,10 +107,10 @@ export function BookingReportChart({ leads, isLoading, error }: BookingReportCha
         <Card>
             <CardHeader>
                 <CardTitle>Booking Reports</CardTitle>
-                <CardDescription>Monthly booking trends for the last 7 months.</CardDescription>
+                <CardDescription>Monthly 'Closed' booking trends for the last 7 months.</CardDescription>
             </CardHeader>
             <CardContent className="flex items-center justify-center h-[300px]">
-                <p className="text-muted-foreground">No booking data available for the selected period or filters.</p>
+                <p className="text-muted-foreground">No 'Closed' booking data available for the selected period or filters.</p>
             </CardContent>
         </Card>
     );
@@ -122,7 +120,7 @@ export function BookingReportChart({ leads, isLoading, error }: BookingReportCha
     <Card>
       <CardHeader>
         <CardTitle>Booking Reports</CardTitle>
-        <CardDescription>Monthly booking trends for the last 7 months.</CardDescription>
+        <CardDescription>Monthly 'Closed' booking trends for the last 7 months.</CardDescription>
       </CardHeader>
       <CardContent>
         <ChartContainer config={chartConfig} className="h-[300px] w-full">

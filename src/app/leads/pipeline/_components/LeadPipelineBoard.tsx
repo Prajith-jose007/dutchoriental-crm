@@ -10,7 +10,7 @@ interface LeadPipelineBoardProps {
   onEditLead: (lead: Lead) => void;
 }
 
-const leadStatuses: LeadStatus[] = ['Balance', 'Closed', 'Conformed', 'Upcoming'];
+const leadStatuses: LeadStatus[] = ['Balance', 'Closed']; // Updated to new statuses
 
 export function LeadPipelineBoard({ leads, onEditLead }: LeadPipelineBoardProps) {
   const leadsByStatus: { [key in LeadStatus]?: Lead[] } = {};
@@ -20,10 +20,9 @@ export function LeadPipelineBoard({ leads, onEditLead }: LeadPipelineBoardProps)
     if (leadsByStatus[lead.status]) {
       leadsByStatus[lead.status]?.push(lead);
     } else {
-      // If a lead has an unexpected status, group it under 'Upcoming' or handle as an error
-      console.warn(`Lead with ID ${lead.id} has unexpected status: ${lead.status}. Grouping under 'Upcoming'.`);
-      if (!leadsByStatus['Upcoming']) leadsByStatus['Upcoming'] = [];
-      leadsByStatus['Upcoming']?.push(lead); 
+      console.warn(`Lead with ID ${lead.id} has unexpected status: ${lead.status}. Grouping under 'Balance'.`);
+      if (!leadsByStatus['Balance']) leadsByStatus['Balance'] = [];
+      leadsByStatus['Balance']?.push(lead); 
     }
   });
 
@@ -31,7 +30,7 @@ export function LeadPipelineBoard({ leads, onEditLead }: LeadPipelineBoardProps)
     <ScrollArea className="flex-1 w-full pb-4">
       <div className="flex gap-4 p-1">
         {leadStatuses.map(status => (
-          <div key={status} className="min-w-[300px] w-1/4 bg-muted/60 rounded-lg shadow"> {/* Adjusted width for 4 columns */}
+          <div key={status} className="min-w-[300px] w-1/2 bg-muted/60 rounded-lg shadow"> {/* Adjusted width for 2 columns */}
             <h2 className="text-lg font-semibold p-4 border-b sticky top-0 bg-muted/80 backdrop-blur-sm rounded-t-lg z-10">
               {status} ({leadsByStatus[status]?.length || 0})
             </h2>

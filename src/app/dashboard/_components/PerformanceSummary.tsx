@@ -53,7 +53,8 @@ interface PerformanceSummaryProps {
 
 export function PerformanceSummary({ leads, invoices, isLoading, error }: PerformanceSummaryProps) {
   const { totalSuccessfulBookings, totalSuccessfulEarnings } = useMemo(() => {
-    const successfulLeads = leads.filter(lead => lead.status === 'Conformed' || lead.status === 'Closed');
+    // Successful leads are now only those with 'Closed' status
+    const successfulLeads = leads.filter(lead => lead.status === 'Closed');
     const totalBookings = successfulLeads.length;
     const totalEarnings = successfulLeads.reduce((sum, lead) => sum + (lead.netAmount || 0), 0);
     return {
@@ -74,17 +75,17 @@ export function PerformanceSummary({ leads, invoices, isLoading, error }: Perfor
   return (
     <div className="grid gap-4 md:grid-cols-1 lg:grid-cols-3">
       <SummaryCard
-        title="Total Successful Bookings"
+        title="Total Closed Bookings"
         value={error ? 'Error' : totalSuccessfulBookings}
         icon={<BookOpenCheck className="h-5 w-5 text-muted-foreground" />}
-        description={error ? error : "Number of 'Conformed' or 'Closed' leads"}
+        description={error ? error : "Number of 'Closed' leads"}
         isLoading={isLoading}
       />
       <SummaryCard
-        title="Total Successful Earnings"
+        title="Total Earnings from Closed Bookings"
         value={error ? 'Error' : `${totalSuccessfulEarnings.toLocaleString()} AED`}
         icon={<Banknote className="h-5 w-5 text-muted-foreground" />}
-        description={error ? error : "Sum of net amounts for 'Conformed' or 'Closed' leads"}
+        description={error ? error : "Sum of net amounts for 'Closed' leads"}
         isLoading={isLoading}
       />
       <SummaryCard

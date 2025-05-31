@@ -55,7 +55,7 @@ export interface Invoice {
   createdAt: string; 
 }
 
-export const leadStatusOptions = ['Balance', 'Closed', 'Conformed', 'Upcoming'] as const;
+export const leadStatusOptions = ['Balance', 'Closed'] as const;
 export type LeadStatus = typeof leadStatusOptions[number];
 
 export const modeOfPaymentOptions = ['Online', 'Credit', 'Cash/Card'] as const;
@@ -123,3 +123,4 @@ export interface BookingsByAgentData {
 
 
 export type { LeadStatus as ExportedLeadStatus, ModeOfPayment as ExportedModeOfPayment, LeadType as ExportedLeadType };
+

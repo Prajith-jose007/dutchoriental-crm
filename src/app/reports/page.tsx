@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button';
 import { DatePicker } from '@/components/ui/date-picker';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { Lead, Invoice, Yacht, Agent, User, LeadStatus } from '@/lib/types';
-import { leadStatusOptions } from '@/lib/types'; // Import leadStatusOptions
+import { leadStatusOptions } from '@/lib/types'; 
 import { format, parseISO, isWithinInterval, startOfMonth, endOfMonth, startOfYear, endOfYear, isValid, getYear as getFullYear, getMonth as getMonthIndex } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 
@@ -34,12 +34,12 @@ export default function ReportsPage() {
   const [selectedYachtId, setSelectedYachtId] = useState<string>('all');
   const [selectedAgentId, setSelectedAgentId] = useState<string>('all');
   const [selectedUserId, setSelectedUserId] = useState<string>('all');
-  const [selectedStatusFilter, setSelectedStatusFilter] = useState<LeadStatus | 'all'>('all'); // New state for status filter
+  const [selectedStatusFilter, setSelectedStatusFilter] = useState<LeadStatus | 'all'>('all');
 
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 5 }, (_, i) => currentYear - i);
   const months = Array.from({ length: 12 }, (_, i) => ({
-    value: String(i + 1).padStart(2, '0'), // "01", "02", ..., "12"
+    value: String(i + 1).padStart(2, '0'), 
     label: format(new Date(2000, i, 1), 'MMMM'),
   }));
 
@@ -93,14 +93,13 @@ export default function ReportsPage() {
       }
     };
     fetchAllData();
-  }, []); // Removed toast from dependencies
+  }, [toast]); 
 
 
   const filteredLeads = useMemo(() => {
     console.log(`[ReportsPage] Initial leads count: ${allLeads.length}`);
     let leadsToFilter = allLeads;
 
-    // Apply primary filters
     leadsToFilter = leadsToFilter.filter(lead => {
       let leadEventDate: Date | null = null;
       try {
@@ -132,19 +131,12 @@ export default function ReportsPage() {
       if (selectedYachtId !== 'all' && lead.yacht !== selectedYachtId) return false;
       if (selectedAgentId !== 'all' && lead.agent !== selectedAgentId) return false;
       if (selectedUserId !== 'all' && lead.lastModifiedByUserId !== selectedUserId) return false;
-      // Apply the new status filter
       if (selectedStatusFilter !== 'all' && lead.status !== selectedStatusFilter) return false;
       
       return true;
     });
     console.log(`[ReportsPage] Leads after primary filters (including new status filter): ${leadsToFilter.length}`);
     
-    // Determine if we should apply the "Closed or Conformed" logic
-    // This applies if the new status filter is 'all', or if it specifically targets 'Closed' or 'Conformed'.
-    // Or, more simply, the charts should just reflect the leads that pass ALL active filters.
-    // The page description can be adjusted if needed.
-    // For now, the charts will show data for whatever leads pass ALL filters.
-
     return leadsToFilter;
   }, [allLeads, startDate, endDate, selectedReportMonth, selectedReportYear, selectedYachtId, selectedAgentId, selectedUserId, selectedStatusFilter]);
 
@@ -196,7 +188,7 @@ export default function ReportsPage() {
     setSelectedYachtId('all');
     setSelectedAgentId('all');
     setSelectedUserId('all');
-    setSelectedStatusFilter('all'); // Reset new status filter
+    setSelectedStatusFilter('all'); 
   };
 
   if (isLoading) {

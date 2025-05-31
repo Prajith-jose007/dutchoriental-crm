@@ -42,7 +42,6 @@ type LeadTableColumn = {
   actualPackageName?: string; 
 };
 
-// Define the preferred package order and their display names
 const preferredPackageMap: { header: string; dataName: string }[] = [
   { header: 'CH', dataName: 'CHILD' },
   { header: 'AD', dataName: 'ADULT' },
@@ -82,10 +81,10 @@ const generateLeadColumns = (allYachts: Yacht[]): LeadTableColumn[] => {
   preferredPackageMap.forEach(preferredPkg => {
     if (allActualUniquePackageNames.includes(preferredPkg.dataName)) {
       dynamicPackageColumns.push({
-        header: preferredPkg.header, // Use short header from map
+        header: preferredPkg.header, 
         accessorKey: `pkg_${preferredPkg.dataName.replace(/\s+/g, '_').toLowerCase()}`,
         isPackageColumn: true,
-        actualPackageName: preferredPkg.dataName, // Store actual name for data lookup
+        actualPackageName: preferredPkg.dataName, 
         isNumeric: true,
       });
       addedDataNames.add(preferredPkg.dataName);
@@ -95,7 +94,7 @@ const generateLeadColumns = (allYachts: Yacht[]): LeadTableColumn[] => {
   allActualUniquePackageNames.sort().forEach(actualName => {
     if (!addedDataNames.has(actualName)) {
       dynamicPackageColumns.push({
-        header: actualName, // Full name for other packages
+        header: actualName, 
         accessorKey: `pkg_${actualName.replace(/\s+/g, '_').toLowerCase()}`,
         isPackageColumn: true,
         actualPackageName: actualName,
@@ -104,13 +103,16 @@ const generateLeadColumns = (allYachts: Yacht[]): LeadTableColumn[] => {
     }
   });
   
-  const financialAndAuditColumns: LeadTableColumn[] = [
+  const financialColumns: LeadTableColumn[] = [
     { accessorKey: 'totalAmount', header: 'Total Amt', isCurrency: true },
     { accessorKey: 'commissionPercentage', header: 'Agent Disc. %', isPercentage: true },
     { accessorKey: 'commissionAmount', header: 'Comm Amt', isCurrency: true },
     { accessorKey: 'netAmount', header: 'Net Amt', isCurrency: true },
     { accessorKey: 'paidAmount', header: 'Paid Amt', isCurrency: true },
     { accessorKey: 'balanceAmount', header: 'Balance', isCurrency: true },
+  ];
+
+  const auditAndActionColumns: LeadTableColumn[] = [
     { accessorKey: 'notes', header: 'Notes', isNotes: true },
     { accessorKey: 'lastModifiedByUserId', header: 'Modified By', isUserLookup: true },
     { accessorKey: 'ownerUserId', header: 'Lead Owner', isUserLookup: true },
@@ -119,8 +121,7 @@ const generateLeadColumns = (allYachts: Yacht[]): LeadTableColumn[] => {
     { accessorKey: 'actions', header: 'Actions' },
   ];
 
-  // Insert dynamic package columns after 'Total Guests' and before financial columns
-  return [...baseColumnsPart1, ...dynamicPackageColumns, ...financialAndAuditColumns];
+  return [...baseColumnsPart1, ...dynamicPackageColumns, ...financialColumns, ...auditAndActionColumns];
 };
 
 
@@ -152,9 +153,7 @@ export function LeadsTable({
     if (!status) return 'outline';
     switch (status) {
       case 'Balance': return 'secondary';
-      case 'Closed': return 'outline';
-      case 'Conformed': return 'default';
-      case 'Upcoming': return 'secondary';
+      case 'Closed': return 'default'; // Changed 'Closed' to 'default' for better visibility
       default: return 'outline';
     }
   };

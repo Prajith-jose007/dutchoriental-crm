@@ -125,7 +125,7 @@ export const placeholderLeads: Lead[] = [
     clientName: 'Tech Corp Events',
     agent: 'DO-AGENT-001',
     yacht: 'DO-yacht-lotus',
-    status: 'Conformed',
+    status: 'Closed', // Was 'Conformed'
     month: formatISO(parseISO('2024-07-15T14:00:00')),
     notes: 'Confirmed booking for annual dinner.',
     type: 'Dinner Cruise',
@@ -134,11 +134,11 @@ export const placeholderLeads: Lead[] = [
     packageQuantities: [
       { packageId: 'lr-adult', packageName: 'ADULT', quantity: 50, rate: 250 },
       { packageId: 'lr-ad-alc', packageName: 'AD ALC', quantity: 30, rate: 350 },
-    ], // (50*250) + (30*350) = 12500 + 10500 = 23000
+    ], 
     totalAmount: 23000,
-    commissionPercentage: 10, // from DO-AGENT-001
-    commissionAmount: 2300, // 10% of 23000
-    netAmount: 20700, // 23000 - 2300
+    commissionPercentage: 10, 
+    commissionAmount: 2300, 
+    netAmount: 20700, 
     paidAmount: 20700,
     balanceAmount: 0,
     createdAt: formatISO(subDays(today, 30)),
@@ -151,18 +151,18 @@ export const placeholderLeads: Lead[] = [
     clientName: 'Sunset Tours R Us',
     agent: 'DO-AGENT-002',
     yacht: 'DO-yacht-super',
-    status: 'Upcoming',
+    status: 'Balance', // Was 'Upcoming'
     month: formatISO(parseISO('2024-07-25T18:30:00')),
     notes: 'Prospective client for regular sightseeing tours.',
     type: 'Superyacht Sightseeing Cruise',
     modeOfPayment: 'Credit',
     packageQuantities: [
       { packageId: 'ss-premium', packageName: 'PREMIUM', quantity: 20, rate: 299 },
-    ], // 20 * 299 = 5980
+    ], 
     totalAmount: 5980,
-    commissionPercentage: 15, // from DO-AGENT-002
-    commissionAmount: 897, // 15% of 5980
-    netAmount: 5083, // 5980 - 897
+    commissionPercentage: 15, 
+    commissionAmount: 897, 
+    netAmount: 5083, 
     paidAmount: 1000,
     balanceAmount: 4083,
     createdAt: formatISO(subDays(today, 25)),
@@ -175,7 +175,7 @@ export const placeholderLeads: Lead[] = [
     clientName: 'Private Celebration Planners',
     agent: 'DO-AGENT-001',
     yacht: 'DO-yacht-private1',
-    status: 'Balance',
+    status: 'Balance', // Was 'Balance'
     month: formatISO(parseISO('2024-08-10T16:00:00')),
     notes: 'Birthday party, deposit paid.',
     type: 'Private Cruise',
@@ -183,11 +183,11 @@ export const placeholderLeads: Lead[] = [
     packageQuantities: [
       { packageId: 'private-hourly', packageName: 'Hourly Charter', quantity: 4, rate: 1500 },
       { packageId: 'private-catering', packageName: 'Basic Catering pp', quantity: 15, rate: 150 },
-    ], // (4*1500) + (15*150) = 6000 + 2250 = 8250
+    ], 
     totalAmount: 8250,
-    commissionPercentage: 10, // from DO-AGENT-001
-    commissionAmount: 825, // 10% of 8250
-    netAmount: 7425, // 8250 - 825
+    commissionPercentage: 10, 
+    commissionAmount: 825, 
+    netAmount: 7425, 
     paidAmount: 3000,
     balanceAmount: 4425,
     createdAt: formatISO(subDays(today, 10)),

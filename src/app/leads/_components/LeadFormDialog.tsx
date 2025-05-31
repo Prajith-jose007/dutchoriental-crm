@@ -52,7 +52,7 @@ const leadPackageQuantitySchema = z.object({
 const leadFormSchema = z.object({
   id: z.string().optional(),
   agent: z.string().min(1, 'Agent is required'),
-  status: z.enum(leadStatusOptions),
+  status: z.enum(leadStatusOptions), // Use updated leadStatusOptions
   month: z.date({ required_error: "Lead/Event Date is required." }), 
   notes: z.string().optional(),
   yacht: z.string().min(1, 'Yacht selection is required'),
@@ -99,7 +99,7 @@ const getDefaultFormValues = (existingLead?: Lead | null): LeadFormData => {
   return {
     id: existingLead?.id || undefined,
     agent: existingLead?.agent || '', 
-    status: existingLead?.status || 'Upcoming', 
+    status: existingLead?.status || 'Balance', // Default to 'Balance' for new leads
     month: existingLead?.month && isValid(parseISO(existingLead.month)) ? parseISO(existingLead.month) : new Date(),
     yacht: existingLead?.yacht || '',
     type: existingLead?.type || 'Private Cruise', 
@@ -237,8 +237,8 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
 
     const selectedYachtForCalc = allYachts.find(y => y.id === currentYachtId);
 
-    if (!selectedYachtForCalc) {
-      console.warn('[CalcDebug] No yacht selected or found for calc. WatchedYachtID:', currentYachtId);
+    if (!selectedYachtForCalc || !selectedYachtForCalc.packages) {
+      console.warn('[CalcDebug] No yacht selected or found, or yacht has no packages. WatchedYachtID:', currentYachtId);
       form.setValue('totalAmount', 0);
       form.setValue('commissionAmount', 0);
       form.setValue('netAmount', 0);
@@ -251,22 +251,19 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
     let calculatedTotalAmount = 0;
     let calculatedTotalGuests = 0;
 
-    if (selectedYachtForCalc.packages && Array.isArray(selectedYachtForCalc.packages)) {
-      currentPackageQuantities.forEach((pqItem, index) => {
-        const quantity = Number(pqItem.quantity || 0);
-        const yachtPackageDetails = selectedYachtForCalc.packages?.find(p => p.id === pqItem.packageId);
-        const rateFromYacht = yachtPackageDetails ? Number(yachtPackageDetails.rate || 0) : 0; 
+    currentPackageQuantities.forEach((pqItem, index) => {
+      const quantity = Number(pqItem.quantity || 0);
+      // Ensure rate is fetched directly from selectedYachtForCalc.packages at calculation time
+      const yachtPackageDetails = selectedYachtForCalc.packages?.find(p => p.id === pqItem.packageId);
+      const rateFromYacht = yachtPackageDetails ? Number(yachtPackageDetails.rate || 0) : 0;
 
-        console.log(`[CalcDebug] Processing PkgItem[${index}]: ID='${pqItem.packageId}', Name='${pqItem.packageName}', Qty=${quantity}, RateFromYacht=${rateFromYacht}`);
-        
-        if (quantity > 0 && rateFromYacht > 0) {
-          calculatedTotalAmount += quantity * rateFromYacht;
-        }
-        calculatedTotalGuests += quantity;
-      });
-    } else {
-      console.warn('[CalcDebug] Selected yacht has no valid packages array or packages are missing.');
-    }
+      console.log(`[CalcDebug] Processing PkgItem[${index}]: ID='${pqItem.packageId}', Name='${pqItem.packageName}', Qty=${quantity}, RateFromYacht=${rateFromYacht}`);
+      
+      if (quantity > 0 && rateFromYacht > 0) {
+        calculatedTotalAmount += quantity * rateFromYacht;
+      }
+      calculatedTotalGuests += quantity;
+    });
     
     setCalculatedTotalGuests(calculatedTotalGuests);
     form.setValue('totalAmount', calculatedTotalAmount);

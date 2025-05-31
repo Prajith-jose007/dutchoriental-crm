@@ -142,10 +142,11 @@ export function LeadsTable({
 
   const formatPackageSummary = (packageQuantities?: LeadPackageQuantity[]): string => {
     if (!packageQuantities || packageQuantities.length === 0) return '-';
-    return packageQuantities
+    const summary = packageQuantities
       .filter(pq => (Number(pq.quantity) || 0) > 0)
       .map(pq => `${pq.packageName} x${pq.quantity}`)
-      .join(', ') || '-';
+      .join(', ');
+    return summary || '-'; // Ensure it returns '-' if all quantities are 0
   };
 
   const renderCellContent = (lead: Lead, column: LeadTableColumn) => {
@@ -155,7 +156,12 @@ export function LeadsTable({
       return formatNumeric(calculateTotalGuestsFromPackageQuantities(lead));
     }
      if (column.accessorKey === 'packageSummary') {
-      return formatPackageSummary(lead.packageQuantities);
+      const yachtName = lead.yacht && yachtMap[lead.yacht] ? yachtMap[lead.yacht] : (lead.yacht || 'Unknown Yacht');
+      const packageDetails = formatPackageSummary(lead.packageQuantities);
+      if (packageDetails === '-') { // If no packages or all quantities are zero
+        return lead.yacht && yachtMap[lead.yacht] ? `${yachtMap[lead.yacht]}: -` : '-';
+      }
+      return `${yachtName}: ${packageDetails}`;
     }
     if (column.accessorKey === 'id') {
       return (
@@ -272,3 +278,4 @@ export function LeadsTable({
     </ScrollArea>
   );
 }
+

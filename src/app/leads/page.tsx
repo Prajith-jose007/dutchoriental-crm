@@ -496,41 +496,51 @@ export default function LeadsPage() {
     
     const headers: (keyof Omit<Lead, 'packageQuantities'> | 'package_quantities_json')[] = [
       'id', 'clientName', 'agent', 'yacht', 'status', 'month', 'type', 'transactionId', 'modeOfPayment', 'notes', 
-      'package_quantities_json', // Export the JSON string directly
+      'package_quantities_json', 
       'totalAmount', 'commissionPercentage',
       'commissionAmount', 'netAmount', 'paidAmount', 'balanceAmount',
       'createdAt', 'updatedAt', 'lastModifiedByUserId', 'ownerUserId'
     ];
+
     const escapeCsvCell = (cellData: any, headerKey: (keyof Omit<Lead, 'packageQuantities'> | 'package_quantities_json')): string => {
       if (cellData === null || cellData === undefined) return '';
       let stringValue = String(cellData);
       
-      if (headerKey === 'package_quantities_json' && Array.isArray(cellData)) {
+      if (headerKey === 'package_quantities_json') {
+        // If cellData is already a string (the JSON string), escape internal quotes with backslashes.
+        // Then, always wrap the result in double quotes for CSV.
+        if (typeof cellData === 'string') {
+          return `"${cellData.replace(/"/g, '\\"')}"`;
+        }
+        // If cellData is an array/object (should have been stringified before this point, but as a fallback):
         stringValue = JSON.stringify(cellData);
+        return `"${stringValue.replace(/"/g, '\\"')}"`;
       }
 
       if (['month', 'createdAt', 'updatedAt'].includes(String(headerKey)) ) {
           try {
               const date = parseISO(stringValue);
               if (isValid(date)) {
-                stringValue = format(date, 'yyyy-MM-dd HH:mm:ss'); // Consistent ISO-like format for export
+                stringValue = format(date, 'yyyy-MM-dd HH:mm:ss');
               }
           } catch (e) { /* ignore */ }
       }
+
+      // Standard CSV escaping for other fields (double up internal quotes and wrap field in quotes if needed)
       if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n')) {
         return `"${stringValue.replace(/"/g, '""')}"`;
       }
       return stringValue;
     };
+
     const csvRows = [
       headers.join(','),
       ...filteredLeads.map(lead => {
         const leadForExport = {...lead} as any;
         if (lead.packageQuantities) {
-          // Ensure packageQuantities is stringified for the 'package_quantities_json' header
           leadForExport.package_quantities_json = JSON.stringify(lead.packageQuantities);
         } else {
-          leadForExport.package_quantities_json = ''; // Or '[]' if preferred for empty
+          leadForExport.package_quantities_json = '[]'; // Use empty array string
         }
         return headers.map(header => escapeCsvCell(leadForExport[header], header)).join(',')
       })

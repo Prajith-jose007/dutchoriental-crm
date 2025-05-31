@@ -50,21 +50,20 @@ const leadColumns: LeadTableColumn[] = [
   { accessorKey: 'type', header: 'Type' },
   { accessorKey: 'transactionId', header: 'Transaction ID' },
   { accessorKey: 'modeOfPayment', header: 'Payment Mode' },
-  
+  { accessorKey: 'notes', header: 'Notes', isNotes: true },
+  { accessorKey: 'lastModifiedByUserId', header: 'Modified By', isUserLookup: true },
+  { accessorKey: 'ownerUserId', header: 'Lead Owner', isUserLookup: true },
+  { accessorKey: 'createdAt', header: 'Created At', isDate: true },
+  { accessorKey: 'updatedAt', header: 'Updated At', isDate: true },
+  // Financial Block - Moved to the end before 'Actions'
   { accessorKey: 'totalGuests', header: 'Total Guests', isNumeric: true },
   { accessorKey: 'packageSummary', header: 'Packages (Qty)' }, 
-
   { accessorKey: 'totalAmount', header: 'Total Amt', isCurrency: true },
   { accessorKey: 'commissionPercentage', header: 'Agent Disc. %', isPercentage: true },
   { accessorKey: 'commissionAmount', header: 'Comm Amt', isCurrency: true },
   { accessorKey: 'netAmount', header: 'Net Amt', isCurrency: true },
   { accessorKey: 'paidAmount', header: 'Paid Amt', isCurrency: true },
   { accessorKey: 'balanceAmount', header: 'Balance', isCurrency: true }, // Shows signed value
-  { accessorKey: 'notes', header: 'Notes', isNotes: true },
-  { accessorKey: 'lastModifiedByUserId', header: 'Modified By', isUserLookup: true },
-  { accessorKey: 'ownerUserId', header: 'Lead Owner', isUserLookup: true },
-  { accessorKey: 'createdAt', header: 'Created At', isDate: true },
-  { accessorKey: 'updatedAt', header: 'Updated At', isDate: true },
   { accessorKey: 'actions', header: 'Actions' },
 ];
 
@@ -154,7 +153,7 @@ export function LeadsTable({
         .filter(word => word.length > 0)
         .map(word => word.charAt(0))
         .join('')
-        .toUpperCase() || yachtName; 
+        .toUpperCase() || yachtName.substring(0,3).toUpperCase(); 
 
     const packageItems = activePackages.map((pq, index) => (
         <span key={`${lead.id}-pkg-${pq.packageId}-${index}`} className="whitespace-nowrap">

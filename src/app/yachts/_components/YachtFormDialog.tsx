@@ -40,7 +40,7 @@ import { cn } from '@/lib/utils';
 import { PlusCircle, Trash2 } from 'lucide-react';
 
 const yachtPackageItemSchema = z.object({
-  id: z.string(), // For react-hook-form key management
+  id: z.string(), 
   name: z.string().min(1, 'Package name is required'),
   rate: z.coerce.number().min(0, 'Rate must be non-negative'),
 });
@@ -101,7 +101,7 @@ export function YachtFormDialog({ isOpen, onOpenChange, yacht, onSubmitSuccess, 
           ...yacht,
           imageUrl: yacht.imageUrl || '',
           customPackageInfo: yacht.customPackageInfo || '',
-          packages: yacht.packages?.map(p => ({ ...p, id: p.id || `pkg-${Date.now()}` })) || [], // Ensure each package has an ID for useFieldArray
+          packages: yacht.packages?.map(p => ({ ...p, id: p.id || `pkg-${Date.now()}`, rate: Number(Number(p.rate || 0).toFixed(2)) })) || [], 
           category: yacht.category || 'Private Cruise',
           capacity: Number(yacht.capacity || 0),
         } as YachtFormData);
@@ -121,7 +121,7 @@ export function YachtFormDialog({ isOpen, onOpenChange, yacht, onSubmitSuccess, 
     const processedData: Yacht = {
         ...data,
         capacity: Number(data.capacity || 0),
-        packages: data.packages?.map(p => ({...p, rate: Number(p.rate || 0)})) || [],
+        packages: data.packages?.map(p => ({...p, rate: Number(Number(p.rate || 0).toFixed(2))})) || [],
     };
     onSubmitSuccess(processedData);
     onOpenChange(false);
@@ -298,7 +298,22 @@ export function YachtFormDialog({ isOpen, onOpenChange, yacht, onSubmitSuccess, 
                         <FormItem>
                           <FormLabel className="text-xs">Rate (AED)</FormLabel>
                           <FormControl>
-                            <Input type="number" placeholder="0.00" min="0" step="0.01" {...rateField} readOnly={!isAdmin} className={!isAdmin ? "bg-muted/50" : ""} onChange={e => rateField.onChange(parseFloat(e.target.value) || 0)} />
+                            <Input 
+                              type="number" 
+                              placeholder="0.00" 
+                              min="0" 
+                              step="0.01" 
+                              {...rateField} 
+                              readOnly={!isAdmin} 
+                              className={!isAdmin ? "bg-muted/50" : ""} 
+                              onChange={e => rateField.onChange(parseFloat(e.target.value) || 0)}
+                              onBlur={e => { // Optionally round on blur
+                                const val = parseFloat(e.target.value);
+                                if (!isNaN(val)) {
+                                  rateField.onChange(Number(val.toFixed(2)));
+                                }
+                              }}
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>

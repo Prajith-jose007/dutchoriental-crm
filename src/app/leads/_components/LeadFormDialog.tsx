@@ -57,7 +57,7 @@ const leadFormSchema = z.object({
   notes: z.string().optional(),
   yacht: z.string().min(1, 'Yacht selection is required'),
   type: z.enum(leadTypeOptions, { required_error: "Lead type is required."}),
-  paymentConfirmationStatus: z.enum(paymentConfirmationStatusOptions, { required_error: "Payment confirmation status is required."}), // New field
+  paymentConfirmationStatus: z.enum(paymentConfirmationStatusOptions, { required_error: "Payment confirmation status is required."}),
   transactionId: z.string().optional(),
   modeOfPayment: z.enum(modeOfPaymentOptions),
   clientName: z.string().min(1, 'Client name is required'),
@@ -104,18 +104,18 @@ const getDefaultFormValues = (existingLead?: Lead | null): LeadFormData => {
     month: existingLead?.month && isValid(parseISO(existingLead.month)) ? parseISO(existingLead.month) : new Date(),
     yacht: existingLead?.yacht || '',
     type: existingLead?.type || 'Private Cruise', 
-    paymentConfirmationStatus: existingLead?.paymentConfirmationStatus || 'CONFIRMED', // New field
+    paymentConfirmationStatus: existingLead?.paymentConfirmationStatus || 'CONFIRMED',
     modeOfPayment: existingLead?.modeOfPayment || 'Online', 
     clientName: existingLead?.clientName || '',
     notes: existingLead?.notes || '', 
     transactionId: existingLead?.transactionId || '',
     packageQuantities: initialPackageQuantities,
-    totalAmount: Number(existingLead?.totalAmount || 0), 
+    totalAmount: Number(Number(existingLead?.totalAmount || 0).toFixed(2)), 
     commissionPercentage: Number(existingLead?.commissionPercentage || 0), 
-    commissionAmount: Number(existingLead?.commissionAmount || 0), 
-    netAmount: Number(existingLead?.netAmount || 0),
-    paidAmount: Number(existingLead?.paidAmount || 0), 
-    balanceAmount: Math.abs(Number(existingLead?.balanceAmount || 0)),
+    commissionAmount: Number(Number(existingLead?.commissionAmount || 0).toFixed(2)), 
+    netAmount: Number(Number(existingLead?.netAmount || 0).toFixed(2)),
+    paidAmount: Number(Number(existingLead?.paidAmount || 0).toFixed(2)), 
+    balanceAmount: Math.abs(Number(Number(existingLead?.balanceAmount || 0).toFixed(2))),
     lastModifiedByUserId: existingLead?.lastModifiedByUserId || SIMULATED_CURRENT_USER_ID,
     ownerUserId: existingLead?.ownerUserId || undefined,
     createdAt: existingLead?.createdAt || undefined,
@@ -233,7 +233,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
     const currentAgentId = watchedAgentId;
     const currentPackageQuantities = watchedPackageQuantities || []; 
     const currentPaidAmountValue = form.getValues('paidAmount'); 
-    const currentPaidAmount = Number(currentPaidAmountValue || 0);
+    const currentPaidAmount = Number(Number(currentPaidAmountValue || 0).toFixed(2)); // Ensure paid amount is also treated as 2 decimal for calc
 
     console.log('[CalcDebug] Watched Values: YachtID=', currentYachtId, 'AgentID=', currentAgentId, 'PaidAmountInput=', currentPaidAmountValue, 'NumericPaid=', currentPaidAmount);
     console.log('[CalcDebug] Watched PackageQuantities:', JSON.parse(JSON.stringify(currentPackageQuantities)));
@@ -251,23 +251,25 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
     }
     console.log('[CalcDebug] Using Yacht for Calc:', selectedYachtForCalc.name, 'Packages:', selectedYachtForCalc.packages);
 
-    let calculatedTotalAmount = 0;
+    let rawCalculatedTotalAmount = 0;
     let calculatedTotalGuests = 0;
 
     currentPackageQuantities.forEach((pqItem, index) => {
       const quantity = Number(pqItem.quantity || 0);
       const yachtPackageDetails = selectedYachtForCalc.packages?.find(p => p.id === pqItem.packageId);
-      const rateFromYacht = yachtPackageDetails ? Number(yachtPackageDetails.rate || 0) : 0;
+      // Ensure rate from yacht package is treated as a number rounded to 2 decimal places if it comes from user input potentially
+      const rateFromYacht = yachtPackageDetails ? Number(Number(yachtPackageDetails.rate || 0).toFixed(2)) : 0;
 
       console.log(`[CalcDebug] Processing PkgItem[${index}]: ID='${pqItem.packageId}', Name='${pqItem.packageName}', Qty=${quantity}, RateFromYacht=${rateFromYacht}`);
       
       if (quantity > 0 && rateFromYacht > 0) {
-        calculatedTotalAmount += quantity * rateFromYacht;
+        rawCalculatedTotalAmount += quantity * rateFromYacht;
       }
       calculatedTotalGuests += quantity;
     });
     
     setCalculatedTotalGuests(calculatedTotalGuests);
+    const calculatedTotalAmount = Number(rawCalculatedTotalAmount.toFixed(2));
     form.setValue('totalAmount', calculatedTotalAmount);
 
     const selectedAgentForCalc = allAgents.find(a => a.id === currentAgentId);
@@ -277,13 +279,13 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
       form.setValue('commissionPercentage', agentDiscountRate);
     }
 
-    const calculatedCommissionAmount = (calculatedTotalAmount * agentDiscountRate) / 100;
+    const calculatedCommissionAmount = Number(((calculatedTotalAmount * agentDiscountRate) / 100).toFixed(2));
     form.setValue('commissionAmount', calculatedCommissionAmount);
 
-    const calculatedNetAmount = calculatedTotalAmount - calculatedCommissionAmount;
+    const calculatedNetAmount = Number((calculatedTotalAmount - calculatedCommissionAmount).toFixed(2));
     form.setValue('netAmount', calculatedNetAmount);
     
-    const actualSignedBalanceAmount = calculatedNetAmount - currentPaidAmount;
+    const actualSignedBalanceAmount = Number((calculatedNetAmount - currentPaidAmount).toFixed(2));
     form.setValue('balanceAmount', Math.abs(actualSignedBalanceAmount));
 
     console.log(`[CalcDebug] Final Amounts: TotalGuests=${calculatedTotalGuests}, Total=${calculatedTotalAmount}, CommissionPerc=${agentDiscountRate}%, CommissionAmt=${calculatedCommissionAmount}, Net=${calculatedNetAmount}, Paid=${currentPaidAmount}, Balance=${Math.abs(actualSignedBalanceAmount)} (Signed: ${actualSignedBalanceAmount})`);
@@ -320,31 +322,32 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
 
 
   function onSubmit(data: LeadFormData) {
-    let finalTotalAmount = 0;
+    let rawFinalTotalAmount = 0;
     const selectedYachtForSubmit = allYachts.find(y => y.id === data.yacht);
 
     if (data.packageQuantities && Array.isArray(data.packageQuantities) && selectedYachtForSubmit && selectedYachtForSubmit.packages && Array.isArray(selectedYachtForSubmit.packages)) {
       data.packageQuantities.forEach(pqItem => {
         const quantity = Number(pqItem.quantity || 0);
         const yachtPackage = selectedYachtForSubmit.packages?.find(p => p.id === pqItem.packageId);
-        const rate = yachtPackage ? Number(yachtPackage.rate || 0) : 0;
+        const rate = yachtPackage ? Number(Number(yachtPackage.rate || 0).toFixed(2)) : 0; // Use rounded rate
         if (quantity > 0 && rate > 0) {
-          finalTotalAmount += quantity * rate;
+          rawFinalTotalAmount += quantity * rate;
         }
       });
     }
+    const finalTotalAmount = Number(rawFinalTotalAmount.toFixed(2));
     
     const selectedAgentForSubmit = allAgents.find(a => a.id === data.agent);
     const finalCommissionPercentage = selectedAgentForSubmit ? Number(selectedAgentForSubmit.discount || 0) : 0;
-    const finalCommissionAmount = (finalTotalAmount * finalCommissionPercentage) / 100;
-    const finalNetAmount = finalTotalAmount - finalCommissionAmount;
-    const finalPaidAmount = Number(data.paidAmount || 0);
-    const actualSignedBalanceAmount = finalNetAmount - finalPaidAmount;
+    const finalCommissionAmount = Number(((finalTotalAmount * finalCommissionPercentage) / 100).toFixed(2));
+    const finalNetAmount = Number((finalTotalAmount - finalCommissionAmount).toFixed(2));
+    const finalPaidAmount = Number(Number(data.paidAmount || 0).toFixed(2)); // Round paid amount
+    const actualSignedBalanceAmount = Number((finalNetAmount - finalPaidAmount).toFixed(2));
 
     const finalPackageQuantities = (data.packageQuantities && Array.isArray(data.packageQuantities) && selectedYachtForSubmit && selectedYachtForSubmit.packages && Array.isArray(selectedYachtForSubmit.packages))
       ? data.packageQuantities.map(pq => {
           const yachtPackage = selectedYachtForSubmit.packages?.find(p => p.id === pq.packageId);
-          const rate = yachtPackage ? Number(yachtPackage.rate || 0) : 0;
+          const rate = yachtPackage ? Number(Number(yachtPackage.rate || 0).toFixed(2)) : 0; // Use rounded rate
           return {
             packageId: String(pq.packageId),
             packageName: String(pq.packageName),
@@ -358,7 +361,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
       ...data, 
       id: lead?.id || `temp-${Date.now()}`, 
       month: data.month ? formatISO(data.month) : formatISO(new Date()),
-      paymentConfirmationStatus: data.paymentConfirmationStatus, // New field
+      paymentConfirmationStatus: data.paymentConfirmationStatus,
       createdAt: lead?.createdAt || formatISO(new Date()),
       updatedAt: formatISO(new Date()),
       lastModifiedByUserId: SIMULATED_CURRENT_USER_ID,
@@ -629,7 +632,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Total Amount (AED)</FormLabel>
-                      <FormControl><Input type="number" placeholder="0.00" {...field} readOnly className="bg-muted/50" /></FormControl>
+                      <FormControl><Input type="number" placeholder="0.00" {...field} value={Number(field.value).toFixed(2)} readOnly className="bg-muted/50" /></FormControl>
                        <FormDescription>Calculated from packages</FormDescription>
                       <FormMessage />
                     </FormItem>
@@ -653,7 +656,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Commission Amount (AED)</FormLabel>
-                      <FormControl><Input type="number" placeholder="0.00" {...field} readOnly className="bg-muted/50" /></FormControl>
+                      <FormControl><Input type="number" placeholder="0.00" {...field} value={Number(field.value).toFixed(2)} readOnly className="bg-muted/50" /></FormControl>
                       <FormDescription>Calculated value</FormDescription>
                       <FormMessage />
                     </FormItem>
@@ -665,7 +668,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Net Amount (AED)</FormLabel>
-                      <FormControl><Input type="number" placeholder="0.00" {...field} readOnly className="bg-muted/50" /></FormControl>
+                      <FormControl><Input type="number" placeholder="0.00" {...field} value={Number(field.value).toFixed(2)} readOnly className="bg-muted/50" /></FormControl>
                       <FormDescription>Total - Commission</FormDescription>
                       <FormMessage />
                     </FormItem>
@@ -689,7 +692,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Balance Amount (AED)</FormLabel>
-                      <FormControl><Input type="number" placeholder="0.00" {...field} readOnly className="bg-muted/50" /></FormControl>
+                      <FormControl><Input type="number" placeholder="0.00" {...field} value={Number(field.value).toFixed(2)} readOnly className="bg-muted/50" /></FormControl>
                       <FormDescription>Net Amount - Paid</FormDescription>
                       <FormMessage />
                     </FormItem>

@@ -332,10 +332,26 @@ export default function AgentsPage() {
 
         const newAgentsFromCsv: Agent[] = [];
         
+        // Fetch current agents to determine next ID and check for existing IDs/emails
         const currentAgentsResponse = await fetch('/api/agents');
-        const currentAgents: Agent[] = currentAgentsResponse.ok ? await currentAgentsResponse.json() : [];
-        const existingAgentIds = new Set(currentAgents.map(a => a.id));
-        const existingAgentEmails = new Set(currentAgents.map(a => a.email.toLowerCase()));
+        const currentAgentsData: Agent[] = currentAgentsResponse.ok ? await currentAgentsResponse.json() : [];
+        const allKnownAgentIds = new Set(currentAgentsData.map(a => a.id));
+        const existingAgentEmails = new Set(currentAgentsData.map(a => a.email.toLowerCase()));
+
+        let nextNumericSuffix = 1;
+        const numericIdRegex = /^DO-(\d+)$/;
+        let maxNumericId = 0;
+        currentAgentsData.forEach(agent => {
+          const match = agent.id.match(numericIdRegex);
+          if (match && match[1]) {
+            const num = parseInt(match[1], 10);
+            if (num > maxNumericId) {
+              maxNumericId = num;
+            }
+          }
+        });
+        nextNumericSuffix = maxNumericId + 1;
+
 
         for (let i = 1; i < lines.length; i++) {
           let data = lines[i].split(',');
@@ -356,9 +372,20 @@ export default function AgentsPage() {
           });
            if (i < 3) console.log(`[CSV Import Agents] Processing Row ${i+1} - Parsed (after mapping & convertAgentValue):`, JSON.parse(JSON.stringify(parsedRow)));
 
-          let agentId = parsedRow.id && String(parsedRow.id).trim() !== '' ? String(parsedRow.id).trim() : `DO-csv-${Date.now()}-${i}`; // Updated ID format
+          let agentId = parsedRow.id && String(parsedRow.id).trim() !== '' ? String(parsedRow.id).trim() : '';
+          
+          if (!agentId) { // Generate ID if not provided
+            let potentialId;
+            do {
+              potentialId = `DO-${nextNumericSuffix}`;
+              nextNumericSuffix++;
+            } while (allKnownAgentIds.has(potentialId));
+            agentId = potentialId;
+            console.log(`[CSV Import Agents] Generated new ID for row ${i+1}: ${agentId}`);
+          }
 
-          if (existingAgentIds.has(agentId) || newAgentsFromCsv.some(a => a.id === agentId)) {
+
+          if (allKnownAgentIds.has(agentId)) {
             console.warn(`[CSV Import Agents] Skipping agent with duplicate ID: ${agentId} from CSV row ${i+1}.`);
             skippedCount++;
             continue;
@@ -391,7 +418,7 @@ export default function AgentsPage() {
           }
 
           newAgentsFromCsv.push(fullAgent);
-          existingAgentIds.add(fullAgent.id);
+          allKnownAgentIds.add(fullAgent.id); // Add to known IDs for current batch
           if(fullAgent.email) existingAgentEmails.add(fullAgent.email.toLowerCase());
         }
 

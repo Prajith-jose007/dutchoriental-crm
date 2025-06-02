@@ -25,9 +25,11 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true); // Start true to check auth
 
   useEffect(() => {
+    // This effect checks if the user is already authenticated
+    // If so, it redirects them away from the login page.
     let isAuthenticated = false;
     try {
       isAuthenticated = !!localStorage.getItem(USER_ROLE_STORAGE_KEY);
@@ -37,8 +39,9 @@ export default function LoginPage() {
 
     if (isAuthenticated) {
       router.replace('/dashboard');
+      // No need to setIsCheckingAuth(false) here, as the redirect will unmount this component.
     } else {
-      setIsCheckingAuth(false);
+      setIsCheckingAuth(false); // Auth check done, user is not authenticated.
     }
   }, [router]);
 
@@ -53,6 +56,7 @@ export default function LoginPage() {
       return;
     }
 
+    // Simulate API call
     setTimeout(() => {
       try {
         if (email.toLowerCase() === ADMIN_EMAIL.toLowerCase() && password === ADMIN_PASSWORD) {
@@ -62,15 +66,18 @@ export default function LoginPage() {
             title: 'Admin Login Successful',
             description: 'Redirecting to dashboard...',
           });
-          router.push('/dashboard');
+          router.push('/dashboard'); // Use push for history
         } else {
+          // For any other valid credentials (simulated for now)
+          // In a real app, you'd verify against a database
+          // For simplicity here, any other login is treated as a standard user
           localStorage.setItem(USER_ROLE_STORAGE_KEY, 'user');
           localStorage.setItem(USER_EMAIL_STORAGE_KEY, email);
           toast({
             title: 'Login Successful',
             description: 'Redirecting to dashboard...',
           });
-          router.push('/dashboard');
+          router.push('/dashboard'); // Use push for history
         }
       } catch (storageError) {
         console.error("Error accessing localStorage during login:", storageError);
@@ -87,6 +94,8 @@ export default function LoginPage() {
   };
 
   if (isCheckingAuth) {
+    // Render a skeleton or loading state while checking auth
+    // This prevents the login form from flashing if the user is already logged in
     return (
         <div className="flex items-center justify-center min-h-screen bg-muted/40">
             <Card className="w-full max-w-sm">
@@ -116,6 +125,7 @@ export default function LoginPage() {
     );
   }
 
+  // If not checking auth (i.e., user is confirmed not logged in), render login form
   return (
     <div className="flex items-center justify-center min-h-screen bg-muted/40">
       <Card className="w-full max-w-sm">

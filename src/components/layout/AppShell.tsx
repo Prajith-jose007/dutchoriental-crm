@@ -22,6 +22,7 @@ export function AppShell({ children }: AppShellProps) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
+    // This effect runs once on component mount to determine initial auth state
     let authStatus = false;
     try {
       authStatus = !!localStorage.getItem(USER_ROLE_STORAGE_KEY);
@@ -30,42 +31,68 @@ export function AppShell({ children }: AppShellProps) {
       // authStatus remains false, which is the safe default
     }
     setIsAuthenticated(authStatus);
-    setIsAuthLoading(false);
-  }, []); // Runs once on mount to check auth status
+    setIsAuthLoading(false); // Auth check complete
+  }, []);
 
   useEffect(() => {
-    if (!isAuthLoading && !isAuthenticated && pathname !== '/login') {
-      router.replace('/login');
+    // This effect handles redirection based on auth state and current path
+    if (isAuthLoading) {
+      return; // Don't do anything until the initial auth check is complete
     }
-    // This effect depends on the auth state and current path
-    // It will re-run if these values change, ensuring redirection if auth state changes
+
+    if (isAuthenticated) {
+      if (pathname === '/login') {
+        // If authenticated and on login page, redirect to dashboard
+        router.replace('/dashboard');
+      }
+      // If authenticated and not on login, allow rendering (handled below)
+    } else {
+      // Not authenticated
+      if (pathname !== '/login') {
+        // If not authenticated and not on login page, redirect to login
+        router.replace('/login');
+      }
+      // If not authenticated and on login page, allow rendering (handled below)
+    }
   }, [isAuthLoading, isAuthenticated, pathname, router]);
 
   if (isAuthLoading) {
     // Show a full-page skeleton or loading indicator while checking auth
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen p-4">
-        <Skeleton className="h-12 w-1/2 mb-4" />
-        <Skeleton className="h-8 w-1/3 mb-2" />
-        <Skeleton className="h-64 w-full" />
+      <div className="flex flex-col items-center justify-center min-h-screen p-4 bg-background">
+        <Skeleton className="h-16 w-48 mb-6" /> {/* Logo placeholder */}
+        <Skeleton className="h-8 w-1/3 mb-4" /> {/* Title placeholder */}
+        <div className="w-full max-w-4xl space-y-4">
+            <Skeleton className="h-12 w-full" />
+            <Skeleton className="h-64 w-full" />
+        </div>
       </div>
     );
   }
 
-  // If user is not authenticated AND they are NOT on the login page,
-  // they should have been redirected by the useEffect above.
-  // Return null or a loader to prevent rendering protected content during redirect.
   if (!isAuthenticated && pathname !== '/login') {
+    // User is not authenticated and is trying to access a protected page.
+    // The useEffect above should have initiated a redirect.
+    // Render a minimal loading state or null to prevent flashing protected content.
     return (
-        <div className="flex flex-col items-center justify-center min-h-screen p-4">
-            <p>Redirecting to login...</p>
-            <Skeleton className="h-12 w-1/2 mb-4 mt-4" />
-            <Skeleton className="h-8 w-1/3 mb-2" />
+        <div className="flex flex-col items-center justify-center min-h-screen p-4 bg-background">
+            <p className="text-muted-foreground">Redirecting to login...</p>
         </div>
-    ); // Or simply return null
+    );
   }
 
-  // User is authenticated and not on the login page. Render the app shell.
+  if (isAuthenticated && pathname === '/login') {
+    // User is authenticated but somehow on the login page.
+    // The useEffect above should have initiated a redirect.
+    // Render a minimal loading state or null.
+     return (
+        <div className="flex flex-col items-center justify-center min-h-screen p-4 bg-background">
+            <p className="text-muted-foreground">Redirecting to dashboard...</p>
+        </div>
+    );
+  }
+
+  // Render the shell for authenticated users on protected pages
   if (isAuthenticated && pathname !== '/login') {
     return (
       <SidebarProvider defaultOpen={true}>
@@ -80,9 +107,12 @@ export function AppShell({ children }: AppShellProps) {
     );
   }
 
-  // At this point, the user is either:
-  // 1. Not authenticated AND IS on the login page (pathname === '/login').
-  // 2. Authenticated AND IS on the login page (login page itself should redirect them away).
-  // In both these cases for the login page, we just render the children (the login page content).
-  return <>{children}</>;
+  // Render children directly if it's the login page and user is not (yet) authenticated
+  // or if it's a page that doesn't require the AppShell (though currently all non-login pages do)
+  if (pathname === '/login') {
+    return <>{children}</>;
+  }
+
+  // Fallback, should ideally not be reached if logic is correct
+  return null;
 }

@@ -6,8 +6,8 @@ import { PageHeader } from '@/components/PageHeader';
 import { LeadsTable } from './_components/LeadsTable';
 import { ImportExportButtons } from './_components/ImportExportButtons';
 import { LeadFormDialog } from './_components/LeadFormDialog';
-import type { Lead, LeadStatus, User, Agent, Yacht, LeadType, LeadPackageQuantity } from '@/lib/types';
-import { leadStatusOptions, modeOfPaymentOptions, leadTypeOptions } from '@/lib/types';
+import type { Lead, LeadStatus, User, Agent, Yacht, LeadType, LeadPackageQuantity, PaymentConfirmationStatus } from '@/lib/types';
+import { leadStatusOptions, modeOfPaymentOptions, leadTypeOptions, paymentConfirmationStatusOptions } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
@@ -28,6 +28,7 @@ const csvHeaderMapping: { [csvHeaderKey: string]: keyof Omit<Lead, 'packageQuant
   'month': 'month', 'lead/event date': 'month',
   'notes': 'notes', 'user feed': 'notes',
   'type': 'type', 'lead type': 'type',
+  'paymentconfirmationstatus': 'paymentConfirmationStatus', 'payment confirmation status': 'paymentConfirmationStatus', // New field
   'transactionid': 'transactionId', 'transaction id': 'transactionId',
   'modeofpayment': 'modeOfPayment', 'payment mode': 'modeOfPayment',
 
@@ -54,8 +55,9 @@ const convertCsvValue = (key: keyof Omit<Lead, 'packageQuantities'> | 'package_q
       case 'commissionAmount': case 'netAmount': case 'paidAmount': case 'balanceAmount':
         return 0;
       case 'modeOfPayment': return 'Online';
-      case 'status': return 'Balance'; // Default to 'Balance'
+      case 'status': return 'Balance'; 
       case 'type': return 'Private Cruise' as LeadType;
+      case 'paymentConfirmationStatus': return 'CONFIRMED' as PaymentConfirmationStatus; // New field default
       case 'notes': return '';
       case 'month': return formatISO(new Date());
       case 'createdAt': case 'updatedAt': return formatISO(new Date());
@@ -72,9 +74,11 @@ const convertCsvValue = (key: keyof Omit<Lead, 'packageQuantities'> | 'package_q
     case 'modeOfPayment':
       return modeOfPaymentOptions.includes(trimmedValue as ModeOfPayment) ? trimmedValue : 'Online';
     case 'status':
-      return leadStatusOptions.includes(trimmedValue as LeadStatus) ? trimmedValue : 'Balance'; // Default 'Balance'
+      return leadStatusOptions.includes(trimmedValue as LeadStatus) ? trimmedValue : 'Balance';
     case 'type':
       return leadTypeOptions.includes(trimmedValue as LeadType) ? trimmedValue : 'Private Cruise';
+    case 'paymentConfirmationStatus': // New field
+      return paymentConfirmationStatusOptions.includes(trimmedValue.toUpperCase() as PaymentConfirmationStatus) ? trimmedValue.toUpperCase() : 'CONFIRMED';
     case 'month':
     case 'createdAt':
     case 'updatedAt':
@@ -130,6 +134,7 @@ export default function LeadsPage() {
   const [startDate, setStartDate] = useState<Date | undefined>(undefined);
   const [endDate, setEndDate] = useState<Date | undefined>(undefined);
   const [statusFilter, setStatusFilter] = useState<LeadStatus | 'all'>('all');
+  const [paymentConfirmationStatusFilter, setPaymentConfirmationStatusFilter] = useState<PaymentConfirmationStatus | 'all'>('all'); // New filter
   const [selectedYachtId, setSelectedYachtId] = useState<string>('all');
   const [selectedAgentId, setSelectedAgentId] = useState<string>('all');
   const [selectedUserId, setSelectedUserId] = useState<string>('all');
@@ -207,6 +212,7 @@ export default function LeadsPage() {
       lastModifiedByUserId: SIMULATED_CURRENT_USER_ID,
       updatedAt: new Date().toISOString(),
       month: submittedLeadData.month ? formatISO(parseISO(submittedLeadData.month)) : formatISO(new Date()),
+      paymentConfirmationStatus: submittedLeadData.paymentConfirmationStatus, // Ensure new field is included
       packageQuantities: submittedLeadData.packageQuantities?.map(pq => ({
         ...pq,
         quantity: Number(pq.quantity || 0),
@@ -374,6 +380,7 @@ export default function LeadsPage() {
             month: parsedRow.month || formatISO(new Date()),
             notes: parsedRow.notes || undefined,
             type: parsedRow.type || 'Private Cruise',
+            paymentConfirmationStatus: parsedRow.paymentConfirmationStatus || 'CONFIRMED', // New field
             transactionId: parsedRow.transactionId || undefined,
             modeOfPayment: parsedRow.modeOfPayment || 'Online',
             packageQuantities: packageQuantities,
@@ -477,9 +484,10 @@ export default function LeadsPage() {
       if (selectedAgentId !== 'all' && lead.agent !== selectedAgentId) return false;
       if (selectedUserId !== 'all' && (lead.lastModifiedByUserId !== selectedUserId && lead.ownerUserId !== selectedUserId) ) return false;
       if (statusFilter !== 'all' && lead.status !== statusFilter) return false;
+      if (paymentConfirmationStatusFilter !== 'all' && lead.paymentConfirmationStatus !== paymentConfirmationStatusFilter) return false; // New filter
       return true;
     });
-  }, [allLeads, startDate, endDate, selectedYachtId, selectedAgentId, selectedUserId, statusFilter]);
+  }, [allLeads, startDate, endDate, selectedYachtId, selectedAgentId, selectedUserId, statusFilter, paymentConfirmationStatusFilter]);
 
   const resetFilters = () => {
     setStartDate(undefined);
@@ -488,6 +496,7 @@ export default function LeadsPage() {
     setSelectedAgentId('all');
     setSelectedUserId('all');
     setStatusFilter('all');
+    setPaymentConfirmationStatusFilter('all'); // New filter
   };
 
   const handleCsvExport = () => {
@@ -534,7 +543,7 @@ export default function LeadsPage() {
     });
     
     const baseHeadersPart1: string[] = [
-      'ID', 'Client Name', 'Agent Name', 'Yacht Name', 'Status', 'Lead/Event Date', 'Type',
+      'ID', 'Client Name', 'Agent Name', 'Yacht Name', 'Status', 'Lead/Event Date', 'Type', 'Payment Confirmation Status', // New field
       'Transaction ID', 'Payment Mode', 'Total Guests',
     ];
     
@@ -572,6 +581,7 @@ export default function LeadsPage() {
           escapeCsvCell(lead.status),
           escapeCsvCell(lead.month ? format(parseISO(lead.month), 'dd/MM/yyyy HH:mm') : ''),
           escapeCsvCell(lead.type),
+          escapeCsvCell(lead.paymentConfirmationStatus), // New field
           escapeCsvCell(lead.transactionId),
           escapeCsvCell(lead.modeOfPayment),
           escapeCsvCell(totalGuests),
@@ -633,7 +643,7 @@ export default function LeadsPage() {
           }
         />
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-6 p-4 border rounded-lg shadow-sm">
-          {[...Array(7)].map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}
+          {[...Array(8)].map((_, i) => <Skeleton key={i} className="h-10 w-full" />)} 
         </div>
         <div className="space-y-2">
           {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}
@@ -673,7 +683,7 @@ export default function LeadsPage() {
           <DatePicker date={endDate} setDate={setEndDate} placeholder="End Date" disabled={(date) => startDate ? date < startDate : false} />
         </div>
         <div>
-          <Label htmlFor="status-filter-leads">Status</Label>
+          <Label htmlFor="status-filter-leads">Lead Status</Label>
           <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as LeadStatus | 'all')}>
             <SelectTrigger id="status-filter-leads" className="w-full">
               <SelectValue placeholder="All Statuses" />
@@ -683,6 +693,19 @@ export default function LeadsPage() {
               {leadStatusOptions.map(status => (
                 <SelectItem key={status} value={status}>{status}</SelectItem>
               ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label htmlFor="payment-confirmation-status-filter-leads">Payment/Conf. Status</Label>
+          <Select value={paymentConfirmationStatusFilter} onValueChange={(value) => setPaymentConfirmationStatusFilter(value as PaymentConfirmationStatus | 'all')}>
+            <SelectTrigger id="payment-confirmation-status-filter-leads" className="w-full">
+              <SelectValue placeholder="All Payment/Conf. Statuses" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Payment/Conf. Statuses</SelectItem>
+              {paymentConfirmationStatusOptions.map(status => (
+                <SelectItem key={status} value={status}>{status}</SelectItem>))}
             </SelectContent>
           </Select>
         </div>
@@ -716,7 +739,7 @@ export default function LeadsPage() {
             </SelectContent>
           </Select>
         </div>
-        <div className="flex items-end md:col-span-2 lg:col-span-1 xl:col-span-2">
+        <div className="flex items-end">
           <Button onClick={resetFilters} variant="outline" className="w-full">Reset Filters</Button>
         </div>
       </div>

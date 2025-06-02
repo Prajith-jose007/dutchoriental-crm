@@ -22,7 +22,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import type { Lead, LeadStatus, Yacht, YachtPackageItem } from '@/lib/types';
+import type { Lead, LeadStatus, Yacht, YachtPackageItem, PaymentConfirmationStatus } from '@/lib/types';
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { format, parseISO, isValid } from 'date-fns';
 
@@ -64,6 +64,7 @@ const generateLeadColumns = (allYachts: Yacht[]): LeadTableColumn[] => {
     { accessorKey: 'status', header: 'Status' },
     { accessorKey: 'month', header: 'Lead/Event Date', isShortDate: true },
     { accessorKey: 'type', header: 'Type' },
+    { accessorKey: 'paymentConfirmationStatus', header: 'Pay Status' }, // New column
     { accessorKey: 'transactionId', header: 'Transaction ID' },
     { accessorKey: 'modeOfPayment', header: 'Payment Mode' },
     { accessorKey: 'totalGuests', header: 'Total Guests', isNumeric: true },
@@ -153,7 +154,16 @@ export function LeadsTable({
     if (!status) return 'outline';
     switch (status) {
       case 'Balance': return 'secondary';
-      case 'Closed': return 'default'; // Changed 'Closed' to 'default' for better visibility
+      case 'Closed': return 'default';
+      default: return 'outline';
+    }
+  };
+  
+  const getPaymentConfirmationStatusVariant = (status?: PaymentConfirmationStatus) => {
+    if (!status) return 'outline';
+    switch (status) {
+      case 'PAID': return 'default'; // Green or primary
+      case 'CONFIRMED': return 'secondary'; // Yellow or secondary
       default: return 'outline';
     }
   };
@@ -219,6 +229,9 @@ export function LeadsTable({
     }
     if (column.accessorKey === 'status') {
       return <Badge variant={getStatusVariant(lead.status)}>{lead.status}</Badge>;
+    }
+    if (column.accessorKey === 'paymentConfirmationStatus') { // New
+      return <Badge variant={getPaymentConfirmationStatusVariant(lead.paymentConfirmationStatus)}>{lead.paymentConfirmationStatus}</Badge>;
     }
     if (column.isAgentLookup) {
       const agentId = value as string | undefined;

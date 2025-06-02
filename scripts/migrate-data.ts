@@ -105,6 +105,7 @@ async function createLeadsTable() {
       month DATETIME, -- Stores the Lead/Event Date
       notes TEXT,
       type VARCHAR(255),
+      paymentConfirmationStatus VARCHAR(50) DEFAULT 'CONFIRMED', -- New field
       transactionId VARCHAR(255),
       modeOfPayment VARCHAR(50),
 
@@ -237,13 +238,13 @@ async function migrateLeads() {
   for (const lead of placeholderLeads) {
     const sql = `
       INSERT INTO leads (
-        id, clientName, agent, yacht, status, month, notes, type, transactionId, modeOfPayment,
+        id, clientName, agent, yacht, status, month, notes, type, paymentConfirmationStatus, transactionId, modeOfPayment,
         package_quantities_json,
         totalAmount, commissionPercentage, commissionAmount, netAmount,
         paidAmount, balanceAmount,
         createdAt, updatedAt, lastModifiedByUserId, ownerUserId
       ) VALUES (
-        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 
+        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 
         ?, 
         ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
       )
@@ -276,6 +277,7 @@ async function migrateLeads() {
         monthDate, // This is the Lead/Event Date
         lead.notes || null,
         lead.type,
+        lead.paymentConfirmationStatus || 'CONFIRMED', // New field
         lead.transactionId || null,
         lead.modeOfPayment,
         packageQuantitiesJson,
@@ -388,3 +390,4 @@ main().catch(async err => {
   }
   process.exit(1);
 });
+

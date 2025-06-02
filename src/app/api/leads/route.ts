@@ -1,7 +1,7 @@
 
 // src/app/api/leads/route.ts
 import { NextResponse, type NextRequest } from 'next/server';
-import type { Lead, LeadStatus, ModeOfPayment, LeadType, LeadPackageQuantity } from '@/lib/types';
+import type { Lead, LeadStatus, ModeOfPayment, LeadType, LeadPackageQuantity, PaymentConfirmationStatus } from '@/lib/types';
 import { query } from '@/lib/db';
 import { formatISO, parseISO, isValid } from 'date-fns';
 
@@ -66,10 +66,11 @@ export async function GET(request: NextRequest) {
         clientName: String(dbLead.clientName || ''),
         agent: String(dbLead.agent || ''),
         yacht: String(dbLead.yacht || ''),
-        status: (dbLead.status || 'Upcoming') as LeadStatus,
+        status: (dbLead.status || 'Balance') as LeadStatus,
         month: dbLead.month ? ensureISOFormat(dbLead.month)! : formatISO(new Date()),
         notes: dbLead.notes || undefined,
         type: (dbLead.type || 'Private Cruise') as LeadType,
+        paymentConfirmationStatus: (dbLead.paymentConfirmationStatus || 'CONFIRMED') as PaymentConfirmationStatus, // New field
         transactionId: dbLead.transactionId || undefined,
         modeOfPayment: (dbLead.modeOfPayment || 'Online') as ModeOfPayment,
         
@@ -80,7 +81,7 @@ export async function GET(request: NextRequest) {
         commissionAmount: parseFloat(dbLead.commissionAmount || 0),
         netAmount: parseFloat(dbLead.netAmount || 0),
         paidAmount: parseFloat(dbLead.paidAmount || 0),
-        balanceAmount: parseFloat(dbLead.balanceAmount || 0), // Stored signed, displayed absolute
+        balanceAmount: parseFloat(dbLead.balanceAmount || 0), 
 
         createdAt: dbLead.createdAt ? ensureISOFormat(dbLead.createdAt)! : formatISO(new Date()),
         updatedAt: dbLead.updatedAt ? ensureISOFormat(dbLead.updatedAt)! : formatISO(new Date()),
@@ -99,7 +100,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const newLeadData = await request.json() as Lead; // Expect full Lead object
+    const newLeadData = await request.json() as Lead; 
     console.log('[API POST /api/leads] Received newLeadData:', JSON.stringify(newLeadData, null, 2));
 
     if (!newLeadData.clientName || !newLeadData.agent || !newLeadData.yacht || !newLeadData.month) {
@@ -132,10 +133,11 @@ export async function POST(request: NextRequest) {
       clientName: newLeadData.clientName,
       agent: newLeadData.agent,
       yacht: newLeadData.yacht,
-      status: newLeadData.status || 'Upcoming',
+      status: newLeadData.status || 'Balance',
       month: formattedMonth, 
       notes: newLeadData.notes || null,
       type: newLeadData.type || 'Private Cruise',
+      paymentConfirmationStatus: newLeadData.paymentConfirmationStatus || 'CONFIRMED', // New field
       transactionId: newLeadData.transactionId || null,
       modeOfPayment: newLeadData.modeOfPayment || 'Online',
       
@@ -146,7 +148,7 @@ export async function POST(request: NextRequest) {
       commissionAmount: Number(newLeadData.commissionAmount || 0),
       netAmount: Number(newLeadData.netAmount || 0),
       paidAmount: Number(newLeadData.paidAmount || 0),
-      balanceAmount: Number(newLeadData.balanceAmount || 0), // Stores signed value
+      balanceAmount: Number(newLeadData.balanceAmount || 0), 
 
       createdAt: formattedCreatedAt,
       updatedAt: formattedUpdatedAt,
@@ -158,7 +160,7 @@ export async function POST(request: NextRequest) {
 
     const sql = `
       INSERT INTO leads (
-        id, clientName, agent, yacht, status, month, notes, type, transactionId, modeOfPayment,
+        id, clientName, agent, yacht, status, month, notes, type, paymentConfirmationStatus, transactionId, modeOfPayment,
         package_quantities_json,
         totalAmount, commissionPercentage, commissionAmount, netAmount,
         paidAmount, balanceAmount,
@@ -167,7 +169,7 @@ export async function POST(request: NextRequest) {
     `;
     const params = [
       leadToStore.id, leadToStore.clientName, leadToStore.agent, leadToStore.yacht, leadToStore.status, 
-      leadToStore.month, leadToStore.notes, leadToStore.type, leadToStore.transactionId, leadToStore.modeOfPayment,
+      leadToStore.month, leadToStore.notes, leadToStore.type, leadToStore.paymentConfirmationStatus, leadToStore.transactionId, leadToStore.modeOfPayment,
       leadToStore.package_quantities_json,
       leadToStore.totalAmount, leadToStore.commissionPercentage, leadToStore.commissionAmount, leadToStore.netAmount,
       leadToStore.paidAmount, leadToStore.balanceAmount,
@@ -192,9 +194,10 @@ export async function POST(request: NextRequest) {
         }
         const finalLead: Lead = { 
             id: String(dbLead.id || ''), clientName: String(dbLead.clientName || ''), agent: String(dbLead.agent || ''), yacht: String(dbLead.yacht || ''), 
-            status: (dbLead.status || 'Upcoming') as LeadStatus,
+            status: (dbLead.status || 'Balance') as LeadStatus,
             month: dbLead.month ? ensureISOFormat(dbLead.month)! : formatISO(new Date()), 
             notes: dbLead.notes || undefined, type: (dbLead.type || 'Private Cruise') as LeadType, 
+            paymentConfirmationStatus: (dbLead.paymentConfirmationStatus || 'CONFIRMED') as PaymentConfirmationStatus, // New field
             transactionId: dbLead.transactionId || undefined,
             modeOfPayment: (dbLead.modeOfPayment || 'Online') as ModeOfPayment,
             packageQuantities: pq,

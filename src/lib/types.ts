@@ -64,6 +64,8 @@ export type ModeOfPayment = typeof modeOfPaymentOptions[number];
 export const leadTypeOptions = ['Dinner Cruise', 'Superyacht Sightseeing Cruise', 'Private Cruise'] as const;
 export type LeadType = typeof leadTypeOptions[number];
 
+export const paymentConfirmationStatusOptions = ['PAID', 'CONFIRMED'] as const;
+export type PaymentConfirmationStatus = typeof paymentConfirmationStatusOptions[number];
 
 export interface LeadPackageQuantity {
   packageId: string;    
@@ -80,6 +82,7 @@ export interface Lead {
   notes?: string;
   yacht: string; 
   type: LeadType;
+  paymentConfirmationStatus: PaymentConfirmationStatus; // New field
   transactionId?: string;
   modeOfPayment: ModeOfPayment;
   clientName: string;
@@ -122,5 +125,5 @@ export interface BookingsByAgentData {
 }
 
 
-export type { LeadStatus as ExportedLeadStatus, ModeOfPayment as ExportedModeOfPayment, LeadType as ExportedLeadType };
+export type { LeadStatus as ExportedLeadStatus, ModeOfPayment as ExportedModeOfPayment, LeadType as ExportedLeadType, PaymentConfirmationStatus as ExportedPaymentConfirmationStatus };
 

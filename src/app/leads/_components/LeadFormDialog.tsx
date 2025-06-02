@@ -34,8 +34,8 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Textarea } from '@/components/ui/textarea';
 import { DatePicker } from '@/components/ui/date-picker';
-import type { Lead, Agent, Yacht, ModeOfPayment, LeadStatus, LeadType, YachtPackageItem, LeadPackageQuantity } from '@/lib/types';
-import { leadStatusOptions, modeOfPaymentOptions, leadTypeOptions, yachtCategoryOptions } from '@/lib/types';
+import type { Lead, Agent, Yacht, ModeOfPayment, LeadStatus, LeadType, YachtPackageItem, LeadPackageQuantity, PaymentConfirmationStatus } from '@/lib/types';
+import { leadStatusOptions, modeOfPaymentOptions, leadTypeOptions, yachtCategoryOptions, paymentConfirmationStatusOptions } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { useEffect, useState, useMemo } from 'react';
 import { format, formatISO, parseISO, isValid } from 'date-fns';
@@ -57,6 +57,7 @@ const leadFormSchema = z.object({
   notes: z.string().optional(),
   yacht: z.string().min(1, 'Yacht selection is required'),
   type: z.enum(leadTypeOptions, { required_error: "Lead type is required."}),
+  paymentConfirmationStatus: z.enum(paymentConfirmationStatusOptions, { required_error: "Payment confirmation status is required."}), // New field
   transactionId: z.string().optional(),
   modeOfPayment: z.enum(modeOfPaymentOptions),
   clientName: z.string().min(1, 'Client name is required'),
@@ -103,6 +104,7 @@ const getDefaultFormValues = (existingLead?: Lead | null): LeadFormData => {
     month: existingLead?.month && isValid(parseISO(existingLead.month)) ? parseISO(existingLead.month) : new Date(),
     yacht: existingLead?.yacht || '',
     type: existingLead?.type || 'Private Cruise', 
+    paymentConfirmationStatus: existingLead?.paymentConfirmationStatus || 'CONFIRMED', // New field
     modeOfPayment: existingLead?.modeOfPayment || 'Online', 
     clientName: existingLead?.clientName || '',
     notes: existingLead?.notes || '', 
@@ -356,6 +358,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
       ...data, 
       id: lead?.id || `temp-${Date.now()}`, 
       month: data.month ? formatISO(data.month) : formatISO(new Date()),
+      paymentConfirmationStatus: data.paymentConfirmationStatus, // New field
       createdAt: lead?.createdAt || formatISO(new Date()),
       updatedAt: formatISO(new Date()),
       lastModifiedByUserId: SIMULATED_CURRENT_USER_ID,
@@ -529,6 +532,22 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
                   </FormItem>
                 )}
               />
+              <FormField
+                control={form.control}
+                name="paymentConfirmationStatus"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Payment/Confirmation Status</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value || undefined} defaultValue={field.value}>
+                      <FormControl><SelectTrigger><SelectValue placeholder="Select payment/confirmation status" /></SelectTrigger></FormControl>
+                      <SelectContent>
+                        {paymentConfirmationStatusOptions.map(status => (<SelectItem key={status} value={status}>{status}</SelectItem>))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
                <FormField
                 control={form.control}
                 name="transactionId"
@@ -690,5 +709,3 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
     </Dialog>
   );
 }
-
-    

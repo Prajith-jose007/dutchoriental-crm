@@ -1,7 +1,7 @@
 
 // src/app/api/leads/[id]/route.ts
 import { NextResponse, type NextRequest } from 'next/server';
-import type { Lead, LeadStatus, ModeOfPayment, LeadType, LeadPackageQuantity } from '@/lib/types';
+import type { Lead, LeadStatus, ModeOfPayment, LeadType, LeadPackageQuantity, PaymentConfirmationStatus } from '@/lib/types';
 import { query } from '@/lib/db';
 import { formatISO, parseISO, isValid } from 'date-fns';
 
@@ -26,9 +26,9 @@ function buildLeadUpdateSetClause(data: Partial<Omit<Lead, 'id' | 'createdAt' | 
   const fieldsToUpdate: string[] = [];
   const valuesToUpdate: any[] = [];
   
-  const allowedKeys: (keyof Lead | 'package_quantities_json')[] = [ // Added package_quantities_json
-    'clientName', 'agent', 'yacht', 'status', 'month', 'notes', 'type', 'transactionId', 'modeOfPayment',
-    'package_quantities_json', // Store serialized array here
+  const allowedKeys: (keyof Lead | 'package_quantities_json')[] = [ 
+    'clientName', 'agent', 'yacht', 'status', 'month', 'notes', 'type', 'paymentConfirmationStatus', 'transactionId', 'modeOfPayment',
+    'package_quantities_json', 
     'totalAmount', 'commissionPercentage', 'commissionAmount',
     'netAmount', 'paidAmount', 'balanceAmount', 'updatedAt', 
     'lastModifiedByUserId', 'ownerUserId'
@@ -37,7 +37,7 @@ function buildLeadUpdateSetClause(data: Partial<Omit<Lead, 'id' | 'createdAt' | 
   Object.entries(data).forEach(([key, value]) => {
     if (allowedKeys.includes(key as any) && value !== undefined) {
       fieldsToUpdate.push(`${key} = ?`); 
-      if (['month', 'updatedAt', 'createdAt'].includes(key)) { // Added createdAt here just in case, though it shouldn't be updated
+      if (['month', 'updatedAt', 'createdAt'].includes(key)) { 
         valuesToUpdate.push(ensureISOFormat(value as string) || null);
       } else if (typeof value === 'string' && value.trim() === '' && 
                  ['notes', 'transactionId', 'lastModifiedByUserId', 'ownerUserId', 'agent', 'yacht'].includes(key)) {
@@ -45,7 +45,7 @@ function buildLeadUpdateSetClause(data: Partial<Omit<Lead, 'id' | 'createdAt' | 
       } else if (typeof value === 'number' && isNaN(value)) {
         valuesToUpdate.push(0);
       } else if (key === 'package_quantities_json') {
-        valuesToUpdate.push(value); // This is already a string or null
+        valuesToUpdate.push(value); 
       }
        else {
         valuesToUpdate.push(value);
@@ -89,10 +89,11 @@ export async function GET(
         clientName: String(dbLead.clientName || ''),
         agent: String(dbLead.agent || ''),
         yacht: String(dbLead.yacht || ''),
-        status: (dbLead.status || 'Upcoming') as LeadStatus,
+        status: (dbLead.status || 'Balance') as LeadStatus,
         month: dbLead.month ? ensureISOFormat(dbLead.month)! : formatISO(new Date()),
         notes: dbLead.notes || undefined,
         type: (dbLead.type || 'Private Cruise') as LeadType,
+        paymentConfirmationStatus: (dbLead.paymentConfirmationStatus || 'CONFIRMED') as PaymentConfirmationStatus, // New field
         transactionId: dbLead.transactionId || undefined,
         modeOfPayment: (dbLead.modeOfPayment || 'Online') as ModeOfPayment,
         
@@ -103,7 +104,7 @@ export async function GET(
         commissionAmount: parseFloat(dbLead.commissionAmount || 0),
         netAmount: parseFloat(dbLead.netAmount || 0),
         paidAmount: parseFloat(dbLead.paidAmount || 0),
-        balanceAmount: parseFloat(dbLead.balanceAmount || 0), // Stored signed
+        balanceAmount: parseFloat(dbLead.balanceAmount || 0), 
 
         createdAt: dbLead.createdAt ? ensureISOFormat(dbLead.createdAt)! : formatISO(new Date()),
         updatedAt: dbLead.updatedAt ? ensureISOFormat(dbLead.updatedAt)! : formatISO(new Date()),
@@ -128,7 +129,7 @@ export async function PUT(
 ) {
   try {
     const id = params.id;
-    const updatedLeadDataFromClient = await request.json() as Lead; // Expect full Lead object
+    const updatedLeadDataFromClient = await request.json() as Lead; 
     console.log(`[API PUT /api/leads/${id}] Received updatedLeadData:`, JSON.stringify(updatedLeadDataFromClient, null, 2));
 
     const existingLeadResult: any[] = await query('SELECT ownerUserId, lastModifiedByUserId, month, createdAt FROM leads WHERE id = ?', [id]);
@@ -139,13 +140,13 @@ export async function PUT(
     const existingLeadDbInfo = existingLeadResult[0];
 
     const dataToUpdate: Partial<Omit<Lead, 'id' | 'createdAt' | 'packageQuantities'>> & { package_quantities_json?: string | null } = {
-      ...updatedLeadDataFromClient, // Spread all fields from client
+      ...updatedLeadDataFromClient, 
       updatedAt: formatISO(new Date()), 
       lastModifiedByUserId: updatedLeadDataFromClient.lastModifiedByUserId || SIMULATED_CURRENT_USER_ID_API,
       ownerUserId: updatedLeadDataFromClient.ownerUserId || existingLeadDbInfo.ownerUserId,
-      // createdAt should not be updated
+      paymentConfirmationStatus: updatedLeadDataFromClient.paymentConfirmationStatus || 'CONFIRMED', // New field
     };
-    // Ensure 'id' and 'createdAt' are not in dataToUpdate
+    
     delete (dataToUpdate as any).id;
     delete (dataToUpdate as any).createdAt;
     
@@ -155,13 +156,13 @@ export async function PUT(
         dataToUpdate.month = formatISO(dataToUpdate.month);
     }
 
-    // Handle packageQuantities serialization for DB
+    
     if (updatedLeadDataFromClient.packageQuantities) {
         dataToUpdate.package_quantities_json = JSON.stringify(updatedLeadDataFromClient.packageQuantities);
     } else if (updatedLeadDataFromClient.packageQuantities === null || updatedLeadDataFromClient.packageQuantities === undefined) {
         dataToUpdate.package_quantities_json = null;
     }
-    // Remove the array version from dataForClause to avoid confusion with buildLeadUpdateSetClause
+    
     delete (dataToUpdate as any).packageQuantities;
 
 
@@ -198,8 +199,10 @@ export async function PUT(
     }
     const finalUpdatedLead: Lead = {
         id: String(dbLead.id || ''), clientName: String(dbLead.clientName || ''), agent: String(dbLead.agent || ''), yacht: String(dbLead.yacht || ''), 
-        status: (dbLead.status || 'Upcoming') as LeadStatus,
-        month: dbLead.month ? ensureISOFormat(dbLead.month)! : formatISO(new Date()), notes: dbLead.notes || undefined, type: (dbLead.type || 'Private Cruise') as LeadType, transactionId: dbLead.transactionId || undefined,
+        status: (dbLead.status || 'Balance') as LeadStatus,
+        month: dbLead.month ? ensureISOFormat(dbLead.month)! : formatISO(new Date()), notes: dbLead.notes || undefined, type: (dbLead.type || 'Private Cruise') as LeadType,
+        paymentConfirmationStatus: (dbLead.paymentConfirmationStatus || 'CONFIRMED') as PaymentConfirmationStatus, // New field
+        transactionId: dbLead.transactionId || undefined,
         modeOfPayment: (dbLead.modeOfPayment || 'Online') as ModeOfPayment,
         packageQuantities: pq,
         totalAmount: parseFloat(dbLead.totalAmount || 0), commissionPercentage: parseFloat(dbLead.commissionPercentage || 0),

@@ -19,7 +19,6 @@ import { format, parseISO, isWithinInterval, isValid, formatISO, getYear as getF
 const USER_ID_STORAGE_KEY = 'currentUserId';
 const USER_ROLE_STORAGE_KEY = 'currentUserRole';
 
-// Updated CSV Header Mapping
 const csvHeaderMapping: { [csvHeaderKey: string]: keyof Omit<Lead, 'packageQuantities'> | 'package_quantities_json' } = {
   'id': 'id',
   'clientname': 'clientName', 'client name': 'clientName',
@@ -29,11 +28,11 @@ const csvHeaderMapping: { [csvHeaderKey: string]: keyof Omit<Lead, 'packageQuant
   'month': 'month', 'lead/event date': 'month',
   'notes': 'notes', 'user feed': 'notes',
   'type': 'type', 'lead type': 'type',
-  'paymentconfirmationstatus': 'paymentConfirmationStatus', 'payment confirmation status': 'paymentConfirmationStatus', 
+  'paymentconfirmationstatus': 'paymentConfirmationStatus', 'payment confirmation status': 'paymentConfirmationStatus',
   'transactionid': 'transactionId', 'transaction id': 'transactionId',
   'modeofpayment': 'modeOfPayment', 'payment mode': 'modeOfPayment',
 
-  'package_quantities_json': 'package_quantities_json', // For import only
+  'package_quantities_json': 'package_quantities_json',
 
   'totalamount': 'totalAmount',
   'commissionpercentage': 'commissionPercentage',
@@ -57,10 +56,10 @@ const convertCsvValue = (key: keyof Omit<Lead, 'packageQuantities'> | 'package_q
       case 'totalAmount': case 'commissionPercentage':
       case 'commissionAmount': case 'netAmount': case 'paidAmount': case 'balanceAmount':
         return 0;
-      case 'modeOfPayment': return 'Online';
-      case 'status': return 'Balance'; 
+      case 'modeOfPayment': return 'CARD'; // Default to CARD
+      case 'status': return 'Balance';
       case 'type': return 'Private Cruise' as LeadType;
-      case 'paymentConfirmationStatus': return 'CONFIRMED' as PaymentConfirmationStatus; 
+      case 'paymentConfirmationStatus': return 'CONFIRMED' as PaymentConfirmationStatus;
       case 'notes': return '';
       case 'month': return formatISO(new Date());
       case 'createdAt': case 'updatedAt': return formatISO(new Date());
@@ -77,12 +76,12 @@ const convertCsvValue = (key: keyof Omit<Lead, 'packageQuantities'> | 'package_q
       const num = parseFloat(trimmedValue);
       return isNaN(num) ? 0 : num;
     case 'modeOfPayment':
-      return modeOfPaymentOptions.includes(trimmedValue as ModeOfPayment) ? trimmedValue : 'Online';
+      return modeOfPaymentOptions.includes(trimmedValue.toUpperCase() as ModeOfPayment) ? trimmedValue.toUpperCase() : 'CARD'; // Default to CARD
     case 'status':
       return leadStatusOptions.includes(trimmedValue as LeadStatus) ? trimmedValue : 'Balance';
     case 'type':
       return leadTypeOptions.includes(trimmedValue as LeadType) ? trimmedValue : 'Private Cruise';
-    case 'paymentConfirmationStatus': 
+    case 'paymentConfirmationStatus':
       return paymentConfirmationStatusOptions.includes(trimmedValue.toUpperCase() as PaymentConfirmationStatus) ? trimmedValue.toUpperCase() : 'CONFIRMED';
     case 'month':
     case 'createdAt':
@@ -246,11 +245,11 @@ export default function LeadsPage() {
     };
 
     if (!editingLead) {
-      payload.ownerUserId = currentUserId; // Set owner for new leads
+      payload.ownerUserId = currentUserId;
       payload.createdAt = new Date().toISOString();
-      delete payload.id; // Let API generate ID for new lead
+      delete payload.id;
     } else {
-      payload.ownerUserId = editingLead.ownerUserId || currentUserId; // Preserve original owner or set if missing
+      payload.ownerUserId = editingLead.ownerUserId || currentUserId;
       payload.createdAt = editingLead.createdAt || new Date().toISOString();
     }
 
@@ -314,10 +313,10 @@ export default function LeadsPage() {
     try {
       const response = await fetch(`/api/leads/${leadId}`, {
         method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' }, // Important for sending body
-        body: JSON.stringify({ 
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
           requestingUserId: currentUserId,
-          requestingUserRole: currentUserRole 
+          requestingUserRole: currentUserRole
         }),
       });
       if (!response.ok) {
@@ -433,9 +432,9 @@ export default function LeadsPage() {
             month: parsedRow.month || formatISO(new Date()),
             notes: parsedRow.notes || undefined,
             type: parsedRow.type || 'Private Cruise',
-            paymentConfirmationStatus: parsedRow.paymentConfirmationStatus || 'CONFIRMED', 
+            paymentConfirmationStatus: parsedRow.paymentConfirmationStatus || 'CONFIRMED',
             transactionId: parsedRow.transactionId || undefined,
-            modeOfPayment: parsedRow.modeOfPayment || 'Online',
+            modeOfPayment: parsedRow.modeOfPayment || 'CARD', // Default to CARD
             packageQuantities: packageQuantities,
             totalAmount: parsedRow.totalAmount ?? 0,
             commissionPercentage: parsedRow.commissionPercentage ?? 0,
@@ -445,8 +444,8 @@ export default function LeadsPage() {
             balanceAmount: parsedRow.balanceAmount ?? 0,
             createdAt: parsedRow.createdAt || formatISO(new Date()),
             updatedAt: formatISO(new Date()),
-            lastModifiedByUserId: currentUserId, // Set current user as modifier
-            ownerUserId: parsedRow.ownerUserId || currentUserId, // Set current user as owner if not specified
+            lastModifiedByUserId: currentUserId,
+            ownerUserId: parsedRow.ownerUserId || currentUserId,
           };
           if (i <= 2) console.log(`[CSV Import Leads] Processing Row ${i} - Full Lead:`, JSON.parse(JSON.stringify(fullLead)));
 
@@ -529,8 +528,7 @@ export default function LeadsPage() {
       } else if (endDate && leadEventDate) {
         if (leadEventDate > endDate) return false;
       }
-      else if (!startDate && !endDate) { 
-        // If no date range, this lead passes the date filter part unless specific month/year filters apply
+      else if (!startDate && !endDate) {
       }
 
       if (selectedYachtId !== 'all' && lead.yacht !== selectedYachtId) return false;
@@ -569,17 +567,17 @@ export default function LeadsPage() {
       { header: 'ROYAL AD', dataName: 'ROYAL AD' },
       { header: 'ROYAL ALC', dataName: 'ROYAL ALC' },
     ];
-  
+
     const allActualUniquePackageNamesFromYachts = Array.from(
       new Set(
         allYachts.flatMap(yacht => yacht.packages?.map(pkg => pkg.name.trim()) || []).filter(name => name)
       )
     );
-  
+
     const packageHeaders: string[] = [];
-    const packageDataNamesForLookup: string[] = []; 
+    const packageDataNamesForLookup: string[] = [];
     const addedDataNames = new Set<string>();
-  
+
     preferredPackageMap.forEach(preferredPkg => {
       if (allActualUniquePackageNamesFromYachts.includes(preferredPkg.dataName)) {
         packageHeaders.push(preferredPkg.header);
@@ -587,26 +585,26 @@ export default function LeadsPage() {
         addedDataNames.add(preferredPkg.dataName);
       }
     });
-  
+
     allActualUniquePackageNamesFromYachts.sort().forEach(actualName => {
       if (!addedDataNames.has(actualName)) {
-        packageHeaders.push(actualName); 
+        packageHeaders.push(actualName);
         packageDataNamesForLookup.push(actualName);
       }
     });
-    
+
     const baseHeadersPart1: string[] = [
-      'ID', 'Client Name', 'Agent Name', 'Yacht Name', 'Status', 'Lead/Event Date', 'Type', 'Payment Confirmation Status', 
+      'ID', 'Client Name', 'Agent Name', 'Yacht Name', 'Status', 'Lead/Event Date', 'Type', 'Payment Confirmation Status',
       'Transaction ID', 'Payment Mode', 'Total Guests',
     ];
-    
+
     const financialAndAuditHeaders: string[] = [
       'Total Amount', 'Agent Discount (%)', 'Commission Amount', 'Net Amount', 'Paid Amount', 'Balance',
       'Notes', 'Modified By', 'Lead Owner', 'Created At', 'Updated At'
     ];
-  
+
     const finalCsvHeaders = [...baseHeadersPart1, ...packageHeaders, ...financialAndAuditHeaders];
-    
+
     const escapeCsvCell = (cellData: any): string => {
       if (cellData === null || cellData === undefined) return '';
       let stringValue = String(cellData);
@@ -615,17 +613,17 @@ export default function LeadsPage() {
       }
       return stringValue;
     };
-  
+
     const csvRows = [
       finalCsvHeaders.join(','),
       ...filteredLeads.map(lead => {
         const totalGuests = lead.packageQuantities?.reduce((sum, pq) => sum + (Number(pq.quantity) || 0), 0) || 0;
-        
+
         const leadPackageMap = new Map<string, number>();
         lead.packageQuantities?.forEach(pq => {
           leadPackageMap.set(pq.packageName.trim(), Number(pq.quantity || 0));
         });
-  
+
         const rowDataPart1 = [
           escapeCsvCell(lead.id),
           escapeCsvCell(lead.clientName),
@@ -634,16 +632,16 @@ export default function LeadsPage() {
           escapeCsvCell(lead.status),
           escapeCsvCell(lead.month ? format(parseISO(lead.month), 'dd/MM/yyyy HH:mm') : ''),
           escapeCsvCell(lead.type),
-          escapeCsvCell(lead.paymentConfirmationStatus), 
+          escapeCsvCell(lead.paymentConfirmationStatus),
           escapeCsvCell(lead.transactionId),
           escapeCsvCell(lead.modeOfPayment),
           escapeCsvCell(totalGuests),
         ];
-  
+
         const packageQtyValues = packageDataNamesForLookup.map(dataName =>
-          escapeCsvCell(leadPackageMap.get(dataName) || 0) 
+          escapeCsvCell(leadPackageMap.get(dataName) || 0)
         );
-        
+
         const financialAndAuditValues = [
           escapeCsvCell(lead.totalAmount),
           escapeCsvCell(lead.commissionPercentage),
@@ -657,11 +655,11 @@ export default function LeadsPage() {
           escapeCsvCell(lead.createdAt ? format(parseISO(lead.createdAt), 'dd/MM/yyyy HH:mm') : ''),
           escapeCsvCell(lead.updatedAt ? format(parseISO(lead.updatedAt), 'dd/MM/yyyy HH:mm') : ''),
         ];
-        
+
         return [...rowDataPart1, ...packageQtyValues, ...financialAndAuditValues].join(',');
       })
     ];
-  
+
     const csvString = csvRows.join('\n');
     const blob = new Blob(["\uFEFF" + csvString], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
@@ -696,7 +694,7 @@ export default function LeadsPage() {
           }
         />
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-6 p-4 border rounded-lg shadow-sm">
-          {[...Array(8)].map((_, i) => <Skeleton key={i} className="h-10 w-full" />)} 
+          {[...Array(8)].map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}
         </div>
         <div className="space-y-2">
           {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}
@@ -804,7 +802,7 @@ export default function LeadsPage() {
         userMap={userMap}
         agentMap={agentMap}
         yachtMap={yachtMap}
-        allYachts={allYachts} 
+        allYachts={allYachts}
         currentUserId={currentUserId}
         isAdmin={isAdmin}
       />

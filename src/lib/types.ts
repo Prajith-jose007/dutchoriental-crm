@@ -25,7 +25,7 @@ export interface Agent {
 }
 
 export interface YachtPackageItem {
-  id: string; 
+  id: string;
   name: string;
   rate: number;
 }
@@ -50,15 +50,15 @@ export interface Invoice {
   leadId: string;
   clientName: string;
   amount: number;
-  dueDate: string; 
+  dueDate: string;
   status: 'Paid' | 'Pending' | 'Overdue';
-  createdAt: string; 
+  createdAt: string;
 }
 
 export const leadStatusOptions = ['Balance', 'Closed'] as const;
 export type LeadStatus = typeof leadStatusOptions[number];
 
-export const modeOfPaymentOptions = ['Online', 'Credit', 'Cash/Card'] as const;
+export const modeOfPaymentOptions = ['CARD', 'CASH', 'CASH / CARD', 'NOMOD', 'PAYMOD', 'RUZINN', 'CREDIT'] as const;
 export type ModeOfPayment = typeof modeOfPaymentOptions[number];
 
 export const leadTypeOptions = ['Dinner Cruise', 'Superyacht Sightseeing Cruise', 'Private Cruise'] as const;
@@ -68,43 +68,43 @@ export const paymentConfirmationStatusOptions = ['PAID', 'CONFIRMED'] as const;
 export type PaymentConfirmationStatus = typeof paymentConfirmationStatusOptions[number];
 
 export interface LeadPackageQuantity {
-  packageId: string;    
-  packageName: string;  
+  packageId: string;
+  packageName: string;
   quantity: number;
-  rate: number;         
+  rate: number;
 }
 
 export interface Lead {
   id: string;
-  agent: string; 
+  agent: string;
   status: LeadStatus;
-  month: string; 
+  month: string;
   notes?: string;
-  yacht: string; 
+  yacht: string;
   type: LeadType;
-  paymentConfirmationStatus: PaymentConfirmationStatus; // New field
+  paymentConfirmationStatus: PaymentConfirmationStatus;
   transactionId?: string;
   modeOfPayment: ModeOfPayment;
   clientName: string;
 
-  packageQuantities?: LeadPackageQuantity[]; 
+  packageQuantities?: LeadPackageQuantity[];
 
   totalAmount: number;
   commissionPercentage: number;
   commissionAmount?: number;
   netAmount: number;
   paidAmount: number;
-  balanceAmount: number; 
+  balanceAmount: number;
 
-  createdAt: string; 
-  updatedAt: string; 
+  createdAt: string;
+  updatedAt: string;
   lastModifiedByUserId?: string;
   ownerUserId?: string;
 }
 
 
 export interface BookingReportData {
-  month: string; 
+  month: string;
   bookings: number;
 }
 

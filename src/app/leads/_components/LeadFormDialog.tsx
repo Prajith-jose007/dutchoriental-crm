@@ -42,17 +42,17 @@ import { format, formatISO, parseISO, isValid } from 'date-fns';
 
 
 const leadPackageQuantitySchema = z.object({
-  packageId: z.string().min(1, "Package ID is required"), 
+  packageId: z.string().min(1, "Package ID is required"),
   packageName: z.string().min(1, "Package name is required"),
   quantity: z.coerce.number().min(0, "Quantity must be non-negative").default(0),
-  rate: z.coerce.number().min(0, "Rate must be non-negative").default(0), 
+  rate: z.coerce.number().min(0, "Rate must be non-negative").default(0),
 });
 
 const leadFormSchema = z.object({
   id: z.string().optional(),
   agent: z.string().min(1, 'Agent is required'),
-  status: z.enum(leadStatusOptions), 
-  month: z.date({ required_error: "Lead/Event Date is required." }), 
+  status: z.enum(leadStatusOptions),
+  month: z.date({ required_error: "Lead/Event Date is required." }),
   notes: z.string().optional(),
   yacht: z.string().min(1, 'Yacht selection is required'),
   type: z.enum(leadTypeOptions, { required_error: "Lead type is required."}),
@@ -60,7 +60,7 @@ const leadFormSchema = z.object({
   transactionId: z.string().optional(),
   modeOfPayment: z.enum(modeOfPaymentOptions),
   clientName: z.string().min(1, 'Client name is required'),
-  
+
   packageQuantities: z.array(leadPackageQuantitySchema).optional().default([]),
 
   totalAmount: z.coerce.number().default(0),
@@ -68,10 +68,10 @@ const leadFormSchema = z.object({
   commissionAmount: z.coerce.number().optional().default(0),
   netAmount: z.coerce.number().default(0),
   paidAmount: z.coerce.number().min(0, "Paid amount must be non-negative").default(0),
-  balanceAmount: z.coerce.number().default(0), 
-  
-  createdAt: z.string().optional(), 
-  updatedAt: z.string().optional(), 
+  balanceAmount: z.coerce.number().default(0),
+
+  createdAt: z.string().optional(),
+  updatedAt: z.string().optional(),
   lastModifiedByUserId: z.string().optional(),
   ownerUserId: z.string().optional(),
 });
@@ -99,22 +99,22 @@ const getDefaultFormValues = (existingLead?: Lead | null, currentUserId?: string
 
   return {
     id: existingLead?.id || undefined,
-    agent: existingLead?.agent || '', 
-    status: existingLead?.status || 'Balance', 
+    agent: existingLead?.agent || '',
+    status: existingLead?.status || 'Balance',
     month: existingLead?.month && isValid(parseISO(existingLead.month)) ? parseISO(existingLead.month) : new Date(),
     yacht: existingLead?.yacht || '',
-    type: existingLead?.type || 'Private Cruise', 
+    type: existingLead?.type || 'Private Cruise',
     paymentConfirmationStatus: existingLead?.paymentConfirmationStatus || 'CONFIRMED',
-    modeOfPayment: existingLead?.modeOfPayment || 'Online', 
+    modeOfPayment: existingLead?.modeOfPayment || 'CARD', // Default to CARD
     clientName: existingLead?.clientName || '',
-    notes: existingLead?.notes || '', 
+    notes: existingLead?.notes || '',
     transactionId: existingLead?.transactionId || '',
     packageQuantities: initialPackageQuantities,
-    totalAmount: Number(Number(existingLead?.totalAmount || 0).toFixed(2)), 
-    commissionPercentage: Number(existingLead?.commissionPercentage || 0), 
-    commissionAmount: Number(Number(existingLead?.commissionAmount || 0).toFixed(2)), 
+    totalAmount: Number(Number(existingLead?.totalAmount || 0).toFixed(2)),
+    commissionPercentage: Number(existingLead?.commissionPercentage || 0),
+    commissionAmount: Number(Number(existingLead?.commissionAmount || 0).toFixed(2)),
     netAmount: Number(Number(existingLead?.netAmount || 0).toFixed(2)),
-    paidAmount: Number(Number(existingLead?.paidAmount || 0).toFixed(2)), 
+    paidAmount: Number(Number(existingLead?.paidAmount || 0).toFixed(2)),
     balanceAmount: Math.abs(Number(Number(existingLead?.balanceAmount || 0).toFixed(2))),
     lastModifiedByUserId: existingLead?.lastModifiedByUserId || currentUserId || undefined,
     ownerUserId: existingLead?.ownerUserId || currentUserId || undefined,
@@ -161,7 +161,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
 
         const agentsData = await agentsRes.json();
         const yachtsData = await yachtsRes.json();
-        
+
         setAllAgents(Array.isArray(agentsData) ? agentsData : []);
         setAllYachts(Array.isArray(yachtsData) ? yachtsData : []);
         console.log('[LeadForm] Fetched Agents count:', agentsData.length);
@@ -180,7 +180,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
     if (isOpen) {
       fetchDropdownData();
     }
-  }, [isOpen, toast]); 
+  }, [isOpen, toast]);
 
 
   const filteredYachts = useMemo(() => {
@@ -208,17 +208,17 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
     if (selectedYacht && selectedYacht.packages && Array.isArray(selectedYacht.packages)) {
       const newPQs = selectedYacht.packages.map(yachtPkg => {
         const existingLeadPQ = lead?.packageQuantities?.find(lpq => lpq.packageId === yachtPkg.id);
-        const rateFromYacht = Number(Number(yachtPkg.rate || 0).toFixed(2)); 
+        const rateFromYacht = Number(Number(yachtPkg.rate || 0).toFixed(2));
         return {
           packageId: String(yachtPkg.id || `pkg-id-${Date.now()}-${Math.random()}`),
           packageName: String(yachtPkg.name || 'Unnamed Package'),
           quantity: existingLeadPQ ? Number(existingLeadPQ.quantity || 0) : 0,
-          rate: rateFromYacht, 
+          rate: rateFromYacht,
         };
       });
       console.log('[LeadForm PQ Effect] Populating packageQuantities based on selected yacht. New PQs:', JSON.parse(JSON.stringify(newPQs)));
       replacePackageQuantities(newPQs);
-      form.trigger(); 
+      form.trigger();
     } else {
       console.log('[LeadForm PQ Effect] No valid packages on selected yacht or yacht not found, clearing packageQuantities.');
       replacePackageQuantities([]);
@@ -231,8 +231,8 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
     console.log('[CalcDebug] --- Calculation Effect Fired ---');
     const currentYachtId = watchedYachtId;
     const currentAgentId = watchedAgentId;
-    const currentPackageQuantities = watchedPackageQuantities || []; 
-    const currentPaidAmountValue = form.getValues('paidAmount'); 
+    const currentPackageQuantities = watchedPackageQuantities || [];
+    const currentPaidAmountValue = form.getValues('paidAmount');
     const currentPaidAmount = Number(Number(currentPaidAmountValue || 0).toFixed(2));
 
     console.log('[CalcDebug] Watched Values: YachtID=', currentYachtId, 'AgentID=', currentAgentId, 'PaidAmountInput=', currentPaidAmountValue, 'NumericPaid=', currentPaidAmount);
@@ -260,13 +260,13 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
       const rateFromYacht = yachtPackageDetails ? Number(Number(yachtPackageDetails.rate || 0).toFixed(2)) : 0;
 
       console.log(`[CalcDebug] Processing PkgItem[${index}]: ID='${pqItem.packageId}', Name='${pqItem.packageName}', Qty=${quantity}, RateFromYacht=${rateFromYacht}`);
-      
+
       if (quantity > 0 && rateFromYacht > 0) {
         rawCalculatedTotalAmount += quantity * rateFromYacht;
       }
       calculatedTotalGuests += quantity;
     });
-    
+
     setCalculatedTotalGuests(calculatedTotalGuests);
     const calculatedTotalAmount = Number(rawCalculatedTotalAmount.toFixed(2));
     form.setValue('totalAmount', calculatedTotalAmount);
@@ -283,7 +283,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
 
     const calculatedNetAmount = Number((calculatedTotalAmount - calculatedCommissionAmount).toFixed(2));
     form.setValue('netAmount', calculatedNetAmount);
-    
+
     const actualSignedBalanceAmount = Number((calculatedNetAmount - currentPaidAmount).toFixed(2));
     form.setValue('balanceAmount', Math.abs(actualSignedBalanceAmount));
 
@@ -291,13 +291,13 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
     console.log('[CalcDebug] --- Calculation Effect End ---');
 
   }, [
-    watchedPackageQuantities, 
-    watchedYachtId, 
-    watchedAgentId, 
-    watchedPaidAmount, 
-    allYachts, 
-    allAgents, 
-    form, 
+    watchedPackageQuantities,
+    watchedYachtId,
+    watchedAgentId,
+    watchedPaidAmount,
+    allYachts,
+    allAgents,
+    form,
     setCalculatedTotalGuests
   ]);
 
@@ -306,7 +306,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
     if (isOpen) {
       form.reset(getDefaultFormValues(lead, currentUserId));
       console.log('[LeadForm] Form reset. Lead:', lead ? JSON.parse(JSON.stringify(lead)) : 'New Lead');
-      
+
       const agentIdForCommission = lead?.agent || form.getValues('agent');
       if (agentIdForCommission && allAgents.length > 0) {
         const selectedAgentOnReset = allAgents.find(a => a.id === agentIdForCommission);
@@ -317,7 +317,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
          console.log(`[LeadForm] Reset: No agent, commission set to 0%`);
       }
     }
-  }, [lead, form, isOpen, allAgents, allYachts, currentUserId]); 
+  }, [lead, form, isOpen, allAgents, allYachts, currentUserId]);
 
 
   function onSubmit(data: LeadFormData) {
@@ -335,7 +335,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
       });
     }
     const finalTotalAmount = Number(rawFinalTotalAmount.toFixed(2));
-    
+
     const selectedAgentForSubmit = allAgents.find(a => a.id === data.agent);
     const finalCommissionPercentage = selectedAgentForSubmit ? Number(selectedAgentForSubmit.discount || 0) : 0;
     const finalCommissionAmount = Number(((finalTotalAmount * finalCommissionPercentage) / 100).toFixed(2));
@@ -346,39 +346,39 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
     const finalPackageQuantities = (data.packageQuantities && Array.isArray(data.packageQuantities) && selectedYachtForSubmit && selectedYachtForSubmit.packages && Array.isArray(selectedYachtForSubmit.packages))
       ? data.packageQuantities.map(pq => {
           const yachtPackage = selectedYachtForSubmit.packages?.find(p => p.id === pq.packageId);
-          const rate = yachtPackage ? Number(Number(yachtPackage.rate || 0).toFixed(2)) : 0; 
+          const rate = yachtPackage ? Number(Number(yachtPackage.rate || 0).toFixed(2)) : 0;
           return {
             packageId: String(pq.packageId),
             packageName: String(pq.packageName),
             quantity: Number(pq.quantity || 0),
-            rate: rate, 
+            rate: rate,
           };
         })
       : [];
 
     const submittedLead: Lead = {
-      ...data, 
-      id: lead?.id || `temp-${Date.now()}`, 
+      ...data,
+      id: lead?.id || `temp-${Date.now()}`,
       month: data.month ? formatISO(data.month) : formatISO(new Date()),
       paymentConfirmationStatus: data.paymentConfirmationStatus,
       createdAt: lead?.createdAt || formatISO(new Date()),
       updatedAt: formatISO(new Date()),
-      lastModifiedByUserId: currentUserId || undefined, // Use currentUserId from props
-      ownerUserId: lead?.ownerUserId || currentUserId || undefined, // Use currentUserId for new leads or preserve existing
-      
+      lastModifiedByUserId: currentUserId || undefined,
+      ownerUserId: lead?.ownerUserId || currentUserId || undefined,
+
       packageQuantities: finalPackageQuantities,
       totalAmount: finalTotalAmount,
       commissionPercentage: finalCommissionPercentage,
       commissionAmount: finalCommissionAmount,
       netAmount: finalNetAmount,
       paidAmount: finalPaidAmount,
-      balanceAmount: actualSignedBalanceAmount, 
+      balanceAmount: actualSignedBalanceAmount,
     };
     console.log("[LeadFormDialog] Submitting lead:", JSON.parse(JSON.stringify(submittedLead, null, 2)));
     onSubmitSuccess(submittedLead);
     onOpenChange(false);
   }
-  
+
   const selectedYachtForRateDisplay = useMemo(() => {
     return allYachts.find(y => y.id === watchedYachtId);
   }, [watchedYachtId, allYachts]);
@@ -407,7 +407,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
         <ScrollArea className="max-h-[70vh] p-1">
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 p-4">
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               <FormField
                 control={form.control}
@@ -454,7 +454,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
               />
                <FormField
                 control={form.control}
-                name="month" 
+                name="month"
                 render={({ field }) => (
                   <FormItem className="flex flex-col">
                     <FormLabel>Lead/Event Date</FormLabel>
@@ -477,13 +477,13 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Lead Type</FormLabel>
-                     <Select 
+                     <Select
                         onValueChange={(value) => {
                             field.onChange(value);
-                            form.setValue('yacht', ''); 
-                            replacePackageQuantities([]); 
-                        }} 
-                        value={field.value || undefined} 
+                            form.setValue('yacht', '');
+                            replacePackageQuantities([]);
+                        }}
+                        value={field.value || undefined}
                         defaultValue={field.value}
                      >
                       <FormControl><SelectTrigger><SelectValue placeholder="Select lead type" /></SelectTrigger></FormControl>
@@ -501,12 +501,12 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Yacht</FormLabel>
-                    <Select 
+                    <Select
                         onValueChange={(value) => {
                             field.onChange(value);
-                        }} 
-                        value={field.value || undefined} 
-                        defaultValue={field.value} 
+                        }}
+                        value={field.value || undefined}
+                        defaultValue={field.value}
                         disabled={!watchedLeadType || isLoadingDropdowns || filteredYachts.length === 0}
                     >
                       <FormControl><SelectTrigger><SelectValue placeholder={!watchedLeadType ? "Select Lead Type first" : (filteredYachts.length === 0 && !isLoadingDropdowns ? "No yachts for this type" : "Select a yacht")} /></SelectTrigger></FormControl>
@@ -563,7 +563,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
               />
             </div>
 
-            
+
             {watchedYachtId && packageQuantityFields.length > 0 && (
               <div className="pt-4 border-t mt-6">
                   <h3 className="text-lg font-medium mb-1">Package Item Quantities</h3>
@@ -572,7 +572,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
                     {packageQuantityFields.map((fieldItem, index) => {
                       return (
                         <FormField
-                          key={fieldItem.id} 
+                          key={fieldItem.id}
                           control={form.control}
                           name={`packageQuantities.${index}.quantity`}
                           render={({ field: qtyField }) => (
@@ -595,9 +595,8 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
                     <p className="text-muted-foreground">The selected yacht currently has no packages defined. Please add packages in the Yacht Management section.</p>
                 </div>
             )}
-            
 
-            
+
              <FormField
               control={form.control}
               name="notes"
@@ -617,7 +616,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
               )}
             />
 
-            
+
             <h3 className="text-lg font-medium pt-4 border-t mt-6">Financials</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 <FormItem>

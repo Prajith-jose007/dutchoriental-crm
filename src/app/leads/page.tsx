@@ -469,14 +469,12 @@ export default function LeadsPage() {
 
 
         for (let i = 1; i < lines.length; i++) {
-          let data = parseCsvLine(lines[i]); // Use the new parsing function
+          let data = parseCsvLine(lines[i]); 
           
-          // Existing logic to handle if parseCsvLine still results in more columns than headers (e.g., due to truly malformed rows)
           if (data.length > fileHeaders.length) {
             const extraColumns = data.slice(fileHeaders.length);
             const allExtraAreEmpty = extraColumns.every(col => (col || '').trim() === '');
             if (allExtraAreEmpty) {
-              console.log(`[CSV Import Leads] Row ${i + 1} had ${data.length} columns, expected ${fileHeaders.length}. Trimming extra empty columns after robust parsing.`);
               data = data.slice(0, fileHeaders.length);
             }
           }
@@ -492,11 +490,18 @@ export default function LeadsPage() {
             const leadKey = csvHeaderMapping[fileHeader];
             if (leadKey) {
                 (parsedRow as any)[leadKey] = convertCsvValue(leadKey, data[index], allYachts, agentMap, yachtMap);
-            } else {
-                // console.warn(`[CSV Import Leads] Unknown header "${fileHeader}" in CSV row ${i+1}. Skipping this column.`);
             }
           });
-           if (i <= 2) console.log(`[CSV Import Leads] Processing Row ${i+1} - Parsed:`, JSON.parse(JSON.stringify(parsedRow)));
+          
+          // Enhanced logging for problematic rows
+          const isProblematicRow = parsedRow.clientName === 'N/A from CSV' || !parsedRow.yacht || (parsedRow.totalAmount === 0 && parsedRow.paidAmount === 0);
+          if (isProblematicRow) {
+              console.log(`[CSV Import Leads Diagnostics] Row ${i + 1} marked as potentially problematic:`);
+              console.log(`  Raw CSV data array for row ${i + 1}:`, data);
+              console.log(`  File Headers used for mapping:`, fileHeaders);
+              console.log(`  Resulting parsedRow object for row ${i + 1}:`, JSON.parse(JSON.stringify(parsedRow)));
+          }
+
 
           let packageQuantities: LeadPackageQuantity[] = [];
           if (parsedRow.package_quantities_json) {
@@ -515,10 +520,14 @@ export default function LeadsPage() {
             }
           } else {
             const leadYachtId = parsedRow.yacht || '';
-            const yachtForLead = allYachts.find(y => y.id === leadYachtId || y.name.toLowerCase() === leadYachtId.toLowerCase());
+            const yachtForLead = allYachts.find(y => y.id === leadYachtId || y.name.toLowerCase() === String(leadYachtId).toLowerCase());
+            
+            if (isProblematicRow) {
+                console.log(`  Yacht ID from parsedRow for package reconstruction: "${leadYachtId}". Yacht found: ${yachtForLead ? yachtForLead.name : 'NOT FOUND'}`);
+            }
 
             for (const csvHeader of fileHeaders) {
-                const mappedKey = csvHeaderMapping[csvHeader];
+                const mappedKey = csvHeaderMapping[csvHeader.trim().toLowerCase().replace(/\s+/g, '_')];
                 if (mappedKey && typeof mappedKey === 'string' && mappedKey.startsWith('pkg_')) {
                     const actualPackageNamePart = mappedKey.substring('pkg_'.length);
                     const actualPackageName = preferredPackageMapReverse[actualPackageNamePart] || actualPackageNamePart.toUpperCase().replace(/_/g, ' ');
@@ -533,10 +542,12 @@ export default function LeadsPage() {
                             quantity: quantity,
                             rate: yachtPackage?.rate || 0, 
                         });
+                        if (isProblematicRow) {
+                            console.log(`    Added package from CSV column: ${actualPackageName}, Qty: ${quantity}, Rate (from yacht): ${yachtPackage?.rate || 0}`);
+                        }
                     }
                 }
             }
-             if (i <= 2 && packageQuantities.length > 0) console.log(`[CSV Import Leads] Row ${i+1} - Reconstructed PQs:`, JSON.parse(JSON.stringify(packageQuantities)));
           }
 
 
@@ -565,10 +576,14 @@ export default function LeadsPage() {
             lastModifiedByUserId: currentUserId,
             ownerUserId: parsedRow.ownerUserId || currentUserId,
           };
-          if (i <= 2) console.log(`[CSV Import Leads] Processing Row ${i+1} - Full Lead Object to POST:`, JSON.parse(JSON.stringify(fullLead)));
+          
+          if (isProblematicRow) {
+             console.log(`  Constructed fullLead object for row ${i + 1}:`, JSON.parse(JSON.stringify(fullLead)));
+          }
+
 
           const missingFields = [];
-          if (!fullLead.clientName) missingFields.push('clientName');
+          if (!fullLead.clientName || fullLead.clientName === 'N/A from CSV') missingFields.push('clientName (missing or "N/A from CSV")');
           if (!fullLead.agent) missingFields.push('agent');
           if (!fullLead.yacht) missingFields.push('yacht');
           if (!fullLead.month) missingFields.push('month');
@@ -948,5 +963,7 @@ export default function LeadsPage() {
     </div>
   );
 }
+
+    
 
     

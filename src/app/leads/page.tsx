@@ -102,7 +102,7 @@ const convertCsvValue = (key: keyof Omit<Lead, 'packageQuantities'> | 'package_q
     case 'totalAmount': case 'commissionPercentage':
     case 'commissionAmount': case 'netAmount': case 'paidAmount': case 'balanceAmount':
     case 'freeGuestCount':
-      const num = parseFloat(trimmedValue);
+      const num = parseFloat(trimmedValue.replace(/,/g, '')); // Remove commas before parsing
       return isNaN(num) ? 0 : num;
     case 'modeOfPayment':
       return modeOfPaymentOptions.includes(trimmedValue.toUpperCase() as ModeOfPayment) ? trimmedValue.toUpperCase() : 'CARD'; 
@@ -121,25 +121,37 @@ const convertCsvValue = (key: keyof Omit<Lead, 'packageQuantities'> | 'package_q
       } catch (e) { /* ignore ISO parse error */ }
 
       try {
-        const parts = trimmedValue.match(/(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2,4})/);
-        if (parts && parts.length === 4) {
-            let day = parseInt(parts[1], 10);
-            let month = parseInt(parts[2], 10);
-            let year = parseInt(parts[3], 10);
-            if (String(year).length === 2) year += 2000;
-
-            // Attempt common European DD/MM/YYYY, then US MM/DD/YYYY if first fails or month > 12
-            let dateObjTry1: Date | null = null;
-            if (month >=1 && month <=12 && day >=1 && day <=31) {
-                dateObjTry1 = new Date(year, month - 1, day);
-                if (isValid(dateObjTry1)) return formatISO(dateObjTry1);
-            }
-            // Try MM/DD/YYYY if day > 12 (likely was month) or if previous failed
-            if ((day > 12 || !isValid(dateObjTry1)) && month >=1 && month <=31 && day >=1 && day <=12) {
-                 const dateObjTry2 = new Date(year, day - 1, month);
-                 if (isValid(dateObjTry2)) return formatISO(dateObjTry2);
+        // Try to parse formats like "Thursday, 1 May 2025" or "DD/MM/YYYY" or "MM/DD/YYYY"
+        let dateObj: Date | null = null;
+        // Attempt parsing "Day, DD Month YYYY" (e.g., "Thursday, 1 May 2025")
+        const dayMonthYearMatch = trimmedValue.match(/(\w+),\s*(\d{1,2})\s*(\w+)\s*(\d{4})/i);
+        if (dayMonthYearMatch) {
+            const [, , day, monthStr, year] = dayMonthYearMatch;
+            const monthNames = ["january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december"];
+            const monthIndex = monthNames.indexOf(monthStr.toLowerCase());
+            if (monthIndex > -1) {
+                dateObj = new Date(Number(year), monthIndex, Number(day));
             }
         }
+        
+        if (!dateObj || !isValid(dateObj)) {
+            const parts = trimmedValue.match(/(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2,4})/);
+            if (parts && parts.length === 4) {
+                let day = parseInt(parts[1], 10);
+                let month = parseInt(parts[2], 10);
+                let year = parseInt(parts[3], 10);
+                if (String(year).length === 2) year += 2000;
+
+                if (month >=1 && month <=12 && day >=1 && day <=31) { // DD/MM/YYYY
+                    dateObj = new Date(year, month - 1, day);
+                }
+                if ((!dateObj || !isValid(dateObj)) && day >=1 && day <=12 && month >=1 && month <=31) { // MM/DD/YYYY
+                    dateObj = new Date(year, day - 1, month);
+                }
+            }
+        }
+        if (dateObj && isValid(dateObj)) return formatISO(dateObj);
+
       } catch (e) {/* ignore */ }
       console.warn(`[CSV Import] Could not parse date "${trimmedValue}" for key "${String(key)}". Defaulting to current date.`);
       return formatISO(new Date());
@@ -155,6 +167,35 @@ const convertCsvValue = (key: keyof Omit<Lead, 'packageQuantities'> | 'package_q
       return trimmedValue;
   }
 };
+
+// Function to parse a CSV line respecting quoted fields
+function parseCsvLine(line: string): string[] {
+  const columns: string[] = [];
+  let currentColumn = '';
+  let inQuotes = false;
+
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+
+    if (char === '"') {
+      // If it's an escaped quote (""), add a single quote to currentColumn
+      if (inQuotes && i + 1 < line.length && line[i + 1] === '"') {
+        currentColumn += '"';
+        i++; // Skip next quote
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if (char === ',' && !inQuotes) {
+      columns.push(currentColumn.trim()); // Trim individual columns here
+      currentColumn = '';
+    } else {
+      currentColumn += char;
+    }
+  }
+  columns.push(currentColumn.trim()); // Add and trim the last column
+  return columns;
+}
+
 
 export default function LeadsPage() {
   const [isLeadDialogOpen, setIsLeadDialogOpen] = useState(false);
@@ -428,17 +469,17 @@ export default function LeadsPage() {
 
 
         for (let i = 1; i < lines.length; i++) {
-          let data = lines[i].split(',');
+          let data = parseCsvLine(lines[i]); // Use the new parsing function
           
+          // Existing logic to handle if parseCsvLine still results in more columns than headers (e.g., due to truly malformed rows)
           if (data.length > fileHeaders.length) {
             const extraColumns = data.slice(fileHeaders.length);
             const allExtraAreEmpty = extraColumns.every(col => (col || '').trim() === '');
             if (allExtraAreEmpty) {
-              console.log(`[CSV Import Leads] Row ${i + 1} had ${data.length} columns, expected ${fileHeaders.length}. Trimming extra empty columns.`);
+              console.log(`[CSV Import Leads] Row ${i + 1} had ${data.length} columns, expected ${fileHeaders.length}. Trimming extra empty columns after robust parsing.`);
               data = data.slice(0, fileHeaders.length);
             }
           }
-
 
           if (data.length !== fileHeaders.length) {
             console.warn(`[CSV Import Leads] Skipping malformed CSV line ${i + 1}: Expected ${fileHeaders.length} columns, got ${data.length}. Line: "${lines[i]}"`);
@@ -452,7 +493,7 @@ export default function LeadsPage() {
             if (leadKey) {
                 (parsedRow as any)[leadKey] = convertCsvValue(leadKey, data[index], allYachts, agentMap, yachtMap);
             } else {
-                console.warn(`[CSV Import Leads] Unknown header "${fileHeader}" in CSV row ${i+1}. Skipping this column.`);
+                // console.warn(`[CSV Import Leads] Unknown header "${fileHeader}" in CSV row ${i+1}. Skipping this column.`);
             }
           });
            if (i <= 2) console.log(`[CSV Import Leads] Processing Row ${i+1} - Parsed:`, JSON.parse(JSON.stringify(parsedRow)));
@@ -473,9 +514,8 @@ export default function LeadsPage() {
               console.warn(`[CSV Import Leads] Error parsing package_quantities_json from CSV for row ${i+1}: ${parsedRow.package_quantities_json}`);
             }
           } else {
-            // Attempt to build packageQuantities from individual pkg_ columns
             const leadYachtId = parsedRow.yacht || '';
-            const yachtForLead = allYachts.find(y => y.id === leadYachtId);
+            const yachtForLead = allYachts.find(y => y.id === leadYachtId || y.name.toLowerCase() === leadYachtId.toLowerCase());
 
             for (const csvHeader of fileHeaders) {
                 const mappedKey = csvHeaderMapping[csvHeader];
@@ -488,10 +528,10 @@ export default function LeadsPage() {
                     if (quantity > 0) {
                         const yachtPackage = yachtForLead?.packages?.find(p => p.name.toLowerCase() === actualPackageName.toLowerCase());
                         packageQuantities.push({
-                            packageId: yachtPackage?.id || actualPackageName, // Fallback ID
+                            packageId: yachtPackage?.id || actualPackageName, 
                             packageName: actualPackageName,
                             quantity: quantity,
-                            rate: yachtPackage?.rate || 0, // Fallback rate
+                            rate: yachtPackage?.rate || 0, 
                         });
                     }
                 }
@@ -552,7 +592,7 @@ export default function LeadsPage() {
             try {
               const payload = { ...leadToImport, requestingUserId: currentUserId, requestingUserRole: currentUserRole };
               if (payload.id.startsWith('imported-lead-')) {
-                delete payload.id; // Let API generate ID if it's a temporary one
+                delete payload.id; 
               }
 
               const response = await fetch('/api/leads', {
@@ -579,7 +619,7 @@ export default function LeadsPage() {
       } finally {
         const endTime = Date.now();
         const durationInSeconds = ((endTime - startTime) / 1000).toFixed(2);
-        if (successCount > 0 || skippedCount > 0) { // Fetch data even if only skips occurred to refresh state
+        if (successCount > 0 || skippedCount > 0) { 
             await fetchAllData();
         }
         toast({
@@ -909,3 +949,4 @@ export default function LeadsPage() {
   );
 }
 
+    

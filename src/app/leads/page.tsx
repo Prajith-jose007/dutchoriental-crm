@@ -28,7 +28,7 @@ const csvHeaderMapping: { [csvHeaderKey: string]: keyof Omit<Lead, 'packageQuant
   'month': 'month', 'lead/event date': 'month',
   'notes': 'notes', 'user feed': 'notes',
   'type': 'type', 'lead type': 'type',
-  'paymentconfirmationstatus': 'paymentConfirmationStatus', 'payment confirmation status': 'paymentConfirmationStatus', // New field
+  'paymentconfirmationstatus': 'paymentConfirmationStatus', 'payment confirmation status': 'paymentConfirmationStatus', 
   'transactionid': 'transactionId', 'transaction id': 'transactionId',
   'modeofpayment': 'modeOfPayment', 'payment mode': 'modeOfPayment',
 
@@ -57,7 +57,7 @@ const convertCsvValue = (key: keyof Omit<Lead, 'packageQuantities'> | 'package_q
       case 'modeOfPayment': return 'Online';
       case 'status': return 'Balance'; 
       case 'type': return 'Private Cruise' as LeadType;
-      case 'paymentConfirmationStatus': return 'CONFIRMED' as PaymentConfirmationStatus; // New field default
+      case 'paymentConfirmationStatus': return 'CONFIRMED' as PaymentConfirmationStatus; 
       case 'notes': return '';
       case 'month': return formatISO(new Date());
       case 'createdAt': case 'updatedAt': return formatISO(new Date());
@@ -77,7 +77,7 @@ const convertCsvValue = (key: keyof Omit<Lead, 'packageQuantities'> | 'package_q
       return leadStatusOptions.includes(trimmedValue as LeadStatus) ? trimmedValue : 'Balance';
     case 'type':
       return leadTypeOptions.includes(trimmedValue as LeadType) ? trimmedValue : 'Private Cruise';
-    case 'paymentConfirmationStatus': // New field
+    case 'paymentConfirmationStatus': 
       return paymentConfirmationStatusOptions.includes(trimmedValue.toUpperCase() as PaymentConfirmationStatus) ? trimmedValue.toUpperCase() : 'CONFIRMED';
     case 'month':
     case 'createdAt':
@@ -134,7 +134,7 @@ export default function LeadsPage() {
   const [startDate, setStartDate] = useState<Date | undefined>(undefined);
   const [endDate, setEndDate] = useState<Date | undefined>(undefined);
   const [statusFilter, setStatusFilter] = useState<LeadStatus | 'all'>('all');
-  const [paymentConfirmationStatusFilter, setPaymentConfirmationStatusFilter] = useState<PaymentConfirmationStatus | 'all'>('all'); // New filter
+  const [paymentConfirmationStatusFilter, setPaymentConfirmationStatusFilter] = useState<PaymentConfirmationStatus | 'all'>('all');
   const [selectedYachtId, setSelectedYachtId] = useState<string>('all');
   const [selectedAgentId, setSelectedAgentId] = useState<string>('all');
   const [selectedUserId, setSelectedUserId] = useState<string>('all');
@@ -212,7 +212,7 @@ export default function LeadsPage() {
       lastModifiedByUserId: SIMULATED_CURRENT_USER_ID,
       updatedAt: new Date().toISOString(),
       month: submittedLeadData.month ? formatISO(parseISO(submittedLeadData.month)) : formatISO(new Date()),
-      paymentConfirmationStatus: submittedLeadData.paymentConfirmationStatus, // Ensure new field is included
+      paymentConfirmationStatus: submittedLeadData.paymentConfirmationStatus,
       packageQuantities: submittedLeadData.packageQuantities?.map(pq => ({
         ...pq,
         quantity: Number(pq.quantity || 0),
@@ -248,9 +248,16 @@ export default function LeadsPage() {
       }
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ message: `API Error: ${response.statusText}` }));
-        console.error("[LeadsPage] API Error response data:", errorData);
-        throw new Error(errorData.message || `Failed to save lead: ${response.statusText}`);
+        let errorData = { message: `API Error: ${response.status} ${response.statusText}`, details: '' };
+        try {
+          const parsedError = await response.json();
+          errorData.message = parsedError.message || errorData.message;
+          errorData.details = parsedError.errorDetails || parsedError.error || '';
+        } catch (jsonError) {
+          console.warn("[LeadsPage] API error response was not valid JSON or was empty.", jsonError);
+        }
+        console.error("[LeadsPage] API Error response data (parsed or fallback):", errorData);
+        throw new Error(errorData.message + (errorData.details ? ` - Details: ${errorData.details}` : ''));
       }
 
       toast({
@@ -280,8 +287,16 @@ export default function LeadsPage() {
         method: 'DELETE',
       });
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ message: `API Error: ${response.statusText}` }));
-        throw new Error(errorData.message || `Failed to delete lead: ${response.statusText}`);
+        let errorData = { message: `API Error: ${response.status} ${response.statusText}`, details: '' };
+        try {
+          const parsedError = await response.json();
+          errorData.message = parsedError.message || errorData.message;
+          errorData.details = parsedError.errorDetails || parsedError.error || '';
+        } catch (jsonError) {
+           console.warn("[LeadsPage] API error response on delete was not valid JSON or was empty.", jsonError);
+        }
+        console.error("[LeadsPage] API Delete Error response data (parsed or fallback):", errorData);
+        throw new Error(errorData.message + (errorData.details ? ` - Details: ${errorData.details}` : ''));
       }
       toast({ title: 'Lead Deleted', description: `Lead ${leadId} has been deleted.` });
       await fetchAllData();
@@ -380,7 +395,7 @@ export default function LeadsPage() {
             month: parsedRow.month || formatISO(new Date()),
             notes: parsedRow.notes || undefined,
             type: parsedRow.type || 'Private Cruise',
-            paymentConfirmationStatus: parsedRow.paymentConfirmationStatus || 'CONFIRMED', // New field
+            paymentConfirmationStatus: parsedRow.paymentConfirmationStatus || 'CONFIRMED', 
             transactionId: parsedRow.transactionId || undefined,
             modeOfPayment: parsedRow.modeOfPayment || 'Online',
             packageQuantities: packageQuantities,
@@ -484,7 +499,7 @@ export default function LeadsPage() {
       if (selectedAgentId !== 'all' && lead.agent !== selectedAgentId) return false;
       if (selectedUserId !== 'all' && (lead.lastModifiedByUserId !== selectedUserId && lead.ownerUserId !== selectedUserId) ) return false;
       if (statusFilter !== 'all' && lead.status !== statusFilter) return false;
-      if (paymentConfirmationStatusFilter !== 'all' && lead.paymentConfirmationStatus !== paymentConfirmationStatusFilter) return false; // New filter
+      if (paymentConfirmationStatusFilter !== 'all' && lead.paymentConfirmationStatus !== paymentConfirmationStatusFilter) return false;
       return true;
     });
   }, [allLeads, startDate, endDate, selectedYachtId, selectedAgentId, selectedUserId, statusFilter, paymentConfirmationStatusFilter]);
@@ -496,7 +511,7 @@ export default function LeadsPage() {
     setSelectedAgentId('all');
     setSelectedUserId('all');
     setStatusFilter('all');
-    setPaymentConfirmationStatusFilter('all'); // New filter
+    setPaymentConfirmationStatusFilter('all');
   };
 
   const handleCsvExport = () => {
@@ -543,7 +558,7 @@ export default function LeadsPage() {
     });
     
     const baseHeadersPart1: string[] = [
-      'ID', 'Client Name', 'Agent Name', 'Yacht Name', 'Status', 'Lead/Event Date', 'Type', 'Payment Confirmation Status', // New field
+      'ID', 'Client Name', 'Agent Name', 'Yacht Name', 'Status', 'Lead/Event Date', 'Type', 'Payment Confirmation Status', 
       'Transaction ID', 'Payment Mode', 'Total Guests',
     ];
     
@@ -581,7 +596,7 @@ export default function LeadsPage() {
           escapeCsvCell(lead.status),
           escapeCsvCell(lead.month ? format(parseISO(lead.month), 'dd/MM/yyyy HH:mm') : ''),
           escapeCsvCell(lead.type),
-          escapeCsvCell(lead.paymentConfirmationStatus), // New field
+          escapeCsvCell(lead.paymentConfirmationStatus), 
           escapeCsvCell(lead.transactionId),
           escapeCsvCell(lead.modeOfPayment),
           escapeCsvCell(totalGuests),
@@ -766,3 +781,4 @@ export default function LeadsPage() {
     </div>
   );
 }
+

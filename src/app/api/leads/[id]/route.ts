@@ -93,7 +93,7 @@ export async function GET(
         month: dbLead.month ? ensureISOFormat(dbLead.month)! : formatISO(new Date()),
         notes: dbLead.notes || undefined,
         type: (dbLead.type || 'Private Cruise') as LeadType,
-        paymentConfirmationStatus: (dbLead.paymentConfirmationStatus || 'CONFIRMED') as PaymentConfirmationStatus, // New field
+        paymentConfirmationStatus: (dbLead.paymentConfirmationStatus || 'CONFIRMED') as PaymentConfirmationStatus,
         transactionId: dbLead.transactionId || undefined,
         modeOfPayment: (dbLead.modeOfPayment || 'Online') as ModeOfPayment,
         
@@ -117,9 +117,15 @@ export async function GET(
       console.log(`[API GET /api/leads/${id}] Lead not found.`);
       return NextResponse.json({ message: 'Lead not found' }, { status: 404 });
     }
-  } catch (error) {
-    console.error(`[API GET /api/leads/${params.id}] Error:`, error);
-    return NextResponse.json({ message: 'Failed to fetch lead', error: (error as Error).message }, { status: 500 });
+  } catch (err) {
+    console.error(`[API GET /api/leads/${params.id}] Error:`, err);
+    let errorMessage = 'Failed to fetch lead.';
+    if (err instanceof Error) {
+      errorMessage = err.message;
+    } else if (typeof err === 'string') {
+      errorMessage = err;
+    }
+    return NextResponse.json({ message: 'Failed to fetch lead', errorDetails: errorMessage }, { status: 500 });
   }
 }
 
@@ -144,7 +150,7 @@ export async function PUT(
       updatedAt: formatISO(new Date()), 
       lastModifiedByUserId: updatedLeadDataFromClient.lastModifiedByUserId || SIMULATED_CURRENT_USER_ID_API,
       ownerUserId: updatedLeadDataFromClient.ownerUserId || existingLeadDbInfo.ownerUserId,
-      paymentConfirmationStatus: updatedLeadDataFromClient.paymentConfirmationStatus || 'CONFIRMED', // New field
+      paymentConfirmationStatus: updatedLeadDataFromClient.paymentConfirmationStatus || 'CONFIRMED',
     };
     
     delete (dataToUpdate as any).id;
@@ -201,7 +207,7 @@ export async function PUT(
         id: String(dbLead.id || ''), clientName: String(dbLead.clientName || ''), agent: String(dbLead.agent || ''), yacht: String(dbLead.yacht || ''), 
         status: (dbLead.status || 'Balance') as LeadStatus,
         month: dbLead.month ? ensureISOFormat(dbLead.month)! : formatISO(new Date()), notes: dbLead.notes || undefined, type: (dbLead.type || 'Private Cruise') as LeadType,
-        paymentConfirmationStatus: (dbLead.paymentConfirmationStatus || 'CONFIRMED') as PaymentConfirmationStatus, // New field
+        paymentConfirmationStatus: (dbLead.paymentConfirmationStatus || 'CONFIRMED') as PaymentConfirmationStatus,
         transactionId: dbLead.transactionId || undefined,
         modeOfPayment: (dbLead.modeOfPayment || 'Online') as ModeOfPayment,
         packageQuantities: pq,
@@ -215,9 +221,15 @@ export async function PUT(
     console.log(`[API PUT /api/leads/${id}] Successfully updated lead:`, finalUpdatedLead.id);
     return NextResponse.json(finalUpdatedLead, { status: 200 });
 
-  } catch (error) {
-    console.error(`[API PUT /api/leads/${params.id}] Error:`, error);
-    return NextResponse.json({ message: 'Failed to update lead', error: (error as Error).message }, { status: 500 });
+  } catch (err) {
+    console.error(`[API PUT /api/leads/${params.id}] Error:`, err);
+    let errorMessage = 'Failed to update lead.';
+    if (err instanceof Error) {
+      errorMessage = err.message;
+    } else if (typeof err === 'string') {
+      errorMessage = err;
+    }
+    return NextResponse.json({ message: 'Failed to update lead', errorDetails: errorMessage }, { status: 500 });
   }
 }
 
@@ -238,8 +250,15 @@ export async function DELETE(
 
     console.log(`[API DELETE /api/leads/${id}] Successfully deleted lead.`);
     return NextResponse.json({ message: 'Lead deleted successfully' }, { status: 200 });
-  } catch (error) {
-    console.error(`[API DELETE /api/leads/${params.id}] Error:`, error);
-    return NextResponse.json({ message: 'Failed to delete lead', error: (error as Error).message }, { status: 500 });
+  } catch (err) {
+    console.error(`[API DELETE /api/leads/${params.id}] Error:`, err);
+    let errorMessage = 'Failed to delete lead.';
+    if (err instanceof Error) {
+      errorMessage = err.message;
+    } else if (typeof err === 'string') {
+      errorMessage = err;
+    }
+    return NextResponse.json({ message: 'Failed to delete lead', errorDetails: errorMessage }, { status: 500 });
   }
 }
+

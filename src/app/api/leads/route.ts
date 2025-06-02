@@ -70,7 +70,7 @@ export async function GET(request: NextRequest) {
         month: dbLead.month ? ensureISOFormat(dbLead.month)! : formatISO(new Date()),
         notes: dbLead.notes || undefined,
         type: (dbLead.type || 'Private Cruise') as LeadType,
-        paymentConfirmationStatus: (dbLead.paymentConfirmationStatus || 'CONFIRMED') as PaymentConfirmationStatus, // New field
+        paymentConfirmationStatus: (dbLead.paymentConfirmationStatus || 'CONFIRMED') as PaymentConfirmationStatus,
         transactionId: dbLead.transactionId || undefined,
         modeOfPayment: (dbLead.modeOfPayment || 'Online') as ModeOfPayment,
         
@@ -92,9 +92,15 @@ export async function GET(request: NextRequest) {
     });
     console.log('[API GET /api/leads] Mapped Leads Data Sample (first item):', leads.length > 0 ? leads[0] : 'No leads mapped');
     return NextResponse.json(leads, { status: 200 });
-  } catch (error) {
-    console.error('[API GET /api/leads] Error:', error);
-    return NextResponse.json({ message: 'Failed to fetch leads', error: (error as Error).message }, { status: 500 });
+  } catch (err) {
+    console.error('[API GET /api/leads] Error:', err);
+    let errorMessage = 'Failed to fetch leads.';
+    if (err instanceof Error) {
+      errorMessage = err.message;
+    } else if (typeof err === 'string') {
+      errorMessage = err;
+    }
+    return NextResponse.json({ message: 'Failed to fetch leads', errorDetails: errorMessage }, { status: 500 });
   }
 }
 
@@ -137,7 +143,7 @@ export async function POST(request: NextRequest) {
       month: formattedMonth, 
       notes: newLeadData.notes || null,
       type: newLeadData.type || 'Private Cruise',
-      paymentConfirmationStatus: newLeadData.paymentConfirmationStatus || 'CONFIRMED', // New field
+      paymentConfirmationStatus: newLeadData.paymentConfirmationStatus || 'CONFIRMED',
       transactionId: newLeadData.transactionId || null,
       modeOfPayment: newLeadData.modeOfPayment || 'Online',
       
@@ -165,7 +171,7 @@ export async function POST(request: NextRequest) {
         totalAmount, commissionPercentage, commissionAmount, netAmount,
         paidAmount, balanceAmount,
         createdAt, updatedAt, lastModifiedByUserId, ownerUserId
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
     const params = [
       leadToStore.id, leadToStore.clientName, leadToStore.agent, leadToStore.yacht, leadToStore.status, 
@@ -197,7 +203,7 @@ export async function POST(request: NextRequest) {
             status: (dbLead.status || 'Balance') as LeadStatus,
             month: dbLead.month ? ensureISOFormat(dbLead.month)! : formatISO(new Date()), 
             notes: dbLead.notes || undefined, type: (dbLead.type || 'Private Cruise') as LeadType, 
-            paymentConfirmationStatus: (dbLead.paymentConfirmationStatus || 'CONFIRMED') as PaymentConfirmationStatus, // New field
+            paymentConfirmationStatus: (dbLead.paymentConfirmationStatus || 'CONFIRMED') as PaymentConfirmationStatus,
             transactionId: dbLead.transactionId || undefined,
             modeOfPayment: (dbLead.modeOfPayment || 'Online') as ModeOfPayment,
             packageQuantities: pq,
@@ -224,9 +230,15 @@ export async function POST(request: NextRequest) {
       console.error('[API POST /api/leads] Database insert failed, affectedRows was not 1.');
       throw new Error('Failed to insert lead into database');
     }
-  } catch (error) {
-    console.error('[API POST /api/leads] Error in POST handler:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error during lead creation';
-    return NextResponse.json({ message: 'Failed to create lead', error: errorMessage }, { status: 500 });
+  } catch (err) {
+    console.error('[API POST /api/leads] Error in POST handler:', err);
+    let errorMessage = 'Failed to create lead.';
+    if (err instanceof Error) {
+      errorMessage = err.message;
+    } else if (typeof err === 'string') {
+      errorMessage = err;
+    }
+    return NextResponse.json({ message: 'Failed to create lead', errorDetails: errorMessage }, { status: 500 });
   }
 }
+

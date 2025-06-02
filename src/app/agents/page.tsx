@@ -92,8 +92,21 @@ export default function AgentsPage() {
         const errorData = await response.json().catch(() => ({ message: response.statusText }));
         throw new Error(errorData.message || `Failed to fetch agents: ${response.statusText}`);
       }
-      const data = await response.json();
-      setAgents(Array.isArray(data) ? data : []);
+      const data: Agent[] = await response.json();
+      
+      const sortedData = (Array.isArray(data) ? data : []).sort((a, b) => {
+        const numA = parseInt(a.id.replace(/[^0-9]/g, ''), 10);
+        const numB = parseInt(b.id.replace(/[^0-9]/g, ''), 10);
+        
+        if (!isNaN(numA) && !isNaN(numB)) {
+          return numA - numB;
+        }
+        // Fallback for non-numeric parts or purely string IDs
+        return a.id.localeCompare(b.id);
+      });
+      
+      setAgents(sortedData);
+
     } catch (error) {
       console.error("Error fetching agents:", error);
       toast({ title: 'Error Fetching Agents', description: (error as Error).message, variant: 'destructive' });
@@ -339,8 +352,9 @@ export default function AgentsPage() {
         const existingAgentEmails = new Set(currentAgentsData.map(a => a.email.toLowerCase()));
 
         let nextNumericSuffix = 1;
-        const numericIdRegex = /^DO-(\d+)$/;
+        const numericIdRegex = /^DO-([0-9]+)$/; // Match IDs like DO-1, DO-001, DO-1001
         let maxNumericId = 0;
+
         currentAgentsData.forEach(agent => {
           const match = agent.id.match(numericIdRegex);
           if (match && match[1]) {
@@ -377,9 +391,10 @@ export default function AgentsPage() {
           if (!agentId) { // Generate ID if not provided
             let potentialId;
             do {
-              potentialId = `DO-${nextNumericSuffix}`;
+              // Generate IDs like DO-1, DO-2, etc. Padding is not strictly necessary here but can be added if desired.
+              potentialId = `DO-${nextNumericSuffix}`; 
               nextNumericSuffix++;
-            } while (allKnownAgentIds.has(potentialId));
+            } while (allKnownAgentIds.has(potentialId) || newAgentsFromCsv.some(a => a.id === potentialId));
             agentId = potentialId;
             console.log(`[CSV Import Agents] Generated new ID for row ${i+1}: ${agentId}`);
           }
@@ -608,4 +623,6 @@ export default function AgentsPage() {
     </div>
   );
 }
+    
+
     

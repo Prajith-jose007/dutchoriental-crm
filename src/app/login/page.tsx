@@ -11,12 +11,14 @@ import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
+import type { User } from "@/lib/types";
 
 const ADMIN_EMAIL = 'admin@dutchoriental.com';
 const ADMIN_PASSWORD = 'Dutch@123#';
 
 const USER_ROLE_STORAGE_KEY = 'currentUserRole';
 const USER_EMAIL_STORAGE_KEY = 'currentUserEmail';
+const USER_ID_STORAGE_KEY = 'currentUserId';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -25,11 +27,9 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [isCheckingAuth, setIsCheckingAuth] = useState(true); // Start true to check auth
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
 
   useEffect(() => {
-    // This effect checks if the user is already authenticated
-    // If so, it redirects them away from the login page.
     let isAuthenticated = false;
     try {
       isAuthenticated = !!localStorage.getItem(USER_ROLE_STORAGE_KEY);
@@ -39,13 +39,12 @@ export default function LoginPage() {
 
     if (isAuthenticated) {
       router.replace('/dashboard');
-      // No need to setIsCheckingAuth(false) here, as the redirect will unmount this component.
     } else {
-      setIsCheckingAuth(false); // Auth check done, user is not authenticated.
+      setIsCheckingAuth(false);
     }
   }, [router]);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setIsLoading(true);
@@ -56,55 +55,84 @@ export default function LoginPage() {
       return;
     }
 
-    // Simulate API call
-    setTimeout(() => {
-      try {
-        if (email.toLowerCase() === ADMIN_EMAIL.toLowerCase() && password === ADMIN_PASSWORD) {
-          localStorage.setItem(USER_ROLE_STORAGE_KEY, 'admin');
-          localStorage.setItem(USER_EMAIL_STORAGE_KEY, email);
-          toast({
-            title: 'Admin Login Successful',
-            description: 'Redirecting to dashboard...',
-          });
-          router.push('/dashboard'); // Use push for history
-        } else {
-          // For any other valid credentials (simulated for now)
-          // In a real app, you'd verify against a database
-          // For simplicity here, any other login is treated as a standard user
-          localStorage.setItem(USER_ROLE_STORAGE_KEY, 'user');
-          localStorage.setItem(USER_EMAIL_STORAGE_KEY, email);
-          toast({
-            title: 'Login Successful',
-            description: 'Redirecting to dashboard...',
-          });
-          router.push('/dashboard'); // Use push for history
-        }
-      } catch (storageError) {
-        console.error("Error accessing localStorage during login:", storageError);
-        setError('Login failed. Could not save session.');
-        toast({
-          title: 'Login Error',
-          description: 'Failed to save session information.',
-          variant: 'destructive'
-        });
-      } finally {
+    // Simulate API call for credential check
+    await new Promise(resolve => setTimeout(resolve, 500));
+
+    try {
+      let role = 'user';
+      let loggedInUserId: string | null = null;
+
+      // Fetch all users to find the ID and verify role more dynamically if needed
+      // For this specific implementation, we hardcode admin check and find ID for any user
+      const usersResponse = await fetch('/api/users');
+      if (!usersResponse.ok) {
+        console.error("Failed to fetch users during login", usersResponse.statusText);
+        setError('Login failed. Could not verify user details.');
         setIsLoading(false);
+        return;
       }
-    }, 500);
+      const allUsers: User[] = await usersResponse.json();
+      const matchedUser = allUsers.find(u => u.email.toLowerCase() === email.toLowerCase());
+
+      if (matchedUser) {
+        loggedInUserId = matchedUser.id;
+        // Check for admin credentials specifically
+        if (email.toLowerCase() === ADMIN_EMAIL.toLowerCase() && password === ADMIN_PASSWORD) {
+          role = 'admin';
+        } else if (password === matchedUser.password) { // Simplified password check
+          // This is just a placeholder for real password verification
+          // In a real app, compare hashed passwords
+          role = matchedUser.designation === 'System Administrator' || matchedUser.designation === 'Admin' ? 'admin' : 'user';
+        }
+         else {
+          setError('Invalid email or password.');
+          setIsLoading(false);
+          return;
+        }
+      } else {
+        setError('Invalid email or password.');
+        setIsLoading(false);
+        return;
+      }
+      
+      localStorage.setItem(USER_ROLE_STORAGE_KEY, role);
+      localStorage.setItem(USER_EMAIL_STORAGE_KEY, email);
+      if (loggedInUserId) {
+        localStorage.setItem(USER_ID_STORAGE_KEY, loggedInUserId);
+      } else {
+        // Should not happen if matchedUser is found, but as a fallback:
+        localStorage.removeItem(USER_ID_STORAGE_KEY);
+      }
+
+      toast({
+        title: `${role.charAt(0).toUpperCase() + role.slice(1)} Login Successful`,
+        description: 'Redirecting to dashboard...',
+      });
+      router.push('/dashboard');
+
+    } catch (storageError) {
+      console.error("Error accessing localStorage or fetching users during login:", storageError);
+      setError('Login failed. An unexpected error occurred.');
+      toast({
+        title: 'Login Error',
+        description: 'Failed to complete login process.',
+        variant: 'destructive'
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   if (isCheckingAuth) {
-    // Render a skeleton or loading state while checking auth
-    // This prevents the login form from flashing if the user is already logged in
     return (
         <div className="flex items-center justify-center min-h-screen bg-muted/40">
             <Card className="w-full max-w-sm">
                 <CardHeader className="space-y-1 text-center">
                     <div className="flex justify-center items-center mb-4">
-                         <Skeleton className="h-12 w-36" /> {/* Placeholder for Logo */}
+                         <Skeleton className="h-12 w-36" />
                     </div>
-                    <Skeleton className="h-6 w-24 mx-auto mb-2" /> {/* Placeholder for "Login" title */}
-                    <Skeleton className="h-4 w-3/4 mx-auto" /> {/* Placeholder for description */}
+                    <Skeleton className="h-6 w-24 mx-auto mb-2" />
+                    <Skeleton className="h-4 w-3/4 mx-auto" />
                 </CardHeader>
                 <CardContent className="space-y-4">
                     <div className="space-y-2">
@@ -125,7 +153,6 @@ export default function LoginPage() {
     );
   }
 
-  // If not checking auth (i.e., user is confirmed not logged in), render login form
   return (
     <div className="flex items-center justify-center min-h-screen bg-muted/40">
       <Card className="w-full max-w-sm">

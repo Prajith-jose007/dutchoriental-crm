@@ -1,11 +1,9 @@
 
 // src/app/api/leads/[id]/route.ts
 import { NextResponse, type NextRequest } from 'next/server';
-import type { Lead, LeadStatus, ModeOfPayment, LeadType, LeadPackageQuantity, PaymentConfirmationStatus } from '@/lib/types';
+import type { Lead, LeadStatus, ModeOfPayment, LeadType, LeadPackageQuantity, PaymentConfirmationStatus, User } from '@/lib/types';
 import { query } from '@/lib/db';
 import { formatISO, parseISO, isValid } from 'date-fns';
-
-const SIMULATED_CURRENT_USER_ID_API = 'DO-user-api'; // Placeholder
 
 const ensureISOFormat = (dateString?: string | Date): string | null => {
   if (!dateString) return null;
@@ -135,8 +133,11 @@ export async function PUT(
 ) {
   try {
     const id = params.id;
-    const updatedLeadDataFromClient = await request.json() as Lead; 
-    console.log(`[API PUT /api/leads/${id}] Received updatedLeadData:`, JSON.stringify(updatedLeadDataFromClient, null, 2));
+    const requestBody = await request.json();
+    const { requestingUserId, requestingUserRole, ...updatedLeadDataFromClient } = requestBody as Lead & { requestingUserId: string; requestingUserRole: string };
+    
+    console.log(`[API PUT /api/leads/${id}] Received request. User: ${requestingUserId}, Role: ${requestingUserRole}`);
+    console.log(`[API PUT /api/leads/${id}] updatedLeadData:`, JSON.stringify(updatedLeadDataFromClient, null, 2));
 
     const existingLeadResult: any[] = await query('SELECT ownerUserId, lastModifiedByUserId, month, createdAt FROM leads WHERE id = ?', [id]);
     if (existingLeadResult.length === 0) {
@@ -145,11 +146,17 @@ export async function PUT(
     }
     const existingLeadDbInfo = existingLeadResult[0];
 
+    // Permission Check
+    if (requestingUserRole !== 'admin' && existingLeadDbInfo.ownerUserId !== requestingUserId) {
+      console.warn(`[API PUT /api/leads/${id}] Permission denied. User ${requestingUserId} is not owner or admin.`);
+      return NextResponse.json({ message: 'Permission denied: You can only edit leads you own, or you must be an admin.' }, { status: 403 });
+    }
+
     const dataToUpdate: Partial<Omit<Lead, 'id' | 'createdAt' | 'packageQuantities'>> & { package_quantities_json?: string | null } = {
       ...updatedLeadDataFromClient, 
       updatedAt: formatISO(new Date()), 
-      lastModifiedByUserId: updatedLeadDataFromClient.lastModifiedByUserId || SIMULATED_CURRENT_USER_ID_API,
-      ownerUserId: updatedLeadDataFromClient.ownerUserId || existingLeadDbInfo.ownerUserId,
+      lastModifiedByUserId: requestingUserId, // Always update lastModifiedByUserId
+      ownerUserId: updatedLeadDataFromClient.ownerUserId || existingLeadDbInfo.ownerUserId, // Preserve original owner or use passed one
       paymentConfirmationStatus: updatedLeadDataFromClient.paymentConfirmationStatus || 'CONFIRMED',
     };
     
@@ -161,16 +168,13 @@ export async function PUT(
     } else if (dataToUpdate.month instanceof Date) { 
         dataToUpdate.month = formatISO(dataToUpdate.month);
     }
-
     
     if (updatedLeadDataFromClient.packageQuantities) {
         dataToUpdate.package_quantities_json = JSON.stringify(updatedLeadDataFromClient.packageQuantities);
     } else if (updatedLeadDataFromClient.packageQuantities === null || updatedLeadDataFromClient.packageQuantities === undefined) {
         dataToUpdate.package_quantities_json = null;
     }
-    
     delete (dataToUpdate as any).packageQuantities;
-
 
     const { clause, values: updateValues } = buildLeadUpdateSetClause(dataToUpdate);
 
@@ -239,7 +243,18 @@ export async function DELETE(
 ) {
   try {
     const id = params.id;
-    console.log(`[API DELETE /api/leads/${id}] Attempting to delete lead.`);
+    // For DELETE, we expect userId and role in the body for simulation purposes
+    const requestBody = await request.json();
+    const { requestingUserId, requestingUserRole } = requestBody as { requestingUserId: string; requestingUserRole: string };
+
+    console.log(`[API DELETE /api/leads/${id}] Attempting to delete lead. User: ${requestingUserId}, Role: ${requestingUserRole}`);
+
+    // Permission Check: Only admin can delete
+    if (requestingUserRole !== 'admin') {
+      console.warn(`[API DELETE /api/leads/${id}] Permission denied. User ${requestingUserId} is not an admin.`);
+      return NextResponse.json({ message: 'Permission denied: Only administrators can delete leads.' }, { status: 403 });
+    }
+    
     const result: any = await query('DELETE FROM leads WHERE id = ?', [id]);
     console.log(`[API DELETE /api/leads/${id}] DB Delete Result:`, result);
     
@@ -261,4 +276,3 @@ export async function DELETE(
     return NextResponse.json({ message: 'Failed to delete lead', errorDetails: errorMessage }, { status: 500 });
   }
 }
-

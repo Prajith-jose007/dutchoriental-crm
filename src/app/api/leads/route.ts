@@ -5,8 +5,6 @@ import type { Lead, LeadStatus, ModeOfPayment, LeadType, LeadPackageQuantity, Pa
 import { query } from '@/lib/db';
 import { formatISO, parseISO, isValid } from 'date-fns';
 
-const SIMULATED_CURRENT_USER_ID_API = 'DO-user-api'; // Placeholder for server-side user ID
-
 const ensureISOFormat = (dateString?: string | Date): string | null => {
   if (!dateString) return null;
   if (dateString instanceof Date) {
@@ -34,6 +32,8 @@ function generateNewLeadId(existingLeadIds: string[]): string {
     }
   });
   const nextNum = maxNum + 1;
+  // Pad with leading zeros if you want consistent length like DO-001, DO-010, DO-100
+  // For simplicity, just returning number. Adjust padding as needed.
   return `${prefix}${String(nextNum).padStart(3, '0')}`;
 }
 
@@ -106,8 +106,12 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const newLeadData = await request.json() as Lead; 
+    const requestBody = await request.json();
+    const { requestingUserId, requestingUserRole, ...newLeadData } = requestBody as Lead & { requestingUserId: string; requestingUserRole: string };
+    
     console.log('[API POST /api/leads] Received newLeadData:', JSON.stringify(newLeadData, null, 2));
+    console.log(`[API POST /api/leads] Requesting User: ${requestingUserId}, Role: ${requestingUserRole}`);
+
 
     if (!newLeadData.clientName || !newLeadData.agent || !newLeadData.yacht || !newLeadData.month) {
       console.error('[API POST /api/leads] Validation Error: Missing required fields (clientName, agent, yacht, month/event date).');
@@ -158,8 +162,8 @@ export async function POST(request: NextRequest) {
 
       createdAt: formattedCreatedAt,
       updatedAt: formattedUpdatedAt,
-      lastModifiedByUserId: newLeadData.lastModifiedByUserId || SIMULATED_CURRENT_USER_ID_API, 
-      ownerUserId: newLeadData.ownerUserId || newLeadData.lastModifiedByUserId || SIMULATED_CURRENT_USER_ID_API, 
+      lastModifiedByUserId: requestingUserId, 
+      ownerUserId: newLeadData.ownerUserId || requestingUserId, 
     };
     
     console.log('[API POST /api/leads] leadToStore (to be inserted):', JSON.stringify(leadToStore, null, 2));
@@ -222,7 +226,6 @@ export async function POST(request: NextRequest) {
         return NextResponse.json(finalLead, { status: 201 });
       }
       console.warn('[API POST /api/leads] Lead inserted, but failed to fetch for confirmation. Returning original payload with adaptations.');
-      // Adapt leadToStore back to Lead type for response
       const responseLead: Lead = { ...leadToStore, packageQuantities: newLeadData.packageQuantities || [] };
       delete (responseLead as any).package_quantities_json;
       return NextResponse.json(responseLead, { status: 201 });
@@ -241,4 +244,3 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ message: 'Failed to create lead', errorDetails: errorMessage }, { status: 500 });
   }
 }
-

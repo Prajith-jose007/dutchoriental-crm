@@ -16,7 +16,8 @@ import { DatePicker } from '@/components/ui/date-picker';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format, parseISO, isWithinInterval, isValid, formatISO, getYear as getFullYear, getMonth as getMonthIndex } from 'date-fns';
 
-const SIMULATED_CURRENT_USER_ID = 'DO-user1';
+const USER_ID_STORAGE_KEY = 'currentUserId';
+const USER_ROLE_STORAGE_KEY = 'currentUserRole';
 
 // Updated CSV Header Mapping
 const csvHeaderMapping: { [csvHeaderKey: string]: keyof Omit<Lead, 'packageQuantities'> | 'package_quantities_json' } = {
@@ -48,6 +49,8 @@ const csvHeaderMapping: { [csvHeaderKey: string]: keyof Omit<Lead, 'packageQuant
 
 const convertCsvValue = (key: keyof Omit<Lead, 'packageQuantities'> | 'package_quantities_json', value: string): any => {
   const trimmedValue = value ? String(value).trim() : '';
+  const currentUserId = typeof window !== 'undefined' ? localStorage.getItem(USER_ID_STORAGE_KEY) : null;
+
 
   if (trimmedValue === '' || value === null || value === undefined) {
     switch (key) {
@@ -61,6 +64,8 @@ const convertCsvValue = (key: keyof Omit<Lead, 'packageQuantities'> | 'package_q
       case 'notes': return '';
       case 'month': return formatISO(new Date());
       case 'createdAt': case 'updatedAt': return formatISO(new Date());
+      case 'lastModifiedByUserId': return currentUserId || undefined;
+      case 'ownerUserId': return currentUserId || undefined;
       case 'package_quantities_json': return null;
       default: return undefined;
     }
@@ -137,8 +142,13 @@ export default function LeadsPage() {
   const [paymentConfirmationStatusFilter, setPaymentConfirmationStatusFilter] = useState<PaymentConfirmationStatus | 'all'>('all');
   const [selectedYachtId, setSelectedYachtId] = useState<string>('all');
   const [selectedAgentId, setSelectedAgentId] = useState<string>('all');
-  const [selectedUserId, setSelectedUserId] = useState<string>('all');
+  const [selectedUserIdFilter, setSelectedUserIdFilter] = useState<string>('all');
   const [isImporting, setIsImporting] = useState(false);
+
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+
 
   const fetchAllData = async () => {
     setIsLoading(true);
@@ -192,6 +202,15 @@ export default function LeadsPage() {
   };
 
   useEffect(() => {
+    try {
+      const storedUserId = localStorage.getItem(USER_ID_STORAGE_KEY);
+      const storedUserRole = localStorage.getItem(USER_ROLE_STORAGE_KEY);
+      setCurrentUserId(storedUserId);
+      setCurrentUserRole(storedUserRole);
+      setIsAdmin(storedUserRole === 'admin');
+    } catch (e) {
+      console.error("Error accessing localStorage for user details:", e);
+    }
     fetchAllData();
   }, []);
 
@@ -206,10 +225,14 @@ export default function LeadsPage() {
   };
 
   const handleLeadFormSubmit = async (submittedLeadData: Lead) => {
+    if (!currentUserId || !currentUserRole) {
+      toast({ title: 'Authentication Error', description: 'User details not found. Please re-login.', variant: 'destructive' });
+      return;
+    }
     setIsLoading(true);
-    const payload: Lead = {
+    const payload: Lead & { requestingUserId: string; requestingUserRole: string } = {
       ...submittedLeadData,
-      lastModifiedByUserId: SIMULATED_CURRENT_USER_ID,
+      lastModifiedByUserId: currentUserId,
       updatedAt: new Date().toISOString(),
       month: submittedLeadData.month ? formatISO(parseISO(submittedLeadData.month)) : formatISO(new Date()),
       paymentConfirmationStatus: submittedLeadData.paymentConfirmationStatus,
@@ -217,15 +240,17 @@ export default function LeadsPage() {
         ...pq,
         quantity: Number(pq.quantity || 0),
         rate: Number(pq.rate || 0)
-      })) || []
+      })) || [],
+      requestingUserId: currentUserId,
+      requestingUserRole: currentUserRole,
     };
 
     if (!editingLead) {
-      payload.ownerUserId = SIMULATED_CURRENT_USER_ID;
+      payload.ownerUserId = currentUserId; // Set owner for new leads
       payload.createdAt = new Date().toISOString();
-      delete payload.id;
+      delete payload.id; // Let API generate ID for new lead
     } else {
-      payload.ownerUserId = editingLead.ownerUserId || SIMULATED_CURRENT_USER_ID;
+      payload.ownerUserId = editingLead.ownerUserId || currentUserId; // Preserve original owner or set if missing
       payload.createdAt = editingLead.createdAt || new Date().toISOString();
     }
 
@@ -278,6 +303,10 @@ export default function LeadsPage() {
   };
 
   const handleDeleteLead = async (leadId: string) => {
+    if (!currentUserId || !currentUserRole) {
+      toast({ title: 'Authentication Error', description: 'User details not found. Please re-login.', variant: 'destructive' });
+      return;
+    }
     if (!confirm(`Are you sure you want to delete lead ${leadId}? This action cannot be undone.`)) {
       return;
     }
@@ -285,6 +314,11 @@ export default function LeadsPage() {
     try {
       const response = await fetch(`/api/leads/${leadId}`, {
         method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' }, // Important for sending body
+        body: JSON.stringify({ 
+          requestingUserId: currentUserId,
+          requestingUserRole: currentUserRole 
+        }),
       });
       if (!response.ok) {
         let errorData = { message: `API Error: ${response.status} ${response.statusText}`, details: '' };
@@ -309,6 +343,10 @@ export default function LeadsPage() {
   };
 
   const handleCsvImport = async (file: File) => {
+    if (!currentUserId) {
+      toast({ title: 'Error', description: 'Current user ID not found. Cannot set owner for imported leads.', variant: 'destructive' });
+      return;
+    }
     setIsImporting(true);
     toast({ title: 'Import Started', description: 'Processing CSV file... This may take a few moments.' });
     const startTime = Date.now();
@@ -407,8 +445,8 @@ export default function LeadsPage() {
             balanceAmount: parsedRow.balanceAmount ?? 0,
             createdAt: parsedRow.createdAt || formatISO(new Date()),
             updatedAt: formatISO(new Date()),
-            lastModifiedByUserId: SIMULATED_CURRENT_USER_ID,
-            ownerUserId: parsedRow.ownerUserId || SIMULATED_CURRENT_USER_ID,
+            lastModifiedByUserId: currentUserId, // Set current user as modifier
+            ownerUserId: parsedRow.ownerUserId || currentUserId, // Set current user as owner if not specified
           };
           if (i <= 2) console.log(`[CSV Import Leads] Processing Row ${i} - Full Lead:`, JSON.parse(JSON.stringify(fullLead)));
 
@@ -497,19 +535,19 @@ export default function LeadsPage() {
 
       if (selectedYachtId !== 'all' && lead.yacht !== selectedYachtId) return false;
       if (selectedAgentId !== 'all' && lead.agent !== selectedAgentId) return false;
-      if (selectedUserId !== 'all' && (lead.lastModifiedByUserId !== selectedUserId && lead.ownerUserId !== selectedUserId) ) return false;
+      if (selectedUserIdFilter !== 'all' && (lead.lastModifiedByUserId !== selectedUserIdFilter && lead.ownerUserId !== selectedUserIdFilter) ) return false;
       if (statusFilter !== 'all' && lead.status !== statusFilter) return false;
       if (paymentConfirmationStatusFilter !== 'all' && lead.paymentConfirmationStatus !== paymentConfirmationStatusFilter) return false;
       return true;
     });
-  }, [allLeads, startDate, endDate, selectedYachtId, selectedAgentId, selectedUserId, statusFilter, paymentConfirmationStatusFilter]);
+  }, [allLeads, startDate, endDate, selectedYachtId, selectedAgentId, selectedUserIdFilter, statusFilter, paymentConfirmationStatusFilter]);
 
   const resetFilters = () => {
     setStartDate(undefined);
     setEndDate(undefined);
     setSelectedYachtId('all');
     setSelectedAgentId('all');
-    setSelectedUserId('all');
+    setSelectedUserIdFilter('all');
     setStatusFilter('all');
     setPaymentConfirmationStatusFilter('all');
   };
@@ -746,7 +784,7 @@ export default function LeadsPage() {
         </div>
         <div>
           <Label htmlFor="user-filter-leads">User (Modified/Owner)</Label>
-          <Select value={selectedUserId} onValueChange={setSelectedUserId}>
+          <Select value={selectedUserIdFilter} onValueChange={setSelectedUserIdFilter}>
             <SelectTrigger id="user-filter-leads"><SelectValue placeholder="All Users" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Users</SelectItem>
@@ -767,7 +805,8 @@ export default function LeadsPage() {
         agentMap={agentMap}
         yachtMap={yachtMap}
         allYachts={allYachts} 
-        currentUserId={SIMULATED_CURRENT_USER_ID}
+        currentUserId={currentUserId}
+        isAdmin={isAdmin}
       />
 
       {isLeadDialogOpen && (
@@ -776,9 +815,9 @@ export default function LeadsPage() {
           onOpenChange={setIsLeadDialogOpen}
           lead={editingLead}
           onSubmitSuccess={handleLeadFormSubmit}
+          currentUserId={currentUserId}
         />
       )}
     </div>
   );
 }
-

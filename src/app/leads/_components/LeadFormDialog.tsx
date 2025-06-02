@@ -40,7 +40,6 @@ import { useToast } from '@/hooks/use-toast';
 import { useEffect, useState, useMemo } from 'react';
 import { format, formatISO, parseISO, isValid } from 'date-fns';
 
-const SIMULATED_CURRENT_USER_ID = 'DO-user1'; 
 
 const leadPackageQuantitySchema = z.object({
   packageId: z.string().min(1, "Package ID is required"), 
@@ -84,16 +83,17 @@ interface LeadFormDialogProps {
   onOpenChange: (open: boolean) => void;
   lead?: Lead | null;
   onSubmitSuccess: (data: Lead) => void;
+  currentUserId?: string | null;
 }
 
-const getDefaultFormValues = (existingLead?: Lead | null): LeadFormData => {
+const getDefaultFormValues = (existingLead?: Lead | null, currentUserId?: string | null): LeadFormData => {
   let initialPackageQuantities: LeadPackageQuantity[] = [];
   if (existingLead?.packageQuantities && Array.isArray(existingLead.packageQuantities)) {
     initialPackageQuantities = existingLead.packageQuantities.map(pq => ({
       packageId: String(pq.packageId || ''),
       packageName: String(pq.packageName || 'Unknown Package'),
       quantity: Number(pq.quantity || 0),
-      rate: Number(pq.rate || 0),
+      rate: Number(Number(pq.rate || 0).toFixed(2)),
     }));
   }
 
@@ -116,15 +116,15 @@ const getDefaultFormValues = (existingLead?: Lead | null): LeadFormData => {
     netAmount: Number(Number(existingLead?.netAmount || 0).toFixed(2)),
     paidAmount: Number(Number(existingLead?.paidAmount || 0).toFixed(2)), 
     balanceAmount: Math.abs(Number(Number(existingLead?.balanceAmount || 0).toFixed(2))),
-    lastModifiedByUserId: existingLead?.lastModifiedByUserId || SIMULATED_CURRENT_USER_ID,
-    ownerUserId: existingLead?.ownerUserId || undefined,
+    lastModifiedByUserId: existingLead?.lastModifiedByUserId || currentUserId || undefined,
+    ownerUserId: existingLead?.ownerUserId || currentUserId || undefined,
     createdAt: existingLead?.createdAt || undefined,
     updatedAt: existingLead?.updatedAt || undefined,
   };
 };
 
 
-export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: LeadFormDialogProps) {
+export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, currentUserId }: LeadFormDialogProps) {
   const { toast } = useToast();
   const [allAgents, setAllAgents] = useState<Agent[]>([]);
   const [allYachts, setAllYachts] = useState<Yacht[]>([]);
@@ -133,7 +133,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
 
   const form = useForm<LeadFormData>({
     resolver: zodResolver(leadFormSchema),
-    defaultValues: getDefaultFormValues(lead),
+    defaultValues: getDefaultFormValues(lead, currentUserId),
   });
 
   const { fields: packageQuantityFields, replace: replacePackageQuantities } = useFieldArray({
@@ -208,7 +208,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
     if (selectedYacht && selectedYacht.packages && Array.isArray(selectedYacht.packages)) {
       const newPQs = selectedYacht.packages.map(yachtPkg => {
         const existingLeadPQ = lead?.packageQuantities?.find(lpq => lpq.packageId === yachtPkg.id);
-        const rateFromYacht = Number(yachtPkg.rate || 0); 
+        const rateFromYacht = Number(Number(yachtPkg.rate || 0).toFixed(2)); 
         return {
           packageId: String(yachtPkg.id || `pkg-id-${Date.now()}-${Math.random()}`),
           packageName: String(yachtPkg.name || 'Unnamed Package'),
@@ -233,7 +233,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
     const currentAgentId = watchedAgentId;
     const currentPackageQuantities = watchedPackageQuantities || []; 
     const currentPaidAmountValue = form.getValues('paidAmount'); 
-    const currentPaidAmount = Number(Number(currentPaidAmountValue || 0).toFixed(2)); // Ensure paid amount is also treated as 2 decimal for calc
+    const currentPaidAmount = Number(Number(currentPaidAmountValue || 0).toFixed(2));
 
     console.log('[CalcDebug] Watched Values: YachtID=', currentYachtId, 'AgentID=', currentAgentId, 'PaidAmountInput=', currentPaidAmountValue, 'NumericPaid=', currentPaidAmount);
     console.log('[CalcDebug] Watched PackageQuantities:', JSON.parse(JSON.stringify(currentPackageQuantities)));
@@ -257,7 +257,6 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
     currentPackageQuantities.forEach((pqItem, index) => {
       const quantity = Number(pqItem.quantity || 0);
       const yachtPackageDetails = selectedYachtForCalc.packages?.find(p => p.id === pqItem.packageId);
-      // Ensure rate from yacht package is treated as a number rounded to 2 decimal places if it comes from user input potentially
       const rateFromYacht = yachtPackageDetails ? Number(Number(yachtPackageDetails.rate || 0).toFixed(2)) : 0;
 
       console.log(`[CalcDebug] Processing PkgItem[${index}]: ID='${pqItem.packageId}', Name='${pqItem.packageName}', Qty=${quantity}, RateFromYacht=${rateFromYacht}`);
@@ -305,7 +304,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
 
   useEffect(() => {
     if (isOpen) {
-      form.reset(getDefaultFormValues(lead));
+      form.reset(getDefaultFormValues(lead, currentUserId));
       console.log('[LeadForm] Form reset. Lead:', lead ? JSON.parse(JSON.stringify(lead)) : 'New Lead');
       
       const agentIdForCommission = lead?.agent || form.getValues('agent');
@@ -318,7 +317,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
          console.log(`[LeadForm] Reset: No agent, commission set to 0%`);
       }
     }
-  }, [lead, form, isOpen, allAgents, allYachts]); 
+  }, [lead, form, isOpen, allAgents, allYachts, currentUserId]); 
 
 
   function onSubmit(data: LeadFormData) {
@@ -329,7 +328,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
       data.packageQuantities.forEach(pqItem => {
         const quantity = Number(pqItem.quantity || 0);
         const yachtPackage = selectedYachtForSubmit.packages?.find(p => p.id === pqItem.packageId);
-        const rate = yachtPackage ? Number(Number(yachtPackage.rate || 0).toFixed(2)) : 0; // Use rounded rate
+        const rate = yachtPackage ? Number(Number(yachtPackage.rate || 0).toFixed(2)) : 0;
         if (quantity > 0 && rate > 0) {
           rawFinalTotalAmount += quantity * rate;
         }
@@ -341,13 +340,13 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
     const finalCommissionPercentage = selectedAgentForSubmit ? Number(selectedAgentForSubmit.discount || 0) : 0;
     const finalCommissionAmount = Number(((finalTotalAmount * finalCommissionPercentage) / 100).toFixed(2));
     const finalNetAmount = Number((finalTotalAmount - finalCommissionAmount).toFixed(2));
-    const finalPaidAmount = Number(Number(data.paidAmount || 0).toFixed(2)); // Round paid amount
+    const finalPaidAmount = Number(Number(data.paidAmount || 0).toFixed(2));
     const actualSignedBalanceAmount = Number((finalNetAmount - finalPaidAmount).toFixed(2));
 
     const finalPackageQuantities = (data.packageQuantities && Array.isArray(data.packageQuantities) && selectedYachtForSubmit && selectedYachtForSubmit.packages && Array.isArray(selectedYachtForSubmit.packages))
       ? data.packageQuantities.map(pq => {
           const yachtPackage = selectedYachtForSubmit.packages?.find(p => p.id === pq.packageId);
-          const rate = yachtPackage ? Number(Number(yachtPackage.rate || 0).toFixed(2)) : 0; // Use rounded rate
+          const rate = yachtPackage ? Number(Number(yachtPackage.rate || 0).toFixed(2)) : 0; 
           return {
             packageId: String(pq.packageId),
             packageName: String(pq.packageName),
@@ -364,8 +363,8 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
       paymentConfirmationStatus: data.paymentConfirmationStatus,
       createdAt: lead?.createdAt || formatISO(new Date()),
       updatedAt: formatISO(new Date()),
-      lastModifiedByUserId: SIMULATED_CURRENT_USER_ID,
-      ownerUserId: lead?.ownerUserId || SIMULATED_CURRENT_USER_ID,
+      lastModifiedByUserId: currentUserId || undefined, // Use currentUserId from props
+      ownerUserId: lead?.ownerUserId || currentUserId || undefined, // Use currentUserId for new leads or preserve existing
       
       packageQuantities: finalPackageQuantities,
       totalAmount: finalTotalAmount,

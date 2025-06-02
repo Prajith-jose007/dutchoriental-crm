@@ -64,7 +64,7 @@ const generateLeadColumns = (allYachts: Yacht[]): LeadTableColumn[] => {
     { accessorKey: 'status', header: 'Status' },
     { accessorKey: 'month', header: 'Lead/Event Date', isShortDate: true },
     { accessorKey: 'type', header: 'Type' },
-    { accessorKey: 'paymentConfirmationStatus', header: 'Pay Status' }, // New column
+    { accessorKey: 'paymentConfirmationStatus', header: 'Pay Status' },
     { accessorKey: 'transactionId', header: 'Transaction ID' },
     { accessorKey: 'modeOfPayment', header: 'Payment Mode' },
     { accessorKey: 'totalGuests', header: 'Total Guests', isNumeric: true },
@@ -134,7 +134,8 @@ interface LeadsTableProps {
   agentMap: { [id: string]: string };
   yachtMap: { [id: string]: string };
   allYachts: Yacht[];
-  currentUserId?: string;
+  currentUserId?: string | null;
+  isAdmin?: boolean;
 }
 
 export function LeadsTable({
@@ -145,7 +146,8 @@ export function LeadsTable({
   agentMap,
   yachtMap,
   allYachts,
-  currentUserId
+  currentUserId,
+  isAdmin
 }: LeadsTableProps) {
 
   const leadColumns = useMemo(() => generateLeadColumns(allYachts), [allYachts]);
@@ -162,8 +164,8 @@ export function LeadsTable({
   const getPaymentConfirmationStatusVariant = (status?: PaymentConfirmationStatus) => {
     if (!status) return 'outline';
     switch (status) {
-      case 'PAID': return 'default'; // Green or primary
-      case 'CONFIRMED': return 'secondary'; // Yellow or secondary
+      case 'PAID': return 'default'; 
+      case 'CONFIRMED': return 'secondary'; 
       default: return 'outline';
     }
   };
@@ -221,8 +223,9 @@ export function LeadsTable({
       return formatNumeric(calculateTotalGuestsFromPackageQuantities(lead));
     }
     if (column.accessorKey === 'id') {
+      const canEdit = isAdmin || lead.ownerUserId === currentUserId;
       return (
-        <Button variant="link" className="p-0 h-auto font-medium" onClick={() => onEditLead(lead)}>
+        <Button variant="link" className="p-0 h-auto font-medium" onClick={() => onEditLead(lead)} disabled={!canEdit}>
           {String(lead.id).length > 10 ? String(lead.id).substring(0, 4) + '...' + String(lead.id).substring(String(lead.id).length - 4) : lead.id}
         </Button>
       );
@@ -230,7 +233,7 @@ export function LeadsTable({
     if (column.accessorKey === 'status') {
       return <Badge variant={getStatusVariant(lead.status)}>{lead.status}</Badge>;
     }
-    if (column.accessorKey === 'paymentConfirmationStatus') { // New
+    if (column.accessorKey === 'paymentConfirmationStatus') { 
       return <Badge variant={getPaymentConfirmationStatusVariant(lead.paymentConfirmationStatus)}>{lead.paymentConfirmationStatus}</Badge>;
     }
     if (column.isAgentLookup) {
@@ -309,14 +312,14 @@ export function LeadsTable({
                           <DropdownMenuLabel>Actions</DropdownMenuLabel>
                           <DropdownMenuItem
                             onClick={() => onEditLead(lead)}
-                            disabled={!!currentUserId && !!lead.ownerUserId && lead.ownerUserId !== currentUserId && currentUserId !== 'DO-admin'}
+                            disabled={!(isAdmin || lead.ownerUserId === currentUserId)}
                           >
                             Edit Lead
                           </DropdownMenuItem>
                           <DropdownMenuItem
                             className="text-destructive"
                             onClick={() => onDeleteLead(lead.id)}
-                            disabled={!!currentUserId && !!lead.ownerUserId && lead.ownerUserId !== currentUserId && currentUserId !== 'DO-admin'}
+                            disabled={!isAdmin}
                           >
                             Delete Lead
                           </DropdownMenuItem>

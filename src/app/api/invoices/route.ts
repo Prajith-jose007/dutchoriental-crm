@@ -5,37 +5,35 @@ import type { Invoice } from '@/lib/types';
 import { query } from '@/lib/db';
 import { formatISO, parseISO, isValid, format } from 'date-fns';
 
-// Helper to ensure date strings are in a consistent format for DB or client
-const ensureISOFormat = (dateString?: string | Date): string | null => {
-  if (!dateString) return null;
-  if (dateString instanceof Date) {
-    if (isValid(dateString)) return formatISO(dateString);
+// Helper to ensure date strings are in a consistent ISO format for DB or client
+const ensureISOFormat = (dateSource?: string | Date, fieldName?: string): string | null => {
+  if (!dateSource) return null;
+
+  if (dateSource instanceof Date) {
+    if (isValid(dateSource)) return formatISO(dateSource);
+    console.warn(`[API Invoices ensureISOFormat - ${fieldName || 'unknown field'}]: Received invalid Date object:`, dateSource);
     return null;
   }
-  try {
-    // Try parsing as ISO first
-    const parsedISO = parseISO(dateString);
-    if (isValid(parsedISO)) return formatISO(parsedISO);
-    
-    // If not ISO, try common formats like YYYY-MM-DD (often from DATE column)
-    // For a DATE column, mysql2 might return a string like 'YYYY-MM-DD' or a Date obj at midnight UTC.
-    // If it's already 'YYYY-MM-DD', parseISO will handle it.
-    // If it's a Date object, formatISO handles it.
-    // This is mostly a fallback if the string is not a full ISO.
-    const parts = dateString.split(/[\/\-T ]/); // Split by common date/time delimiters
-    if (parts.length >= 3) {
-        const year = parseInt(parts[0]);
-        const month = parseInt(parts[1]);
-        const day = parseInt(parts[2]);
-        if (!isNaN(year) && !isNaN(month) && !isNaN(day)) {
-            const simpleDate = new Date(year, month -1, day);
-            if (isValid(simpleDate)) return formatISO(simpleDate);
-        }
+
+  if (typeof dateSource === 'string') {
+    try {
+      const parsedDate = parseISO(dateSource); // parseISO is robust for ISO 8601 and common SQL date/datetime strings
+      if (isValid(parsedDate)) {
+        return formatISO(parsedDate); // Return full ISO 8601 string
+      } else {
+        console.warn(`[API Invoices ensureISOFormat - ${fieldName || 'unknown field'}]: Failed to parse date string "${dateSource}" using parseISO. Returning original string or null based on policy.`);
+        // Depending on strictness, you might return dateSource or null.
+        // For now, returning null if parseISO fails for a string that isn't a Date object.
+        return null;
+      }
+    } catch (e) {
+      console.error(`[API Invoices ensureISOFormat - ${fieldName || 'unknown field'}]: Exception parsing date string "${dateSource}". Error:`, (e as Error).message);
+      return null;
     }
-    return dateString; // Return original if cannot parse confidently
-  } catch(e) {
-    return dateString; // Return original on error
   }
+
+  console.warn(`[API Invoices ensureISOFormat - ${fieldName || 'unknown field'}]: dateSource is not a string or Date object. Value:`, dateSource);
+  return null;
 };
 
 export async function GET(request: NextRequest) {
@@ -44,16 +42,20 @@ export async function GET(request: NextRequest) {
     const invoicesDataDb: any[] = await query('SELECT * FROM invoices ORDER BY createdAt DESC');
     console.log('[API GET /api/invoices] Raw DB Data (first item):', invoicesDataDb.length > 0 ? invoicesDataDb[0] : 'No invoices from DB');
     
-    const invoices: Invoice[] = invoicesDataDb.map(inv => ({
-      id: String(inv.id || ''),
-      leadId: inv.leadId || '',
-      clientName: inv.clientName || '',
-      amount: parseFloat(inv.amount || 0),
-      // For dueDate, which is DATE in DB, ensureISOFormat will convert to full ISO string
-      dueDate: inv.dueDate ? ensureISOFormat(inv.dueDate)! : formatISO(new Date()),
-      status: (inv.status || 'Pending') as Invoice['status'],
-      createdAt: inv.createdAt ? ensureISOFormat(inv.createdAt)! : formatISO(new Date()),
-    }));
+    const invoices: Invoice[] = invoicesDataDb.map(inv => {
+      const parsedDueDate = inv.dueDate ? ensureISOFormat(inv.dueDate, 'dueDate') : null;
+      const parsedCreatedAt = inv.createdAt ? ensureISOFormat(inv.createdAt, 'createdAt') : null;
+
+      return {
+        id: String(inv.id || ''),
+        leadId: inv.leadId || '',
+        clientName: inv.clientName || '',
+        amount: parseFloat(inv.amount || 0),
+        dueDate: parsedDueDate || formatISO(new Date()), // Fallback to current date if parsing fails or raw is null
+        status: (inv.status || 'Pending') as Invoice['status'],
+        createdAt: parsedCreatedAt || formatISO(new Date()), // Fallback
+      };
+    });
 
     console.log('[API GET /api/invoices] Mapped Invoices Data (first item):', invoices.length > 0 ? invoices[0] : 'No invoices mapped');
     return NextResponse.json(invoices, { status: 200 });
@@ -90,12 +92,23 @@ export async function POST(request: NextRequest) {
     }
     
     const now = new Date();
-    // dueDate from client is ISO string, format to YYYY-MM-DD for MySQL DATE column
-    const formattedDueDate = newInvoiceData.dueDate ? format(parseISO(newInvoiceData.dueDate), 'yyyy-MM-dd') : format(now, 'yyyy-MM-dd');
-    // createdAt from client is ISO string, or use current time. MySQL DATETIME column can take full ISO.
-    const formattedCreatedAt = newInvoiceData.createdAt && isValid(parseISO(newInvoiceData.createdAt)) 
-                               ? ensureISOFormat(newInvoiceData.createdAt)! 
-                               : formatISO(now);
+    let formattedDueDate: string;
+    try {
+        const parsedClientDueDate = parseISO(newInvoiceData.dueDate);
+        if (!isValid(parsedClientDueDate)) throw new Error('Invalid client dueDate format');
+        formattedDueDate = format(parsedClientDueDate, 'yyyy-MM-dd');
+    } catch (e) {
+        console.warn(`[API POST /api/invoices] Invalid dueDate from client: ${newInvoiceData.dueDate}. Defaulting. Error: ${(e as Error).message}`);
+        formattedDueDate = format(now, 'yyyy-MM-dd');
+    }
+    
+    let formattedCreatedAt: string;
+    if (newInvoiceData.createdAt && isValid(parseISO(newInvoiceData.createdAt))) {
+        formattedCreatedAt = ensureISOFormat(newInvoiceData.createdAt, 'createdAtPOST') || formatISO(now);
+    } else {
+        formattedCreatedAt = formatISO(now);
+    }
+
 
     const invoiceToStore: Invoice = {
       id: newInvoiceData.id,
@@ -112,30 +125,34 @@ export async function POST(request: NextRequest) {
       'INSERT INTO invoices (id, leadId, clientName, amount, dueDate, status, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?)',
       [
         invoiceToStore.id, invoiceToStore.leadId, invoiceToStore.clientName, invoiceToStore.amount,
-        invoiceToStore.dueDate, // YYYY-MM-DD format
-        invoiceToStore.status, invoiceToStore.createdAt // Full ISO string
+        invoiceToStore.dueDate, 
+        invoiceToStore.status, invoiceToStore.createdAt
       ]
     );
     console.log('[API POST /api/invoices] DB Insert Result:', result);
 
     if (result.affectedRows === 1) {
-      // Fetch and return for consistency, ensure dueDate is also ISO formatted for client
       const createdInvoiceDb: any[] = await query('SELECT * FROM invoices WHERE id = ?', [invoiceToStore.id]);
       if (createdInvoiceDb.length > 0) {
           const dbInv = createdInvoiceDb[0];
+          const parsedDbDueDate = dbInv.dueDate ? ensureISOFormat(dbInv.dueDate, 'dueDatePOSTFetch') : null;
+          const parsedDbCreatedAt = dbInv.createdAt ? ensureISOFormat(dbInv.createdAt, 'createdAtPOSTFetch') : null;
+
           const finalInvoice: Invoice = {
-              ...dbInv,
+              id: String(dbInv.id || ''),
+              leadId: dbInv.leadId || '',
+              clientName: dbInv.clientName || '',
               amount: parseFloat(dbInv.amount || 0),
-              dueDate: dbInv.dueDate ? ensureISOFormat(dbInv.dueDate)! : formatISO(new Date()),
-              createdAt: dbInv.createdAt ? ensureISOFormat(dbInv.createdAt)! : formatISO(new Date()),
+              dueDate: parsedDbDueDate || formatISO(new Date()),
+              status: (dbInv.status || 'Pending') as Invoice['status'],
+              createdAt: parsedDbCreatedAt || formatISO(new Date()),
           };
           console.log('[API POST /api/invoices] Successfully created invoice:', finalInvoice.id);
           return NextResponse.json(finalInvoice, { status: 201 });
       }
       console.warn('[API POST /api/invoices] Invoice inserted, but failed to fetch for confirmation.');
-      // Adjust invoiceToStore.dueDate to full ISO for client if returning this fallback
-      invoiceToStore.dueDate = ensureISOFormat(invoiceToStore.dueDate)!;
-      return NextResponse.json(invoiceToStore, { status: 201 });
+      const responseInvoice = { ...invoiceToStore, dueDate: ensureISOFormat(invoiceToStore.dueDate, 'dueDatePOSTFallback') || formatISO(new Date()) };
+      return NextResponse.json(responseInvoice, { status: 201 });
     } else {
       throw new Error('Failed to insert invoice into database');
     }
@@ -147,3 +164,4 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+

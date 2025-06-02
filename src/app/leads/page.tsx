@@ -33,6 +33,7 @@ const csvHeaderMapping: { [csvHeaderKey: string]: keyof Omit<Lead, 'packageQuant
   'modeofpayment': 'modeOfPayment', 'payment mode': 'modeOfPayment',
 
   'package_quantities_json': 'package_quantities_json',
+  'freeguestcount': 'freeGuestCount', 'free guests': 'freeGuestCount', 'free items': 'freeGuestCount',
 
   'totalamount': 'totalAmount',
   'commissionpercentage': 'commissionPercentage',
@@ -55,8 +56,9 @@ const convertCsvValue = (key: keyof Omit<Lead, 'packageQuantities'> | 'package_q
     switch (key) {
       case 'totalAmount': case 'commissionPercentage':
       case 'commissionAmount': case 'netAmount': case 'paidAmount': case 'balanceAmount':
+      case 'freeGuestCount': // New field default
         return 0;
-      case 'modeOfPayment': return 'CARD'; // Default to CARD
+      case 'modeOfPayment': return 'CARD'; 
       case 'status': return 'Balance';
       case 'type': return 'Private Cruise' as LeadType;
       case 'paymentConfirmationStatus': return 'CONFIRMED' as PaymentConfirmationStatus;
@@ -73,10 +75,11 @@ const convertCsvValue = (key: keyof Omit<Lead, 'packageQuantities'> | 'package_q
   switch (key) {
     case 'totalAmount': case 'commissionPercentage':
     case 'commissionAmount': case 'netAmount': case 'paidAmount': case 'balanceAmount':
+    case 'freeGuestCount': // New field conversion
       const num = parseFloat(trimmedValue);
       return isNaN(num) ? 0 : num;
     case 'modeOfPayment':
-      return modeOfPaymentOptions.includes(trimmedValue.toUpperCase() as ModeOfPayment) ? trimmedValue.toUpperCase() : 'CARD'; // Default to CARD
+      return modeOfPaymentOptions.includes(trimmedValue.toUpperCase() as ModeOfPayment) ? trimmedValue.toUpperCase() : 'CARD'; 
     case 'status':
       return leadStatusOptions.includes(trimmedValue as LeadStatus) ? trimmedValue : 'Balance';
     case 'type':
@@ -240,6 +243,7 @@ export default function LeadsPage() {
         quantity: Number(pq.quantity || 0),
         rate: Number(pq.rate || 0)
       })) || [],
+      freeGuestCount: Number(submittedLeadData.freeGuestCount || 0),
       requestingUserId: currentUserId,
       requestingUserRole: currentUserRole,
     };
@@ -434,8 +438,9 @@ export default function LeadsPage() {
             type: parsedRow.type || 'Private Cruise',
             paymentConfirmationStatus: parsedRow.paymentConfirmationStatus || 'CONFIRMED',
             transactionId: parsedRow.transactionId || undefined,
-            modeOfPayment: parsedRow.modeOfPayment || 'CARD', // Default to CARD
+            modeOfPayment: parsedRow.modeOfPayment || 'CARD', 
             packageQuantities: packageQuantities,
+            freeGuestCount: parsedRow.freeGuestCount || 0,
             totalAmount: parsedRow.totalAmount ?? 0,
             commissionPercentage: parsedRow.commissionPercentage ?? 0,
             commissionAmount: parsedRow.commissionAmount ?? 0,
@@ -595,7 +600,7 @@ export default function LeadsPage() {
 
     const baseHeadersPart1: string[] = [
       'ID', 'Client Name', 'Agent Name', 'Yacht Name', 'Status', 'Lead/Event Date', 'Type', 'Payment Confirmation Status',
-      'Transaction ID', 'Payment Mode', 'Total Guests',
+      'Transaction ID', 'Payment Mode', 'Total Guests', 'Free Guests',
     ];
 
     const financialAndAuditHeaders: string[] = [
@@ -636,6 +641,7 @@ export default function LeadsPage() {
           escapeCsvCell(lead.transactionId),
           escapeCsvCell(lead.modeOfPayment),
           escapeCsvCell(totalGuests),
+          escapeCsvCell(lead.freeGuestCount || 0), // New field for export
         ];
 
         const packageQtyValues = packageDataNamesForLookup.map(dataName =>

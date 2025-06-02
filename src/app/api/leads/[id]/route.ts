@@ -26,7 +26,7 @@ function buildLeadUpdateSetClause(data: Partial<Omit<Lead, 'id' | 'createdAt' | 
   
   const allowedKeys: (keyof Lead | 'package_quantities_json')[] = [ 
     'clientName', 'agent', 'yacht', 'status', 'month', 'notes', 'type', 'paymentConfirmationStatus', 'transactionId', 'modeOfPayment',
-    'package_quantities_json', 
+    'package_quantities_json', 'freeGuestCount',
     'totalAmount', 'commissionPercentage', 'commissionAmount',
     'netAmount', 'paidAmount', 'balanceAmount', 'updatedAt', 
     'lastModifiedByUserId', 'ownerUserId'
@@ -96,6 +96,7 @@ export async function GET(
         modeOfPayment: (dbLead.modeOfPayment || 'Online') as ModeOfPayment,
         
         packageQuantities: packageQuantities,
+        freeGuestCount: Number(dbLead.freeGuestCount || 0),
 
         totalAmount: parseFloat(dbLead.totalAmount || 0),
         commissionPercentage: parseFloat(dbLead.commissionPercentage || 0),
@@ -155,9 +156,10 @@ export async function PUT(
     const dataToUpdate: Partial<Omit<Lead, 'id' | 'createdAt' | 'packageQuantities'>> & { package_quantities_json?: string | null } = {
       ...updatedLeadDataFromClient, 
       updatedAt: formatISO(new Date()), 
-      lastModifiedByUserId: requestingUserId, // Always update lastModifiedByUserId
-      ownerUserId: updatedLeadDataFromClient.ownerUserId || existingLeadDbInfo.ownerUserId, // Preserve original owner or use passed one
+      lastModifiedByUserId: requestingUserId, 
+      ownerUserId: updatedLeadDataFromClient.ownerUserId || existingLeadDbInfo.ownerUserId, 
       paymentConfirmationStatus: updatedLeadDataFromClient.paymentConfirmationStatus || 'CONFIRMED',
+      freeGuestCount: Number(updatedLeadDataFromClient.freeGuestCount || 0),
     };
     
     delete (dataToUpdate as any).id;
@@ -215,6 +217,7 @@ export async function PUT(
         transactionId: dbLead.transactionId || undefined,
         modeOfPayment: (dbLead.modeOfPayment || 'Online') as ModeOfPayment,
         packageQuantities: pq,
+        freeGuestCount: Number(dbLead.freeGuestCount || 0),
         totalAmount: parseFloat(dbLead.totalAmount || 0), commissionPercentage: parseFloat(dbLead.commissionPercentage || 0),
         commissionAmount: parseFloat(dbLead.commissionAmount || 0), netAmount: parseFloat(dbLead.netAmount || 0),
         paidAmount: parseFloat(dbLead.paidAmount || 0), balanceAmount: parseFloat(dbLead.balanceAmount || 0),
@@ -243,7 +246,6 @@ export async function DELETE(
 ) {
   try {
     const id = params.id;
-    // For DELETE, we expect userId and role in the body for simulation purposes
     const requestBody = await request.json();
     const { requestingUserId, requestingUserRole } = requestBody as { requestingUserId: string; requestingUserRole: string };
 

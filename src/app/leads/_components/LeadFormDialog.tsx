@@ -62,6 +62,7 @@ const leadFormSchema = z.object({
   clientName: z.string().min(1, 'Client name is required'),
 
   packageQuantities: z.array(leadPackageQuantitySchema).optional().default([]),
+  freeGuestCount: z.coerce.number().min(0, "Free guest count must be non-negative").optional().default(0),
 
   totalAmount: z.coerce.number().default(0),
   commissionPercentage: z.coerce.number().min(0).max(100).default(0),
@@ -105,11 +106,12 @@ const getDefaultFormValues = (existingLead?: Lead | null, currentUserId?: string
     yacht: existingLead?.yacht || '',
     type: existingLead?.type || 'Private Cruise',
     paymentConfirmationStatus: existingLead?.paymentConfirmationStatus || 'CONFIRMED',
-    modeOfPayment: existingLead?.modeOfPayment || 'CARD', // Default to CARD
+    modeOfPayment: existingLead?.modeOfPayment || 'CARD', 
     clientName: existingLead?.clientName || '',
     notes: existingLead?.notes || '',
     transactionId: existingLead?.transactionId || '',
     packageQuantities: initialPackageQuantities,
+    freeGuestCount: Number(existingLead?.freeGuestCount || 0),
     totalAmount: Number(Number(existingLead?.totalAmount || 0).toFixed(2)),
     commissionPercentage: Number(existingLead?.commissionPercentage || 0),
     commissionAmount: Number(Number(existingLead?.commissionAmount || 0).toFixed(2)),
@@ -361,6 +363,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
       id: lead?.id || `temp-${Date.now()}`,
       month: data.month ? formatISO(data.month) : formatISO(new Date()),
       paymentConfirmationStatus: data.paymentConfirmationStatus,
+      freeGuestCount: Number(data.freeGuestCount || 0), // Ensure freeGuestCount is a number
       createdAt: lead?.createdAt || formatISO(new Date()),
       updatedAt: formatISO(new Date()),
       lastModifiedByUserId: currentUserId || undefined,
@@ -557,6 +560,26 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
                   <FormItem>
                     <FormLabel>Transaction ID (Optional)</FormLabel>
                     <FormControl><Input placeholder="e.g., 202500001" {...field} value={field.value || ''} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="freeGuestCount"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Free Guests/Items Count (Optional)</FormLabel>
+                    <FormControl>
+                      <Input 
+                        type="number" 
+                        placeholder="0" 
+                        {...field} 
+                        value={field.value || 0}
+                        onChange={e => field.onChange(parseInt(e.target.value,10) || 0)}
+                        min="0"
+                      />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}

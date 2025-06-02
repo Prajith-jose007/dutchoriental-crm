@@ -88,6 +88,7 @@ export interface Lead {
   clientName: string;
 
   packageQuantities?: LeadPackageQuantity[];
+  freeGuestCount?: number; // New field
 
   totalAmount: number;
   commissionPercentage: number;

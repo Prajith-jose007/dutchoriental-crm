@@ -130,11 +130,12 @@ export const placeholderLeads: Lead[] = [
     type: 'Dinner Cruise',
     paymentConfirmationStatus: 'PAID',
     transactionId: 'T20240715001',
-    modeOfPayment: 'CARD', // Updated
+    modeOfPayment: 'CARD',
     packageQuantities: [
       { packageId: 'lr-adult', packageName: 'ADULT', quantity: 50, rate: 250 },
       { packageId: 'lr-ad-alc', packageName: 'AD ALC', quantity: 30, rate: 350 },
     ],
+    freeGuestCount: 5, // Example value
     totalAmount: 23000,
     commissionPercentage: 10,
     commissionAmount: 2300,
@@ -156,10 +157,11 @@ export const placeholderLeads: Lead[] = [
     notes: 'Prospective client for regular sightseeing tours.',
     type: 'Superyacht Sightseeing Cruise',
     paymentConfirmationStatus: 'CONFIRMED',
-    modeOfPayment: 'CREDIT', // Updated
+    modeOfPayment: 'CREDIT',
     packageQuantities: [
       { packageId: 'ss-premium', packageName: 'PREMIUM', quantity: 20, rate: 299 },
     ],
+    freeGuestCount: 2, // Example value
     totalAmount: 5980,
     commissionPercentage: 15,
     commissionAmount: 897,
@@ -181,11 +183,12 @@ export const placeholderLeads: Lead[] = [
     notes: 'Birthday party, deposit paid.',
     type: 'Private Cruise',
     paymentConfirmationStatus: 'CONFIRMED',
-    modeOfPayment: 'CASH / CARD', // Updated
+    modeOfPayment: 'CASH / CARD',
     packageQuantities: [
       { packageId: 'private-hourly', packageName: 'Hourly Charter', quantity: 4, rate: 1500 },
       { packageId: 'private-softdrinks', packageName: 'Soft Drinks Package pp', quantity: 15, rate: 50},
     ],
+    freeGuestCount: 0,
     totalAmount: 6750,
     commissionPercentage: 10,
     commissionAmount: 675,

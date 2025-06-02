@@ -32,8 +32,6 @@ function generateNewLeadId(existingLeadIds: string[]): string {
     }
   });
   const nextNum = maxNum + 1;
-  // Pad with leading zeros if you want consistent length like DO-001, DO-010, DO-100
-  // For simplicity, just returning number. Adjust padding as needed.
   return `${prefix}${String(nextNum).padStart(3, '0')}`;
 }
 
@@ -75,6 +73,7 @@ export async function GET(request: NextRequest) {
         modeOfPayment: (dbLead.modeOfPayment || 'Online') as ModeOfPayment,
         
         packageQuantities: packageQuantities,
+        freeGuestCount: Number(dbLead.freeGuestCount || 0),
 
         totalAmount: parseFloat(dbLead.totalAmount || 0),
         commissionPercentage: parseFloat(dbLead.commissionPercentage || 0),
@@ -152,6 +151,7 @@ export async function POST(request: NextRequest) {
       modeOfPayment: newLeadData.modeOfPayment || 'Online',
       
       package_quantities_json: packageQuantitiesJson,
+      freeGuestCount: Number(newLeadData.freeGuestCount || 0),
       
       totalAmount: Number(newLeadData.totalAmount || 0),
       commissionPercentage: Number(newLeadData.commissionPercentage || 0),
@@ -171,16 +171,16 @@ export async function POST(request: NextRequest) {
     const sql = `
       INSERT INTO leads (
         id, clientName, agent, yacht, status, month, notes, type, paymentConfirmationStatus, transactionId, modeOfPayment,
-        package_quantities_json,
+        package_quantities_json, freeGuestCount,
         totalAmount, commissionPercentage, commissionAmount, netAmount,
         paidAmount, balanceAmount,
         createdAt, updatedAt, lastModifiedByUserId, ownerUserId
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
     const params = [
       leadToStore.id, leadToStore.clientName, leadToStore.agent, leadToStore.yacht, leadToStore.status, 
       leadToStore.month, leadToStore.notes, leadToStore.type, leadToStore.paymentConfirmationStatus, leadToStore.transactionId, leadToStore.modeOfPayment,
-      leadToStore.package_quantities_json,
+      leadToStore.package_quantities_json, leadToStore.freeGuestCount,
       leadToStore.totalAmount, leadToStore.commissionPercentage, leadToStore.commissionAmount, leadToStore.netAmount,
       leadToStore.paidAmount, leadToStore.balanceAmount,
       leadToStore.createdAt, leadToStore.updatedAt, leadToStore.lastModifiedByUserId, leadToStore.ownerUserId
@@ -211,6 +211,7 @@ export async function POST(request: NextRequest) {
             transactionId: dbLead.transactionId || undefined,
             modeOfPayment: (dbLead.modeOfPayment || 'Online') as ModeOfPayment,
             packageQuantities: pq,
+            freeGuestCount: Number(dbLead.freeGuestCount || 0),
             totalAmount: parseFloat(dbLead.totalAmount || 0), 
             commissionPercentage: parseFloat(dbLead.commissionPercentage || 0),
             commissionAmount: parseFloat(dbLead.commissionAmount || 0), 

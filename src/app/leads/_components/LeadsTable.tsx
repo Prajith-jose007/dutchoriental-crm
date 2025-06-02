@@ -68,6 +68,7 @@ const generateLeadColumns = (allYachts: Yacht[]): LeadTableColumn[] => {
     { accessorKey: 'transactionId', header: 'Transaction ID' },
     { accessorKey: 'modeOfPayment', header: 'Payment Mode' },
     { accessorKey: 'totalGuests', header: 'Total Guests', isNumeric: true },
+    { accessorKey: 'freeGuestCount', header: 'Free Guests', isNumeric: true }, // New column
   ];
 
   const allActualUniquePackageNames = Array.from(
@@ -222,6 +223,9 @@ export function LeadsTable({
     if (column.accessorKey === 'totalGuests') {
       return formatNumeric(calculateTotalGuestsFromPackageQuantities(lead));
     }
+    if (column.accessorKey === 'freeGuestCount') { // New field display
+      return formatNumeric(lead.freeGuestCount);
+    }
     if (column.accessorKey === 'id') {
       const canEdit = isAdmin || lead.ownerUserId === currentUserId;
       return (
@@ -259,7 +263,7 @@ export function LeadsTable({
     if (column.isPercentage) {
       return formatPercentage(value as number | undefined);
     }
-    if (column.isNumeric && column.accessorKey !== 'totalGuests' && !column.isPackageColumn) { 
+    if (column.isNumeric && column.accessorKey !== 'totalGuests' && column.accessorKey !== 'freeGuestCount' && !column.isPackageColumn) { 
       return formatNumeric(value as number | undefined);
     }
     if (column.isNotes) {

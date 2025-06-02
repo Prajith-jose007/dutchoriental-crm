@@ -52,7 +52,7 @@ const leadPackageQuantitySchema = z.object({
 const leadFormSchema = z.object({
   id: z.string().optional(),
   agent: z.string().min(1, 'Agent is required'),
-  status: z.enum(leadStatusOptions), // Use updated leadStatusOptions
+  status: z.enum(leadStatusOptions), 
   month: z.date({ required_error: "Lead/Event Date is required." }), 
   notes: z.string().optional(),
   yacht: z.string().min(1, 'Yacht selection is required'),
@@ -99,7 +99,7 @@ const getDefaultFormValues = (existingLead?: Lead | null): LeadFormData => {
   return {
     id: existingLead?.id || undefined,
     agent: existingLead?.agent || '', 
-    status: existingLead?.status || 'Balance', // Default to 'Balance' for new leads
+    status: existingLead?.status || 'Balance', 
     month: existingLead?.month && isValid(parseISO(existingLead.month)) ? parseISO(existingLead.month) : new Date(),
     yacht: existingLead?.yacht || '',
     type: existingLead?.type || 'Private Cruise', 
@@ -230,9 +230,10 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
     const currentYachtId = watchedYachtId;
     const currentAgentId = watchedAgentId;
     const currentPackageQuantities = watchedPackageQuantities || []; 
-    const currentPaidAmount = watchedPaidAmount;
+    const currentPaidAmountValue = form.getValues('paidAmount'); 
+    const currentPaidAmount = Number(currentPaidAmountValue || 0);
 
-    console.log('[CalcDebug] Watched Values: YachtID=', currentYachtId, 'AgentID=', currentAgentId, 'PaidAmount=', currentPaidAmount);
+    console.log('[CalcDebug] Watched Values: YachtID=', currentYachtId, 'AgentID=', currentAgentId, 'PaidAmountInput=', currentPaidAmountValue, 'NumericPaid=', currentPaidAmount);
     console.log('[CalcDebug] Watched PackageQuantities:', JSON.parse(JSON.stringify(currentPackageQuantities)));
 
     const selectedYachtForCalc = allYachts.find(y => y.id === currentYachtId);
@@ -253,7 +254,6 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
 
     currentPackageQuantities.forEach((pqItem, index) => {
       const quantity = Number(pqItem.quantity || 0);
-      // Ensure rate is fetched directly from selectedYachtForCalc.packages at calculation time
       const yachtPackageDetails = selectedYachtForCalc.packages?.find(p => p.id === pqItem.packageId);
       const rateFromYacht = yachtPackageDetails ? Number(yachtPackageDetails.rate || 0) : 0;
 
@@ -658,7 +658,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Paid Amount (AED)</FormLabel>
-                      <FormControl><Input type="number" min="0" placeholder="0.00" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl>
+                      <FormControl><Input type="number" min="0" placeholder="0.00" {...field} onChange={e => field.onChange(e.target.value)} /></FormControl>
                       <FormDescription>Amount paid by client</FormDescription>
                       <FormMessage />
                     </FormItem>
@@ -690,3 +690,5 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess }: 
     </Dialog>
   );
 }
+
+    

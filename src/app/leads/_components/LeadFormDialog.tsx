@@ -69,7 +69,7 @@ const leadFormSchema = z.object({
   commissionAmount: z.coerce.number().optional().default(0),
   netAmount: z.coerce.number().default(0),
   paidAmount: z.coerce.number().min(0, "Paid amount must be non-negative").default(0),
-  balanceAmount: z.coerce.number().default(0),
+  balanceAmount: z.coerce.number().default(0), // Can be negative
 
   createdAt: z.string().optional(),
   updatedAt: z.string().optional(),
@@ -117,7 +117,7 @@ const getDefaultFormValues = (existingLead?: Lead | null, currentUserId?: string
     commissionAmount: Number(Number(existingLead?.commissionAmount || 0).toFixed(2)),
     netAmount: Number(Number(existingLead?.netAmount || 0).toFixed(2)),
     paidAmount: Number(Number(existingLead?.paidAmount || 0).toFixed(2)),
-    balanceAmount: Math.abs(Number(Number(existingLead?.balanceAmount || 0).toFixed(2))),
+    balanceAmount: Number(Number(existingLead?.balanceAmount || 0).toFixed(2)), // Store actual signed balance
     lastModifiedByUserId: existingLead?.lastModifiedByUserId || currentUserId || undefined,
     ownerUserId: existingLead?.ownerUserId || currentUserId || undefined,
     createdAt: existingLead?.createdAt || undefined,
@@ -229,56 +229,46 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
   }, [isOpen, watchedYachtId, allYachts, replacePackageQuantities, lead, isLoadingDropdowns, form]);
 
 
+  // Financial Calculation useEffect - REPLACED WITH USER'S SNIPPET LOGIC
   useEffect(() => {
-    console.log('[CalcDebug] --- Calculation Effect Fired ---');
+    console.log('[CalcDebug] --- Calculation Effect Fired (User Snippet Logic) ---');
     const currentYachtId = watchedYachtId;
     const currentAgentId = watchedAgentId;
     const currentPackageQuantities = watchedPackageQuantities || [];
-    const currentPaidAmountValue = form.getValues('paidAmount');
-    const currentPaidAmount = Number(Number(currentPaidAmountValue || 0).toFixed(2));
+    const currentPaidAmount = Number(Number(watchedPaidAmount || 0).toFixed(2));
 
-    console.log('[CalcDebug] Watched Values: YachtID=', currentYachtId, 'AgentID=', currentAgentId, 'PaidAmountInput=', currentPaidAmountValue, 'NumericPaid=', currentPaidAmount);
+    console.log('[CalcDebug] Watched Values: YachtID=', currentYachtId, 'AgentID=', currentAgentId, 'NumericPaid=', currentPaidAmount);
     console.log('[CalcDebug] Watched PackageQuantities:', JSON.parse(JSON.stringify(currentPackageQuantities)));
 
     const selectedYachtForCalc = allYachts.find(y => y.id === currentYachtId);
-
-    if (!selectedYachtForCalc || !selectedYachtForCalc.packages) {
-      console.warn('[CalcDebug] No yacht selected or found, or yacht has no packages. WatchedYachtID:', currentYachtId);
-      form.setValue('totalAmount', 0);
-      form.setValue('commissionAmount', 0);
-      form.setValue('netAmount', 0);
-      form.setValue('balanceAmount', Math.abs(0 - currentPaidAmount));
-      setCalculatedTotalGuests(0);
-      return;
-    }
-    console.log('[CalcDebug] Using Yacht for Calc:', selectedYachtForCalc.name, 'Packages:', selectedYachtForCalc.packages);
-
-    let rawCalculatedTotalAmount = 0;
-    let calculatedTotalGuests = 0;
-
-    currentPackageQuantities.forEach((pqItem, index) => {
-      const quantity = Number(pqItem.quantity || 0);
-      const yachtPackageDetails = selectedYachtForCalc.packages?.find(p => p.id === pqItem.packageId);
-      const rateFromYacht = yachtPackageDetails ? Number(Number(yachtPackageDetails.rate || 0).toFixed(2)) : 0;
-
-      console.log(`[CalcDebug] Processing PkgItem[${index}]: ID='${pqItem.packageId}', Name='${pqItem.packageName}', Qty=${quantity}, RateFromYacht=${rateFromYacht}`);
-
-      if (quantity > 0 && rateFromYacht > 0) {
-        rawCalculatedTotalAmount += quantity * rateFromYacht;
-      }
-      calculatedTotalGuests += quantity;
-    });
-
-    setCalculatedTotalGuests(calculatedTotalGuests);
-    const calculatedTotalAmount = Number(rawCalculatedTotalAmount.toFixed(2));
-    form.setValue('totalAmount', calculatedTotalAmount);
-
     const selectedAgentForCalc = allAgents.find(a => a.id === currentAgentId);
     const agentDiscountRate = selectedAgentForCalc ? Number(selectedAgentForCalc.discount || 0) : 0;
 
-    if (form.getValues('commissionPercentage') !== agentDiscountRate) {
-      form.setValue('commissionPercentage', agentDiscountRate);
+    let calculatedTotalAmount = 0;
+    let tempTotalGuests = 0;
+
+    if (selectedYachtForCalc && selectedYachtForCalc.packages && currentPackageQuantities.length > 0) {
+        currentPackageQuantities.forEach((pqItem) => {
+            const quantity = Number(pqItem.quantity || 0);
+            // Assuming pqItem.rate is reliable and populated by the other useEffect that reacts to yacht changes
+            const rate = Number(Number(pqItem.rate || 0).toFixed(2));
+            if (quantity > 0 && rate > 0) {
+                calculatedTotalAmount += quantity * rate;
+            }
+            tempTotalGuests += quantity;
+        });
+        calculatedTotalAmount = Number(calculatedTotalAmount.toFixed(2));
+    } else {
+        // No yacht, or no packages on yacht, or no package quantities selected by user
+        calculatedTotalAmount = 0;
+        tempTotalGuests = 0;
     }
+    
+    setCalculatedTotalGuests(tempTotalGuests); // Update total guests state
+    form.setValue('totalAmount', calculatedTotalAmount);
+    
+    // Set commissionPercentage from agent directly.
+    form.setValue('commissionPercentage', agentDiscountRate);
 
     const calculatedCommissionAmount = Number(((calculatedTotalAmount * agentDiscountRate) / 100).toFixed(2));
     form.setValue('commissionAmount', calculatedCommissionAmount);
@@ -286,11 +276,12 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
     const calculatedNetAmount = Number((calculatedTotalAmount - calculatedCommissionAmount).toFixed(2));
     form.setValue('netAmount', calculatedNetAmount);
 
+    // Storing signed balance (can be negative if overpaid)
     const actualSignedBalanceAmount = Number((calculatedNetAmount - currentPaidAmount).toFixed(2));
-    form.setValue('balanceAmount', Math.abs(actualSignedBalanceAmount));
+    form.setValue('balanceAmount', actualSignedBalanceAmount);
 
-    console.log(`[CalcDebug] Final Amounts: TotalGuests=${calculatedTotalGuests}, Total=${calculatedTotalAmount}, CommissionPerc=${agentDiscountRate}%, CommissionAmt=${calculatedCommissionAmount}, Net=${calculatedNetAmount}, Paid=${currentPaidAmount}, Balance=${Math.abs(actualSignedBalanceAmount)} (Signed: ${actualSignedBalanceAmount})`);
-    console.log('[CalcDebug] --- Calculation Effect End ---');
+    console.log(`[CalcDebug] Final Amounts: TotalGuests=${tempTotalGuests}, Total=${calculatedTotalAmount}, CommissionPerc=${agentDiscountRate}%, CommissionAmt=${calculatedCommissionAmount}, Net=${calculatedNetAmount}, Paid=${currentPaidAmount}, Balance=${actualSignedBalanceAmount}`);
+    console.log('[CalcDebug] --- Calculation Effect End (User Snippet Logic) ---');
 
   }, [
     watchedPackageQuantities,
@@ -299,8 +290,8 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
     watchedPaidAmount,
     allYachts,
     allAgents,
-    form,
-    setCalculatedTotalGuests
+    form, // form instance is a dependency
+    setCalculatedTotalGuests // state setter
   ]);
 
 
@@ -363,7 +354,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
       id: lead?.id || `temp-${Date.now()}`,
       month: data.month ? formatISO(data.month) : formatISO(new Date()),
       paymentConfirmationStatus: data.paymentConfirmationStatus,
-      freeGuestCount: Number(data.freeGuestCount || 0), // Ensure freeGuestCount is a number
+      freeGuestCount: Number(data.freeGuestCount || 0),
       createdAt: lead?.createdAt || formatISO(new Date()),
       updatedAt: formatISO(new Date()),
       lastModifiedByUserId: currentUserId || undefined,
@@ -375,7 +366,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
       commissionAmount: finalCommissionAmount,
       netAmount: finalNetAmount,
       paidAmount: finalPaidAmount,
-      balanceAmount: actualSignedBalanceAmount,
+      balanceAmount: actualSignedBalanceAmount, // Store signed balance
     };
     console.log("[LeadFormDialog] Submitting lead:", JSON.parse(JSON.stringify(submittedLead, null, 2)));
     onSubmitSuccess(submittedLead);
@@ -665,7 +656,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Agent Discount (%)</FormLabel>
-                      <FormControl><Input type="number" placeholder="0" {...field} readOnly className="bg-muted/50" /></FormControl>
+                      <FormControl><Input type="number" placeholder="0" {...field} value={Number(field.value || 0)} readOnly className="bg-muted/50" /></FormControl>
                       <FormDescription>From selected agent</FormDescription>
                       <FormMessage />
                     </FormItem>
@@ -733,3 +724,4 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
     </Dialog>
   );
 }
+

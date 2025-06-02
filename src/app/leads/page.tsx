@@ -19,44 +19,64 @@ import { format, parseISO, isWithinInterval, isValid, formatISO, getYear as getF
 const USER_ID_STORAGE_KEY = 'currentUserId';
 const USER_ROLE_STORAGE_KEY = 'currentUserRole';
 
-const csvHeaderMapping: { [csvHeaderKey: string]: keyof Omit<Lead, 'packageQuantities'> | 'package_quantities_json' } = {
+const csvHeaderMapping: { [csvHeaderKey: string]: keyof Omit<Lead, 'packageQuantities'> | 'package_quantities_json' | `pkg_${string}` } = {
   'id': 'id',
   'clientname': 'clientName', 'client name': 'clientName',
-  'agent': 'agent', 'agentid': 'agent',
-  'yacht': 'yacht', 'yachtid': 'yacht',
+  'agent': 'agent', 'agentid': 'agent', 'agent_id': 'agent',
+  'yacht': 'yacht', 'yachtid': 'yacht', 'yacht_id': 'yacht',
   'status': 'status',
-  'month': 'month', 'lead/event date': 'month',
+  'month': 'month', 'lead/event date': 'month', 'event_date': 'month',
   'notes': 'notes', 'user feed': 'notes',
-  'type': 'type', 'lead type': 'type',
-  'paymentconfirmationstatus': 'paymentConfirmationStatus', 'payment confirmation status': 'paymentConfirmationStatus',
-  'transactionid': 'transactionId', 'transaction id': 'transactionId',
-  'modeofpayment': 'modeOfPayment', 'payment mode': 'modeOfPayment',
+  'type': 'type', 'lead type': 'type', 'lead_type': 'type',
+  'paymentconfirmationstatus': 'paymentConfirmationStatus', 'payment confirmation status': 'paymentConfirmationStatus', 'payment_status': 'paymentConfirmationStatus',
+  'transactionid': 'transactionId', 'transaction id': 'transactionId', 'transaction_id': 'transactionId',
+  'modeofpayment': 'modeOfPayment', 'payment mode': 'modeOfPayment', 'mop': 'modeOfPayment',
 
   'package_quantities_json': 'package_quantities_json',
-  'freeguestcount': 'freeGuestCount', 'free guests': 'freeGuestCount', 'free items': 'freeGuestCount',
+  'freeguestcount': 'freeGuestCount', 'free guests': 'freeGuestCount', 'free_guests': 'freeGuestCount', 'free items': 'freeGuestCount',
 
-  'totalamount': 'totalAmount',
-  'commissionpercentage': 'commissionPercentage',
-  'commissionamount': 'commissionAmount',
-  'netamount': 'netAmount',
-  'paidamount': 'paidAmount',
-  'balanceamount': 'balanceAmount',
-  'createdat': 'createdAt',
-  'updatedat': 'updatedAt',
-  'lastmodifiedbyuserid': 'lastModifiedByUserId',
-  'owneruserid': 'ownerUserId',
+  'totalamount': 'totalAmount', 'total_amount': 'totalAmount',
+  'commissionpercentage': 'commissionPercentage', 'agent_discount_%': 'commissionPercentage',
+  'commissionamount': 'commissionAmount', 'commission_amount': 'commissionAmount',
+  'netamount': 'netAmount', 'net_amount': 'netAmount',
+  'paidamount': 'paidAmount', 'paid_amount': 'paidAmount',
+  'balanceamount': 'balanceAmount', 'balance_amount': 'balanceAmount',
+  'createdat': 'createdAt', 'created_at': 'createdAt',
+  'updatedat': 'updatedAt', 'updated_at': 'updatedAt',
+  'lastmodifiedbyuserid': 'lastModifiedByUserId', 'modified_by_id': 'lastModifiedByUserId',
+  'owneruserid': 'ownerUserId', 'owner_id': 'ownerUserId',
+
+  // Dynamic package headers from preferredPackageMap will be prefixed with pkg_
+  // Example: 'ch' from CSV could map to 'pkg_child'
+  'ch': 'pkg_child',
+  'ad': 'pkg_adult',
+  'ad alc': 'pkg_ad_alc',
+  'vip ch': 'pkg_vip_ch',
+  'vip ad': 'pkg_vip_ad',
+  'vip alc': 'pkg_vip_alc',
+  'royal ch': 'pkg_royal_ch',
+  'royal ad': 'pkg_royal_ad',
+  'royal alc': 'pkg_royal_alc',
+  'basic': 'pkg_basic',
+  'standard': 'pkg_standard',
+  'premium': 'pkg_premium',
+  'vip': 'pkg_vip', // Note: This might conflict if 'VIP' is also a package name. Be specific.
 };
 
-const convertCsvValue = (key: keyof Omit<Lead, 'packageQuantities'> | 'package_quantities_json', value: string): any => {
+const convertCsvValue = (key: keyof Omit<Lead, 'packageQuantities'> | 'package_quantities_json' | `pkg_${string}`, value: string, allYachts: Yacht[], agentMap: { [id: string]: string }, yachtMap: { [id: string]: string }): any => {
   const trimmedValue = value ? String(value).trim() : '';
   const currentUserId = typeof window !== 'undefined' ? localStorage.getItem(USER_ID_STORAGE_KEY) : null;
 
+  if (key.startsWith('pkg_')) { // Handle dynamic package quantity columns
+    const num = parseInt(trimmedValue, 10);
+    return isNaN(num) || num < 0 ? 0 : num;
+  }
 
   if (trimmedValue === '' || value === null || value === undefined) {
     switch (key) {
       case 'totalAmount': case 'commissionPercentage':
       case 'commissionAmount': case 'netAmount': case 'paidAmount': case 'balanceAmount':
-      case 'freeGuestCount': // New field default
+      case 'freeGuestCount':
         return 0;
       case 'modeOfPayment': return 'CARD'; 
       case 'status': return 'Balance';
@@ -73,9 +93,15 @@ const convertCsvValue = (key: keyof Omit<Lead, 'packageQuantities'> | 'package_q
   }
 
   switch (key) {
+    case 'agent': // Try to map agent name to ID
+      const agentIdByName = Object.keys(agentMap).find(id => agentMap[id]?.toLowerCase() === trimmedValue.toLowerCase());
+      return agentIdByName || trimmedValue; // Use ID if found, else original value (could be an ID already)
+    case 'yacht': // Try to map yacht name to ID
+      const yachtIdByName = Object.keys(yachtMap).find(id => yachtMap[id]?.toLowerCase() === trimmedValue.toLowerCase());
+      return yachtIdByName || trimmedValue; // Use ID if found, else original value
     case 'totalAmount': case 'commissionPercentage':
     case 'commissionAmount': case 'netAmount': case 'paidAmount': case 'balanceAmount':
-    case 'freeGuestCount': // New field conversion
+    case 'freeGuestCount':
       const num = parseFloat(trimmedValue);
       return isNaN(num) ? 0 : num;
     case 'modeOfPayment':
@@ -95,16 +121,23 @@ const convertCsvValue = (key: keyof Omit<Lead, 'packageQuantities'> | 'package_q
       } catch (e) { /* ignore ISO parse error */ }
 
       try {
-        const parts = trimmedValue.split(/[\/\-\.]/);
-        if (parts.length === 3) {
-            let day = parseInt(parts[0]);
-            let month = parseInt(parts[1]);
-            let year = parseInt(parts[2]);
+        const parts = trimmedValue.match(/(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2,4})/);
+        if (parts && parts.length === 4) {
+            let day = parseInt(parts[1], 10);
+            let month = parseInt(parts[2], 10);
+            let year = parseInt(parts[3], 10);
             if (String(year).length === 2) year += 2000;
 
-            if (!isNaN(day) && !isNaN(month) && !isNaN(year) && year > 1900 && year < 2100 && month >=1 && month <=12 && day >=1 && day <=31) {
-                 const dateObj = new Date(year, month - 1, day);
-                 if (isValid(dateObj)) return formatISO(dateObj);
+            // Attempt common European DD/MM/YYYY, then US MM/DD/YYYY if first fails or month > 12
+            let dateObjTry1: Date | null = null;
+            if (month >=1 && month <=12 && day >=1 && day <=31) {
+                dateObjTry1 = new Date(year, month - 1, day);
+                if (isValid(dateObjTry1)) return formatISO(dateObjTry1);
+            }
+            // Try MM/DD/YYYY if day > 12 (likely was month) or if previous failed
+            if ((day > 12 || !isValid(dateObjTry1)) && month >=1 && month <=31 && day >=1 && day <=12) {
+                 const dateObjTry2 = new Date(year, day - 1, month);
+                 if (isValid(dateObjTry2)) return formatISO(dateObjTry2);
             }
         }
       } catch (e) {/* ignore */ }
@@ -276,17 +309,20 @@ export default function LeadsPage() {
       }
 
       if (!response.ok) {
-        let errorData = { message: `API Error: ${response.status} ${response.statusText}`, details: '' };
+        let descriptiveMessage = `API Error: ${response.status} ${response.statusText}`;
+        let errorDetailsLog = '';
         try {
           const parsedError = await response.json();
-          errorData.message = parsedError.message || errorData.message;
-          errorData.details = parsedError.errorDetails || parsedError.error || '';
+          console.error("[LeadsPage] Parsed API error response from form submit:", parsedError);
+          descriptiveMessage = parsedError.message || descriptiveMessage;
+          errorDetailsLog = parsedError.errorDetails || parsedError.error || '';
         } catch (jsonError) {
-          console.warn("[LeadsPage] API error response was not valid JSON or was empty.", jsonError);
+          console.warn("[LeadsPage] API error response body was not valid JSON or was empty. Status:", response.status, "StatusText:", response.statusText, "JSON parse error:", jsonError);
         }
-        console.error("[LeadsPage] API Error response data (parsed or fallback):", errorData);
-        throw new Error(errorData.message + (errorData.details ? ` - Details: ${errorData.details}` : ''));
+        const finalErrorMessage = descriptiveMessage + (errorDetailsLog ? ` - Details: ${errorDetailsLog}` : '');
+        throw new Error(finalErrorMessage);
       }
+
 
       toast({
         title: editingLead ? 'Lead Updated' : 'Lead Added',
@@ -374,7 +410,7 @@ export default function LeadsPage() {
         }
 
         let headerLine = lines[0];
-        if (headerLine.charCodeAt(0) === 0xFEFF) {
+        if (headerLine.charCodeAt(0) === 0xFEFF) { // Check for BOM
             headerLine = headerLine.substring(1);
         }
         const fileHeaders = headerLine.split(',').map(h => h.trim().toLowerCase().replace(/\s+/g, '_'));
@@ -383,9 +419,17 @@ export default function LeadsPage() {
         const newLeadsFromCsv: Lead[] = [];
         const currentLeadIds = new Set(allLeads.map(l => l.id));
 
+        const preferredPackageMapReverse: { [key: string]: string } = {
+          'child': 'CHILD', 'ad': 'ADULT', 'ad_alc': 'AD ALC',
+          'vip_ch': 'VIP CH', 'vip_ad': 'VIP AD', 'vip_alc': 'VIP ALC',
+          'royal_ch': 'ROYAL CH', 'royal_ad': 'ROYAL AD', 'royal_alc': 'ROYAL ALC',
+          'basic': 'BASIC', 'standard': 'STANDARD', 'premium': 'PREMIUM', 'vip': 'VIP'
+        };
+
+
         for (let i = 1; i < lines.length; i++) {
           let data = lines[i].split(',');
-           if (data.length > fileHeaders.length) {
+          if (data.length > fileHeaders.length) {
             const extraColumns = data.slice(fileHeaders.length);
             const allExtraAreEmpty = extraColumns.every(col => (col || '').trim() === '');
             if (allExtraAreEmpty) {
@@ -399,16 +443,16 @@ export default function LeadsPage() {
             continue;
           }
 
-          const parsedRow = {} as Partial<Lead & { package_quantities_json?: string }>;
+          const parsedRow = {} as Partial<Lead & { package_quantities_json?: string } & { [key: `pkg_${string}`]: number }>;
           fileHeaders.forEach((fileHeader, index) => {
             const leadKey = csvHeaderMapping[fileHeader];
             if (leadKey) {
-                (parsedRow as any)[leadKey] = convertCsvValue(leadKey, data[index]);
+                (parsedRow as any)[leadKey] = convertCsvValue(leadKey, data[index], allYachts, agentMap, yachtMap);
             } else {
                 console.warn(`[CSV Import Leads] Unknown header "${fileHeader}" in CSV row ${i+1}. Skipping this column.`);
             }
           });
-          if (i <= 2) console.log(`[CSV Import Leads] Processing Row ${i} - Parsed:`, JSON.parse(JSON.stringify(parsedRow)));
+           if (i <= 2) console.log(`[CSV Import Leads] Processing Row ${i+1} - Parsed:`, JSON.parse(JSON.stringify(parsedRow)));
 
           let packageQuantities: LeadPackageQuantity[] = [];
           if (parsedRow.package_quantities_json) {
@@ -425,7 +469,33 @@ export default function LeadsPage() {
             } catch (e) {
               console.warn(`[CSV Import Leads] Error parsing package_quantities_json from CSV for row ${i+1}: ${parsedRow.package_quantities_json}`);
             }
+          } else {
+            // Attempt to build packageQuantities from individual pkg_ columns
+            const leadYachtId = parsedRow.yacht || '';
+            const yachtForLead = allYachts.find(y => y.id === leadYachtId);
+
+            for (const csvHeader of fileHeaders) {
+                const mappedKey = csvHeaderMapping[csvHeader];
+                if (mappedKey && typeof mappedKey === 'string' && mappedKey.startsWith('pkg_')) {
+                    const actualPackageNamePart = mappedKey.substring('pkg_'.length);
+                    const actualPackageName = preferredPackageMapReverse[actualPackageNamePart] || actualPackageNamePart.toUpperCase().replace(/_/g, ' ');
+                    
+                    const quantity = (parsedRow as any)[mappedKey] as number;
+
+                    if (quantity > 0) {
+                        const yachtPackage = yachtForLead?.packages?.find(p => p.name.toLowerCase() === actualPackageName.toLowerCase());
+                        packageQuantities.push({
+                            packageId: yachtPackage?.id || actualPackageName, // Fallback ID
+                            packageName: actualPackageName,
+                            quantity: quantity,
+                            rate: yachtPackage?.rate || 0, // Fallback rate
+                        });
+                    }
+                }
+            }
+             if (i <= 2 && packageQuantities.length > 0) console.log(`[CSV Import Leads] Row ${i+1} - Reconstructed PQs:`, JSON.parse(JSON.stringify(packageQuantities)));
           }
+
 
           const fullLead: Lead = {
             id: parsedRow.id || `imported-lead-${Date.now()}-${i}`,
@@ -452,10 +522,16 @@ export default function LeadsPage() {
             lastModifiedByUserId: currentUserId,
             ownerUserId: parsedRow.ownerUserId || currentUserId,
           };
-          if (i <= 2) console.log(`[CSV Import Leads] Processing Row ${i} - Full Lead:`, JSON.parse(JSON.stringify(fullLead)));
+          if (i <= 2) console.log(`[CSV Import Leads] Processing Row ${i+1} - Full Lead Object to POST:`, JSON.parse(JSON.stringify(fullLead)));
 
-          if (!fullLead.clientName || !fullLead.agent || !fullLead.yacht || !fullLead.month) {
-             console.warn(`[CSV Import Leads] Skipping lead due to missing required fields (clientName, agent, yacht, month/event date) at CSV row ${i+1}. Lead data:`, fullLead);
+          const missingFields = [];
+          if (!fullLead.clientName) missingFields.push('clientName');
+          if (!fullLead.agent) missingFields.push('agent');
+          if (!fullLead.yacht) missingFields.push('yacht');
+          if (!fullLead.month) missingFields.push('month');
+
+          if (missingFields.length > 0) {
+             console.warn(`[CSV Import Leads] Skipping lead at CSV row ${i+1} due to missing required fields: ${missingFields.join(', ')}. Lead data:`, JSON.parse(JSON.stringify(fullLead)));
              skippedCount++;
              continue;
           }
@@ -471,9 +547,9 @@ export default function LeadsPage() {
         if (newLeadsFromCsv.length > 0) {
           for (const leadToImport of newLeadsFromCsv) {
             try {
-              const payload = { ...leadToImport };
+              const payload = { ...leadToImport, requestingUserId: currentUserId, requestingUserRole: currentUserRole };
               if (payload.id.startsWith('imported-lead-')) {
-                delete payload.id;
+                delete payload.id; // Let API generate ID if it's a temporary one
               }
 
               const response = await fetch('/api/leads', {
@@ -485,11 +561,11 @@ export default function LeadsPage() {
                 successCount++;
               } else {
                 const errorData = await response.json().catch(() => ({ message: `API Error: ${response.statusText}` }));
-                console.warn(`[CSV Import Leads] API Error for lead client ${leadToImport.clientName}: ${errorData.message || response.statusText}. Payload:`, payload);
+                console.warn(`[CSV Import Leads] API Error for lead client ${leadToImport.clientName} (ID: ${leadToImport.id}): ${errorData.message || response.statusText}. Payload:`, payload);
                 skippedCount++;
               }
             } catch (apiError) {
-                console.warn(`[CSV Import Leads] Network/JS Error importing lead client ${leadToImport.clientName}:`, apiError, "Payload:", leadToImport);
+                console.warn(`[CSV Import Leads] Network/JS Error importing lead client ${leadToImport.clientName} (ID: ${leadToImport.id}):`, apiError, "Payload:", leadToImport);
                 skippedCount++;
             }
           }
@@ -500,7 +576,7 @@ export default function LeadsPage() {
       } finally {
         const endTime = Date.now();
         const durationInSeconds = ((endTime - startTime) / 1000).toFixed(2);
-        if (successCount > 0 || skippedCount > 0) {
+        if (successCount > 0 || skippedCount > 0) { // Fetch data even if only skips occurred to refresh state
             await fetchAllData();
         }
         toast({
@@ -571,6 +647,10 @@ export default function LeadsPage() {
       { header: 'ROYAL CH', dataName: 'ROYAL CH' },
       { header: 'ROYAL AD', dataName: 'ROYAL AD' },
       { header: 'ROYAL ALC', dataName: 'ROYAL ALC' },
+      { header: 'BASIC', dataName: 'BASIC' },
+      { header: 'STANDARD', dataName: 'STANDARD' },
+      { header: 'PREMIUM', dataName: 'PREMIUM' },
+      { header: 'VIP', dataName: 'VIP' },
     ];
 
     const allActualUniquePackageNamesFromYachts = Array.from(
@@ -641,7 +721,7 @@ export default function LeadsPage() {
           escapeCsvCell(lead.transactionId),
           escapeCsvCell(lead.modeOfPayment),
           escapeCsvCell(totalGuests),
-          escapeCsvCell(lead.freeGuestCount || 0), // New field for export
+          escapeCsvCell(lead.freeGuestCount || 0),
         ];
 
         const packageQtyValues = packageDataNamesForLookup.map(dataName =>

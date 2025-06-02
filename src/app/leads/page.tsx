@@ -148,7 +148,7 @@ const convertCsvValue = (key: keyof Omit<Lead, 'packageQuantities'> | 'package_q
         const parsed = JSON.parse(trimmedValue);
         return Array.isArray(parsed) ? parsed : null;
       } catch (e) {
-        console.warn(`[CSV Import] Could not parse package_quantities_json: "${trimmedValue}". Defaulting to null.`);
+        console.warn(`[CSV Import Leads] Could not parse package_quantities_json: "${trimmedValue}". Defaulting to null.`);
         return null;
       }
     default:
@@ -429,13 +429,16 @@ export default function LeadsPage() {
 
         for (let i = 1; i < lines.length; i++) {
           let data = lines[i].split(',');
+          
           if (data.length > fileHeaders.length) {
             const extraColumns = data.slice(fileHeaders.length);
             const allExtraAreEmpty = extraColumns.every(col => (col || '').trim() === '');
             if (allExtraAreEmpty) {
+              console.log(`[CSV Import Leads] Row ${i + 1} had ${data.length} columns, expected ${fileHeaders.length}. Trimming extra empty columns.`);
               data = data.slice(0, fileHeaders.length);
             }
           }
+
 
           if (data.length !== fileHeaders.length) {
             console.warn(`[CSV Import Leads] Skipping malformed CSV line ${i + 1}: Expected ${fileHeaders.length} columns, got ${data.length}. Line: "${lines[i]}"`);
@@ -905,3 +908,4 @@ export default function LeadsPage() {
     </div>
   );
 }
+

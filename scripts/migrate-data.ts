@@ -380,22 +380,68 @@ async function migrateInvoices() {
 }
 
 async function main() {
-  console.log('Starting data migration with table creation checks...');
+  const args = process.argv.slice(2); // Get arguments passed to the script
+  const onlyArg = args.find(arg => arg.startsWith('--only='));
+  const entityToMigrate = onlyArg ? onlyArg.split('=')[1] : null;
+
+  console.log(`Starting data migration. Entity to migrate: ${entityToMigrate || 'all'}`);
+
   try {
-    // Create tables first to ensure they exist with the correct schema
-    await createUsersTable();
-    await createAgentsTable();
-    await createYachtsTable();
-    await createLeadsTable();
-    await createInvoicesTable();
+    if (!entityToMigrate || entityToMigrate === 'all') {
+      console.log('Running all migrations...');
+      // Create all tables first
+      await createUsersTable();
+      await createAgentsTable();
+      await createYachtsTable();
+      await createLeadsTable();
+      await createInvoicesTable();
+      
+      // Then migrate all data
+      await migrateUsers();
+      await migrateAgents();
+      await migrateYachts();
+      await migrateLeads();
+      await migrateInvoices();
+    } else if (entityToMigrate === 'users') {
+      console.log('Running migration for: users');
+      await createUsersTable();
+      await migrateUsers();
+    } else if (entityToMigrate === 'agents') {
+      console.log('Running migration for: agents');
+      await createAgentsTable();
+      await migrateAgents();
+    } else if (entityToMigrate === 'yachts') {
+      console.log('Running migration for: yachts');
+      await createYachtsTable();
+      await migrateYachts();
+    } else if (entityToMigrate === 'leads') {
+      console.log('Running migration for: leads');
+      // Note: For placeholder leads to insert correctly with their references,
+      // agents and yachts tables should ideally exist and be populated.
+      // This targeted migration will only ensure the leads table schema and data.
+      await createLeadsTable();
+      await migrateLeads();
+    } else if (entityToMigrate === 'invoices') {
+      console.log('Running migration for: invoices');
+      // Note: Invoices reference leads.
+      await createInvoicesTable();
+      await migrateInvoices();
+    } else {
+      console.warn(`Unknown entity to migrate: "${entityToMigrate}". Running all migrations by default.`);
+      // Default to all if entity is not recognized
+      await createUsersTable();
+      await createAgentsTable();
+      await createYachtsTable();
+      await createLeadsTable();
+      await createInvoicesTable();
+      await migrateUsers();
+      await migrateAgents();
+      await migrateYachts();
+      await migrateLeads();
+      await migrateInvoices();
+    }
     
-    // Then migrate data
-    await migrateUsers();
-    await migrateAgents();
-    await migrateYachts();
-    await migrateLeads();
-    await migrateInvoices();
-    console.log('Data migration complete! Make sure to close the DB connection if your db.ts doesn\'t do it automatically after a pool query.');
+    console.log('Data migration tasks complete! Make sure to close the DB connection if your db.ts doesn\'t do it automatically after a pool query.');
   } catch (error) {
       console.error("A critical error occurred during table creation or migration process, aborting further steps:", (error as Error).message);
   } finally {

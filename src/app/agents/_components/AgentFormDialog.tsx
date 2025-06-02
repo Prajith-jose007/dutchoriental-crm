@@ -144,7 +144,7 @@ export function AgentFormDialog({ isOpen, onOpenChange, agent, onSubmitSuccess }
                     <FormLabel>Agent ID</FormLabel>
                     <FormControl>
                       <Input 
-                        placeholder="e.g., AGENT001" 
+                        placeholder="e.g., DO-001" 
                         {...field} 
                         readOnly={!!agent} 
                         className={!!agent ? "bg-muted/50" : ""}

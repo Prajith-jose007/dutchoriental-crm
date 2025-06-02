@@ -11,7 +11,7 @@ export const placeholderUsers: User[] = [
 
 export const placeholderAgents: Agent[] = [
   {
-    id: 'DO-AGENT-001',
+    id: 'DO-001', // Changed from DO-AGENT-001
     name: 'Maritime Masters LLC',
     agency_code: 'MM001',
     address: '123 Port Rashid, Dubai, UAE',
@@ -24,7 +24,7 @@ export const placeholderAgents: Agent[] = [
     websiteUrl: 'https://maritimemasters.com'
   },
   {
-    id: 'DO-AGENT-002',
+    id: 'DO-002', // Changed from DO-AGENT-002
     name: 'Aqua Voyage Agency',
     agency_code: 'AV002',
     address: '456 Jumeirah Beach Rd, Dubai, UAE',
@@ -37,7 +37,7 @@ export const placeholderAgents: Agent[] = [
     websiteUrl: 'https://aquavoyage.ae'
   },
    {
-    id: 'DO-AGENT-003',
+    id: 'DO-003', // Changed from DO-AGENT-003
     name: 'Global Charters Inc.',
     agency_code: 'GC003',
     address: '789 Business Bay, Dubai, UAE',
@@ -111,7 +111,7 @@ export const placeholderYachts: Yacht[] = [
     category: 'Private Cruise',
     packages: [
         { id: 'private-hourly', name: 'Hourly Charter', rate: 1500},
-        { id: 'private-catering', name: 'Basic Catering pp', rate: 150},
+        // { id: 'private-catering', name: 'Basic Catering pp', rate: 150}, // Removed as per user request
         { id: 'private-softdrinks', name: 'Soft Drinks Package pp', rate: 50},
     ],
     customPackageInfo: "Ideal for private, intimate gatherings. Hourly rate applies."
@@ -123,9 +123,9 @@ export const placeholderLeads: Lead[] = [
   {
     id: 'DO-001',
     clientName: 'Tech Corp Events',
-    agent: 'DO-AGENT-001',
+    agent: 'DO-001', // Changed from DO-AGENT-001
     yacht: 'DO-yacht-lotus',
-    status: 'Closed', // Was 'Conformed'
+    status: 'Closed',
     month: formatISO(parseISO('2024-07-15T14:00:00')),
     notes: 'Confirmed booking for annual dinner.',
     type: 'Dinner Cruise',
@@ -149,9 +149,9 @@ export const placeholderLeads: Lead[] = [
   {
     id: 'DO-002',
     clientName: 'Sunset Tours R Us',
-    agent: 'DO-AGENT-002',
+    agent: 'DO-002', // Changed from DO-AGENT-002
     yacht: 'DO-yacht-super',
-    status: 'Balance', // Was 'Upcoming'
+    status: 'Balance',
     month: formatISO(parseISO('2024-07-25T18:30:00')),
     notes: 'Prospective client for regular sightseeing tours.',
     type: 'Superyacht Sightseeing Cruise',
@@ -173,23 +173,23 @@ export const placeholderLeads: Lead[] = [
   {
     id: 'DO-003',
     clientName: 'Private Celebration Planners',
-    agent: 'DO-AGENT-001',
+    agent: 'DO-001', // Changed from DO-AGENT-001
     yacht: 'DO-yacht-private1',
-    status: 'Balance', // Was 'Balance'
+    status: 'Balance',
     month: formatISO(parseISO('2024-08-10T16:00:00')),
     notes: 'Birthday party, deposit paid.',
     type: 'Private Cruise',
     modeOfPayment: 'Cash/Card',
     packageQuantities: [
       { packageId: 'private-hourly', packageName: 'Hourly Charter', quantity: 4, rate: 1500 },
-      { packageId: 'private-catering', packageName: 'Basic Catering pp', quantity: 15, rate: 150 },
+      // { packageId: 'private-catering', packageName: 'Basic Catering pp', quantity: 15, rate: 150 }, // Removed as per user request
     ], 
-    totalAmount: 8250,
+    totalAmount: 6000, // Adjusted total amount after removing catering
     commissionPercentage: 10, 
-    commissionAmount: 825, 
-    netAmount: 7425, 
+    commissionAmount: 600, // Adjusted commission
+    netAmount: 5400, // Adjusted net amount
     paidAmount: 3000,
-    balanceAmount: 4425,
+    balanceAmount: 2400, // Adjusted balance
     createdAt: formatISO(subDays(today, 10)),
     updatedAt: formatISO(subDays(today, 2)),
     lastModifiedByUserId: 'DO-user1',
@@ -200,5 +200,5 @@ export const placeholderLeads: Lead[] = [
 export const placeholderInvoices: Invoice[] = [
   { id: 'DO-inv001', leadId: 'DO-001', clientName: 'Tech Corp Events', amount: 20700, dueDate: format(addDays(parseISO(placeholderLeads[0].month), 7), 'yyyy-MM-dd'), status: 'Paid', createdAt: formatISO(subDays(today, 14)) },
   { id: 'DO-inv002', leadId: 'DO-002', clientName: 'Sunset Tours R Us', amount: 5083, dueDate: format(addDays(parseISO(placeholderLeads[1].month), 7), 'yyyy-MM-dd'), status: 'Pending', createdAt: formatISO(subDays(today, 9)) },
-  { id: 'DO-inv003', leadId: 'DO-003', clientName: 'Private Celebration Planners', amount: 7425, dueDate: format(addDays(parseISO(placeholderLeads[2].month), 7), 'yyyy-MM-dd'), status: 'Pending', createdAt: formatISO(subDays(today, 1)) },
+  { id: 'DO-inv003', leadId: 'DO-003', clientName: 'Private Celebration Planners', amount: 5400, dueDate: format(addDays(parseISO(placeholderLeads[2].month), 7), 'yyyy-MM-dd'), status: 'Pending', createdAt: formatISO(subDays(today, 1)) }, // Adjusted amount
 ];

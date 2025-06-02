@@ -356,7 +356,7 @@ export default function AgentsPage() {
           });
            if (i < 3) console.log(`[CSV Import Agents] Processing Row ${i+1} - Parsed (after mapping & convertAgentValue):`, JSON.parse(JSON.stringify(parsedRow)));
 
-          let agentId = parsedRow.id && String(parsedRow.id).trim() !== '' ? String(parsedRow.id).trim() : `DO-agent-csv-${Date.now()}-${i}`;
+          let agentId = parsedRow.id && String(parsedRow.id).trim() !== '' ? String(parsedRow.id).trim() : `DO-csv-${Date.now()}-${i}`; // Updated ID format
 
           if (existingAgentIds.has(agentId) || newAgentsFromCsv.some(a => a.id === agentId)) {
             console.warn(`[CSV Import Agents] Skipping agent with duplicate ID: ${agentId} from CSV row ${i+1}.`);

@@ -11,6 +11,8 @@ import { InvoiceStatusPieChart } from './_components/InvoiceStatusPieChart';
 import { LatestInvoicesTable } from './_components/LatestInvoicesTable';
 import { SalesByYachtPieChart } from './_components/SalesByYachtPieChart';
 import { BookingsByAgentBarChart } from './_components/BookingsByAgentBarChart';
+import { BookedAgentsList } from './_components/BookedAgentsList'; // New
+import { MonthlyRevenueChart } from './_components/MonthlyRevenueChart'; // New
 import type { Lead, Invoice, Yacht, Agent } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -25,7 +27,6 @@ export default function DashboardPage() {
   const [isAuthLoading, setIsAuthLoading] = useState(true);
 
   useEffect(() => {
-    // Client-side auth check
     let isAuthenticated = false;
     try {
       isAuthenticated = !!localStorage.getItem('currentUserRole');
@@ -36,12 +37,12 @@ export default function DashboardPage() {
     if (!isAuthenticated) {
       router.replace('/login');
     } else {
-      setIsAuthLoading(false); // User is authenticated, proceed to fetch data
+      setIsAuthLoading(false); 
     }
   }, [router]);
 
   useEffect(() => {
-    if (isAuthLoading) return; // Don't fetch data until auth check is complete
+    if (isAuthLoading) return; 
 
     const fetchData = async () => {
       setIsLoading(true);
@@ -81,28 +82,32 @@ export default function DashboardPage() {
       }
     };
     fetchData();
-  }, [isAuthLoading]); // Re-run when auth loading state changes
+  }, [isAuthLoading]); 
   
   if (isAuthLoading || isLoading) {
     return (
       <div className="container mx-auto py-2">
         <PageHeader title="Dashboard" description="Loading data..." />
         <div className="grid gap-6">
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {[...Array(3)].map((_,i) => <Skeleton key={i} className="h-[120px] w-full" />)}
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"> {/* Adjusted for more cards */}
+            {[...Array(4)].map((_,i) => <Skeleton key={`perf-sum-${i}`} className="h-[120px] w-full" />)}
           </div>
            <div className="grid gap-4 md:grid-cols-1 lg:grid-cols-3">
-            {[...Array(3)].map((_,i) => <Skeleton key={i} className="h-[120px] w-full" />)}
+            {[...Array(3)].map((_,i) => <Skeleton key={`rev-sum-${i}`} className="h-[120px] w-full" />)}
           </div>
-          <div className="grid gap-6 lg:grid-cols-2 xl:grid-cols-5">
-            <Skeleton className="h-[350px] w-full xl:col-span-3" />
-            <Skeleton className="h-[350px] w-full xl:col-span-2" />
+          <div className="grid gap-6 lg:grid-cols-1 xl:grid-cols-2"> {/* Main charts area */}
+            <Skeleton className="h-[350px] w-full" /> {/* Booking Report Chart */}
+            <Skeleton className="h-[350px] w-full" /> {/* Monthly Revenue Chart */}
           </div>
-          <div className="grid gap-6 lg:grid-cols-2">
+          <div className="grid gap-6 lg:grid-cols-2 xl:grid-cols-3"> {/* Pie charts and Agent List */}
+            <Skeleton className="h-[350px] w-full" /> {/* Invoice Status Pie */}
+            <Skeleton className="h-[350px] w-full" /> {/* Sales by Yacht Pie */}
+            <Skeleton className="h-[350px] w-full" /> {/* Agent List */}
+          </div>
+          <div className="grid gap-6 lg:grid-cols-1"> {/* Agent Bar Chart */}
             <Skeleton className="h-[350px] w-full" />
-            <Skeleton className="h-[350px] w-full" />
           </div>
-          <Skeleton className="h-[200px] w-full" />
+          <Skeleton className="h-[200px] w-full" /> {/* Latest Invoices */}
         </div>
       </div>
     );
@@ -117,33 +122,35 @@ export default function DashboardPage() {
     );
   }
 
+  const commonErrorLeads = error && leads.length === 0 ? error : null;
+  const commonErrorInvoices = error && invoices.length === 0 ? error : null;
+  const commonErrorYachts = error && yachts.length === 0 ? error : null;
+  const commonErrorAgents = error && agents.length === 0 ? error : null;
+
   return (
     <div className="container mx-auto py-2">
       <PageHeader title="Dashboard" description="Welcome to DutchOriental CRM. Here's an overview of your yacht business." />
       
       <div className="grid gap-6">
-        <RevenueSummary leads={leads} isLoading={isLoading} error={error && leads.length === 0 ? error : null} />
-        <PerformanceSummary leads={leads} invoices={invoices} isLoading={isLoading} error={error && (leads.length === 0 || invoices.length === 0) ? error : null} />
+        <PerformanceSummary leads={leads} invoices={invoices} isLoading={isLoading} error={error} />
+        <RevenueSummary leads={leads} isLoading={isLoading} error={commonErrorLeads} />
         
-        <div className="grid gap-6 lg:grid-cols-2 xl:grid-cols-5">
-          <div className="xl:col-span-3">
-            <BookingReportChart leads={leads} isLoading={isLoading} error={error && leads.length === 0 ? error : null}/>
-          </div>
-          <div className="lg:col-span-1 xl:col-span-2">
-            <InvoiceStatusPieChart invoices={invoices} isLoading={isLoading} error={error && invoices.length === 0 ? error : null} />
-          </div>
+        <div className="grid gap-6 lg:grid-cols-1 xl:grid-cols-2">
+            <BookingReportChart leads={leads} isLoading={isLoading} error={commonErrorLeads}/>
+            <MonthlyRevenueChart leads={leads} isLoading={isLoading} error={commonErrorLeads} />
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-2">
-          <div>
-            <SalesByYachtPieChart leads={leads} allYachts={yachts} isLoading={isLoading} error={error && (leads.length === 0 || yachts.length === 0) ? error : null} />
-          </div>
-          <div>
-            <BookingsByAgentBarChart leads={leads} allAgents={agents} isLoading={isLoading} error={error && (leads.length === 0 || agents.length === 0) ? error : null} />
-          </div>
+        <div className="grid gap-6 lg:grid-cols-2 xl:grid-cols-3">
+          <InvoiceStatusPieChart invoices={invoices} isLoading={isLoading} error={commonErrorInvoices} />
+          <SalesByYachtPieChart leads={leads} allYachts={yachts} isLoading={isLoading} error={error && (leads.length === 0 || yachts.length === 0) ? error : null} />
+          <BookedAgentsList leads={leads} allAgents={agents} isLoading={isLoading} error={error && (leads.length === 0 || agents.length === 0) ? error : null} />
         </div>
         
-        <LatestInvoicesTable invoices={invoices} isLoading={isLoading} error={error && invoices.length === 0 ? error : null} />
+        <div className="grid-cols-1"> {/* Bar chart takes full width */}
+          <BookingsByAgentBarChart leads={leads} allAgents={agents} isLoading={isLoading} error={error && (leads.length === 0 || agents.length === 0) ? error : null} />
+        </div>
+        
+        <LatestInvoicesTable invoices={invoices} isLoading={isLoading} error={commonErrorInvoices} />
       </div>
     </div>
   );

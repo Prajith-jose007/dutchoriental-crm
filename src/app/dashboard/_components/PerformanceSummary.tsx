@@ -1,8 +1,8 @@
 
 'use client';
 
-import { useMemo, useState, useEffect } from 'react';
-import { BookOpenCheck, Banknote, CircleDollarSign, AlertTriangle } from 'lucide-react';
+import { useMemo } from 'react';
+import { BookOpenCheck, Banknote, CircleDollarSign, Wallet, BookOpen } from 'lucide-react';
 import {
   Card,
   CardContent,
@@ -52,14 +52,20 @@ interface PerformanceSummaryProps {
 }
 
 export function PerformanceSummary({ leads, invoices, isLoading, error }: PerformanceSummaryProps) {
-  const { totalSuccessfulBookings, totalSuccessfulEarnings } = useMemo(() => {
-    // Successful leads are now only those with 'Closed' status
+  const { totalSuccessfulBookings, totalSuccessfulEarnings, totalBalanceLeadAmount, totalBookingsCount } = useMemo(() => {
     const successfulLeads = leads.filter(lead => lead.status === 'Closed');
-    const totalBookings = successfulLeads.length;
-    const totalEarnings = successfulLeads.reduce((sum, lead) => sum + (lead.netAmount || 0), 0);
+    const balanceLeads = leads.filter(lead => lead.status === 'Balance');
+    
+    const bookingsCount = leads.length;
+    const closedBookings = successfulLeads.length;
+    const earnings = successfulLeads.reduce((sum, lead) => sum + (lead.netAmount || 0), 0);
+    const balanceAmount = balanceLeads.reduce((sum, lead) => sum + Math.abs(lead.balanceAmount || 0), 0);
+    
     return {
-      totalSuccessfulBookings: totalBookings,
-      totalSuccessfulEarnings: totalEarnings,
+      totalBookingsCount: bookingsCount,
+      totalSuccessfulBookings: closedBookings,
+      totalSuccessfulEarnings: earnings,
+      totalBalanceLeadAmount: balanceAmount,
     };
   }, [leads]);
 
@@ -72,27 +78,46 @@ export function PerformanceSummary({ leads, invoices, isLoading, error }: Perfor
     };
   }, [invoices]);
 
+  const generalError = error && leads.length === 0 && invoices.length === 0 ? error : null;
+  const leadsError = error && leads.length === 0 ? error : null;
+  const invoicesError = error && invoices.length === 0 ? error : null;
+
+
   return (
-    <div className="grid gap-4 md:grid-cols-1 lg:grid-cols-3">
+    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
       <SummaryCard
-        title="Total Closed Bookings"
-        value={error ? 'Error' : totalSuccessfulBookings}
+        title="Total Bookings"
+        value={leadsError ? 'Error' : totalBookingsCount}
+        icon={<BookOpen className="h-5 w-5 text-muted-foreground" />}
+        description={leadsError ? leadsError : "Total number of all leads"}
+        isLoading={isLoading}
+      />
+      <SummaryCard
+        title="Closed Bookings"
+        value={leadsError ? 'Error' : totalSuccessfulBookings}
         icon={<BookOpenCheck className="h-5 w-5 text-muted-foreground" />}
-        description={error ? error : "Number of 'Closed' leads"}
+        description={leadsError ? leadsError : "Number of 'Closed' leads"}
         isLoading={isLoading}
       />
       <SummaryCard
-        title="Total Earnings from Closed Bookings"
-        value={error ? 'Error' : `${totalSuccessfulEarnings.toLocaleString()} AED`}
+        title="Total Revenue (Closed Bookings)"
+        value={leadsError ? 'Error' : `${totalSuccessfulEarnings.toLocaleString()} AED`}
         icon={<Banknote className="h-5 w-5 text-muted-foreground" />}
-        description={error ? error : "Sum of net amounts for 'Closed' leads"}
+        description={leadsError ? leadsError : "Sum of net amounts for 'Closed' leads"}
         isLoading={isLoading}
       />
       <SummaryCard
-        title="Pending Payments"
-        value={error && invoices.length === 0 ? 'Error' : `${totalPendingPayments.toLocaleString()} AED`}
+        title="Total Balance Amount (Leads)"
+        value={leadsError ? 'Error' : `${totalBalanceLeadAmount.toLocaleString()} AED`}
+        icon={<Wallet className="h-5 w-5 text-muted-foreground" />}
+        description={leadsError ? leadsError : "Sum of balance for 'Balance' status leads"}
+        isLoading={isLoading}
+      />
+      <SummaryCard
+        title="Pending Payments (Invoices)"
+        value={invoicesError ? 'Error' : `${totalPendingPayments.toLocaleString()} AED`}
         icon={<CircleDollarSign className="h-5 w-5 text-muted-foreground" />}
-        description={error && invoices.length === 0 ? error : "Total from pending and overdue invoices"}
+        description={invoicesError ? invoicesError : "Total from pending and overdue invoices"}
         isLoading={isLoading}
       />
     </div>

@@ -7,13 +7,15 @@ import { BookingReportChart } from '../dashboard/_components/BookingReportChart'
 import { InvoiceStatusPieChart } from '../dashboard/_components/InvoiceStatusPieChart';
 import { SalesByYachtPieChart } from '../dashboard/_components/SalesByYachtPieChart';
 import { BookingsByAgentBarChart } from '../dashboard/_components/BookingsByAgentBarChart';
+import { ReportSummaryStats } from './_components/ReportSummaryStats'; // New
+import { FilteredBookedAgentsList } from './_components/FilteredBookedAgentsList'; // New
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { DatePicker } from '@/components/ui/date-picker';
 import { Skeleton } from '@/components/ui/skeleton';
-import type { Lead, Invoice, Yacht, Agent, User, LeadStatus } from '@/lib/types';
-import { leadStatusOptions } from '@/lib/types'; 
+import type { Lead, Invoice, Yacht, Agent, User, LeadStatus, LeadType } from '@/lib/types';
+import { leadStatusOptions, leadTypeOptions } from '@/lib/types'; 
 import { format, parseISO, isWithinInterval, startOfMonth, endOfMonth, startOfYear, endOfYear, isValid, getYear as getFullYear, getMonth as getMonthIndex } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 
@@ -35,6 +37,7 @@ export default function ReportsPage() {
   const [selectedAgentId, setSelectedAgentId] = useState<string>('all');
   const [selectedUserId, setSelectedUserId] = useState<string>('all');
   const [selectedStatusFilter, setSelectedStatusFilter] = useState<LeadStatus | 'all'>('all');
+  const [selectedLeadTypeFilter, setSelectedLeadTypeFilter] = useState<LeadType | 'all'>('all'); // New filter
 
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 5 }, (_, i) => currentYear - i);
@@ -97,7 +100,6 @@ export default function ReportsPage() {
 
 
   const filteredLeads = useMemo(() => {
-    console.log(`[ReportsPage] Initial leads count: ${allLeads.length}`);
     let leadsToFilter = allLeads;
 
     leadsToFilter = leadsToFilter.filter(lead => {
@@ -130,19 +132,18 @@ export default function ReportsPage() {
       
       if (selectedYachtId !== 'all' && lead.yacht !== selectedYachtId) return false;
       if (selectedAgentId !== 'all' && lead.agent !== selectedAgentId) return false;
-      if (selectedUserId !== 'all' && lead.lastModifiedByUserId !== selectedUserId) return false;
+      if (selectedUserId !== 'all' && (lead.lastModifiedByUserId !== selectedUserId && lead.ownerUserId !== selectedUserId )) return false;
       if (selectedStatusFilter !== 'all' && lead.status !== selectedStatusFilter) return false;
+      if (selectedLeadTypeFilter !== 'all' && lead.type !== selectedLeadTypeFilter) return false; // New filter
       
       return true;
     });
-    console.log(`[ReportsPage] Leads after primary filters (including new status filter): ${leadsToFilter.length}`);
     
     return leadsToFilter;
-  }, [allLeads, startDate, endDate, selectedReportMonth, selectedReportYear, selectedYachtId, selectedAgentId, selectedUserId, selectedStatusFilter]);
+  }, [allLeads, startDate, endDate, selectedReportMonth, selectedReportYear, selectedYachtId, selectedAgentId, selectedUserId, selectedStatusFilter, selectedLeadTypeFilter]);
 
   const filteredInvoices = useMemo(() => {
     const relevantLeadIds = new Set(filteredLeads.map(lead => lead.id));
-    console.log(`[ReportsPage] Lead IDs for Invoice filtering (from filteredLeads):`, Array.from(relevantLeadIds));
 
     const invoicesToFilter = allInvoices.filter(invoice => {
        let invoiceCreationDate: Date | null = null;
@@ -172,12 +173,15 @@ export default function ReportsPage() {
             return false;
         }
       }
-      
+      // Check if the invoice status matches the selected lead status filter, if it's not 'all'
+      // This might be too restrictive if invoice status is independent of lead status for reporting
+      // For now, filtering invoices primarily based on whether their lead matches the lead filters.
+      // if (selectedStatusFilter !== 'all' && invoice.status.toLowerCase() !== selectedStatusFilter.toLowerCase()) return false;
+
       return relevantLeadIds.has(invoice.leadId);
     });
-    console.log(`[ReportsPage] Total invoices: ${allInvoices.length}, Invoices for filtered leads: ${invoicesToFilter.length}`);
     return invoicesToFilter;
-  }, [allInvoices, filteredLeads, startDate, endDate, selectedReportMonth, selectedReportYear]);
+  }, [allInvoices, filteredLeads, startDate, endDate, selectedReportMonth, selectedReportYear /* removed selectedStatusFilter here as it might be too restrictive for invoices */]);
 
 
   const resetFilters = () => {
@@ -189,14 +193,18 @@ export default function ReportsPage() {
     setSelectedAgentId('all');
     setSelectedUserId('all');
     setSelectedStatusFilter('all'); 
+    setSelectedLeadTypeFilter('all');
   };
 
   if (isLoading) {
     return (
       <div className="container mx-auto py-2">
         <PageHeader title="CRM Reports" description="Loading report data..." />
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 gap-4 mb-6 p-4 border rounded-lg shadow-sm">
-          {[...Array(8)].map((_,i) => <Skeleton key={i} className="h-10 w-full" />)}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 mb-6 p-4 border rounded-lg shadow-sm">
+          {[...Array(9)].map((_,i) => <Skeleton key={i} className="h-10 w-full" />)}
+        </div>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-6">
+           {[...Array(4)].map((_,i) => <Skeleton key={`stat-${i}`} className="h-24 w-full" />)}
         </div>
         <div className="grid gap-6">
           <Skeleton className="h-[350px] w-full" />
@@ -205,6 +213,7 @@ export default function ReportsPage() {
             <Skeleton className="h-[350px] w-full" />
           </div>
           <Skeleton className="h-[350px] w-full" />
+          <Skeleton className="h-[250px] w-full" />
         </div>
       </div>
     );
@@ -226,13 +235,13 @@ export default function ReportsPage() {
         description="Filter and view key metrics for your leads and invoices." 
       />
       
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 gap-4 mb-6 p-4 border rounded-lg shadow-sm">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 mb-6 p-4 border rounded-lg shadow-sm">
         <div>
-          <Label htmlFor="start-date-report">Start Date (Lead Event / Invoice Creation)</Label>
+          <Label htmlFor="start-date-report">Start Date (Event/Creation)</Label>
           <DatePicker date={startDate} setDate={setStartDate} placeholder="Start Date" />
         </div>
         <div>
-          <Label htmlFor="end-date-report">End Date (Lead Event / Invoice Creation)</Label>
+          <Label htmlFor="end-date-report">End Date (Event/Creation)</Label>
           <DatePicker date={endDate} setDate={setEndDate} placeholder="End Date" disabled={(date) => startDate ? date < startDate : false} />
         </div>
         <div>
@@ -256,7 +265,7 @@ export default function ReportsPage() {
           </Select>
         </div>
         <div>
-          <Label htmlFor="status-filter-report">Status</Label>
+          <Label htmlFor="status-filter-report">Lead Status</Label>
           <Select value={selectedStatusFilter} onValueChange={(value) => setSelectedStatusFilter(value as LeadStatus | 'all')}>
             <SelectTrigger id="status-filter-report" className="w-full">
               <SelectValue placeholder="All Statuses" />
@@ -265,6 +274,20 @@ export default function ReportsPage() {
               <SelectItem value="all">All Statuses</SelectItem>
               {leadStatusOptions.map(status => (
                 <SelectItem key={status} value={status}>{status}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+         <div>
+          <Label htmlFor="lead-type-filter-report">Lead Type</Label>
+          <Select value={selectedLeadTypeFilter} onValueChange={(value) => setSelectedLeadTypeFilter(value as LeadType | 'all')}>
+            <SelectTrigger id="lead-type-filter-report" className="w-full">
+              <SelectValue placeholder="All Lead Types" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Lead Types</SelectItem>
+              {leadTypeOptions.map(type => (
+                <SelectItem key={type} value={type}>{type}</SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -290,7 +313,7 @@ export default function ReportsPage() {
           </Select>
         </div>
         <div>
-          <Label htmlFor="user-filter-report">User (Modified Lead)</Label>
+          <Label htmlFor="user-filter-report">User (Modified/Owner)</Label>
           <Select value={selectedUserId} onValueChange={setSelectedUserId}>
             <SelectTrigger id="user-filter-report"><SelectValue placeholder="All Users" /></SelectTrigger>
             <SelectContent>
@@ -299,12 +322,14 @@ export default function ReportsPage() {
             </SelectContent>
           </Select>
         </div>
-        <div className="flex items-end md:col-span-full lg:col-span-1">
+        <div className="flex items-end">
             <Button onClick={resetFilters} variant="outline" className="w-full">Reset Filters</Button>
         </div>
       </div>
 
-      <div className="grid gap-6">
+      <ReportSummaryStats filteredLeads={filteredLeads} isLoading={isLoading} error={error} />
+
+      <div className="grid gap-6 mt-6">
         <div className="grid gap-6 lg:grid-cols-1">
           <BookingReportChart leads={filteredLeads} isLoading={isLoading} error={error} />
         </div>
@@ -312,11 +337,13 @@ export default function ReportsPage() {
           <InvoiceStatusPieChart invoices={filteredInvoices} isLoading={isLoading} error={error} />
           <SalesByYachtPieChart leads={filteredLeads} allYachts={allYachts} isLoading={isLoading} error={error} />
         </div>
+         <div className="grid gap-6 lg:grid-cols-1">
+           <BookingsByAgentBarChart leads={filteredLeads} allAgents={allAgents} isLoading={isLoading} error={error} />
+        </div>
         <div className="grid gap-6 lg:grid-cols-1">
-          <BookingsByAgentBarChart leads={filteredLeads} allAgents={allAgents} isLoading={isLoading} error={error} />
+            <FilteredBookedAgentsList filteredLeads={filteredLeads} allAgents={allAgents} isLoading={isLoading} error={error} />
         </div>
       </div>
     </div>
   );
 }
-    

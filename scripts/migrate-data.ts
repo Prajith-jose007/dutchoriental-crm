@@ -20,6 +20,31 @@ const MYSQL_TABLE_NAMES = {
   invoices: 'invoices',
 };
 
+// --- Helper function to add column if it doesn't exist ---
+async function addColumnIfNotExists(tableName: string, columnName: string, columnDefinition: string) {
+  try {
+    const checkColumnSql = `
+      SELECT COUNT(*) AS count
+      FROM INFORMATION_SCHEMA.COLUMNS
+      WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = ?
+      AND COLUMN_NAME = ?;
+    `;
+    const [rows]: any = await query(checkColumnSql, [tableName, columnName]);
+    if (rows[0].count === 0) {
+      const alterTableSql = `ALTER TABLE ${tableName} ADD COLUMN ${columnName} ${columnDefinition}`;
+      await query(alterTableSql);
+      console.log(`Column ${columnName} added to table ${tableName} successfully.`);
+    } else {
+      console.log(`Column ${columnName} already exists in table ${tableName}.`);
+    }
+  } catch (error) {
+    console.error(`Error adding column ${columnName} to table ${tableName}:`, (error as Error).message);
+    // Don't re-throw here to allow migration to continue if column addition fails but table creation might succeed
+  }
+}
+
+
 // --- Table Creation Functions ---
 async function createUsersTable() {
   const tableName = MYSQL_TABLE_NAMES.users;
@@ -87,8 +112,12 @@ async function createYachtsTable() {
   try {
     await query(createTableSql);
     console.log(`Table ${tableName} checked/created successfully.`);
+    // Ensure packages_json and customPackageInfo columns exist
+    await addColumnIfNotExists(tableName, 'packages_json', 'TEXT DEFAULT NULL');
+    await addColumnIfNotExists(tableName, 'customPackageInfo', 'TEXT DEFAULT NULL');
+
   } catch (error) {
-    console.error(`Error creating table ${tableName}:`, (error as Error).message);
+    console.error(`Error creating/altering table ${tableName}:`, (error as Error).message);
     throw error;
   }
 }
@@ -105,12 +134,10 @@ async function createLeadsTable() {
       month DATETIME, -- Stores the Lead/Event Date
       notes TEXT,
       type VARCHAR(255),
-      paymentConfirmationStatus VARCHAR(50) DEFAULT 'CONFIRMED', -- New field
+      paymentConfirmationStatus VARCHAR(50) DEFAULT 'CONFIRMED',
       transactionId VARCHAR(255),
       modeOfPayment VARCHAR(50),
-
-      package_quantities_json TEXT DEFAULT NULL, -- Stores array of LeadPackageQuantity as JSON
-
+      package_quantities_json TEXT DEFAULT NULL,
       totalAmount DECIMAL(10, 2) NOT NULL,
       commissionPercentage DECIMAL(5, 2) DEFAULT 0.00,
       commissionAmount DECIMAL(10, 2) DEFAULT 0.00,
@@ -126,8 +153,15 @@ async function createLeadsTable() {
   try {
     await query(createTableSql);
     console.log(`Table ${tableName} checked/created successfully.`);
+    
+    // Ensure newer columns exist
+    await addColumnIfNotExists(tableName, 'paymentConfirmationStatus', 'VARCHAR(50) DEFAULT \'CONFIRMED\'');
+    await addColumnIfNotExists(tableName, 'transactionId', 'VARCHAR(255) DEFAULT NULL');
+    await addColumnIfNotExists(tableName, 'modeOfPayment', 'VARCHAR(50) DEFAULT \'Online\'');
+    await addColumnIfNotExists(tableName, 'package_quantities_json', 'TEXT DEFAULT NULL');
+
   } catch (error) {
-    console.error(`Error creating table ${tableName}:`, (error as Error).message);
+    console.error(`Error creating/altering table ${tableName}:`, (error as Error).message);
     throw error;
   }
 }
@@ -173,7 +207,12 @@ async function migrateUsers() {
       ]);
       console.log(`Inserted user: ${user.name} (ID: ${user.id})`);
     } catch (error) {
-      console.error(`Error inserting user ${user.name} (ID: ${user.id}):`, (error as Error).message);
+      // Check if error is due to duplicate entry (error code ER_DUP_ENTRY for MySQL is 1062)
+      if ((error as any).code === 'ER_DUP_ENTRY' || (error as any).errno === 1062) {
+        console.warn(`User ${user.name} (ID: ${user.id}) already exists. Skipping insertion.`);
+      } else {
+        console.error(`Error inserting user ${user.name} (ID: ${user.id}):`, (error as Error).message);
+      }
     }
   }
   console.log('User migration finished.');
@@ -199,7 +238,11 @@ async function migrateAgents() {
       ]);
       console.log(`Inserted agent: ${agent.name} (ID: ${agent.id})`);
     } catch (error) {
-      console.error(`Error inserting agent ${agent.name} (ID: ${agent.id}):`, (error as Error).message);
+      if ((error as any).code === 'ER_DUP_ENTRY' || (error as any).errno === 1062) {
+        console.warn(`Agent ${agent.name} (ID: ${agent.id}) already exists. Skipping insertion.`);
+      } else {
+        console.error(`Error inserting agent ${agent.name} (ID: ${agent.id}):`, (error as Error).message);
+      }
     }
   }
   console.log('Agent migration finished.');
@@ -227,7 +270,11 @@ async function migrateYachts() {
       ]);
       console.log(`Inserted yacht: ${yacht.name} (ID: ${yacht.id})`);
     } catch (error) {
-      console.error(`Error inserting yacht ${yacht.name} (ID: ${yacht.id}):`, (error as Error).message);
+      if ((error as any).code === 'ER_DUP_ENTRY' || (error as any).errno === 1062) {
+        console.warn(`Yacht ${yacht.name} (ID: ${yacht.id}) already exists. Skipping insertion.`);
+      } else {
+        console.error(`Error inserting yacht ${yacht.name} (ID: ${yacht.id}):`, (error as Error).message);
+      }
     }
   }
   console.log('Yacht migration finished.');
@@ -277,7 +324,7 @@ async function migrateLeads() {
         monthDate, // This is the Lead/Event Date
         lead.notes || null,
         lead.type,
-        lead.paymentConfirmationStatus || 'CONFIRMED', // New field
+        lead.paymentConfirmationStatus || 'CONFIRMED', 
         lead.transactionId || null,
         lead.modeOfPayment,
         packageQuantitiesJson,
@@ -286,7 +333,7 @@ async function migrateLeads() {
         lead.commissionAmount || 0,
         lead.netAmount,
         lead.paidAmount,
-        lead.balanceAmount || 0, // Storing signed balance
+        lead.balanceAmount || 0, 
         createdAtDate,
         updatedAtDate,
         lead.lastModifiedByUserId || null,
@@ -294,7 +341,11 @@ async function migrateLeads() {
       ]);
       console.log(`Inserted lead: ${lead.clientName} (ID: ${lead.id})`);
     } catch (error) {
-      console.error(`Error inserting lead ${lead.clientName} (ID: ${lead.id}):`, (error as Error).message);
+      if ((error as any).code === 'ER_DUP_ENTRY' || (error as any).errno === 1062) {
+        console.warn(`Lead ${lead.clientName} (ID: ${lead.id}) already exists. Skipping insertion.`);
+      } else {
+        console.error(`Error inserting lead ${lead.clientName} (ID: ${lead.id}):`, (error as Error).message);
+      }
     }
   }
   console.log('Lead migration finished.');
@@ -305,7 +356,6 @@ async function migrateInvoices() {
   for (const invoice of placeholderInvoices) {
     const sql = 'INSERT INTO invoices (id, leadId, clientName, amount, dueDate, status, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?)';
     try {
-        // Ensure dueDate is 'yyyy-MM-dd' and createdAt is full ISO
         const dueDateFormatted = invoice.dueDate && isValid(parseISO(invoice.dueDate)) ? format(parseISO(invoice.dueDate), 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd');
         const createdAtFormatted = invoice.createdAt && isValid(parseISO(invoice.createdAt)) ? formatISO(parseISO(invoice.createdAt)) : formatISO(new Date());
       await query(sql, [
@@ -319,7 +369,11 @@ async function migrateInvoices() {
       ]);
       console.log(`Inserted invoice: ${invoice.clientName} (ID: ${invoice.id})`);
     } catch (error) {
-      console.error(`Error inserting invoice ${invoice.clientName} (ID: ${invoice.id}):`, (error as Error).message);
+      if ((error as any).code === 'ER_DUP_ENTRY' || (error as any).errno === 1062) {
+        console.warn(`Invoice ${invoice.clientName} (ID: ${invoice.id}) already exists. Skipping insertion.`);
+      } else {
+        console.error(`Error inserting invoice ${invoice.clientName} (ID: ${invoice.id}):`, (error as Error).message);
+      }
     }
   }
   console.log('Invoice migration finished.');

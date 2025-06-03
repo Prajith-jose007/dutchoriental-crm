@@ -119,7 +119,7 @@ export async function POST(request: NextRequest) {
     }
     
     let leadId = newLeadData.id;
-    if (!leadId) {
+    if (!leadId || leadId.startsWith('temp-')) { // Also check for temp IDs from client
       const currentLeadsFromDB: any[] = await query('SELECT id FROM leads WHERE id LIKE "DO-%"');
       const existingLeadIds = currentLeadsFromDB.map(l => l.id as string);
       leadId = generateNewLeadId(existingLeadIds);
@@ -138,6 +138,8 @@ export async function POST(request: NextRequest) {
     
     const packageQuantitiesJson = newLeadData.packageQuantities ? JSON.stringify(newLeadData.packageQuantities) : null;
 
+    const finalTransactionId = newLeadData.transactionId || `TRX-${Date.now()}`; // Server-side generation if not provided
+
     const leadToStore = {
       id: leadId!,
       clientName: newLeadData.clientName,
@@ -148,7 +150,7 @@ export async function POST(request: NextRequest) {
       notes: newLeadData.notes || null,
       type: newLeadData.type || 'Private Cruise',
       paymentConfirmationStatus: newLeadData.paymentConfirmationStatus || 'CONFIRMED',
-      transactionId: newLeadData.transactionId || null,
+      transactionId: finalTransactionId,
       modeOfPayment: newLeadData.modeOfPayment || 'Online',
       
       package_quantities_json: packageQuantitiesJson,
@@ -248,3 +250,4 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ message: 'Failed to create lead', errorDetails: errorMessage }, { status: 500 });
   }
 }
+

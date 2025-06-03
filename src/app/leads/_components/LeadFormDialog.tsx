@@ -63,14 +63,14 @@ const leadFormSchema = z.object({
 
   packageQuantities: z.array(leadPackageQuantitySchema).optional().default([]),
   freeGuestCount: z.coerce.number().min(0, "Free guest count must be non-negative").optional().default(0),
-  perTicketRate: z.coerce.number().min(0, "Per ticket rate must be non-negative").optional().nullable(), // New field
+  perTicketRate: z.coerce.number().min(0, "OTHER rate must be non-negative").optional().nullable(),
 
   totalAmount: z.coerce.number().default(0),
   commissionPercentage: z.coerce.number().min(0).max(100).default(0),
   commissionAmount: z.coerce.number().optional().default(0),
   netAmount: z.coerce.number().default(0),
   paidAmount: z.coerce.number().min(0, "Paid amount must be non-negative").default(0),
-  balanceAmount: z.coerce.number().default(0), // Can be negative
+  balanceAmount: z.coerce.number().default(0),
 
   createdAt: z.string().optional(),
   updatedAt: z.string().optional(),
@@ -107,10 +107,10 @@ const getDefaultFormValues = (existingLead?: Lead | null, currentUserId?: string
     yacht: existingLead?.yacht || '',
     type: existingLead?.type || 'Private Cruise',
     paymentConfirmationStatus: existingLead?.paymentConfirmationStatus || 'CONFIRMED',
-    modeOfPayment: existingLead?.modeOfPayment || 'CARD', 
+    modeOfPayment: existingLead?.modeOfPayment || 'CARD',
     clientName: existingLead?.clientName || '',
     notes: existingLead?.notes || '',
-    transactionId: existingLead?.transactionId || '',
+    transactionId: existingLead?.transactionId || (existingLead ? undefined : `TRX-${Date.now()}`), // Auto-generate for new leads
     packageQuantities: initialPackageQuantities,
     freeGuestCount: Number(existingLead?.freeGuestCount || 0),
     perTicketRate: existingLead?.perTicketRate !== undefined && existingLead.perTicketRate !== null ? Number(Number(existingLead.perTicketRate).toFixed(2)) : null,
@@ -119,7 +119,7 @@ const getDefaultFormValues = (existingLead?: Lead | null, currentUserId?: string
     commissionAmount: Number(Number(existingLead?.commissionAmount || 0).toFixed(2)),
     netAmount: Number(Number(existingLead?.netAmount || 0).toFixed(2)),
     paidAmount: Number(Number(existingLead?.paidAmount || 0).toFixed(2)),
-    balanceAmount: Number(Number(existingLead?.balanceAmount || 0).toFixed(2)), // Store actual signed balance
+    balanceAmount: Number(Number(existingLead?.balanceAmount || 0).toFixed(2)),
     lastModifiedByUserId: existingLead?.lastModifiedByUserId || currentUserId || undefined,
     ownerUserId: existingLead?.ownerUserId || currentUserId || undefined,
     createdAt: existingLead?.createdAt || undefined,
@@ -294,8 +294,13 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
 
   useEffect(() => {
     if (isOpen) {
-      form.reset(getDefaultFormValues(lead, currentUserId));
-      console.log('[LeadForm] Form reset. Lead:', lead ? JSON.parse(JSON.stringify(lead)) : 'New Lead');
+      const initialValues = getDefaultFormValues(lead, currentUserId);
+      if (!lead && !initialValues.transactionId) { // Generate for new lead if not already set
+          initialValues.transactionId = `TRX-${Date.now()}`;
+      }
+      form.reset(initialValues);
+      console.log('[LeadForm] Form reset. Lead:', lead ? JSON.parse(JSON.stringify(lead)) : 'New Lead', 'Initial Values:', initialValues);
+
 
       const agentIdForCommission = lead?.agent || form.getValues('agent');
       if (agentIdForCommission && allAgents.length > 0) {
@@ -346,9 +351,16 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
         })
       : [];
 
+    let finalTransactionId = data.transactionId;
+    if (!lead?.id && !finalTransactionId) { // Is new lead and transactionId is still empty
+        finalTransactionId = `TRX-${Date.now()}`;
+    }
+
+
     const submittedLead: Lead = {
       ...data,
-      id: lead?.id || `temp-${Date.now()}`,
+      id: lead?.id || `temp-${Date.now()}`, // Server should generate final ID if temp
+      transactionId: finalTransactionId,
       month: data.month ? formatISO(data.month) : formatISO(new Date()),
       paymentConfirmationStatus: data.paymentConfirmationStatus,
       freeGuestCount: Number(data.freeGuestCount || 0),
@@ -547,8 +559,8 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
                 name="transactionId"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Transaction ID (Optional)</FormLabel>
-                    <FormControl><Input placeholder="e.g., 202500001" {...field} value={field.value || ''} /></FormControl>
+                    <FormLabel>Transaction ID</FormLabel>
+                    <FormControl><Input placeholder="Auto-generated" {...field} value={field.value || ''} readOnly className="bg-muted/50 cursor-not-allowed" /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -578,7 +590,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
                 name="perTicketRate"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Per Ticket Rate (Optional)</FormLabel>
+                    <FormLabel>OTHER</FormLabel>
                     <FormControl>
                       <Input 
                         type="number" 
@@ -598,7 +610,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
                         min="0"
                       />
                     </FormControl>
-                     <FormDescription>Informational rate per ticket/item.</FormDescription>
+                     <FormDescription>Specify any other charges or rate.</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}

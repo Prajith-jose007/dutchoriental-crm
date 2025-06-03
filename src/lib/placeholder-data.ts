@@ -115,7 +115,6 @@ export const placeholderYachts: Yacht[] = [
     category: 'Private Cruise',
     packages: [
         { id: 'private-hourly', name: 'HOUR CHARTER', rate: 1500},
-        // "Soft Drinks Package pp" removed from here
     ],
     customPackageInfo: "Ideal for private, intimate gatherings. Hourly rate applies."
   }
@@ -140,7 +139,7 @@ export const placeholderLeads: Lead[] = [
       { packageId: 'lr-ad-alc', packageName: 'ADULT ALC', quantity: 30, rate: 350 },
     ],
     freeGuestCount: 5,
-    perTicketRate: undefined,
+    perTicketRate: 100, // Example "OTHER" rate
     totalAmount: 23000,
     commissionPercentage: 10,
     commissionAmount: 2300,
@@ -162,6 +161,7 @@ export const placeholderLeads: Lead[] = [
     notes: 'Prospective client for regular sightseeing tours.',
     type: 'Superyacht Sightseeing Cruise',
     paymentConfirmationStatus: 'CONFIRMED',
+    transactionId: 'T20240725002',
     modeOfPayment: 'CREDIT',
     packageQuantities: [
       { packageId: 'ss-premium', packageName: 'PREMIUM', quantity: 20, rate: 299 },
@@ -186,22 +186,22 @@ export const placeholderLeads: Lead[] = [
     yacht: 'DO-yacht-private1',
     status: 'Balance',
     month: formatISO(parseISO('2024-08-10T16:00:00')),
-    notes: 'Birthday party, deposit paid.', // Removed "Included soft drinks."
+    notes: 'Birthday party, deposit paid.',
     type: 'Private Cruise',
     paymentConfirmationStatus: 'CONFIRMED',
+    transactionId: 'T20240810003',
     modeOfPayment: 'CASH / CARD',
     packageQuantities: [
       { packageId: 'private-hourly', packageName: 'HOUR CHARTER', quantity: 4, rate: 1500 },
-      // "Soft Drinks Package pp" quantity removed
     ],
     freeGuestCount: 0,
     perTicketRate: undefined,
-    totalAmount: 6000, // (4 * 1500) = 6000
+    totalAmount: 6000,
     commissionPercentage: 10,
-    commissionAmount: 600, // 10% of 6000
-    netAmount: 5400, // 6000 - 600
+    commissionAmount: 600,
+    netAmount: 5400,
     paidAmount: 3000,
-    balanceAmount: 2400, // 5400 - 3000
+    balanceAmount: 2400,
     createdAt: formatISO(subDays(today, 10)),
     updatedAt: formatISO(subDays(today, 2)),
     lastModifiedByUserId: 'DO-user1',
@@ -212,6 +212,6 @@ export const placeholderLeads: Lead[] = [
 export const placeholderInvoices: Invoice[] = [
   { id: 'DO-inv001', leadId: 'DO-001', clientName: 'Tech Corp Events', amount: 20700, dueDate: format(addDays(parseISO(placeholderLeads[0].month), 7), 'yyyy-MM-dd'), status: 'Paid', createdAt: formatISO(subDays(today, 14)) },
   { id: 'DO-inv002', leadId: 'DO-002', clientName: 'Sunset Tours R Us', amount: 5083, dueDate: format(addDays(parseISO(placeholderLeads[1].month), 7), 'yyyy-MM-dd'), status: 'Pending', createdAt: formatISO(subDays(today, 9)) },
-  { id: 'DO-inv003', leadId: 'DO-003', clientName: 'Private Celebration Planners', amount: 5400, dueDate: format(addDays(parseISO(placeholderLeads[2].month), 7), 'yyyy-MM-dd'), status: 'Pending', createdAt: formatISO(subDays(today, 1)) }, // Amount updated to match lead DO-003 net amount
+  { id: 'DO-inv003', leadId: 'DO-003', clientName: 'Private Celebration Planners', amount: 5400, dueDate: format(addDays(parseISO(placeholderLeads[2].month), 7), 'yyyy-MM-dd'), status: 'Pending', createdAt: formatISO(subDays(today, 1)) },
 ];
 

@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { PageHeader } from '@/components/PageHeader';
-import { LeadsTable, generateLeadColumns, type LeadTableColumn } from './_components/LeadsTable'; // Import generateLeadColumns
+import { LeadsTable, generateLeadColumns, type LeadTableColumn } from './_components/LeadsTable';
 import { ImportExportButtons } from './_components/ImportExportButtons';
 import { LeadFormDialog } from './_components/LeadFormDialog';
 import type { Lead, LeadStatus, User, Agent, Yacht, LeadType, LeadPackageQuantity, PaymentConfirmationStatus, YachtPackageItem } from '@/lib/types';
@@ -20,9 +20,6 @@ const USER_ID_STORAGE_KEY = 'currentUserId';
 const USER_ROLE_STORAGE_KEY = 'currentUserRole';
 
 
-// This mapping is crucial for CSV import.
-// Keys are LOWERCASE and UNDERSCORE_SEPARATED versions of desired CSV headers.
-// Values are the internal Lead property names or special 'pkg_<actual_package_name_lower_snake_case>' keys.
 const csvHeaderMapping: { [csvHeaderKey: string]: keyof Omit<Lead, 'packageQuantities'> | 'package_quantities_json' | `pkg_${string}` } = {
   'id': 'id',
   'client': 'clientName', 'client_name': 'clientName',
@@ -52,11 +49,11 @@ const csvHeaderMapping: { [csvHeaderKey: string]: keyof Omit<Lead, 'packageQuant
   'std': 'pkg_standard', 
   'prem': 'pkg_premium', 
   'vip': 'pkg_vip', 
-  'hrchtr': 'pkg_hour_charter', // Match "HrChtr" from table header (lowercase, no space)
+  'hrchtr': 'pkg_hour_charter',
 
 
   // Accounts section
-  'rate_per_tick': 'perTicketRate',
+  'other': 'perTicketRate', // Changed from 'rate_per_tick'
   // 'total_count': 'totalGuestsCalculated', // This is derived, not directly imported to a field
   'total_amt': 'totalAmount',
   'discount_%': 'commissionPercentage',
@@ -72,7 +69,6 @@ const csvHeaderMapping: { [csvHeaderKey: string]: keyof Omit<Lead, 'packageQuant
   'date_of_creation': 'createdAt',
   'date_of_modification': 'updatedAt',
 
-  // Fallback for full JSON import of packages
   'package_quantities_json': 'package_quantities_json',
 };
 
@@ -346,8 +342,15 @@ export default function LeadsPage() {
       return;
     }
     setIsLoading(true);
+    
+    let finalTransactionId = submittedLeadData.transactionId;
+    if (!editingLead && !finalTransactionId) {
+        finalTransactionId = `TRX-${Date.now()}`;
+    }
+    
     const payload: Lead & { requestingUserId: string; requestingUserRole: string } = {
       ...submittedLeadData,
+      transactionId: finalTransactionId,
       lastModifiedByUserId: currentUserId,
       updatedAt: new Date().toISOString(),
       month: submittedLeadData.month ? formatISO(parseISO(submittedLeadData.month)) : formatISO(new Date()),
@@ -538,7 +541,7 @@ export default function LeadsPage() {
           });
           
           const isProblematicRow = !parsedRow.clientName || parsedRow.clientName === 'N/A from CSV' || !parsedRow.yacht;
-          if (isProblematicRow && i < 5) { // Log details for first few problematic rows
+          if (isProblematicRow && i < 5) {
               console.log(`[CSV Import Leads Diagnostics] Row ${i + 1} parsed as potentially problematic:`);
               console.log(`  Raw CSV data array for row ${i + 1}:`, data);
               console.log(`  File Headers used for mapping:`, fileHeaders);
@@ -608,7 +611,7 @@ export default function LeadsPage() {
             notes: parsedRow.notes || undefined,
             type: parsedRow.type || 'Private Cruise',
             paymentConfirmationStatus: parsedRow.paymentConfirmationStatus || 'CONFIRMED',
-            transactionId: parsedRow.transactionId || undefined,
+            transactionId: parsedRow.transactionId || `TRX-${Date.now()}-${i}`, // Auto-generate if not present
             modeOfPayment: parsedRow.modeOfPayment || 'CARD', 
             packageQuantities: packageQuantities,
             freeGuestCount: parsedRow.freeGuestCount || 0,
@@ -968,4 +971,3 @@ export default function LeadsPage() {
   );
 }
 
-    

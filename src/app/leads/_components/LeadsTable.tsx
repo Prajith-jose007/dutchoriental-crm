@@ -40,7 +40,7 @@ export type LeadTableColumn = {
   isYachtLookup?: boolean;
   isPackageColumn?: boolean;
   actualPackageName?: string;
-  yachtCategory?: string;
+  yachtCategory?: string; // To help group/sort if needed, but order is now explicit
 };
 
 // Mapping for desired short headers for specific package names
@@ -71,7 +71,30 @@ const packageHeaderMap: { [fullPackageName: string]: string } = {
 
 
 export const generateLeadColumns = (allYachts: Yacht[]): LeadTableColumn[] => {
-  const baseColumns: LeadTableColumn[] = [
+  const finalColumns: LeadTableColumn[] = [];
+  const processedPackageNames = new Set<string>(); // Keep track of packages already added
+
+  // Helper to create a package column object
+  const createPackageColumn = (actualName: string, preferredHeader?: string, category?: string): LeadTableColumn | null => {
+    if (!allYachts.some(y => y.packages?.some(p => p.name === actualName))) {
+      return null; // Skip if package doesn't exist on any yacht
+    }
+    if (processedPackageNames.has(actualName)) {
+      return null; // Skip if already processed
+    }
+    processedPackageNames.add(actualName);
+    return {
+      header: preferredHeader || actualName,
+      accessorKey: `pkgqty_${actualName.replace(/\s+/g, '_').toLowerCase()}`,
+      isPackageColumn: true,
+      actualPackageName: actualName,
+      isNumeric: true,
+      yachtCategory: category,
+    };
+  };
+
+  // 1. Base Columns
+  finalColumns.push(
     { accessorKey: 'select', header: '' },
     { accessorKey: 'id', header: 'ID' },
     { accessorKey: 'clientName', header: 'Client' },
@@ -83,81 +106,77 @@ export const generateLeadColumns = (allYachts: Yacht[]): LeadTableColumn[] => {
     { accessorKey: 'paymentConfirmationStatus', header: 'Pay Status' },
     { accessorKey: 'transactionId', header: 'Transaction ID' },
     { accessorKey: 'modeOfPayment', header: 'Payment Mode' },
-    { accessorKey: 'freeGuestCount', header: 'Free Guests', isNumeric: true },
-  ];
+    { accessorKey: 'freeGuestCount', header: 'Free Guests', isNumeric: true }
+  );
 
-  const uniquePackages = new Map<string, { name: string, category?: string }>();
+  // 2. Dinner Cruise Package Columns (in specified order)
+  const dinnerCruisePackageOrder = [
+    'CHILD', 'ADULT', 'CHILD TOP DECK', 'ADULT TOP DECK', 'ADULT ALC',
+    'VIP CHILD', 'VIP ADULT', 'VIP ALC',
+    'ROYAL CHILD', 'ROYAL ADULT', 'ROYAL ALC'
+  ];
+  dinnerCruisePackageOrder.forEach(name => {
+    const col = createPackageColumn(name, packageHeaderMap[name], 'Dinner Cruise');
+    if (col) finalColumns.push(col);
+  });
+
+  // 3. Superyacht Sightseeing Package Columns (in specified order)
+  const sightseeingPackageOrder = ['BASIC', 'STANDARD', 'PREMIUM', 'VIP'];
+  sightseeingPackageOrder.forEach(name => {
+    const col = createPackageColumn(name, packageHeaderMap[name], 'Superyacht Sightseeing Cruise');
+    if (col) finalColumns.push(col);
+  });
+
+  // 4. Private Charter Package Columns (in specified order)
+  const privateCharterPackageOrder = ['HOUR CHARTER'];
+  privateCharterPackageOrder.forEach(name => {
+    const col = createPackageColumn(name, packageHeaderMap[name], 'Private Cruise');
+    if (col) finalColumns.push(col);
+  });
+  
+  // 5. Other Packages (not in the explicit lists and not "Soft Drinks Package pp")
+  const allUniquePackageNamesOnYachts = new Set<string>();
   allYachts.forEach(yacht => {
     yacht.packages?.forEach(pkg => {
-      if (pkg.name && !uniquePackages.has(pkg.name)) {
-        uniquePackages.set(pkg.name, { name: pkg.name, category: yacht.category });
+      if (pkg.name && pkg.name !== "Soft Drinks Package pp") {
+        allUniquePackageNamesOnYachts.add(pkg.name);
       }
     });
   });
 
-  const packageColumns: LeadTableColumn[] = [];
-
-  // Add columns based on packageHeaderMap first to ensure preferred order/naming
-  Object.entries(packageHeaderMap).forEach(([fullPackageName, shortHeader]) => {
-      if (uniquePackages.has(fullPackageName)) {
-          const pkgInfo = uniquePackages.get(fullPackageName)!;
-          packageColumns.push({
-              header: shortHeader,
-              accessorKey: `pkgqty_${fullPackageName.replace(/\s+/g, '_').toLowerCase()}`,
-              isPackageColumn: true,
-              actualPackageName: fullPackageName,
-              isNumeric: true,
-              yachtCategory: pkgInfo.category,
-          });
-          uniquePackages.delete(fullPackageName); // Remove from map so it's not added again
-      }
-  });
-
-  // Add any remaining unique packages that weren't in packageHeaderMap
-  uniquePackages.forEach(pkgInfo => {
-      // Explicitly skip "Soft Drinks Package pp" if it were to appear
-      if (pkgInfo.name === "Soft Drinks Package pp") {
-        return;
-      }
-      packageColumns.push({
-          header: pkgInfo.name, // Use full name if no short header defined
-          accessorKey: `pkgqty_${pkgInfo.name.replace(/\s+/g, '_').toLowerCase()}`,
-          isPackageColumn: true,
-          actualPackageName: pkgInfo.name,
-          isNumeric: true,
-          yachtCategory: pkgInfo.category,
-      });
-  });
-
-  // Sort all package columns by category, then by header for some consistency
-  packageColumns.sort((a, b) => {
-    const categoryCompare = (a.yachtCategory || '').localeCompare(b.yachtCategory || '');
-    if (categoryCompare !== 0) return categoryCompare;
-    return a.header.localeCompare(b.header);
+  allUniquePackageNamesOnYachts.forEach(pkgName => {
+    if (!processedPackageNames.has(pkgName)) { // If not already added via specific categories
+      const col = createPackageColumn(pkgName, packageHeaderMap[pkgName] || pkgName, 'Other');
+      if (col) finalColumns.push(col);
+    }
   });
 
 
-  const accountColumns: LeadTableColumn[] = [
+  // 6. Accounts Columns
+  finalColumns.push(
     { accessorKey: 'perTicketRate', header: 'Rate Per Tick', isCurrency: true },
     { accessorKey: 'totalGuestsCalculated', header: 'Total Count', isNumeric: true },
     { accessorKey: 'totalAmount', header: 'Total Amt', isCurrency: true },
-    { accessorKey: 'commissionPercentage', header: 'Discount %', isPercentage: true },
+    { accessorKey: 'commissionPercentage', header: 'Discount %', isPercentage: true }, // Changed header
     { accessorKey: 'commissionAmount', header: 'Commission', isCurrency: true },
     { accessorKey: 'netAmount', header: 'Net Amt', isCurrency: true },
     { accessorKey: 'paidAmount', header: 'Paid', isCurrency: true },
-    { accessorKey: 'balanceAmount', header: 'Balance', isCurrency: true },
-  ];
+    { accessorKey: 'balanceAmount', header: 'Balance', isCurrency: true }
+  );
 
-  const referenceColumns: LeadTableColumn[] = [
+  // 7. References and Comments Columns
+  finalColumns.push(
     { accessorKey: 'notes', header: 'Note', isNotes: true },
     { accessorKey: 'ownerUserId', header: 'Created By', isUserLookup: true },
     { accessorKey: 'lastModifiedByUserId', header: 'Modified By', isUserLookup: true },
     { accessorKey: 'createdAt', header: 'Date of Creation', isDate: true },
-    { accessorKey: 'updatedAt', header: 'Date of Modification', isDate: true },
-    { accessorKey: 'actions', header: 'Actions' },
-  ];
+    { accessorKey: 'updatedAt', header: 'Date of Modification', isDate: true }
+  );
 
-  return [...baseColumns, ...packageColumns, ...accountColumns, ...referenceColumns];
+  // 8. Actions Column
+  finalColumns.push({ accessorKey: 'actions', header: 'Actions' });
+
+  return finalColumns;
 };
 
 
@@ -227,12 +246,12 @@ export function LeadsTable({
     if (!dateString) return '-';
     try {
       const date = parseISO(dateString);
-      if (!isValid(date)) return dateString;
+      if (!isValid(date)) return dateString; // Return original if invalid
       const dateFormat = includeTime ? 'dd/MM/yy HH:mm' : 'dd/MM/yy';
       return format(date, dateFormat);
     } catch (e) {
       console.warn(`Error formatting date: ${dateString}`, e);
-      return dateString;
+      return dateString; // Return original on error
     }
   };
 
@@ -256,10 +275,10 @@ export function LeadsTable({
 
     if (column.accessorKey === 'totalGuestsCalculated') {
       const totalGuests = calculateTotalGuestsFromPackageQuantities(lead);
-      return totalGuests > 0 ? String(totalGuests) : '-';
+      return formatNumeric(totalGuests);
     }
     if (column.accessorKey === 'freeGuestCount') {
-      return lead.freeGuestCount && lead.freeGuestCount > 0 ? String(lead.freeGuestCount) : '-';
+      return formatNumeric(lead.freeGuestCount);
     }
     if (column.accessorKey === 'id') {
       const canEdit = isAdmin || lead.ownerUserId === currentUserId;
@@ -291,7 +310,7 @@ export function LeadsTable({
     }
     if (column.isCurrency) {
       if (column.accessorKey === 'perTicketRate' && (value === null || value === undefined)) {
-        return '-';
+        return '-'; // Explicitly show '-' for undefined/null perTicketRate
       }
       return formatCurrency(value as number | undefined | null);
     }
@@ -319,7 +338,7 @@ export function LeadsTable({
             {leadColumns.map(col => (
               <TableHead key={col.accessorKey} className={col.accessorKey === 'select' ? "w-[40px]" : ""}>
                 {col.accessorKey === 'select' ? (
-                  <Checkbox aria-label="Select all rows" disabled />
+                  <Checkbox aria-label="Select all rows" disabled /> // This can be wired up later for bulk actions
                 ) : col.header}
               </TableHead>
             ))}
@@ -338,7 +357,7 @@ export function LeadsTable({
                 {leadColumns.map(col => (
                   <TableCell key={`${lead.id}-${col.accessorKey}`}>
                     {col.accessorKey === 'select' ? (
-                      <Checkbox aria-label={`Select row ${lead.id}`} disabled />
+                      <Checkbox aria-label={`Select row ${lead.id}`} disabled /> // For future bulk actions
                     ) : col.accessorKey === 'actions' ? (
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -378,3 +397,4 @@ export function LeadsTable({
     </ScrollArea>
   );
 }
+

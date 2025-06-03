@@ -60,12 +60,14 @@ export const placeholderYachts: Yacht[] = [
     packages: [
       { id: 'lr-child', name: 'CHILD', rate: 150 },
       { id: 'lr-adult', name: 'ADULT', rate: 250 },
-      { id: 'lr-ad-alc', name: 'AD ALC', rate: 350 },
-      { id: 'lr-vip-ch', name: 'VIP CH', rate: 250 },
-      { id: 'lr-vip-ad', name: 'VIP AD', rate: 450 },
-      { id: 'lr-vip-ad-alc', name: 'VIP AD ALC', rate: 600 },
-      { id: 'lr-royal-ch', name: 'ROYAL CH', rate: 350 },
-      { id: 'lr-royal-ad', name: 'ROYAL AD', rate: 700 },
+      { id: 'lr-child-top', name: 'CHILD TOP DECK', rate: 200 }, // New as per request
+      { id: 'lr-adult-top', name: 'ADULT TOP DECK', rate: 300 }, // New as per request
+      { id: 'lr-ad-alc', name: 'ADULT ALC', rate: 350 },
+      { id: 'lr-vip-ch', name: 'VIP CHILD', rate: 250 },
+      { id: 'lr-vip-ad', name: 'VIP ADULT', rate: 450 },
+      { id: 'lr-vip-ad-alc', name: 'VIP ALC', rate: 600 }, // Changed from VIP AD ALC to VIP ALC
+      { id: 'lr-royal-ch', name: 'ROYAL CHILD', rate: 350 },
+      { id: 'lr-royal-ad', name: 'ROYAL ADULT', rate: 700 },
       { id: 'lr-royal-alc', name: 'ROYAL ALC', rate: 900 },
     ],
     customPackageInfo: "Luxury dinner cruise experience.",
@@ -76,9 +78,11 @@ export const placeholderYachts: Yacht[] = [
     packages: [
       { id: 'oe-child', name: 'CHILD', rate: 120 },
       { id: 'oe-adult', name: 'ADULT', rate: 220 },
-      { id: 'oe-ad-alc', name: 'AD ALC', rate: 300 },
-      { id: 'oe-vip-ch', name: 'VIP CH', rate: 200 },
-      { id: 'oe-vip-ad', name: 'VIP AD', rate: 400 },
+      { id: 'oe-child-top', name: 'CHILD TOP DECK', rate: 170 },
+      { id: 'oe-adult-top', name: 'ADULT TOP DECK', rate: 270 },
+      { id: 'oe-ad-alc', name: 'ADULT ALC', rate: 300 },
+      { id: 'oe-vip-ch', name: 'VIP CHILD', rate: 200 },
+      { id: 'oe-vip-ad', name: 'VIP ADULT', rate: 400 },
       { id: 'oe-vip-alc', name: 'VIP ALC', rate: 550 },
     ],
     customPackageInfo: "Grandiose vessel for large dinner events."
@@ -89,8 +93,8 @@ export const placeholderYachts: Yacht[] = [
     packages: [
       { id: 'am-child', name: 'CHILD', rate: 100 },
       { id: 'am-adult', name: 'ADULT', rate: 180 },
-      { id: 'am-vip-ch', name: 'VIP CH', rate: 150 },
-      { id: 'am-vip-ad', name: 'VIP AD', rate: 300 },
+      { id: 'am-vip-ch', name: 'VIP CHILD', rate: 150 },
+      { id: 'am-vip-ad', name: 'VIP ADULT', rate: 300 },
       { id: 'am-vip-alc', name: 'VIP ALC', rate: 420 },
     ],
     customPackageInfo: "Classic dhow experience, currently under maintenance."
@@ -100,18 +104,18 @@ export const placeholderYachts: Yacht[] = [
     category: 'Superyacht Sightseeing Cruise',
     packages: [
       { id: 'ss-basic', name: 'BASIC', rate: 199 },
-      { id: 'ss-premium', name: 'PREMIUM', rate: 299 },
       { id: 'ss-standard', name: 'STANDARD', rate: 249 },
+      { id: 'ss-premium', name: 'PREMIUM', rate: 299 },
       { id: 'ss-vip', name: 'VIP', rate: 399 },
     ],
     customPackageInfo: "Experience Dubai's landmarks from a superyacht."
   },
   {
     id: 'DO-yacht-private1', name: 'The Serene Yacht', capacity: 20, status: 'Available', imageUrl: 'https://placehold.co/600x400.png?text=Serene+Yacht',
-    category: 'Private Cruise',
+    category: 'Private Cruise', // Corrected category for consistency
     packages: [
-        { id: 'private-hourly', name: 'Hourly Charter', rate: 1500},
-        { id: 'private-softdrinks', name: 'Soft Drinks Package pp', rate: 50},
+        { id: 'private-hourly', name: 'HOUR CHARTER', rate: 1500}, // Standardized name
+        { id: 'private-softdrinks', name: 'Soft Drinks Package pp', rate: 50}, // Example other package
     ],
     customPackageInfo: "Ideal for private, intimate gatherings. Hourly rate applies."
   }
@@ -133,10 +137,10 @@ export const placeholderLeads: Lead[] = [
     modeOfPayment: 'CARD',
     packageQuantities: [
       { packageId: 'lr-adult', packageName: 'ADULT', quantity: 50, rate: 250 },
-      { packageId: 'lr-ad-alc', packageName: 'AD ALC', quantity: 30, rate: 350 },
+      { packageId: 'lr-ad-alc', packageName: 'ADULT ALC', quantity: 30, rate: 350 },
     ],
     freeGuestCount: 5,
-    perTicketRate: undefined, // Or a specific rate if applicable
+    perTicketRate: undefined,
     totalAmount: 23000,
     commissionPercentage: 10,
     commissionAmount: 2300,
@@ -163,7 +167,7 @@ export const placeholderLeads: Lead[] = [
       { packageId: 'ss-premium', packageName: 'PREMIUM', quantity: 20, rate: 299 },
     ],
     freeGuestCount: 2,
-    perTicketRate: 299, // Example: Assuming this is the primary ticket rate for this lead
+    perTicketRate: 299,
     totalAmount: 5980,
     commissionPercentage: 15,
     commissionAmount: 897,
@@ -187,11 +191,11 @@ export const placeholderLeads: Lead[] = [
     paymentConfirmationStatus: 'CONFIRMED',
     modeOfPayment: 'CASH / CARD',
     packageQuantities: [
-      { packageId: 'private-hourly', packageName: 'Hourly Charter', quantity: 4, rate: 1500 },
+      { packageId: 'private-hourly', packageName: 'HOUR CHARTER', quantity: 4, rate: 1500 },
       { packageId: 'private-softdrinks', packageName: 'Soft Drinks Package pp', quantity: 15, rate: 50},
     ],
     freeGuestCount: 0,
-    perTicketRate: undefined, // N/A for hourly charter type lead in this example
+    perTicketRate: undefined,
     totalAmount: 6750,
     commissionPercentage: 10,
     commissionAmount: 675,
@@ -210,3 +214,5 @@ export const placeholderInvoices: Invoice[] = [
   { id: 'DO-inv002', leadId: 'DO-002', clientName: 'Sunset Tours R Us', amount: 5083, dueDate: format(addDays(parseISO(placeholderLeads[1].month), 7), 'yyyy-MM-dd'), status: 'Pending', createdAt: formatISO(subDays(today, 9)) },
   { id: 'DO-inv003', leadId: 'DO-003', clientName: 'Private Celebration Planners', amount: 6075, dueDate: format(addDays(parseISO(placeholderLeads[2].month), 7), 'yyyy-MM-dd'), status: 'Pending', createdAt: formatISO(subDays(today, 1)) },
 ];
+
+    

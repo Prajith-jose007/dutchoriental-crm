@@ -6,7 +6,7 @@ import { PageHeader } from '@/components/PageHeader';
 import { LeadsTable } from './_components/LeadsTable';
 import { ImportExportButtons } from './_components/ImportExportButtons';
 import { LeadFormDialog } from './_components/LeadFormDialog';
-import type { Lead, LeadStatus, User, Agent, Yacht, LeadType, LeadPackageQuantity, PaymentConfirmationStatus } from '@/lib/types';
+import type { Lead, LeadStatus, User, Agent, Yacht, LeadType, LeadPackageQuantity, PaymentConfirmationStatus, YachtPackageItem } from '@/lib/types';
 import { leadStatusOptions, modeOfPaymentOptions, leadTypeOptions, paymentConfirmationStatusOptions } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -19,50 +19,73 @@ import { format, parseISO, isWithinInterval, isValid, formatISO, getYear as getF
 const USER_ID_STORAGE_KEY = 'currentUserId';
 const USER_ROLE_STORAGE_KEY = 'currentUserRole';
 
+
+// This mapping is crucial for CSV import.
+// Keys are LOWERCASE and UNDERSCORE_SEPARATED versions of desired CSV headers.
+// Values are the internal Lead property names or special 'pkg_<actual_package_name_lower_snake_case>' keys.
 const csvHeaderMapping: { [csvHeaderKey: string]: keyof Omit<Lead, 'packageQuantities'> | 'package_quantities_json' | `pkg_${string}` } = {
   'id': 'id',
-  'clientname': 'clientName', 'client name': 'clientName',
-  'agent': 'agent', 'agentid': 'agent', 'agent_id': 'agent',
-  'yacht': 'yacht', 'yachtid': 'yacht', 'yacht_id': 'yacht',
+  'client': 'clientName', 'client_name': 'clientName',
+  'agent': 'agent', 'agent_name': 'agent', // For import, will attempt to map name to ID if possible
+  'yacht': 'yacht', 'yacht_name': 'yacht', // For import, will attempt to map name to ID if possible
   'status': 'status',
-  'month': 'month', 'lead/event date': 'month', 'event_date': 'month',
-  'notes': 'notes', 'user feed': 'notes',
-  'type': 'type', 'lead type': 'type', 'lead_type': 'type',
-  'paymentconfirmationstatus': 'paymentConfirmationStatus', 'payment confirmation status': 'paymentConfirmationStatus', 'payment_status': 'paymentConfirmationStatus',
-  'transactionid': 'transactionId', 'transaction id': 'transactionId', 'transaction_id': 'transactionId',
-  'modeofpayment': 'modeOfPayment', 'payment mode': 'modeOfPayment', 'mop': 'modeOfPayment',
+  'lead/event_date': 'month', 'event_date': 'month',
+  'type': 'type', 'lead_type': 'type',
+  'pay_status': 'paymentConfirmationStatus', 'payment_confirmation_status': 'paymentConfirmationStatus',
+  'transaction_id': 'transactionId',
+  'payment_mode': 'modeOfPayment',
+  'free_guests': 'freeGuestCount',
 
-  'package_quantities_json': 'package_quantities_json',
-  'freeguestcount': 'freeGuestCount', 'free guests': 'freeGuestCount', 'free_guests': 'freeGuestCount', 'free items': 'freeGuestCount',
-  'perticketrate': 'perTicketRate', 'per ticket rate': 'perTicketRate', 'rate': 'perTicketRate', // New field mapping
-
-  'totalamount': 'totalAmount', 'total_amount': 'totalAmount',
-  'commissionpercentage': 'commissionPercentage', 'agent_discount_%': 'commissionPercentage',
-  'commissionamount': 'commissionAmount', 'commission_amount': 'commissionAmount',
-  'netamount': 'netAmount', 'net_amount': 'netAmount',
-  'paidamount': 'paidAmount', 'paid_amount': 'paidAmount',
-  'balanceamount': 'balanceAmount', 'balance_amount': 'balanceAmount',
-  'createdat': 'createdAt', 'created_at': 'createdAt',
-  'updatedat': 'updatedAt', 'updated_at': 'updatedAt',
-  'lastmodifiedbyuserid': 'lastModifiedByUserId', 'modified_by_id': 'lastModifiedByUserId',
-  'owneruserid': 'ownerUserId', 'owner_id': 'ownerUserId',
-
+  // Package short headers (lowercase) map to `pkg_<actual_package_name_lower_snake_case>`
   'ch': 'pkg_child',
   'ad': 'pkg_adult',
-  'ad alc': 'pkg_ad_alc',
-  'vip ch': 'pkg_vip_ch',
-  'vip ad': 'pkg_vip_ad',
-  'vip alc': 'pkg_vip_alc',
-  'royal ch': 'pkg_royal_ch',
-  'royal ad': 'pkg_royal_ad',
-  'royal alc': 'pkg_royal_alc',
-  'basic': 'pkg_basic',
-  'standard': 'pkg_standard',
-  'premium': 'pkg_premium',
-  'vip': 'pkg_vip',
+  'chd_top': 'pkg_child_top_deck',
+  'adt_top': 'pkg_adult_top_deck',
+  'ad_alc': 'pkg_adult_alc',
+  'vip_ch': 'pkg_vip_child',
+  'vip_ad': 'pkg_vip_adult',
+  'vip_alc': 'pkg_vip_alc',
+  'ryl_ch': 'pkg_royal_child',
+  'ryl_ad': 'pkg_royal_adult',
+  'ryl_alc': 'pkg_royal_alc',
+  'basic': 'pkg_basic', // Assuming 'BASIC' is the actual package name for this short header
+  'std': 'pkg_standard', // Assuming 'STANDARD' is the actual package name
+  'prem': 'pkg_premium', // Assuming 'PREMIUM' is the actual package name
+  'vip': 'pkg_vip', // Assuming 'VIP' is the actual package name for sightseeing
+  'hrc': 'pkg_hour_charter', // Assuming 'HOUR CHARTER' is the actual package name
+  // If you have other packages not in the short list, add their lowercase_snake_case versions here
+  // e.g. 'soft_drinks_package_pp': 'pkg_soft_drinks_package_pp',
+
+  // Accounts section
+  'rate_per_tick': 'perTicketRate',
+  // 'total_count': 'totalGuestsCalculated', // This is derived, not directly imported to a field
+  'total_amt': 'totalAmount',
+  'discount_%': 'commissionPercentage',
+  'commission': 'commissionAmount',
+  'net_amt': 'netAmount',
+  'paid': 'paidAmount',
+  'balance': 'balanceAmount',
+
+  // References and Comments section
+  'note': 'notes',
+  'created_by': 'ownerUserId', // Will attempt to map name to ID
+  'modified_by': 'lastModifiedByUserId', // Will attempt to map name to ID
+  'date_of_creation': 'createdAt',
+  'date_of_modification': 'updatedAt',
+
+  // Fallback for full JSON import of packages
+  'package_quantities_json': 'package_quantities_json',
 };
 
-const convertCsvValue = (key: keyof Omit<Lead, 'packageQuantities'> | 'package_quantities_json' | `pkg_${string}`, value: string, allYachts: Yacht[], agentMap: { [id: string]: string }, yachtMap: { [id: string]: string }): any => {
+
+const convertCsvValue = (
+    key: keyof Omit<Lead, 'packageQuantities'> | 'package_quantities_json' | `pkg_${string}`,
+    value: string,
+    allYachts: Yacht[],
+    agentMap: { [id: string]: string }, // Map of ID to Name
+    userMap: { [id: string]: string }, // Map of ID to Name
+    yachtMap: { [id: string]: string } // Map of ID to Name
+  ): any => {
   const trimmedValue = value ? String(value).trim() : '';
   const currentUserId = typeof window !== 'undefined' ? localStorage.getItem(USER_ID_STORAGE_KEY) : null;
 
@@ -73,11 +96,11 @@ const convertCsvValue = (key: keyof Omit<Lead, 'packageQuantities'> | 'package_q
 
   if (trimmedValue === '' || value === null || value === undefined) {
     switch (key) {
-      case 'totalAmount': case 'commissionPercentage':
-      case 'commissionAmount': case 'netAmount': case 'paidAmount': case 'balanceAmount':
-      case 'freeGuestCount': case 'perTicketRate':
-        return 0;
-      case 'modeOfPayment': return 'CARD'; 
+      case 'totalAmount': case 'commissionPercentage': case 'commissionAmount':
+      case 'netAmount': case 'paidAmount': case 'balanceAmount':
+      case 'freeGuestCount': return 0;
+      case 'perTicketRate': return null; // perTicketRate can be null
+      case 'modeOfPayment': return 'CARD';
       case 'status': return 'Balance';
       case 'type': return 'Private Cruise' as LeadType;
       case 'paymentConfirmationStatus': return 'CONFIRMED' as PaymentConfirmationStatus;
@@ -93,45 +116,59 @@ const convertCsvValue = (key: keyof Omit<Lead, 'packageQuantities'> | 'package_q
 
   switch (key) {
     case 'agent':
-      const agentIdByName = Object.keys(agentMap).find(id => agentMap[id]?.toLowerCase() === trimmedValue.toLowerCase());
-      return agentIdByName || trimmedValue;
     case 'yacht':
-      const yachtIdByName = Object.keys(yachtMap).find(id => yachtMap[id]?.toLowerCase() === trimmedValue.toLowerCase());
-      return yachtIdByName || trimmedValue;
-    case 'totalAmount': case 'commissionPercentage':
-    case 'commissionAmount': case 'netAmount': case 'paidAmount': case 'balanceAmount':
-    case 'freeGuestCount': case 'perTicketRate':
-      const num = parseFloat(trimmedValue.replace(/,/g, ''));
-      return isNaN(num) ? 0 : num;
+    case 'ownerUserId':
+    case 'lastModifiedByUserId':
+      // Attempt to find ID if name is provided in CSV
+      const mapToUse = key === 'agent' ? agentMap : (key === 'yacht' ? yachtMap : userMap);
+      const idByName = Object.keys(mapToUse).find(id => mapToUse[id]?.toLowerCase() === trimmedValue.toLowerCase());
+      return idByName || trimmedValue; // Return ID if found, else return original value (might be an ID already)
+
+    case 'totalAmount': case 'commissionPercentage': case 'commissionAmount':
+    case 'netAmount': case 'paidAmount': case 'balanceAmount':
+    case 'freeGuestCount':
+      const numFinancial = parseFloat(trimmedValue.replace(/,/g, ''));
+      return isNaN(numFinancial) ? 0 : numFinancial;
+    case 'perTicketRate':
+        const numRate = parseFloat(trimmedValue.replace(/,/g, ''));
+        return isNaN(numRate) ? null : numRate;
+
     case 'modeOfPayment':
-      return modeOfPaymentOptions.includes(trimmedValue.toUpperCase() as ModeOfPayment) ? trimmedValue.toUpperCase() : 'CARD'; 
+      return modeOfPaymentOptions.includes(trimmedValue.toUpperCase() as ModeOfPayment) ? trimmedValue.toUpperCase() : 'CARD';
     case 'status':
       return leadStatusOptions.includes(trimmedValue as LeadStatus) ? trimmedValue : 'Balance';
     case 'type':
       return leadTypeOptions.includes(trimmedValue as LeadType) ? trimmedValue : 'Private Cruise';
     case 'paymentConfirmationStatus':
       return paymentConfirmationStatusOptions.includes(trimmedValue.toUpperCase() as PaymentConfirmationStatus) ? trimmedValue.toUpperCase() : 'CONFIRMED';
+
     case 'month':
     case 'createdAt':
     case 'updatedAt':
-      try {
-        const parsedDate = parseISO(trimmedValue);
-        if (isValid(parsedDate)) return formatISO(parsedDate);
-      } catch (e) { /* ignore ISO parse error */ }
+      try { // ISO format
+        const parsedISODate = parseISO(trimmedValue);
+        if (isValid(parsedISODate)) return formatISO(parsedISODate);
+      } catch (e) { /* ignore */ }
 
-      try {
+      try { // "Day, DD Month YYYY" or "DD Month YYYY" format
         let dateObj: Date | null = null;
-        const dayMonthYearMatch = trimmedValue.match(/(\w+),\s*(\d{1,2})\s*(\w+)\s*(\d{4})/i);
+        // Regex for "Thursday, 1 May 2025" or "1 May 2025" or "May 1 2025" etc.
+        const dayMonthYearMatch = trimmedValue.match(/(?:(?:Mon|Tues|Wednes|Thurs|Fri|Satur|Sun)day,\s*)?(\d{1,2})\s*(\w+)\s*(\d{4})/i) ||
+                                  trimmedValue.match(/(\w+)\s*(\d{1,2})\s*(\d{4})/i);
         if (dayMonthYearMatch) {
-            const [, , day, monthStr, year] = dayMonthYearMatch;
-            const monthNames = ["january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december"];
-            const monthIndex = monthNames.indexOf(monthStr.toLowerCase());
-            if (monthIndex > -1) {
-                dateObj = new Date(Number(year), monthIndex, Number(day));
+            const monthStr = dayMonthYearMatch.length === 4 ? dayMonthYearMatch[1] : dayMonthYearMatch[2];
+            const day = dayMonthYearMatch.length === 4 ? parseInt(dayMonthYearMatch[2],10) : parseInt(dayMonthYearMatch[1],10);
+            const year = parseInt(dayMonthYearMatch[dayMonthYearMatch.length - 1], 10);
+
+            const monthNames = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
+            const monthIndex = monthNames.findIndex(m => monthStr.toLowerCase().startsWith(m));
+
+            if (monthIndex > -1 && day >=1 && day <=31 && year > 1900 && year < 2100) {
+                dateObj = new Date(year, monthIndex, day);
             }
         }
         
-        if (!dateObj || !isValid(dateObj)) {
+        if (!dateObj || !isValid(dateObj)) { // Common "dd/mm/yy" or "mm/dd/yy" (heuristic)
             const parts = trimmedValue.match(/(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2,4})/);
             if (parts && parts.length === 4) {
                 let day = parseInt(parts[1], 10);
@@ -139,9 +176,10 @@ const convertCsvValue = (key: keyof Omit<Lead, 'packageQuantities'> | 'package_q
                 let year = parseInt(parts[3], 10);
                 if (String(year).length === 2) year += 2000;
 
-                if (month >=1 && month <=12 && day >=1 && day <=31) {
+                if (month >=1 && month <=12 && day >=1 && day <=31) { // Assume dd/mm/yyyy first
                     dateObj = new Date(year, month - 1, day);
                 }
+                 // If still invalid or day > 12, try mm/dd/yyyy
                 if ((!dateObj || !isValid(dateObj)) && day >=1 && day <=12 && month >=1 && month <=31) {
                     dateObj = new Date(year, day - 1, month);
                 }
@@ -152,6 +190,7 @@ const convertCsvValue = (key: keyof Omit<Lead, 'packageQuantities'> | 'package_q
       } catch (e) {/* ignore */ }
       console.warn(`[CSV Import] Could not parse date "${trimmedValue}" for key "${String(key)}". Defaulting to current date.`);
       return formatISO(new Date());
+
     case 'package_quantities_json':
       try {
         const parsed = JSON.parse(trimmedValue);
@@ -172,11 +211,10 @@ function parseCsvLine(line: string): string[] {
 
   for (let i = 0; i < line.length; i++) {
     const char = line[i];
-
     if (char === '"') {
       if (inQuotes && i + 1 < line.length && line[i + 1] === '"') {
-        currentColumn += '"';
-        i++; 
+        currentColumn += '"'; // Escaped double quote
+        i++; // Skip next quote
       } else {
         inQuotes = !inQuotes;
       }
@@ -187,7 +225,7 @@ function parseCsvLine(line: string): string[] {
       currentColumn += char;
     }
   }
-  columns.push(currentColumn.trim());
+  columns.push(currentColumn.trim()); // Add the last column
   return columns;
 }
 
@@ -450,22 +488,23 @@ export default function LeadsPage() {
         if (headerLine.charCodeAt(0) === 0xFEFF) { 
             headerLine = headerLine.substring(1);
         }
-        const fileHeaders = headerLine.split(',').map(h => h.trim().toLowerCase().replace(/\s+/g, '_'));
+        const fileHeaders = parseCsvLine(headerLine).map(h => h.trim().toLowerCase().replace(/\s+/g, '_'));
         console.log("[CSV Import Leads] Detected Normalized Headers:", fileHeaders);
 
         const newLeadsFromCsv: Lead[] = [];
         const currentLeadIds = new Set(allLeads.map(l => l.id));
 
-        const preferredPackageMapReverse: { [key: string]: string } = {
-          'child': 'CHILD', 'ad': 'ADULT', 'ad_alc': 'AD ALC',
-          'vip_ch': 'VIP CH', 'vip_ad': 'VIP AD', 'vip_alc': 'VIP ALC',
-          'royal_ch': 'ROYAL CH', 'royal_ad': 'ROYAL AD', 'royal_alc': 'ROYAL ALC',
-          'basic': 'BASIC', 'standard': 'STANDARD', 'premium': 'PREMIUM', 'vip': 'VIP'
+        const reversePackageHeaderMap: { [shortHeader: string]: string } = {
+          'ch': 'CHILD', 'ad': 'ADULT', 'chd_top': 'CHILD TOP DECK', 'adt_top': 'ADULT TOP DECK',
+          'ad_alc': 'ADULT ALC', 'vip_ch': 'VIP CHILD', 'vip_ad': 'VIP ADULT', 'vip_alc': 'VIP ALC',
+          'ryl_ch': 'ROYAL CHILD', 'ryl_ad': 'ROYAL ADULT', 'ryl_alc': 'ROYAL ALC',
+          'basic': 'BASIC', 'std': 'STANDARD', 'prem': 'PREMIUM', 'vip': 'VIP',
+          'hrc': 'HOUR CHARTER',
         };
 
 
         for (let i = 1; i < lines.length; i++) {
-          let data = parseCsvLine(lines[i]); 
+          let data = parseCsvLine(lines[i]);
           
           if (data.length > fileHeaders.length) {
             const extraColumns = data.slice(fileHeaders.length);
@@ -485,13 +524,21 @@ export default function LeadsPage() {
           fileHeaders.forEach((fileHeader, index) => {
             const leadKey = csvHeaderMapping[fileHeader];
             if (leadKey) {
-                (parsedRow as any)[leadKey] = convertCsvValue(leadKey, data[index], allYachts, agentMap, yachtMap);
+                (parsedRow as any)[leadKey] = convertCsvValue(leadKey, data[index], allYachts, agentMap, userMap, yachtMap);
+            } else {
+                 // If header not in csvHeaderMapping, it might be a full package name
+                const fullPackageNameSnakeCase = `pkg_${fileHeader.replace(/\s+/g, '_').toLowerCase()}`;
+                if (allYachts.some(y => y.packages?.some(p => p.name.toLowerCase().replace(/\s+/g, '_') === fileHeader.replace(/\s+/g, '_').toLowerCase()))) {
+                   (parsedRow as any)[fullPackageNameSnakeCase] = convertCsvValue(fullPackageNameSnakeCase as `pkg_${string}`, data[index], allYachts, agentMap, userMap, yachtMap);
+                } else {
+                    console.warn(`[CSV Import Leads] Unknown header "${fileHeader}" (normalized: ${fileHeader}) in CSV row ${i+1}. Skipping this column.`);
+                }
             }
           });
           
-          const isProblematicRow = parsedRow.clientName === 'N/A from CSV' || !parsedRow.yacht || (parsedRow.totalAmount === 0 && parsedRow.paidAmount === 0);
+          const isProblematicRow = !parsedRow.clientName || parsedRow.clientName === 'N/A from CSV' || !parsedRow.yacht;
           if (isProblematicRow) {
-              console.log(`[CSV Import Leads Diagnostics] Row ${i + 1} marked as potentially problematic:`);
+              console.log(`[CSV Import Leads Diagnostics] Row ${i + 1} parsed as potentially problematic:`);
               console.log(`  Raw CSV data array for row ${i + 1}:`, data);
               console.log(`  File Headers used for mapping:`, fileHeaders);
               console.log(`  Resulting parsedRow object for row ${i + 1}:`, JSON.parse(JSON.stringify(parsedRow)));
@@ -513,35 +560,43 @@ export default function LeadsPage() {
             } catch (e) {
               console.warn(`[CSV Import Leads] Error parsing package_quantities_json from CSV for row ${i+1}: ${parsedRow.package_quantities_json}`);
             }
-          } else {
+          } else { // Reconstruct from individual package columns
             const leadYachtId = parsedRow.yacht || '';
             const yachtForLead = allYachts.find(y => y.id === leadYachtId || y.name.toLowerCase() === String(leadYachtId).toLowerCase());
             
             if (isProblematicRow) {
                 console.log(`  Yacht ID from parsedRow for package reconstruction: "${leadYachtId}". Yacht found: ${yachtForLead ? yachtForLead.name : 'NOT FOUND'}`);
             }
+            
+            if (yachtForLead && yachtForLead.packages) {
+                for (const csvHeaderKey of Object.keys(csvHeaderMapping)) {
+                    const internalKey = csvHeaderMapping[csvHeaderKey];
+                    if (internalKey && internalKey.startsWith('pkg_')) {
+                        const actualPackageNameFromMap = reversePackageHeaderMap[csvHeaderKey] || // Try mapping from short header like 'ch'
+                                                         internalKey.substring('pkg_'.length).replace(/_/g, ' ').toUpperCase(); // Fallback from pkg_child_top_deck to CHILD TOP DECK
+                        
+                        const quantity = (parsedRow as any)[internalKey] as number | undefined;
 
-            for (const csvHeader of fileHeaders) {
-                const mappedKey = csvHeaderMapping[csvHeader.trim().toLowerCase().replace(/\s+/g, '_')];
-                if (mappedKey && typeof mappedKey === 'string' && mappedKey.startsWith('pkg_')) {
-                    const actualPackageNamePart = mappedKey.substring('pkg_'.length);
-                    const actualPackageName = preferredPackageMapReverse[actualPackageNamePart] || actualPackageNamePart.toUpperCase().replace(/_/g, ' ');
-                    
-                    const quantity = (parsedRow as any)[mappedKey] as number;
-
-                    if (quantity > 0) {
-                        const yachtPackage = yachtForLead?.packages?.find(p => p.name.toLowerCase() === actualPackageName.toLowerCase());
-                        packageQuantities.push({
-                            packageId: yachtPackage?.id || actualPackageName, 
-                            packageName: actualPackageName,
-                            quantity: quantity,
-                            rate: yachtPackage?.rate || 0, 
-                        });
-                        if (isProblematicRow) {
-                            console.log(`    Added package from CSV column: ${actualPackageName}, Qty: ${quantity}, Rate (from yacht): ${yachtPackage?.rate || 0}`);
+                        if (quantity !== undefined && quantity > 0) {
+                            const yachtPackage = yachtForLead.packages.find(p => p.name.toUpperCase() === actualPackageNameFromMap.toUpperCase());
+                            if (yachtPackage) {
+                                packageQuantities.push({
+                                    packageId: yachtPackage.id,
+                                    packageName: yachtPackage.name,
+                                    quantity: quantity,
+                                    rate: yachtPackage.rate,
+                                });
+                                if (isProblematicRow) {
+                                    console.log(`    Added package from CSV column (key: ${csvHeaderKey}, actual: ${actualPackageNameFromMap}): Qty: ${quantity}, Rate: ${yachtPackage.rate}`);
+                                }
+                            } else {
+                                 if (isProblematicRow) console.warn(`    Package "${actualPackageNameFromMap}" (from CSV col ${csvHeaderKey}) not found on yacht "${yachtForLead.name}".`);
+                            }
                         }
                     }
                 }
+            } else if (isProblematicRow) {
+                console.warn(`  Cannot reconstruct packages from CSV columns: Yacht "${leadYachtId}" not found or has no packages.`);
             }
           }
 
@@ -691,62 +746,18 @@ export default function LeadsPage() {
       return;
     }
 
-    const preferredPackageMap: { header: string; dataName: string }[] = [
-      { header: 'CH', dataName: 'CHILD' },
-      { header: 'AD', dataName: 'ADULT' },
-      { header: 'AD ALC', dataName: 'AD ALC' },
-      { header: 'VIP CH', dataName: 'VIP CH' },
-      { header: 'VIP AD', dataName: 'VIP AD' },
-      { header: 'VIP ALC', dataName: 'VIP ALC' },
-      { header: 'ROYAL CH', dataName: 'ROYAL CH' },
-      { header: 'ROYAL AD', dataName: 'ROYAL AD' },
-      { header: 'ROYAL ALC', dataName: 'ROYAL ALC' },
-      { header: 'BASIC', dataName: 'BASIC' },
-      { header: 'STANDARD', dataName: 'STANDARD' },
-      { header: 'PREMIUM', dataName: 'PREMIUM' },
-      { header: 'VIP', dataName: 'VIP' },
-    ];
+    // Use the dynamic column generation logic from LeadsTable to get headers
+    const dynamicColumns = generateLeadColumns(allYachts);
+    
+    const finalCsvHeaders = dynamicColumns
+      .filter(col => col.accessorKey !== 'select' && col.accessorKey !== 'actions') // Exclude select/actions
+      .map(col => col.header);
 
-    const allActualUniquePackageNamesFromYachts = Array.from(
-      new Set(
-        allYachts.flatMap(yacht => yacht.packages?.map(pkg => pkg.name.trim()) || []).filter(name => name)
-      )
-    );
-
-    const packageHeaders: string[] = [];
-    const packageDataNamesForLookup: string[] = [];
-    const addedDataNames = new Set<string>();
-
-    preferredPackageMap.forEach(preferredPkg => {
-      if (allActualUniquePackageNamesFromYachts.includes(preferredPkg.dataName)) {
-        packageHeaders.push(preferredPkg.header);
-        packageDataNamesForLookup.push(preferredPkg.dataName);
-        addedDataNames.add(preferredPkg.dataName);
-      }
-    });
-
-    allActualUniquePackageNamesFromYachts.sort().forEach(actualName => {
-      if (!addedDataNames.has(actualName)) {
-        packageHeaders.push(actualName);
-        packageDataNamesForLookup.push(actualName);
-      }
-    });
-
-    const baseHeadersPart1: string[] = [
-      'ID', 'Client Name', 'Agent Name', 'Yacht Name', 'Status', 'Lead/Event Date', 'Type', 'Payment Confirmation Status',
-      'Transaction ID', 'Payment Mode', 'Total Guests', 'Free Guests', 'Per Ticket Rate',
-    ];
-
-    const financialAndAuditHeaders: string[] = [
-      'Total Amount', 'Agent Discount (%)', 'Commission Amount', 'Net Amount', 'Paid Amount', 'Balance',
-      'Notes', 'Modified By', 'Lead Owner', 'Created At', 'Updated At'
-    ];
-
-    const finalCsvHeaders = [...baseHeadersPart1, ...packageHeaders, ...financialAndAuditHeaders];
 
     const escapeCsvCell = (cellData: any): string => {
       if (cellData === null || cellData === undefined) return '';
       let stringValue = String(cellData);
+      if (String(cellData).trim() === '-' && typeof cellData === 'string') return ''; // Treat displayed '-' as empty for export
       if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n')) {
         return `"${stringValue.replace(/"/g, '""')}"`;
       }
@@ -756,48 +767,48 @@ export default function LeadsPage() {
     const csvRows = [
       finalCsvHeaders.join(','),
       ...filteredLeads.map(lead => {
-        const totalGuests = lead.packageQuantities?.reduce((sum, pq) => sum + (Number(pq.quantity) || 0), 0) || 0;
+        return dynamicColumns
+          .filter(col => col.accessorKey !== 'select' && col.accessorKey !== 'actions')
+          .map(col => {
+            let cellValue: any;
+            if (col.isPackageColumn && col.actualPackageName) {
+              const pkgQuantity = lead.packageQuantities?.find(pq => pq.packageName === col.actualPackageName);
+              cellValue = pkgQuantity?.quantity;
+            } else if (col.accessorKey === 'totalGuestsCalculated') {
+              cellValue = calculateTotalGuestsFromPackageQuantities(lead);
+            } else if (col.isAgentLookup) {
+              cellValue = agentMap[lead.agent as string] || lead.agent;
+            } else if (col.isYachtLookup) {
+              cellValue = yachtMap[lead.yacht as string] || lead.yacht;
+            } else if (col.isUserLookup) {
+              const userId = lead[col.accessorKey as keyof Lead] as string | undefined;
+              cellValue = userId ? userMap[userId] || userId : '';
+            } else if (col.isDate) {
+              const dateVal = lead[col.accessorKey as keyof Lead] as string | undefined;
+              cellValue = dateVal ? format(parseISO(dateVal), 'dd/MM/yyyy HH:mm') : '';
+            } else if (col.isShortDate) {
+               const dateVal = lead[col.accessorKey as keyof Lead] as string | undefined;
+               cellValue = dateVal ? format(parseISO(dateVal), 'dd/MM/yyyy') : '';
+            } else {
+              cellValue = lead[col.accessorKey as keyof Lead];
+            }
+            // If cellValue is 0 for numeric package columns, export as empty string to match '-' display
+            if (col.isPackageColumn && (cellValue === 0 || cellValue === undefined || cellValue === null)) {
+                return '';
+            }
+            if (col.accessorKey === 'freeGuestCount' && (cellValue === 0 || cellValue === undefined || cellValue === null)) {
+                return '';
+            }
+            if (col.accessorKey === 'totalGuestsCalculated' && (cellValue === 0 || cellValue === undefined || cellValue === null)) {
+                return '';
+            }
+            if (col.accessorKey === 'perTicketRate' && (cellValue === null || cellValue === undefined)) {
+              return ''; // Export null/undefined perTicketRate as empty
+            }
 
-        const leadPackageMap = new Map<string, number>();
-        lead.packageQuantities?.forEach(pq => {
-          leadPackageMap.set(pq.packageName.trim(), Number(pq.quantity || 0));
-        });
-
-        const rowDataPart1 = [
-          escapeCsvCell(lead.id),
-          escapeCsvCell(lead.clientName),
-          escapeCsvCell(agentMap[lead.agent] || lead.agent),
-          escapeCsvCell(yachtMap[lead.yacht] || lead.yacht),
-          escapeCsvCell(lead.status),
-          escapeCsvCell(lead.month ? format(parseISO(lead.month), 'dd/MM/yyyy HH:mm') : ''),
-          escapeCsvCell(lead.type),
-          escapeCsvCell(lead.paymentConfirmationStatus),
-          escapeCsvCell(lead.transactionId),
-          escapeCsvCell(lead.modeOfPayment),
-          escapeCsvCell(totalGuests),
-          escapeCsvCell(lead.freeGuestCount || 0),
-          escapeCsvCell(lead.perTicketRate !== undefined && lead.perTicketRate !== null ? lead.perTicketRate.toFixed(2) : ''),
-        ];
-
-        const packageQtyValues = packageDataNamesForLookup.map(dataName =>
-          escapeCsvCell(leadPackageMap.get(dataName) || 0)
-        );
-
-        const financialAndAuditValues = [
-          escapeCsvCell(lead.totalAmount),
-          escapeCsvCell(lead.commissionPercentage),
-          escapeCsvCell(lead.commissionAmount),
-          escapeCsvCell(lead.netAmount),
-          escapeCsvCell(lead.paidAmount),
-          escapeCsvCell(lead.balanceAmount),
-          escapeCsvCell(lead.notes),
-          escapeCsvCell(userMap[lead.lastModifiedByUserId || ''] || lead.lastModifiedByUserId),
-          escapeCsvCell(userMap[lead.ownerUserId || ''] || lead.ownerUserId),
-          escapeCsvCell(lead.createdAt ? format(parseISO(lead.createdAt), 'dd/MM/yyyy HH:mm') : ''),
-          escapeCsvCell(lead.updatedAt ? format(parseISO(lead.updatedAt), 'dd/MM/yyyy HH:mm') : ''),
-        ];
-
-        return [...rowDataPart1, ...packageQtyValues, ...financialAndAuditValues].join(',');
+            return escapeCsvCell(cellValue);
+          })
+          .join(',');
       })
     ];
 
@@ -960,3 +971,5 @@ export default function LeadsPage() {
     </div>
   );
 }
+
+    

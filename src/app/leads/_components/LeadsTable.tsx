@@ -27,7 +27,7 @@ import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { format, parseISO, isValid } from 'date-fns';
 
 type LeadTableColumn = {
-  accessorKey: string; 
+  accessorKey: string;
   header: string;
   isCurrency?: boolean;
   isPercentage?: boolean;
@@ -38,29 +38,33 @@ type LeadTableColumn = {
   isUserLookup?: boolean;
   isAgentLookup?: boolean;
   isYachtLookup?: boolean;
-  isPackageColumn?: boolean; 
-  actualPackageName?: string; 
+  isPackageColumn?: boolean;
+  actualPackageName?: string; // Used to fetch quantity for specific package
+  yachtCategory?: string; // To group packages visually if needed, though table is flat
 };
 
-const preferredPackageMap: { header: string; dataName: string }[] = [
-  { header: 'CH', dataName: 'CHILD' },
-  { header: 'AD', dataName: 'ADULT' },
-  { header: 'AD ALC', dataName: 'AD ALC' },
-  { header: 'VIP CH', dataName: 'VIP CH' },
-  { header: 'VIP AD', dataName: 'VIP AD' },
-  { header: 'VIP ALC', dataName: 'VIP ALC' },
-  { header: 'ROYAL CH', dataName: 'ROYAL CH' },
-  { header: 'ROYAL AD', dataName: 'ROYAL AD' },
-  { header: 'ROYAL ALC', dataName: 'ROYAL ALC' },
-  // For Superyacht Sightseeing
-  { header: 'BASIC', dataName: 'BASIC' },
-  { header: 'STANDARD', dataName: 'STANDARD' },
-  { header: 'PREMIUM', dataName: 'PREMIUM' },
-  { header: 'VIP', dataName: 'VIP' },
-];
+// Mapping for desired short headers for specific package names
+const packageHeaderMap: { [fullPackageName: string]: string } = {
+  'CHILD': 'CH',
+  'ADULT': 'AD',
+  'CHILD TOP DECK': 'CHD TOP',
+  'ADULT TOP DECK': 'ADT TOP',
+  'ADULT ALC': 'AD ALC',
+  'VIP CHILD': 'VIP CH',
+  'VIP ADULT': 'VIP AD',
+  'VIP ALC': 'VIP ALC',
+  'ROYAL CHILD': 'RYL CH',
+  'ROYAL ADULT': 'RYL AD',
+  'ROYAL ALC': 'RYL ALC',
+  'BASIC': 'BASIC',
+  'STANDARD': 'STD',
+  'PREMIUM': 'PREM',
+  'VIP': 'VIP', // For Superyacht Sightseeing 'VIP'
+  'HOUR CHARTER': 'HrChtr',
+};
 
 const generateLeadColumns = (allYachts: Yacht[]): LeadTableColumn[] => {
-  const baseColumnsPart1: LeadTableColumn[] = [
+  const baseColumns: LeadTableColumn[] = [
     { accessorKey: 'select', header: '' },
     { accessorKey: 'id', header: 'ID' },
     { accessorKey: 'clientName', header: 'Client' },
@@ -72,64 +76,76 @@ const generateLeadColumns = (allYachts: Yacht[]): LeadTableColumn[] => {
     { accessorKey: 'paymentConfirmationStatus', header: 'Pay Status' },
     { accessorKey: 'transactionId', header: 'Transaction ID' },
     { accessorKey: 'modeOfPayment', header: 'Payment Mode' },
-    { accessorKey: 'totalGuests', header: 'Total Guests', isNumeric: true },
     { accessorKey: 'freeGuestCount', header: 'Free Guests', isNumeric: true },
-    { accessorKey: 'perTicketRate', header: 'Per Ticket Rate', isCurrency: true }, // New column
   ];
 
-  const allActualUniquePackageNames = Array.from(
-    new Set(
-      allYachts.flatMap(yacht => yacht.packages?.map(pkg => pkg.name.trim()) || []).filter(name => name)
-    )
-  );
-
-  const dynamicPackageColumns: LeadTableColumn[] = [];
-  const addedDataNames = new Set<string>();
-
-  preferredPackageMap.forEach(preferredPkg => {
-    if (allActualUniquePackageNames.includes(preferredPkg.dataName)) {
-      dynamicPackageColumns.push({
-        header: preferredPkg.header, 
-        accessorKey: `pkg_${preferredPkg.dataName.replace(/\s+/g, '_').toLowerCase()}`,
-        isPackageColumn: true,
-        actualPackageName: preferredPkg.dataName, 
-        isNumeric: true,
-      });
-      addedDataNames.add(preferredPkg.dataName);
-    }
+  // Dynamically generate package columns based on all unique packages in the system
+  const uniquePackages = new Map<string, { name: string, category?: string }>();
+  allYachts.forEach(yacht => {
+    yacht.packages?.forEach(pkg => {
+      if (pkg.name && !uniquePackages.has(pkg.name)) {
+        uniquePackages.set(pkg.name, { name: pkg.name, category: yacht.category });
+      }
+    });
   });
 
-  allActualUniquePackageNames.sort().forEach(actualName => {
-    if (!addedDataNames.has(actualName)) {
-      dynamicPackageColumns.push({
-        header: actualName, 
-        accessorKey: `pkg_${actualName.replace(/\s+/g, '_').toLowerCase()}`,
-        isPackageColumn: true,
-        actualPackageName: actualName,
-        isNumeric: true,
-      });
-    }
+  const dinnerCruisePackages: LeadTableColumn[] = [];
+  const sightseeingPackages: LeadTableColumn[] = [];
+  const privateCharterPackages: LeadTableColumn[] = [];
+  const otherPackageColumns: LeadTableColumn[] = [];
+
+  uniquePackages.forEach(pkgInfo => {
+    const header = packageHeaderMap[pkgInfo.name] || pkgInfo.name;
+    const columnDef: LeadTableColumn = {
+      header: header,
+      accessorKey: `pkgqty_${pkgInfo.name.replace(/\s+/g, '_').toLowerCase()}`,
+      isPackageColumn: true,
+      actualPackageName: pkgInfo.name,
+      isNumeric: true,
+      yachtCategory: pkgInfo.category
+    };
+    if (pkgInfo.category === 'Dinner Cruise') dinnerCruisePackages.push(columnDef);
+    else if (pkgInfo.category === 'Superyacht Sightseeing Cruise') sightseeingPackages.push(columnDef);
+    else if (pkgInfo.category === 'Private Cruise') privateCharterPackages.push(columnDef);
+    else otherPackageColumns.push(columnDef);
   });
+
+  // Sort package columns within their categories for consistent order
+  const sortPackageCols = (cols: LeadTableColumn[]) => cols.sort((a,b) => a.header.localeCompare(b.header));
+  sortPackageCols(dinnerCruisePackages);
+  sortPackageCols(sightseeingPackages);
+  sortPackageCols(privateCharterPackages);
+  sortPackageCols(otherPackageColumns);
   
-  const financialColumns: LeadTableColumn[] = [
+  const allPackageColumns = [
+    ...dinnerCruisePackages, 
+    ...sightseeingPackages, 
+    ...privateCharterPackages, 
+    ...otherPackageColumns
+  ];
+
+
+  const accountColumns: LeadTableColumn[] = [
+    { accessorKey: 'perTicketRate', header: 'Rate Per Tick', isCurrency: true },
+    { accessorKey: 'totalGuestsCalculated', header: 'Total Count', isNumeric: true },
     { accessorKey: 'totalAmount', header: 'Total Amt', isCurrency: true },
-    { accessorKey: 'commissionPercentage', header: 'Agent Disc. %', isPercentage: true },
-    { accessorKey: 'commissionAmount', header: 'Comm Amt', isCurrency: true },
+    { accessorKey: 'commissionPercentage', header: 'Discount %', isPercentage: true },
+    { accessorKey: 'commissionAmount', header: 'Commission', isCurrency: true },
     { accessorKey: 'netAmount', header: 'Net Amt', isCurrency: true },
-    { accessorKey: 'paidAmount', header: 'Paid Amt', isCurrency: true },
+    { accessorKey: 'paidAmount', header: 'Paid', isCurrency: true },
     { accessorKey: 'balanceAmount', header: 'Balance', isCurrency: true },
   ];
 
-  const auditAndActionColumns: LeadTableColumn[] = [
-    { accessorKey: 'notes', header: 'Notes', isNotes: true },
+  const referenceColumns: LeadTableColumn[] = [
+    { accessorKey: 'notes', header: 'Note', isNotes: true },
+    { accessorKey: 'ownerUserId', header: 'Created By', isUserLookup: true },
     { accessorKey: 'lastModifiedByUserId', header: 'Modified By', isUserLookup: true },
-    { accessorKey: 'ownerUserId', header: 'Lead Owner', isUserLookup: true },
-    { accessorKey: 'createdAt', header: 'Created At', isDate: true },
-    { accessorKey: 'updatedAt', header: 'Updated At', isDate: true },
+    { accessorKey: 'createdAt', header: 'Date of Creation', isDate: true },
+    { accessorKey: 'updatedAt', header: 'Date of Modification', isDate: true },
     { accessorKey: 'actions', header: 'Actions' },
   ];
 
-  return [...baseColumnsPart1, ...dynamicPackageColumns, ...financialColumns, ...auditAndActionColumns];
+  return [...baseColumns, ...allPackageColumns, ...accountColumns, ...referenceColumns];
 };
 
 
@@ -178,8 +194,8 @@ export function LeadsTable({
   };
 
   const formatCurrency = (amount?: number | null) => {
-    if (amount === null || amount === undefined || isNaN(amount)) return '-'; // Treat null/undefined/NaN as '-'
-    return `${amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} AED`;
+    if (amount === null || amount === undefined || isNaN(amount)) return '-';
+    return `${amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
 
   const formatPercentage = (value?: number | null) => {
@@ -188,8 +204,8 @@ export function LeadsTable({
   }
 
   const formatNumeric = (num?: number | null): string => {
-    if (num === null || num === undefined || isNaN(num)) {
-      return '0'; 
+    if (num === null || num === undefined || isNaN(num) || num === 0) { // Show 0 as '-' or empty for packages
+      return '-';
     }
     return String(num);
   };
@@ -200,7 +216,7 @@ export function LeadsTable({
     try {
       const date = parseISO(dateString);
       if (!isValid(date)) return dateString; 
-      const dateFormat = includeTime ? 'dd/MM/yyyy HH:mm' : 'dd/MM/yyyy';
+      const dateFormat = includeTime ? 'dd/MM/yy HH:mm' : 'dd/MM/yy';
       return format(date, dateFormat);
     } catch (e) {
       console.warn(`Error formatting date: ${dateString}`, e);
@@ -226,11 +242,12 @@ export function LeadsTable({
     
     const value = lead[column.accessorKey as keyof Lead];
 
-    if (column.accessorKey === 'totalGuests') {
-      return formatNumeric(calculateTotalGuestsFromPackageQuantities(lead));
+    if (column.accessorKey === 'totalGuestsCalculated') {
+      const totalGuests = calculateTotalGuestsFromPackageQuantities(lead);
+      return totalGuests > 0 ? String(totalGuests) : '-';
     }
     if (column.accessorKey === 'freeGuestCount') {
-      return formatNumeric(lead.freeGuestCount);
+      return lead.freeGuestCount && lead.freeGuestCount > 0 ? String(lead.freeGuestCount) : '-';
     }
     if (column.accessorKey === 'id') {
       const canEdit = isAdmin || lead.ownerUserId === currentUserId;
@@ -261,19 +278,16 @@ export function LeadsTable({
       return formatDateValue(value as string | undefined);
     }
     if (column.isCurrency) {
-      if (column.accessorKey === 'balanceAmount') { // Balance can be negative
-        return formatCurrency(value as number | undefined);
+      if (column.accessorKey === 'perTicketRate' && (value === null || value === undefined)) {
+        return '-';
       }
-      if (column.accessorKey === 'perTicketRate') {
-         return formatCurrency(value as number | undefined | null);
-      }
-      return formatCurrency(Math.abs(value as number | undefined));
+      return formatCurrency(value as number | undefined | null);
     }
     if (column.isPercentage) {
       return formatPercentage(value as number | undefined);
     }
-    if (column.isNumeric && column.accessorKey !== 'totalGuests' && column.accessorKey !== 'freeGuestCount' && !column.isPackageColumn) { 
-      return formatNumeric(value as number | undefined);
+    if (column.isNumeric && column.accessorKey !== 'totalGuestsCalculated' && column.accessorKey !== 'freeGuestCount' && !column.isPackageColumn) { 
+      return (value !== null && value !== undefined && !isNaN(Number(value))) ? String(value) : '-';
     }
     if (column.isNotes) {
       return formatNotes(value as string | undefined);
@@ -282,7 +296,7 @@ export function LeadsTable({
       const userId = value as string | undefined;
       return userId ? userMap[userId] || userId : '-';
     }
-    return value !== undefined && value !== null ? String(value) : '-';
+    return value !== undefined && value !== null && String(value).trim() !== '' ? String(value) : '-';
   };
 
   return (
@@ -352,3 +366,5 @@ export function LeadsTable({
     </ScrollArea>
   );
 }
+
+    

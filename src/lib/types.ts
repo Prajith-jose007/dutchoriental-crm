@@ -58,7 +58,7 @@ export interface Invoice {
 export const leadStatusOptions = ['Balance', 'Closed'] as const;
 export type LeadStatus = typeof leadStatusOptions[number];
 
-export const modeOfPaymentOptions = ['CARD', 'CASH', 'CASH / CARD', 'NOMOD', 'PAYMOD', 'RUZINN', 'CREDIT'] as const;
+export const modeOfPaymentOptions = ['CARD', 'CASH', 'CASH / CARD', 'NOMOD', 'PAYMOD', 'RUZINN', 'CREDIT', 'OTHER'] as const;
 export type ModeOfPayment = typeof modeOfPaymentOptions[number];
 
 export const leadTypeOptions = ['Dinner Cruise', 'Superyacht Sightseeing Cruise', 'Private Cruise'] as const;

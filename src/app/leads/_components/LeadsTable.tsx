@@ -39,8 +39,8 @@ export type LeadTableColumn = {
   isAgentLookup?: boolean;
   isYachtLookup?: boolean;
   isPackageColumn?: boolean;
-  actualPackageName?: string; 
-  yachtCategory?: string; 
+  actualPackageName?: string;
+  yachtCategory?: string;
 };
 
 // Mapping for desired short headers for specific package names
@@ -66,9 +66,7 @@ const packageHeaderMap: { [fullPackageName: string]: string } = {
   'VIP': 'VIP', // 'VIP' is distinct for sightseeing
 
   // Private Cruise Packages
-  'HOUR CHARTER': 'HrChtr', // For Private Cruise type
-  // Add other full package names from your system that you want short headers for
-  // e.g., 'Soft Drinks Package pp': 'SoftDrinks',
+  'HOUR CHARTER': 'HrChtr',
 };
 
 
@@ -98,7 +96,7 @@ export const generateLeadColumns = (allYachts: Yacht[]): LeadTableColumn[] => {
   });
 
   const packageColumns: LeadTableColumn[] = [];
-  
+
   // Add columns based on packageHeaderMap first to ensure preferred order/naming
   Object.entries(packageHeaderMap).forEach(([fullPackageName, shortHeader]) => {
       if (uniquePackages.has(fullPackageName)) {
@@ -117,6 +115,10 @@ export const generateLeadColumns = (allYachts: Yacht[]): LeadTableColumn[] => {
 
   // Add any remaining unique packages that weren't in packageHeaderMap
   uniquePackages.forEach(pkgInfo => {
+      // Explicitly skip "Soft Drinks Package pp" if it were to appear
+      if (pkgInfo.name === "Soft Drinks Package pp") {
+        return;
+      }
       packageColumns.push({
           header: pkgInfo.name, // Use full name if no short header defined
           accessorKey: `pkgqty_${pkgInfo.name.replace(/\s+/g, '_').toLowerCase()}`,
@@ -193,12 +195,12 @@ export function LeadsTable({
       default: return 'outline';
     }
   };
-  
+
   const getPaymentConfirmationStatusVariant = (status?: PaymentConfirmationStatus) => {
     if (!status) return 'outline';
     switch (status) {
-      case 'PAID': return 'default'; 
-      case 'CONFIRMED': return 'secondary'; 
+      case 'PAID': return 'default';
+      case 'CONFIRMED': return 'secondary';
       default: return 'outline';
     }
   };
@@ -214,7 +216,7 @@ export function LeadsTable({
   }
 
   const formatNumeric = (num?: number | null): string => {
-    if (num === null || num === undefined || isNaN(num) || num === 0) { 
+    if (num === null || num === undefined || isNaN(num) || num === 0) {
       return '-';
     }
     return String(num);
@@ -225,12 +227,12 @@ export function LeadsTable({
     if (!dateString) return '-';
     try {
       const date = parseISO(dateString);
-      if (!isValid(date)) return dateString; 
+      if (!isValid(date)) return dateString;
       const dateFormat = includeTime ? 'dd/MM/yy HH:mm' : 'dd/MM/yy';
       return format(date, dateFormat);
     } catch (e) {
       console.warn(`Error formatting date: ${dateString}`, e);
-      return dateString; 
+      return dateString;
     }
   };
 
@@ -249,7 +251,7 @@ export function LeadsTable({
       const pkgQuantity = lead.packageQuantities?.find(pq => pq.packageName === column.actualPackageName);
       return formatNumeric(pkgQuantity?.quantity);
     }
-    
+
     const value = lead[column.accessorKey as keyof Lead];
 
     if (column.accessorKey === 'totalGuestsCalculated') {
@@ -270,7 +272,7 @@ export function LeadsTable({
     if (column.accessorKey === 'status') {
       return <Badge variant={getStatusVariant(lead.status)}>{lead.status}</Badge>;
     }
-    if (column.accessorKey === 'paymentConfirmationStatus') { 
+    if (column.accessorKey === 'paymentConfirmationStatus') {
       return <Badge variant={getPaymentConfirmationStatusVariant(lead.paymentConfirmationStatus)}>{lead.paymentConfirmationStatus}</Badge>;
     }
     if (column.isAgentLookup) {
@@ -296,7 +298,7 @@ export function LeadsTable({
     if (column.isPercentage) {
       return formatPercentage(value as number | undefined);
     }
-    if (column.isNumeric && column.accessorKey !== 'totalGuestsCalculated' && column.accessorKey !== 'freeGuestCount' && !column.isPackageColumn) { 
+    if (column.isNumeric && column.accessorKey !== 'totalGuestsCalculated' && column.accessorKey !== 'freeGuestCount' && !column.isPackageColumn) {
       return (value !== null && value !== undefined && !isNaN(Number(value))) ? String(value) : '-';
     }
     if (column.isNotes) {
@@ -317,7 +319,7 @@ export function LeadsTable({
             {leadColumns.map(col => (
               <TableHead key={col.accessorKey} className={col.accessorKey === 'select' ? "w-[40px]" : ""}>
                 {col.accessorKey === 'select' ? (
-                  <Checkbox aria-label="Select all rows" disabled /> 
+                  <Checkbox aria-label="Select all rows" disabled />
                 ) : col.header}
               </TableHead>
             ))}
@@ -376,4 +378,3 @@ export function LeadsTable({
     </ScrollArea>
   );
 }
-    

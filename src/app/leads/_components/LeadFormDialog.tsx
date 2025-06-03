@@ -63,6 +63,7 @@ const leadFormSchema = z.object({
 
   packageQuantities: z.array(leadPackageQuantitySchema).optional().default([]),
   freeGuestCount: z.coerce.number().min(0, "Free guest count must be non-negative").optional().default(0),
+  perTicketRate: z.coerce.number().min(0, "Per ticket rate must be non-negative").optional().nullable(), // New field
 
   totalAmount: z.coerce.number().default(0),
   commissionPercentage: z.coerce.number().min(0).max(100).default(0),
@@ -112,6 +113,7 @@ const getDefaultFormValues = (existingLead?: Lead | null, currentUserId?: string
     transactionId: existingLead?.transactionId || '',
     packageQuantities: initialPackageQuantities,
     freeGuestCount: Number(existingLead?.freeGuestCount || 0),
+    perTicketRate: existingLead?.perTicketRate !== undefined && existingLead.perTicketRate !== null ? Number(Number(existingLead.perTicketRate).toFixed(2)) : null,
     totalAmount: Number(Number(existingLead?.totalAmount || 0).toFixed(2)),
     commissionPercentage: Number(existingLead?.commissionPercentage || 0),
     commissionAmount: Number(Number(existingLead?.commissionAmount || 0).toFixed(2)),
@@ -229,7 +231,6 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
   }, [isOpen, watchedYachtId, allYachts, replacePackageQuantities, lead, isLoadingDropdowns, form]);
 
 
-  // Financial Calculation useEffect - REPLACED WITH USER'S SNIPPET LOGIC
   useEffect(() => {
     console.log('[CalcDebug] --- Calculation Effect Fired (User Snippet Logic) ---');
     const currentYachtId = watchedYachtId;
@@ -250,7 +251,6 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
     if (selectedYachtForCalc && selectedYachtForCalc.packages && currentPackageQuantities.length > 0) {
         currentPackageQuantities.forEach((pqItem) => {
             const quantity = Number(pqItem.quantity || 0);
-            // Assuming pqItem.rate is reliable and populated by the other useEffect that reacts to yacht changes
             const rate = Number(Number(pqItem.rate || 0).toFixed(2));
             if (quantity > 0 && rate > 0) {
                 calculatedTotalAmount += quantity * rate;
@@ -259,15 +259,13 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
         });
         calculatedTotalAmount = Number(calculatedTotalAmount.toFixed(2));
     } else {
-        // No yacht, or no packages on yacht, or no package quantities selected by user
         calculatedTotalAmount = 0;
         tempTotalGuests = 0;
     }
     
-    setCalculatedTotalGuests(tempTotalGuests); // Update total guests state
+    setCalculatedTotalGuests(tempTotalGuests);
     form.setValue('totalAmount', calculatedTotalAmount);
     
-    // Set commissionPercentage from agent directly.
     form.setValue('commissionPercentage', agentDiscountRate);
 
     const calculatedCommissionAmount = Number(((calculatedTotalAmount * agentDiscountRate) / 100).toFixed(2));
@@ -276,7 +274,6 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
     const calculatedNetAmount = Number((calculatedTotalAmount - calculatedCommissionAmount).toFixed(2));
     form.setValue('netAmount', calculatedNetAmount);
 
-    // Storing signed balance (can be negative if overpaid)
     const actualSignedBalanceAmount = Number((calculatedNetAmount - currentPaidAmount).toFixed(2));
     form.setValue('balanceAmount', actualSignedBalanceAmount);
 
@@ -290,8 +287,8 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
     watchedPaidAmount,
     allYachts,
     allAgents,
-    form, // form instance is a dependency
-    setCalculatedTotalGuests // state setter
+    form,
+    setCalculatedTotalGuests
   ]);
 
 
@@ -355,6 +352,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
       month: data.month ? formatISO(data.month) : formatISO(new Date()),
       paymentConfirmationStatus: data.paymentConfirmationStatus,
       freeGuestCount: Number(data.freeGuestCount || 0),
+      perTicketRate: data.perTicketRate !== undefined && data.perTicketRate !== null ? Number(Number(data.perTicketRate).toFixed(2)) : undefined,
       createdAt: lead?.createdAt || formatISO(new Date()),
       updatedAt: formatISO(new Date()),
       lastModifiedByUserId: currentUserId || undefined,
@@ -366,7 +364,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
       commissionAmount: finalCommissionAmount,
       netAmount: finalNetAmount,
       paidAmount: finalPaidAmount,
-      balanceAmount: actualSignedBalanceAmount, // Store signed balance
+      balanceAmount: actualSignedBalanceAmount,
     };
     console.log("[LeadFormDialog] Submitting lead:", JSON.parse(JSON.stringify(submittedLead, null, 2)));
     onSubmitSuccess(submittedLead);
@@ -571,6 +569,36 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
                         min="0"
                       />
                     </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+               <FormField
+                control={form.control}
+                name="perTicketRate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Per Ticket Rate (Optional)</FormLabel>
+                    <FormControl>
+                      <Input 
+                        type="number" 
+                        placeholder="0.00" 
+                        {...field} 
+                        value={field.value === null || field.value === undefined ? '' : String(field.value)}
+                        onChange={e => {
+                            const val = e.target.value;
+                            if (val === '') {
+                                field.onChange(null);
+                            } else {
+                                const numVal = parseFloat(val);
+                                field.onChange(isNaN(numVal) ? null : numVal);
+                            }
+                        }}
+                        step="0.01"
+                        min="0"
+                      />
+                    </FormControl>
+                     <FormDescription>Informational rate per ticket/item.</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}

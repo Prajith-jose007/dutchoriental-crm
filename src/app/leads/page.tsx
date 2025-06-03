@@ -34,6 +34,7 @@ const csvHeaderMapping: { [csvHeaderKey: string]: keyof Omit<Lead, 'packageQuant
 
   'package_quantities_json': 'package_quantities_json',
   'freeguestcount': 'freeGuestCount', 'free guests': 'freeGuestCount', 'free_guests': 'freeGuestCount', 'free items': 'freeGuestCount',
+  'perticketrate': 'perTicketRate', 'per ticket rate': 'perTicketRate', 'rate': 'perTicketRate', // New field mapping
 
   'totalamount': 'totalAmount', 'total_amount': 'totalAmount',
   'commissionpercentage': 'commissionPercentage', 'agent_discount_%': 'commissionPercentage',
@@ -46,8 +47,6 @@ const csvHeaderMapping: { [csvHeaderKey: string]: keyof Omit<Lead, 'packageQuant
   'lastmodifiedbyuserid': 'lastModifiedByUserId', 'modified_by_id': 'lastModifiedByUserId',
   'owneruserid': 'ownerUserId', 'owner_id': 'ownerUserId',
 
-  // Dynamic package headers from preferredPackageMap will be prefixed with pkg_
-  // Example: 'ch' from CSV could map to 'pkg_child'
   'ch': 'pkg_child',
   'ad': 'pkg_adult',
   'ad alc': 'pkg_ad_alc',
@@ -60,14 +59,14 @@ const csvHeaderMapping: { [csvHeaderKey: string]: keyof Omit<Lead, 'packageQuant
   'basic': 'pkg_basic',
   'standard': 'pkg_standard',
   'premium': 'pkg_premium',
-  'vip': 'pkg_vip', // Note: This might conflict if 'VIP' is also a package name. Be specific.
+  'vip': 'pkg_vip',
 };
 
 const convertCsvValue = (key: keyof Omit<Lead, 'packageQuantities'> | 'package_quantities_json' | `pkg_${string}`, value: string, allYachts: Yacht[], agentMap: { [id: string]: string }, yachtMap: { [id: string]: string }): any => {
   const trimmedValue = value ? String(value).trim() : '';
   const currentUserId = typeof window !== 'undefined' ? localStorage.getItem(USER_ID_STORAGE_KEY) : null;
 
-  if (key.startsWith('pkg_')) { // Handle dynamic package quantity columns
+  if (key.startsWith('pkg_')) {
     const num = parseInt(trimmedValue, 10);
     return isNaN(num) || num < 0 ? 0 : num;
   }
@@ -76,7 +75,7 @@ const convertCsvValue = (key: keyof Omit<Lead, 'packageQuantities'> | 'package_q
     switch (key) {
       case 'totalAmount': case 'commissionPercentage':
       case 'commissionAmount': case 'netAmount': case 'paidAmount': case 'balanceAmount':
-      case 'freeGuestCount':
+      case 'freeGuestCount': case 'perTicketRate':
         return 0;
       case 'modeOfPayment': return 'CARD'; 
       case 'status': return 'Balance';
@@ -93,16 +92,16 @@ const convertCsvValue = (key: keyof Omit<Lead, 'packageQuantities'> | 'package_q
   }
 
   switch (key) {
-    case 'agent': // Try to map agent name to ID
+    case 'agent':
       const agentIdByName = Object.keys(agentMap).find(id => agentMap[id]?.toLowerCase() === trimmedValue.toLowerCase());
-      return agentIdByName || trimmedValue; // Use ID if found, else original value (could be an ID already)
-    case 'yacht': // Try to map yacht name to ID
+      return agentIdByName || trimmedValue;
+    case 'yacht':
       const yachtIdByName = Object.keys(yachtMap).find(id => yachtMap[id]?.toLowerCase() === trimmedValue.toLowerCase());
-      return yachtIdByName || trimmedValue; // Use ID if found, else original value
+      return yachtIdByName || trimmedValue;
     case 'totalAmount': case 'commissionPercentage':
     case 'commissionAmount': case 'netAmount': case 'paidAmount': case 'balanceAmount':
-    case 'freeGuestCount':
-      const num = parseFloat(trimmedValue.replace(/,/g, '')); // Remove commas before parsing
+    case 'freeGuestCount': case 'perTicketRate':
+      const num = parseFloat(trimmedValue.replace(/,/g, ''));
       return isNaN(num) ? 0 : num;
     case 'modeOfPayment':
       return modeOfPaymentOptions.includes(trimmedValue.toUpperCase() as ModeOfPayment) ? trimmedValue.toUpperCase() : 'CARD'; 
@@ -121,9 +120,7 @@ const convertCsvValue = (key: keyof Omit<Lead, 'packageQuantities'> | 'package_q
       } catch (e) { /* ignore ISO parse error */ }
 
       try {
-        // Try to parse formats like "Thursday, 1 May 2025" or "DD/MM/YYYY" or "MM/DD/YYYY"
         let dateObj: Date | null = null;
-        // Attempt parsing "Day, DD Month YYYY" (e.g., "Thursday, 1 May 2025")
         const dayMonthYearMatch = trimmedValue.match(/(\w+),\s*(\d{1,2})\s*(\w+)\s*(\d{4})/i);
         if (dayMonthYearMatch) {
             const [, , day, monthStr, year] = dayMonthYearMatch;
@@ -142,10 +139,10 @@ const convertCsvValue = (key: keyof Omit<Lead, 'packageQuantities'> | 'package_q
                 let year = parseInt(parts[3], 10);
                 if (String(year).length === 2) year += 2000;
 
-                if (month >=1 && month <=12 && day >=1 && day <=31) { // DD/MM/YYYY
+                if (month >=1 && month <=12 && day >=1 && day <=31) {
                     dateObj = new Date(year, month - 1, day);
                 }
-                if ((!dateObj || !isValid(dateObj)) && day >=1 && day <=12 && month >=1 && month <=31) { // MM/DD/YYYY
+                if ((!dateObj || !isValid(dateObj)) && day >=1 && day <=12 && month >=1 && month <=31) {
                     dateObj = new Date(year, day - 1, month);
                 }
             }
@@ -168,7 +165,6 @@ const convertCsvValue = (key: keyof Omit<Lead, 'packageQuantities'> | 'package_q
   }
 };
 
-// Function to parse a CSV line respecting quoted fields
 function parseCsvLine(line: string): string[] {
   const columns: string[] = [];
   let currentColumn = '';
@@ -178,21 +174,20 @@ function parseCsvLine(line: string): string[] {
     const char = line[i];
 
     if (char === '"') {
-      // If it's an escaped quote (""), add a single quote to currentColumn
       if (inQuotes && i + 1 < line.length && line[i + 1] === '"') {
         currentColumn += '"';
-        i++; // Skip next quote
+        i++; 
       } else {
         inQuotes = !inQuotes;
       }
     } else if (char === ',' && !inQuotes) {
-      columns.push(currentColumn.trim()); // Trim individual columns here
+      columns.push(currentColumn.trim());
       currentColumn = '';
     } else {
       currentColumn += char;
     }
   }
-  columns.push(currentColumn.trim()); // Add and trim the last column
+  columns.push(currentColumn.trim());
   return columns;
 }
 
@@ -318,6 +313,7 @@ export default function LeadsPage() {
         rate: Number(pq.rate || 0)
       })) || [],
       freeGuestCount: Number(submittedLeadData.freeGuestCount || 0),
+      perTicketRate: submittedLeadData.perTicketRate !== undefined && submittedLeadData.perTicketRate !== null ? Number(submittedLeadData.perTicketRate) : undefined,
       requestingUserId: currentUserId,
       requestingUserRole: currentUserRole,
     };
@@ -451,7 +447,7 @@ export default function LeadsPage() {
         }
 
         let headerLine = lines[0];
-        if (headerLine.charCodeAt(0) === 0xFEFF) { // Check for BOM
+        if (headerLine.charCodeAt(0) === 0xFEFF) { 
             headerLine = headerLine.substring(1);
         }
         const fileHeaders = headerLine.split(',').map(h => h.trim().toLowerCase().replace(/\s+/g, '_'));
@@ -493,7 +489,6 @@ export default function LeadsPage() {
             }
           });
           
-          // Enhanced logging for problematic rows
           const isProblematicRow = parsedRow.clientName === 'N/A from CSV' || !parsedRow.yacht || (parsedRow.totalAmount === 0 && parsedRow.paidAmount === 0);
           if (isProblematicRow) {
               console.log(`[CSV Import Leads Diagnostics] Row ${i + 1} marked as potentially problematic:`);
@@ -565,6 +560,7 @@ export default function LeadsPage() {
             modeOfPayment: parsedRow.modeOfPayment || 'CARD', 
             packageQuantities: packageQuantities,
             freeGuestCount: parsedRow.freeGuestCount || 0,
+            perTicketRate: parsedRow.perTicketRate !== undefined && parsedRow.perTicketRate !== null ? Number(parsedRow.perTicketRate) : undefined,
             totalAmount: parsedRow.totalAmount ?? 0,
             commissionPercentage: parsedRow.commissionPercentage ?? 0,
             commissionAmount: parsedRow.commissionAmount ?? 0,
@@ -738,7 +734,7 @@ export default function LeadsPage() {
 
     const baseHeadersPart1: string[] = [
       'ID', 'Client Name', 'Agent Name', 'Yacht Name', 'Status', 'Lead/Event Date', 'Type', 'Payment Confirmation Status',
-      'Transaction ID', 'Payment Mode', 'Total Guests', 'Free Guests',
+      'Transaction ID', 'Payment Mode', 'Total Guests', 'Free Guests', 'Per Ticket Rate',
     ];
 
     const financialAndAuditHeaders: string[] = [
@@ -780,6 +776,7 @@ export default function LeadsPage() {
           escapeCsvCell(lead.modeOfPayment),
           escapeCsvCell(totalGuests),
           escapeCsvCell(lead.freeGuestCount || 0),
+          escapeCsvCell(lead.perTicketRate !== undefined && lead.perTicketRate !== null ? lead.perTicketRate.toFixed(2) : ''),
         ];
 
         const packageQtyValues = packageDataNamesForLookup.map(dataName =>
@@ -963,7 +960,3 @@ export default function LeadsPage() {
     </div>
   );
 }
-
-    
-
-    

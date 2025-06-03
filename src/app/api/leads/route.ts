@@ -74,6 +74,7 @@ export async function GET(request: NextRequest) {
         
         packageQuantities: packageQuantities,
         freeGuestCount: Number(dbLead.freeGuestCount || 0),
+        perTicketRate: dbLead.perTicketRate !== null && dbLead.perTicketRate !== undefined ? parseFloat(dbLead.perTicketRate) : undefined,
 
         totalAmount: parseFloat(dbLead.totalAmount || 0),
         commissionPercentage: parseFloat(dbLead.commissionPercentage || 0),
@@ -152,6 +153,7 @@ export async function POST(request: NextRequest) {
       
       package_quantities_json: packageQuantitiesJson,
       freeGuestCount: Number(newLeadData.freeGuestCount || 0),
+      perTicketRate: newLeadData.perTicketRate !== undefined && newLeadData.perTicketRate !== null ? Number(newLeadData.perTicketRate) : null,
       
       totalAmount: Number(newLeadData.totalAmount || 0),
       commissionPercentage: Number(newLeadData.commissionPercentage || 0),
@@ -171,16 +173,16 @@ export async function POST(request: NextRequest) {
     const sql = `
       INSERT INTO leads (
         id, clientName, agent, yacht, status, month, notes, type, paymentConfirmationStatus, transactionId, modeOfPayment,
-        package_quantities_json, freeGuestCount,
+        package_quantities_json, freeGuestCount, perTicketRate,
         totalAmount, commissionPercentage, commissionAmount, netAmount,
         paidAmount, balanceAmount,
         createdAt, updatedAt, lastModifiedByUserId, ownerUserId
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
     const params = [
       leadToStore.id, leadToStore.clientName, leadToStore.agent, leadToStore.yacht, leadToStore.status, 
       leadToStore.month, leadToStore.notes, leadToStore.type, leadToStore.paymentConfirmationStatus, leadToStore.transactionId, leadToStore.modeOfPayment,
-      leadToStore.package_quantities_json, leadToStore.freeGuestCount,
+      leadToStore.package_quantities_json, leadToStore.freeGuestCount, leadToStore.perTicketRate,
       leadToStore.totalAmount, leadToStore.commissionPercentage, leadToStore.commissionAmount, leadToStore.netAmount,
       leadToStore.paidAmount, leadToStore.balanceAmount,
       leadToStore.createdAt, leadToStore.updatedAt, leadToStore.lastModifiedByUserId, leadToStore.ownerUserId
@@ -212,6 +214,7 @@ export async function POST(request: NextRequest) {
             modeOfPayment: (dbLead.modeOfPayment || 'Online') as ModeOfPayment,
             packageQuantities: pq,
             freeGuestCount: Number(dbLead.freeGuestCount || 0),
+            perTicketRate: dbLead.perTicketRate !== null && dbLead.perTicketRate !== undefined ? parseFloat(dbLead.perTicketRate) : undefined,
             totalAmount: parseFloat(dbLead.totalAmount || 0), 
             commissionPercentage: parseFloat(dbLead.commissionPercentage || 0),
             commissionAmount: parseFloat(dbLead.commissionAmount || 0), 

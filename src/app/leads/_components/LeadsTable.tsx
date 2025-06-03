@@ -52,6 +52,11 @@ const preferredPackageMap: { header: string; dataName: string }[] = [
   { header: 'ROYAL CH', dataName: 'ROYAL CH' },
   { header: 'ROYAL AD', dataName: 'ROYAL AD' },
   { header: 'ROYAL ALC', dataName: 'ROYAL ALC' },
+  // For Superyacht Sightseeing
+  { header: 'BASIC', dataName: 'BASIC' },
+  { header: 'STANDARD', dataName: 'STANDARD' },
+  { header: 'PREMIUM', dataName: 'PREMIUM' },
+  { header: 'VIP', dataName: 'VIP' },
 ];
 
 const generateLeadColumns = (allYachts: Yacht[]): LeadTableColumn[] => {
@@ -68,7 +73,8 @@ const generateLeadColumns = (allYachts: Yacht[]): LeadTableColumn[] => {
     { accessorKey: 'transactionId', header: 'Transaction ID' },
     { accessorKey: 'modeOfPayment', header: 'Payment Mode' },
     { accessorKey: 'totalGuests', header: 'Total Guests', isNumeric: true },
-    { accessorKey: 'freeGuestCount', header: 'Free Guests', isNumeric: true }, // New column
+    { accessorKey: 'freeGuestCount', header: 'Free Guests', isNumeric: true },
+    { accessorKey: 'perTicketRate', header: 'Per Ticket Rate', isCurrency: true }, // New column
   ];
 
   const allActualUniquePackageNames = Array.from(
@@ -172,7 +178,7 @@ export function LeadsTable({
   };
 
   const formatCurrency = (amount?: number | null) => {
-    if (typeof amount !== 'number' || isNaN(amount)) return '-';
+    if (amount === null || amount === undefined || isNaN(amount)) return '-'; // Treat null/undefined/NaN as '-'
     return `${amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} AED`;
   };
 
@@ -223,7 +229,7 @@ export function LeadsTable({
     if (column.accessorKey === 'totalGuests') {
       return formatNumeric(calculateTotalGuestsFromPackageQuantities(lead));
     }
-    if (column.accessorKey === 'freeGuestCount') { // New field display
+    if (column.accessorKey === 'freeGuestCount') {
       return formatNumeric(lead.freeGuestCount);
     }
     if (column.accessorKey === 'id') {
@@ -255,8 +261,11 @@ export function LeadsTable({
       return formatDateValue(value as string | undefined);
     }
     if (column.isCurrency) {
-      if (column.accessorKey === 'balanceAmount') {
+      if (column.accessorKey === 'balanceAmount') { // Balance can be negative
         return formatCurrency(value as number | undefined);
+      }
+      if (column.accessorKey === 'perTicketRate') {
+         return formatCurrency(value as number | undefined | null);
       }
       return formatCurrency(Math.abs(value as number | undefined));
     }

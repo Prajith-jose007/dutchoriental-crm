@@ -135,7 +135,8 @@ export const placeholderLeads: Lead[] = [
       { packageId: 'lr-adult', packageName: 'ADULT', quantity: 50, rate: 250 },
       { packageId: 'lr-ad-alc', packageName: 'AD ALC', quantity: 30, rate: 350 },
     ],
-    freeGuestCount: 5, // Example value
+    freeGuestCount: 5,
+    perTicketRate: undefined, // Or a specific rate if applicable
     totalAmount: 23000,
     commissionPercentage: 10,
     commissionAmount: 2300,
@@ -161,7 +162,8 @@ export const placeholderLeads: Lead[] = [
     packageQuantities: [
       { packageId: 'ss-premium', packageName: 'PREMIUM', quantity: 20, rate: 299 },
     ],
-    freeGuestCount: 2, // Example value
+    freeGuestCount: 2,
+    perTicketRate: 299, // Example: Assuming this is the primary ticket rate for this lead
     totalAmount: 5980,
     commissionPercentage: 15,
     commissionAmount: 897,
@@ -189,6 +191,7 @@ export const placeholderLeads: Lead[] = [
       { packageId: 'private-softdrinks', packageName: 'Soft Drinks Package pp', quantity: 15, rate: 50},
     ],
     freeGuestCount: 0,
+    perTicketRate: undefined, // N/A for hourly charter type lead in this example
     totalAmount: 6750,
     commissionPercentage: 10,
     commissionAmount: 675,

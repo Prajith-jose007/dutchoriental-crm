@@ -26,7 +26,7 @@ function buildLeadUpdateSetClause(data: Partial<Omit<Lead, 'id' | 'createdAt' | 
   
   const allowedKeys: (keyof Lead | 'package_quantities_json')[] = [ 
     'clientName', 'agent', 'yacht', 'status', 'month', 'notes', 'type', 'paymentConfirmationStatus', 'transactionId', 'modeOfPayment',
-    'package_quantities_json', 'freeGuestCount',
+    'package_quantities_json', 'freeGuestCount', 'perTicketRate', // Added perTicketRate
     'totalAmount', 'commissionPercentage', 'commissionAmount',
     'netAmount', 'paidAmount', 'balanceAmount', 'updatedAt', 
     'lastModifiedByUserId', 'ownerUserId'
@@ -41,9 +41,11 @@ function buildLeadUpdateSetClause(data: Partial<Omit<Lead, 'id' | 'createdAt' | 
                  ['notes', 'transactionId', 'lastModifiedByUserId', 'ownerUserId', 'agent', 'yacht'].includes(key)) {
         valuesToUpdate.push(null); 
       } else if (typeof value === 'number' && isNaN(value)) {
-        valuesToUpdate.push(0);
+        valuesToUpdate.push(key === 'perTicketRate' ? null : 0); // perTicketRate can be null
       } else if (key === 'package_quantities_json') {
         valuesToUpdate.push(value); 
+      } else if (key === 'perTicketRate' && value === null) {
+        valuesToUpdate.push(null);
       }
        else {
         valuesToUpdate.push(value);
@@ -97,6 +99,7 @@ export async function GET(
         
         packageQuantities: packageQuantities,
         freeGuestCount: Number(dbLead.freeGuestCount || 0),
+        perTicketRate: dbLead.perTicketRate !== null && dbLead.perTicketRate !== undefined ? parseFloat(dbLead.perTicketRate) : undefined,
 
         totalAmount: parseFloat(dbLead.totalAmount || 0),
         commissionPercentage: parseFloat(dbLead.commissionPercentage || 0),
@@ -147,7 +150,6 @@ export async function PUT(
     }
     const existingLeadDbInfo = existingLeadResult[0];
 
-    // Permission Check
     if (requestingUserRole !== 'admin' && existingLeadDbInfo.ownerUserId !== requestingUserId) {
       console.warn(`[API PUT /api/leads/${id}] Permission denied. User ${requestingUserId} is not owner or admin.`);
       return NextResponse.json({ message: 'Permission denied: You can only edit leads you own, or you must be an admin.' }, { status: 403 });
@@ -160,6 +162,7 @@ export async function PUT(
       ownerUserId: updatedLeadDataFromClient.ownerUserId || existingLeadDbInfo.ownerUserId, 
       paymentConfirmationStatus: updatedLeadDataFromClient.paymentConfirmationStatus || 'CONFIRMED',
       freeGuestCount: Number(updatedLeadDataFromClient.freeGuestCount || 0),
+      perTicketRate: updatedLeadDataFromClient.perTicketRate !== undefined ? updatedLeadDataFromClient.perTicketRate : null,
     };
     
     delete (dataToUpdate as any).id;
@@ -218,6 +221,7 @@ export async function PUT(
         modeOfPayment: (dbLead.modeOfPayment || 'Online') as ModeOfPayment,
         packageQuantities: pq,
         freeGuestCount: Number(dbLead.freeGuestCount || 0),
+        perTicketRate: dbLead.perTicketRate !== null && dbLead.perTicketRate !== undefined ? parseFloat(dbLead.perTicketRate) : undefined,
         totalAmount: parseFloat(dbLead.totalAmount || 0), commissionPercentage: parseFloat(dbLead.commissionPercentage || 0),
         commissionAmount: parseFloat(dbLead.commissionAmount || 0), netAmount: parseFloat(dbLead.netAmount || 0),
         paidAmount: parseFloat(dbLead.paidAmount || 0), balanceAmount: parseFloat(dbLead.balanceAmount || 0),
@@ -251,7 +255,6 @@ export async function DELETE(
 
     console.log(`[API DELETE /api/leads/${id}] Attempting to delete lead. User: ${requestingUserId}, Role: ${requestingUserRole}`);
 
-    // Permission Check: Only admin can delete
     if (requestingUserRole !== 'admin') {
       console.warn(`[API DELETE /api/leads/${id}] Permission denied. User ${requestingUserId} is not an admin.`);
       return NextResponse.json({ message: 'Permission denied: Only administrators can delete leads.' }, { status: 403 });

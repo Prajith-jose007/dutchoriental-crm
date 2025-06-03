@@ -138,7 +138,8 @@ async function createLeadsTable() {
       transactionId VARCHAR(255),
       modeOfPayment VARCHAR(50),
       package_quantities_json TEXT DEFAULT NULL,
-      freeGuestCount INT DEFAULT 0, -- New field
+      freeGuestCount INT DEFAULT 0,
+      perTicketRate DECIMAL(10, 2) DEFAULT NULL, -- New field
       totalAmount DECIMAL(10, 2) NOT NULL,
       commissionPercentage DECIMAL(5, 2) DEFAULT 0.00,
       commissionAmount DECIMAL(10, 2) DEFAULT 0.00,
@@ -160,7 +161,8 @@ async function createLeadsTable() {
     await addColumnIfNotExists(tableName, 'transactionId', 'VARCHAR(255) DEFAULT NULL');
     await addColumnIfNotExists(tableName, 'modeOfPayment', 'VARCHAR(50) DEFAULT \'Online\'');
     await addColumnIfNotExists(tableName, 'package_quantities_json', 'TEXT DEFAULT NULL');
-    await addColumnIfNotExists(tableName, 'freeGuestCount', 'INT DEFAULT 0'); // New field
+    await addColumnIfNotExists(tableName, 'freeGuestCount', 'INT DEFAULT 0');
+    await addColumnIfNotExists(tableName, 'perTicketRate', 'DECIMAL(10, 2) DEFAULT NULL'); // New field
 
   } catch (error) {
     console.error(`Error creating/altering table ${tableName}:`, (error as Error).message);
@@ -288,13 +290,13 @@ async function migrateLeads() {
     const sql = `
       INSERT INTO leads (
         id, clientName, agent, yacht, status, month, notes, type, paymentConfirmationStatus, transactionId, modeOfPayment,
-        package_quantities_json, freeGuestCount,
+        package_quantities_json, freeGuestCount, perTicketRate,
         totalAmount, commissionPercentage, commissionAmount, netAmount,
         paidAmount, balanceAmount,
         createdAt, updatedAt, lastModifiedByUserId, ownerUserId
       ) VALUES (
         ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 
-        ?, ?,
+        ?, ?, ?,
         ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
       )
     `;
@@ -330,7 +332,8 @@ async function migrateLeads() {
         lead.transactionId || null,
         lead.modeOfPayment,
         packageQuantitiesJson,
-        lead.freeGuestCount || 0, // New field
+        lead.freeGuestCount || 0,
+        lead.perTicketRate !== undefined ? lead.perTicketRate : null, // New field
         lead.totalAmount,
         lead.commissionPercentage,
         lead.commissionAmount || 0,

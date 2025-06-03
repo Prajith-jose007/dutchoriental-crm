@@ -3,7 +3,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import type { Lead, LeadStatus, ModeOfPayment, LeadType, LeadPackageQuantity, PaymentConfirmationStatus } from '@/lib/types';
 import { query } from '@/lib/db';
-import { formatISO, parseISO, isValid } from 'date-fns';
+import { format, formatISO, parseISO, isValid } from 'date-fns'; // Added format
 
 const ensureISOFormat = (dateString?: string | Date): string | null => {
   if (!dateString) return null;
@@ -119,7 +119,7 @@ export async function POST(request: NextRequest) {
     }
     
     let leadId = newLeadData.id;
-    if (!leadId || leadId.startsWith('temp-')) { // Also check for temp IDs from client
+    if (!leadId || leadId.startsWith('temp-')) { 
       const currentLeadsFromDB: any[] = await query('SELECT id FROM leads WHERE id LIKE "DO-%"');
       const existingLeadIds = currentLeadsFromDB.map(l => l.id as string);
       leadId = generateNewLeadId(existingLeadIds);
@@ -138,7 +138,10 @@ export async function POST(request: NextRequest) {
     
     const packageQuantitiesJson = newLeadData.packageQuantities ? JSON.stringify(newLeadData.packageQuantities) : null;
 
-    const finalTransactionId = newLeadData.transactionId || `TRX-${Date.now()}`; // Server-side generation if not provided
+    // Server-side fallback for Transaction ID if not provided by client
+    const finalTransactionId = newLeadData.transactionId && String(newLeadData.transactionId).trim() !== ""
+      ? newLeadData.transactionId
+      : `TRN-${format(new Date(), 'yyyyMMddHHmmssSSS')}`;
 
     const leadToStore = {
       id: leadId!,

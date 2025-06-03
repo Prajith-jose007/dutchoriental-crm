@@ -53,7 +53,7 @@ const csvHeaderMapping: { [csvHeaderKey: string]: keyof Omit<Lead, 'packageQuant
 
 
   // Accounts section
-  'other': 'perTicketRate', // Changed from 'rate_per_tick'
+  'other': 'perTicketRate', 
   // 'total_count': 'totalGuestsCalculated', // This is derived, not directly imported to a field
   'total_amt': 'totalAmount',
   'discount_%': 'commissionPercentage',
@@ -232,6 +232,23 @@ function parseCsvLine(line: string): string[] {
   return columns;
 }
 
+function generateNewLeadTransactionId(existingLeads: Lead[], forYear: number, currentMaxForYearInBatch: number = 0): string {
+  const prefix = `TRN-${forYear}`;
+  let maxNumber = currentMaxForYearInBatch;
+
+  existingLeads.forEach(lead => {
+    if (lead.transactionId && lead.transactionId.startsWith(prefix)) {
+      const numPartStr = lead.transactionId.substring(prefix.length);
+      const numPart = parseInt(numPartStr, 10);
+      if (!isNaN(numPart) && numPart > maxNumber) {
+        maxNumber = numPart;
+      }
+    }
+  });
+  const nextNumber = maxNumber + 1;
+  return `${prefix}${String(nextNumber).padStart(5, '0')}`;
+}
+
 
 export default function LeadsPage() {
   const [isLeadDialogOpen, setIsLeadDialogOpen] = useState(false);
@@ -344,13 +361,14 @@ export default function LeadsPage() {
     setIsLoading(true);
     
     let finalTransactionId = submittedLeadData.transactionId;
-    if (!editingLead && !finalTransactionId) {
-        finalTransactionId = `TRX-${Date.now()}`;
+    if (!editingLead) { // Is a new lead
+        const leadYear = submittedLeadData.month ? getFullYear(parseISO(submittedLeadData.month)) : new Date().getFullYear();
+        finalTransactionId = generateNewLeadTransactionId(allLeads, leadYear);
     }
     
     const payload: Lead & { requestingUserId: string; requestingUserRole: string } = {
       ...submittedLeadData,
-      transactionId: finalTransactionId,
+      transactionId: finalTransactionId, // Use the generated or existing ID
       lastModifiedByUserId: currentUserId,
       updatedAt: new Date().toISOString(),
       month: submittedLeadData.month ? formatISO(parseISO(submittedLeadData.month)) : formatISO(new Date()),
@@ -511,6 +529,9 @@ export default function LeadsPage() {
                 packageReverseHeaderMap[csvKey] = actualPackageName;
             }
         });
+        
+        // Track max sequence number for each year within this batch
+        const batchMaxTransactionNumbersByYear: { [year: number]: number } = {};
 
 
         for (let i = 1; i < lines.length; i++) {
@@ -601,6 +622,18 @@ export default function LeadsPage() {
             }
           }
 
+          const leadYear = parsedRow.month ? getFullYear(parseISO(parsedRow.month)) : new Date().getFullYear();
+          let transactionIdForRow = parsedRow.transactionId;
+          if (!transactionIdForRow || String(transactionIdForRow).trim() === '') {
+            const currentMaxForYearInBatch = batchMaxTransactionNumbersByYear[leadYear] || 0;
+            transactionIdForRow = generateNewLeadTransactionId(allLeads, leadYear, currentMaxForYearInBatch);
+            const numPart = parseInt(transactionIdForRow.substring(transactionIdForRow.lastIndexOf('-') + leadYear.toString().length + 1), 10);
+            if (!isNaN(numPart)) {
+                batchMaxTransactionNumbersByYear[leadYear] = numPart;
+            }
+          }
+
+
           const fullLead: Lead = {
             id: parsedRow.id || `imported-lead-${Date.now()}-${i}`,
             clientName: parsedRow.clientName || 'N/A from CSV',
@@ -611,7 +644,7 @@ export default function LeadsPage() {
             notes: parsedRow.notes || undefined,
             type: parsedRow.type || 'Private Cruise',
             paymentConfirmationStatus: parsedRow.paymentConfirmationStatus || 'CONFIRMED',
-            transactionId: parsedRow.transactionId || `TRX-${Date.now()}-${i}`, // Auto-generate if not present
+            transactionId: transactionIdForRow,
             modeOfPayment: parsedRow.modeOfPayment || 'CARD', 
             packageQuantities: packageQuantities,
             freeGuestCount: parsedRow.freeGuestCount || 0,
@@ -907,7 +940,8 @@ export default function LeadsPage() {
             <SelectContent>
               <SelectItem value="all">All Payment/Conf. Statuses</SelectItem>
               {paymentConfirmationStatusOptions.map(status => (
-                <SelectItem key={status} value={status}>{status}</SelectItem>))}
+                <SelectItem key={status} value={status}>{status}</SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>

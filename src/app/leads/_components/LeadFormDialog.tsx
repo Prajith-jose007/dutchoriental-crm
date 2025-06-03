@@ -57,7 +57,7 @@ const leadFormSchema = z.object({
   yacht: z.string().min(1, 'Yacht selection is required'),
   type: z.enum(leadTypeOptions, { required_error: "Lead type is required."}),
   paymentConfirmationStatus: z.enum(paymentConfirmationStatusOptions, { required_error: "Payment confirmation status is required."}),
-  transactionId: z.string().optional(),
+  transactionId: z.string().optional(), // Will be auto-generated or read-only
   modeOfPayment: z.enum(modeOfPaymentOptions),
   clientName: z.string().min(1, 'Client name is required'),
 
@@ -110,7 +110,7 @@ const getDefaultFormValues = (existingLead?: Lead | null, currentUserId?: string
     modeOfPayment: existingLead?.modeOfPayment || 'CARD',
     clientName: existingLead?.clientName || '',
     notes: existingLead?.notes || '',
-    transactionId: existingLead?.transactionId || (existingLead ? undefined : `TRX-${Date.now()}`), // Auto-generate for new leads
+    transactionId: existingLead?.transactionId || (existingLead ? undefined : "Pending Generation"), // Placeholder for new leads
     packageQuantities: initialPackageQuantities,
     freeGuestCount: Number(existingLead?.freeGuestCount || 0),
     perTicketRate: existingLead?.perTicketRate !== undefined && existingLead.perTicketRate !== null ? Number(Number(existingLead.perTicketRate).toFixed(2)) : null,
@@ -295,9 +295,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
   useEffect(() => {
     if (isOpen) {
       const initialValues = getDefaultFormValues(lead, currentUserId);
-      if (!lead && !initialValues.transactionId) { // Generate for new lead if not already set
-          initialValues.transactionId = `TRX-${Date.now()}`;
-      }
+      // No need to auto-generate Transaction ID here; page component will handle it on submit.
       form.reset(initialValues);
       console.log('[LeadForm] Form reset. Lead:', lead ? JSON.parse(JSON.stringify(lead)) : 'New Lead', 'Initial Values:', initialValues);
 
@@ -351,16 +349,10 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
         })
       : [];
 
-    let finalTransactionId = data.transactionId;
-    if (!lead?.id && !finalTransactionId) { // Is new lead and transactionId is still empty
-        finalTransactionId = `TRX-${Date.now()}`;
-    }
-
-
     const submittedLead: Lead = {
       ...data,
       id: lead?.id || `temp-${Date.now()}`, // Server should generate final ID if temp
-      transactionId: finalTransactionId,
+      transactionId: data.transactionId, // Will be populated by parent component or used if editing
       month: data.month ? formatISO(data.month) : formatISO(new Date()),
       paymentConfirmationStatus: data.paymentConfirmationStatus,
       freeGuestCount: Number(data.freeGuestCount || 0),

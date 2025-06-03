@@ -1,6 +1,6 @@
 
 import type { Lead, User, Yacht, Invoice, Agent, YachtCategory, YachtPackageItem, LeadPackageQuantity, PaymentConfirmationStatus } from './types';
-import { formatISO, subDays, addDays, format, parseISO } from 'date-fns';
+import { formatISO, subDays, addDays, format, parseISO, getYear } from 'date-fns';
 
 export const placeholderUsers: User[] = [
   { id: 'DO-user1', name: 'Naufal', email: 'naufal@dutchoriental.com', designation: 'Acounts', avatarUrl: 'https://placehold.co/100x100.png?text=NS', status: 'Active' },
@@ -52,6 +52,7 @@ export const placeholderAgents: Agent[] = [
 ];
 
 const today = new Date();
+const currentYear = getYear(today);
 
 export const placeholderYachts: Yacht[] = [
   {
@@ -128,11 +129,11 @@ export const placeholderLeads: Lead[] = [
     agent: 'DO-001',
     yacht: 'DO-yacht-lotus',
     status: 'Closed',
-    month: formatISO(parseISO('2024-07-15T14:00:00')),
+    month: formatISO(parseISO(`${currentYear}-07-15T14:00:00`)),
     notes: 'Confirmed booking for annual dinner.',
     type: 'Dinner Cruise',
     paymentConfirmationStatus: 'PAID',
-    transactionId: 'T20240715001',
+    transactionId: `TRN-${currentYear}00001`,
     modeOfPayment: 'CARD',
     packageQuantities: [
       { packageId: 'lr-adult', packageName: 'ADULT', quantity: 50, rate: 250 },
@@ -157,11 +158,11 @@ export const placeholderLeads: Lead[] = [
     agent: 'DO-002',
     yacht: 'DO-yacht-super',
     status: 'Balance',
-    month: formatISO(parseISO('2024-07-25T18:30:00')),
+    month: formatISO(parseISO(`${currentYear}-07-25T18:30:00`)),
     notes: 'Prospective client for regular sightseeing tours.',
     type: 'Superyacht Sightseeing Cruise',
     paymentConfirmationStatus: 'CONFIRMED',
-    transactionId: 'T20240725002',
+    transactionId: `TRN-${currentYear}00002`,
     modeOfPayment: 'CREDIT',
     packageQuantities: [
       { packageId: 'ss-premium', packageName: 'PREMIUM', quantity: 20, rate: 299 },
@@ -185,23 +186,23 @@ export const placeholderLeads: Lead[] = [
     agent: 'DO-001',
     yacht: 'DO-yacht-private1',
     status: 'Balance',
-    month: formatISO(parseISO('2024-08-10T16:00:00')),
+    month: formatISO(parseISO(`${currentYear}-08-10T16:00:00`)),
     notes: 'Birthday party, deposit paid.',
     type: 'Private Cruise',
     paymentConfirmationStatus: 'CONFIRMED',
-    transactionId: 'T20240810003',
+    transactionId: `TRN-${currentYear}00003`,
     modeOfPayment: 'CASH / CARD',
     packageQuantities: [
       { packageId: 'private-hourly', packageName: 'HOUR CHARTER', quantity: 4, rate: 1500 },
     ],
     freeGuestCount: 0,
     perTicketRate: undefined,
-    totalAmount: 6000,
+    totalAmount: 6000, // 4 * 1500
     commissionPercentage: 10,
-    commissionAmount: 600,
-    netAmount: 5400,
+    commissionAmount: 600, // 10% of 6000
+    netAmount: 5400,    // 6000 - 600
     paidAmount: 3000,
-    balanceAmount: 2400,
+    balanceAmount: 2400, // 5400 - 3000
     createdAt: formatISO(subDays(today, 10)),
     updatedAt: formatISO(subDays(today, 2)),
     lastModifiedByUserId: 'DO-user1',

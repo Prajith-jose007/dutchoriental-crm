@@ -60,12 +60,12 @@ export const placeholderYachts: Yacht[] = [
     packages: [
       { id: 'lr-child', name: 'CHILD', rate: 150 },
       { id: 'lr-adult', name: 'ADULT', rate: 250 },
-      { id: 'lr-child-top', name: 'CHILD TOP DECK', rate: 200 }, // New as per request
-      { id: 'lr-adult-top', name: 'ADULT TOP DECK', rate: 300 }, // New as per request
+      { id: 'lr-child-top', name: 'CHILD TOP DECK', rate: 200 },
+      { id: 'lr-adult-top', name: 'ADULT TOP DECK', rate: 300 },
       { id: 'lr-ad-alc', name: 'ADULT ALC', rate: 350 },
       { id: 'lr-vip-ch', name: 'VIP CHILD', rate: 250 },
       { id: 'lr-vip-ad', name: 'VIP ADULT', rate: 450 },
-      { id: 'lr-vip-ad-alc', name: 'VIP ALC', rate: 600 }, // Changed from VIP AD ALC to VIP ALC
+      { id: 'lr-vip-alc', name: 'VIP ALC', rate: 600 },
       { id: 'lr-royal-ch', name: 'ROYAL CHILD', rate: 350 },
       { id: 'lr-royal-ad', name: 'ROYAL ADULT', rate: 700 },
       { id: 'lr-royal-alc', name: 'ROYAL ALC', rate: 900 },
@@ -112,10 +112,9 @@ export const placeholderYachts: Yacht[] = [
   },
   {
     id: 'DO-yacht-private1', name: 'The Serene Yacht', capacity: 20, status: 'Available', imageUrl: 'https://placehold.co/600x400.png?text=Serene+Yacht',
-    category: 'Private Cruise', // Corrected category for consistency
+    category: 'Private Cruise',
     packages: [
-        { id: 'private-hourly', name: 'HOUR CHARTER', rate: 1500}, // Standardized name
-        { id: 'private-softdrinks', name: 'Soft Drinks Package pp', rate: 50}, // Example other package
+        { id: 'private-hourly', name: 'HOUR CHARTER', rate: 1500},
     ],
     customPackageInfo: "Ideal for private, intimate gatherings. Hourly rate applies."
   }
@@ -192,16 +191,15 @@ export const placeholderLeads: Lead[] = [
     modeOfPayment: 'CASH / CARD',
     packageQuantities: [
       { packageId: 'private-hourly', packageName: 'HOUR CHARTER', quantity: 4, rate: 1500 },
-      { packageId: 'private-softdrinks', packageName: 'Soft Drinks Package pp', quantity: 15, rate: 50},
     ],
     freeGuestCount: 0,
     perTicketRate: undefined,
-    totalAmount: 6750,
+    totalAmount: 6000, // Updated: Was 6750, now 4*1500 = 6000
     commissionPercentage: 10,
-    commissionAmount: 675,
-    netAmount: 6075,
+    commissionAmount: 600, // Updated: Was 675, now 10% of 6000
+    netAmount: 5400, // Updated: Was 6075, now 6000 - 600
     paidAmount: 3000,
-    balanceAmount: 3075,
+    balanceAmount: 2400, // Updated: Was 3075, now 5400 - 3000
     createdAt: formatISO(subDays(today, 10)),
     updatedAt: formatISO(subDays(today, 2)),
     lastModifiedByUserId: 'DO-user1',
@@ -212,7 +210,5 @@ export const placeholderLeads: Lead[] = [
 export const placeholderInvoices: Invoice[] = [
   { id: 'DO-inv001', leadId: 'DO-001', clientName: 'Tech Corp Events', amount: 20700, dueDate: format(addDays(parseISO(placeholderLeads[0].month), 7), 'yyyy-MM-dd'), status: 'Paid', createdAt: formatISO(subDays(today, 14)) },
   { id: 'DO-inv002', leadId: 'DO-002', clientName: 'Sunset Tours R Us', amount: 5083, dueDate: format(addDays(parseISO(placeholderLeads[1].month), 7), 'yyyy-MM-dd'), status: 'Pending', createdAt: formatISO(subDays(today, 9)) },
-  { id: 'DO-inv003', leadId: 'DO-003', clientName: 'Private Celebration Planners', amount: 6075, dueDate: format(addDays(parseISO(placeholderLeads[2].month), 7), 'yyyy-MM-dd'), status: 'Pending', createdAt: formatISO(subDays(today, 1)) },
+  { id: 'DO-inv003', leadId: 'DO-003', clientName: 'Private Celebration Planners', amount: 5400, dueDate: format(addDays(parseISO(placeholderLeads[2].month), 7), 'yyyy-MM-dd'), status: 'Pending', createdAt: formatISO(subDays(today, 1)) }, // Amount updated to match new lead net amount
 ];
-
-    

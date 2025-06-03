@@ -115,8 +115,9 @@ export const placeholderYachts: Yacht[] = [
     category: 'Private Cruise',
     packages: [
         { id: 'private-hourly', name: 'HOUR CHARTER', rate: 1500},
+        { id: 'private-softdrinks', name: 'Soft Drinks Package pp', rate: 50 } // Re-added
     ],
-    customPackageInfo: "Ideal for private, intimate gatherings. Hourly rate applies."
+    customPackageInfo: "Ideal for private, intimate gatherings. Hourly rate applies. Soft drinks available."
   }
 ];
 
@@ -185,21 +186,22 @@ export const placeholderLeads: Lead[] = [
     yacht: 'DO-yacht-private1',
     status: 'Balance',
     month: formatISO(parseISO('2024-08-10T16:00:00')),
-    notes: 'Birthday party, deposit paid.',
+    notes: 'Birthday party, deposit paid. Included soft drinks.',
     type: 'Private Cruise',
     paymentConfirmationStatus: 'CONFIRMED',
     modeOfPayment: 'CASH / CARD',
     packageQuantities: [
       { packageId: 'private-hourly', packageName: 'HOUR CHARTER', quantity: 4, rate: 1500 },
+      { packageId: 'private-softdrinks', packageName: 'Soft Drinks Package pp', quantity: 10, rate: 50 } // Added quantity for soft drinks
     ],
     freeGuestCount: 0,
     perTicketRate: undefined,
-    totalAmount: 6000, // Updated: Was 6750, now 4*1500 = 6000
+    totalAmount: 6500, // (4 * 1500) + (10 * 50) = 6000 + 500 = 6500
     commissionPercentage: 10,
-    commissionAmount: 600, // Updated: Was 675, now 10% of 6000
-    netAmount: 5400, // Updated: Was 6075, now 6000 - 600
+    commissionAmount: 650, // 10% of 6500
+    netAmount: 5850, // 6500 - 650
     paidAmount: 3000,
-    balanceAmount: 2400, // Updated: Was 3075, now 5400 - 3000
+    balanceAmount: 2850, // 5850 - 3000
     createdAt: formatISO(subDays(today, 10)),
     updatedAt: formatISO(subDays(today, 2)),
     lastModifiedByUserId: 'DO-user1',
@@ -210,5 +212,5 @@ export const placeholderLeads: Lead[] = [
 export const placeholderInvoices: Invoice[] = [
   { id: 'DO-inv001', leadId: 'DO-001', clientName: 'Tech Corp Events', amount: 20700, dueDate: format(addDays(parseISO(placeholderLeads[0].month), 7), 'yyyy-MM-dd'), status: 'Paid', createdAt: formatISO(subDays(today, 14)) },
   { id: 'DO-inv002', leadId: 'DO-002', clientName: 'Sunset Tours R Us', amount: 5083, dueDate: format(addDays(parseISO(placeholderLeads[1].month), 7), 'yyyy-MM-dd'), status: 'Pending', createdAt: formatISO(subDays(today, 9)) },
-  { id: 'DO-inv003', leadId: 'DO-003', clientName: 'Private Celebration Planners', amount: 5400, dueDate: format(addDays(parseISO(placeholderLeads[2].month), 7), 'yyyy-MM-dd'), status: 'Pending', createdAt: formatISO(subDays(today, 1)) }, // Amount updated to match new lead net amount
+  { id: 'DO-inv003', leadId: 'DO-003', clientName: 'Private Celebration Planners', amount: 5850, dueDate: format(addDays(parseISO(placeholderLeads[2].month), 7), 'yyyy-MM-dd'), status: 'Pending', createdAt: formatISO(subDays(today, 1)) }, // Amount updated to match lead DO-003 net amount
 ];

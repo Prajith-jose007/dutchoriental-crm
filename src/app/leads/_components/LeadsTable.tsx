@@ -26,7 +26,7 @@ import type { Lead, LeadStatus, Yacht, YachtPackageItem, PaymentConfirmationStat
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { format, parseISO, isValid } from 'date-fns';
 
-type LeadTableColumn = {
+export type LeadTableColumn = {
   accessorKey: string;
   header: string;
   isCurrency?: boolean;
@@ -39,12 +39,14 @@ type LeadTableColumn = {
   isAgentLookup?: boolean;
   isYachtLookup?: boolean;
   isPackageColumn?: boolean;
-  actualPackageName?: string; // Used to fetch quantity for specific package
-  yachtCategory?: string; // To group packages visually if needed, though table is flat
+  actualPackageName?: string; 
+  yachtCategory?: string; 
 };
 
 // Mapping for desired short headers for specific package names
+// This is used for display and export. For import, csvHeaderMapping in page.tsx handles it.
 const packageHeaderMap: { [fullPackageName: string]: string } = {
+  // Dinner Cruise Packages
   'CHILD': 'CH',
   'ADULT': 'AD',
   'CHILD TOP DECK': 'CHD TOP',
@@ -56,14 +58,21 @@ const packageHeaderMap: { [fullPackageName: string]: string } = {
   'ROYAL CHILD': 'RYL CH',
   'ROYAL ADULT': 'RYL AD',
   'ROYAL ALC': 'RYL ALC',
+
+  // Superyacht Sightseeing Packages
   'BASIC': 'BASIC',
   'STANDARD': 'STD',
   'PREMIUM': 'PREM',
-  'VIP': 'VIP', // For Superyacht Sightseeing 'VIP'
-  'HOUR CHARTER': 'HrChtr',
+  'VIP': 'VIP', // 'VIP' is distinct for sightseeing
+
+  // Private Cruise Packages
+  'HOUR CHARTER': 'HrChtr', // For Private Cruise type
+  // Add other full package names from your system that you want short headers for
+  // e.g., 'Soft Drinks Package pp': 'SoftDrinks',
 };
 
-const generateLeadColumns = (allYachts: Yacht[]): LeadTableColumn[] => {
+
+export const generateLeadColumns = (allYachts: Yacht[]): LeadTableColumn[] => {
   const baseColumns: LeadTableColumn[] = [
     { accessorKey: 'select', header: '' },
     { accessorKey: 'id', header: 'ID' },
@@ -79,7 +88,6 @@ const generateLeadColumns = (allYachts: Yacht[]): LeadTableColumn[] => {
     { accessorKey: 'freeGuestCount', header: 'Free Guests', isNumeric: true },
   ];
 
-  // Dynamically generate package columns based on all unique packages in the system
   const uniquePackages = new Map<string, { name: string, category?: string }>();
   allYachts.forEach(yacht => {
     yacht.packages?.forEach(pkg => {
@@ -89,40 +97,42 @@ const generateLeadColumns = (allYachts: Yacht[]): LeadTableColumn[] => {
     });
   });
 
-  const dinnerCruisePackages: LeadTableColumn[] = [];
-  const sightseeingPackages: LeadTableColumn[] = [];
-  const privateCharterPackages: LeadTableColumn[] = [];
-  const otherPackageColumns: LeadTableColumn[] = [];
-
-  uniquePackages.forEach(pkgInfo => {
-    const header = packageHeaderMap[pkgInfo.name] || pkgInfo.name;
-    const columnDef: LeadTableColumn = {
-      header: header,
-      accessorKey: `pkgqty_${pkgInfo.name.replace(/\s+/g, '_').toLowerCase()}`,
-      isPackageColumn: true,
-      actualPackageName: pkgInfo.name,
-      isNumeric: true,
-      yachtCategory: pkgInfo.category
-    };
-    if (pkgInfo.category === 'Dinner Cruise') dinnerCruisePackages.push(columnDef);
-    else if (pkgInfo.category === 'Superyacht Sightseeing Cruise') sightseeingPackages.push(columnDef);
-    else if (pkgInfo.category === 'Private Cruise') privateCharterPackages.push(columnDef);
-    else otherPackageColumns.push(columnDef);
+  const packageColumns: LeadTableColumn[] = [];
+  
+  // Add columns based on packageHeaderMap first to ensure preferred order/naming
+  Object.entries(packageHeaderMap).forEach(([fullPackageName, shortHeader]) => {
+      if (uniquePackages.has(fullPackageName)) {
+          const pkgInfo = uniquePackages.get(fullPackageName)!;
+          packageColumns.push({
+              header: shortHeader,
+              accessorKey: `pkgqty_${fullPackageName.replace(/\s+/g, '_').toLowerCase()}`,
+              isPackageColumn: true,
+              actualPackageName: fullPackageName,
+              isNumeric: true,
+              yachtCategory: pkgInfo.category,
+          });
+          uniquePackages.delete(fullPackageName); // Remove from map so it's not added again
+      }
   });
 
-  // Sort package columns within their categories for consistent order
-  const sortPackageCols = (cols: LeadTableColumn[]) => cols.sort((a,b) => a.header.localeCompare(b.header));
-  sortPackageCols(dinnerCruisePackages);
-  sortPackageCols(sightseeingPackages);
-  sortPackageCols(privateCharterPackages);
-  sortPackageCols(otherPackageColumns);
-  
-  const allPackageColumns = [
-    ...dinnerCruisePackages, 
-    ...sightseeingPackages, 
-    ...privateCharterPackages, 
-    ...otherPackageColumns
-  ];
+  // Add any remaining unique packages that weren't in packageHeaderMap
+  uniquePackages.forEach(pkgInfo => {
+      packageColumns.push({
+          header: pkgInfo.name, // Use full name if no short header defined
+          accessorKey: `pkgqty_${pkgInfo.name.replace(/\s+/g, '_').toLowerCase()}`,
+          isPackageColumn: true,
+          actualPackageName: pkgInfo.name,
+          isNumeric: true,
+          yachtCategory: pkgInfo.category,
+      });
+  });
+
+  // Sort all package columns by category, then by header for some consistency
+  packageColumns.sort((a, b) => {
+    const categoryCompare = (a.yachtCategory || '').localeCompare(b.yachtCategory || '');
+    if (categoryCompare !== 0) return categoryCompare;
+    return a.header.localeCompare(b.header);
+  });
 
 
   const accountColumns: LeadTableColumn[] = [
@@ -145,7 +155,7 @@ const generateLeadColumns = (allYachts: Yacht[]): LeadTableColumn[] => {
     { accessorKey: 'actions', header: 'Actions' },
   ];
 
-  return [...baseColumns, ...allPackageColumns, ...accountColumns, ...referenceColumns];
+  return [...baseColumns, ...packageColumns, ...accountColumns, ...referenceColumns];
 };
 
 
@@ -204,7 +214,7 @@ export function LeadsTable({
   }
 
   const formatNumeric = (num?: number | null): string => {
-    if (num === null || num === undefined || isNaN(num) || num === 0) { // Show 0 as '-' or empty for packages
+    if (num === null || num === undefined || isNaN(num) || num === 0) { 
       return '-';
     }
     return String(num);
@@ -366,5 +376,4 @@ export function LeadsTable({
     </ScrollArea>
   );
 }
-
     

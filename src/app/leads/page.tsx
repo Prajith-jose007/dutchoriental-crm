@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { PageHeader } from '@/components/PageHeader';
-import { LeadsTable } from './_components/LeadsTable';
+import { LeadsTable, generateLeadColumns, type LeadTableColumn } from './_components/LeadsTable'; // Import generateLeadColumns
 import { ImportExportButtons } from './_components/ImportExportButtons';
 import { LeadFormDialog } from './_components/LeadFormDialog';
 import type { Lead, LeadStatus, User, Agent, Yacht, LeadType, LeadPackageQuantity, PaymentConfirmationStatus, YachtPackageItem } from '@/lib/types';
@@ -26,8 +26,8 @@ const USER_ROLE_STORAGE_KEY = 'currentUserRole';
 const csvHeaderMapping: { [csvHeaderKey: string]: keyof Omit<Lead, 'packageQuantities'> | 'package_quantities_json' | `pkg_${string}` } = {
   'id': 'id',
   'client': 'clientName', 'client_name': 'clientName',
-  'agent': 'agent', 'agent_name': 'agent', // For import, will attempt to map name to ID if possible
-  'yacht': 'yacht', 'yacht_name': 'yacht', // For import, will attempt to map name to ID if possible
+  'agent': 'agent', 'agent_name': 'agent', 
+  'yacht': 'yacht', 'yacht_name': 'yacht', 
   'status': 'status',
   'lead/event_date': 'month', 'event_date': 'month',
   'type': 'type', 'lead_type': 'type',
@@ -48,13 +48,12 @@ const csvHeaderMapping: { [csvHeaderKey: string]: keyof Omit<Lead, 'packageQuant
   'ryl_ch': 'pkg_royal_child',
   'ryl_ad': 'pkg_royal_adult',
   'ryl_alc': 'pkg_royal_alc',
-  'basic': 'pkg_basic', // Assuming 'BASIC' is the actual package name for this short header
-  'std': 'pkg_standard', // Assuming 'STANDARD' is the actual package name
-  'prem': 'pkg_premium', // Assuming 'PREMIUM' is the actual package name
-  'vip': 'pkg_vip', // Assuming 'VIP' is the actual package name for sightseeing
-  'hrc': 'pkg_hour_charter', // Assuming 'HOUR CHARTER' is the actual package name
-  // If you have other packages not in the short list, add their lowercase_snake_case versions here
-  // e.g. 'soft_drinks_package_pp': 'pkg_soft_drinks_package_pp',
+  'basic': 'pkg_basic', 
+  'std': 'pkg_standard', 
+  'prem': 'pkg_premium', 
+  'vip': 'pkg_vip', 
+  'hrchtr': 'pkg_hour_charter', // Match "HrChtr" from table header (lowercase, no space)
+
 
   // Accounts section
   'rate_per_tick': 'perTicketRate',
@@ -68,8 +67,8 @@ const csvHeaderMapping: { [csvHeaderKey: string]: keyof Omit<Lead, 'packageQuant
 
   // References and Comments section
   'note': 'notes',
-  'created_by': 'ownerUserId', // Will attempt to map name to ID
-  'modified_by': 'lastModifiedByUserId', // Will attempt to map name to ID
+  'created_by': 'ownerUserId', 
+  'modified_by': 'lastModifiedByUserId', 
   'date_of_creation': 'createdAt',
   'date_of_modification': 'updatedAt',
 
@@ -82,9 +81,9 @@ const convertCsvValue = (
     key: keyof Omit<Lead, 'packageQuantities'> | 'package_quantities_json' | `pkg_${string}`,
     value: string,
     allYachts: Yacht[],
-    agentMap: { [id: string]: string }, // Map of ID to Name
-    userMap: { [id: string]: string }, // Map of ID to Name
-    yachtMap: { [id: string]: string } // Map of ID to Name
+    agentMap: { [id: string]: string }, 
+    userMap: { [id: string]: string }, 
+    yachtMap: { [id: string]: string } 
   ): any => {
   const trimmedValue = value ? String(value).trim() : '';
   const currentUserId = typeof window !== 'undefined' ? localStorage.getItem(USER_ID_STORAGE_KEY) : null;
@@ -99,7 +98,7 @@ const convertCsvValue = (
       case 'totalAmount': case 'commissionPercentage': case 'commissionAmount':
       case 'netAmount': case 'paidAmount': case 'balanceAmount':
       case 'freeGuestCount': return 0;
-      case 'perTicketRate': return null; // perTicketRate can be null
+      case 'perTicketRate': return null; 
       case 'modeOfPayment': return 'CARD';
       case 'status': return 'Balance';
       case 'type': return 'Private Cruise' as LeadType;
@@ -119,10 +118,10 @@ const convertCsvValue = (
     case 'yacht':
     case 'ownerUserId':
     case 'lastModifiedByUserId':
-      // Attempt to find ID if name is provided in CSV
+      
       const mapToUse = key === 'agent' ? agentMap : (key === 'yacht' ? yachtMap : userMap);
       const idByName = Object.keys(mapToUse).find(id => mapToUse[id]?.toLowerCase() === trimmedValue.toLowerCase());
-      return idByName || trimmedValue; // Return ID if found, else return original value (might be an ID already)
+      return idByName || trimmedValue; 
 
     case 'totalAmount': case 'commissionPercentage': case 'commissionAmount':
     case 'netAmount': case 'paidAmount': case 'balanceAmount':
@@ -145,30 +144,38 @@ const convertCsvValue = (
     case 'month':
     case 'createdAt':
     case 'updatedAt':
-      try { // ISO format
+      try { 
         const parsedISODate = parseISO(trimmedValue);
         if (isValid(parsedISODate)) return formatISO(parsedISODate);
       } catch (e) { /* ignore */ }
 
-      try { // "Day, DD Month YYYY" or "DD Month YYYY" format
+      try { 
         let dateObj: Date | null = null;
-        // Regex for "Thursday, 1 May 2025" or "1 May 2025" or "May 1 2025" etc.
+        
         const dayMonthYearMatch = trimmedValue.match(/(?:(?:Mon|Tues|Wednes|Thurs|Fri|Satur|Sun)day,\s*)?(\d{1,2})\s*(\w+)\s*(\d{4})/i) ||
                                   trimmedValue.match(/(\w+)\s*(\d{1,2})\s*(\d{4})/i);
         if (dayMonthYearMatch) {
-            const monthStr = dayMonthYearMatch.length === 4 ? dayMonthYearMatch[1] : dayMonthYearMatch[2];
-            const day = dayMonthYearMatch.length === 4 ? parseInt(dayMonthYearMatch[2],10) : parseInt(dayMonthYearMatch[1],10);
-            const year = parseInt(dayMonthYearMatch[dayMonthYearMatch.length - 1], 10);
+            const dayStr = dayMonthYearMatch[1];
+            const monthStr = dayMonthYearMatch[dayMonthYearMatch.length === 4 ? 2 : 1]; // Adjust based on match group count
+            const yearStr = dayMonthYearMatch[dayMonthYearMatch.length -1];
 
+            let day = parseInt(dayStr, 10);
+            let year = parseInt(yearStr, 10);
+            
             const monthNames = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
-            const monthIndex = monthNames.findIndex(m => monthStr.toLowerCase().startsWith(m));
+            let monthIndex = monthNames.findIndex(m => monthStr.toLowerCase().startsWith(m));
 
+            if (monthIndex === -1) { // if month was number, like 01, 05
+                const monthNum = parseInt(monthStr, 10);
+                if (monthNum >= 1 && monthNum <= 12) monthIndex = monthNum -1;
+            }
+            
             if (monthIndex > -1 && day >=1 && day <=31 && year > 1900 && year < 2100) {
                 dateObj = new Date(year, monthIndex, day);
             }
         }
         
-        if (!dateObj || !isValid(dateObj)) { // Common "dd/mm/yy" or "mm/dd/yy" (heuristic)
+        if (!dateObj || !isValid(dateObj)) { 
             const parts = trimmedValue.match(/(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2,4})/);
             if (parts && parts.length === 4) {
                 let day = parseInt(parts[1], 10);
@@ -176,10 +183,10 @@ const convertCsvValue = (
                 let year = parseInt(parts[3], 10);
                 if (String(year).length === 2) year += 2000;
 
-                if (month >=1 && month <=12 && day >=1 && day <=31) { // Assume dd/mm/yyyy first
+                if (month >=1 && month <=12 && day >=1 && day <=31) { 
                     dateObj = new Date(year, month - 1, day);
                 }
-                 // If still invalid or day > 12, try mm/dd/yyyy
+                
                 if ((!dateObj || !isValid(dateObj)) && day >=1 && day <=12 && month >=1 && month <=31) {
                     dateObj = new Date(year, day - 1, month);
                 }
@@ -213,8 +220,8 @@ function parseCsvLine(line: string): string[] {
     const char = line[i];
     if (char === '"') {
       if (inQuotes && i + 1 < line.length && line[i + 1] === '"') {
-        currentColumn += '"'; // Escaped double quote
-        i++; // Skip next quote
+        currentColumn += '"'; 
+        i++; 
       } else {
         inQuotes = !inQuotes;
       }
@@ -225,7 +232,7 @@ function parseCsvLine(line: string): string[] {
       currentColumn += char;
     }
   }
-  columns.push(currentColumn.trim()); // Add the last column
+  columns.push(currentColumn.trim()); 
   return columns;
 }
 
@@ -493,14 +500,14 @@ export default function LeadsPage() {
 
         const newLeadsFromCsv: Lead[] = [];
         const currentLeadIds = new Set(allLeads.map(l => l.id));
-
-        const reversePackageHeaderMap: { [shortHeader: string]: string } = {
-          'ch': 'CHILD', 'ad': 'ADULT', 'chd_top': 'CHILD TOP DECK', 'adt_top': 'ADULT TOP DECK',
-          'ad_alc': 'ADULT ALC', 'vip_ch': 'VIP CHILD', 'vip_ad': 'VIP ADULT', 'vip_alc': 'VIP ALC',
-          'ryl_ch': 'ROYAL CHILD', 'ryl_ad': 'ROYAL ADULT', 'ryl_alc': 'ROYAL ALC',
-          'basic': 'BASIC', 'std': 'STANDARD', 'prem': 'PREMIUM', 'vip': 'VIP',
-          'hrc': 'HOUR CHARTER',
-        };
+        
+        const packageReverseHeaderMap: { [shortHeader: string]: string } = {};
+        Object.entries(csvHeaderMapping).forEach(([csvKey, internalKey]) => {
+            if (internalKey.startsWith('pkg_')) {
+                const actualPackageName = internalKey.substring('pkg_'.length).replace(/_/g, ' ').toUpperCase();
+                packageReverseHeaderMap[csvKey] = actualPackageName;
+            }
+        });
 
 
         for (let i = 1; i < lines.length; i++) {
@@ -526,24 +533,17 @@ export default function LeadsPage() {
             if (leadKey) {
                 (parsedRow as any)[leadKey] = convertCsvValue(leadKey, data[index], allYachts, agentMap, userMap, yachtMap);
             } else {
-                 // If header not in csvHeaderMapping, it might be a full package name
-                const fullPackageNameSnakeCase = `pkg_${fileHeader.replace(/\s+/g, '_').toLowerCase()}`;
-                if (allYachts.some(y => y.packages?.some(p => p.name.toLowerCase().replace(/\s+/g, '_') === fileHeader.replace(/\s+/g, '_').toLowerCase()))) {
-                   (parsedRow as any)[fullPackageNameSnakeCase] = convertCsvValue(fullPackageNameSnakeCase as `pkg_${string}`, data[index], allYachts, agentMap, userMap, yachtMap);
-                } else {
-                    console.warn(`[CSV Import Leads] Unknown header "${fileHeader}" (normalized: ${fileHeader}) in CSV row ${i+1}. Skipping this column.`);
-                }
+                console.warn(`[CSV Import Leads] Unknown header "${fileHeader}" (normalized: ${fileHeader}) in CSV row ${i+1}. Skipping this column.`);
             }
           });
           
           const isProblematicRow = !parsedRow.clientName || parsedRow.clientName === 'N/A from CSV' || !parsedRow.yacht;
-          if (isProblematicRow) {
+          if (isProblematicRow && i < 5) { // Log details for first few problematic rows
               console.log(`[CSV Import Leads Diagnostics] Row ${i + 1} parsed as potentially problematic:`);
               console.log(`  Raw CSV data array for row ${i + 1}:`, data);
               console.log(`  File Headers used for mapping:`, fileHeaders);
               console.log(`  Resulting parsedRow object for row ${i + 1}:`, JSON.parse(JSON.stringify(parsedRow)));
           }
-
 
           let packageQuantities: LeadPackageQuantity[] = [];
           if (parsedRow.package_quantities_json) {
@@ -560,25 +560,23 @@ export default function LeadsPage() {
             } catch (e) {
               console.warn(`[CSV Import Leads] Error parsing package_quantities_json from CSV for row ${i+1}: ${parsedRow.package_quantities_json}`);
             }
-          } else { // Reconstruct from individual package columns
+          } else { 
             const leadYachtId = parsedRow.yacht || '';
             const yachtForLead = allYachts.find(y => y.id === leadYachtId || y.name.toLowerCase() === String(leadYachtId).toLowerCase());
             
-            if (isProblematicRow) {
+            if (isProblematicRow && i < 5) {
                 console.log(`  Yacht ID from parsedRow for package reconstruction: "${leadYachtId}". Yacht found: ${yachtForLead ? yachtForLead.name : 'NOT FOUND'}`);
             }
             
             if (yachtForLead && yachtForLead.packages) {
-                for (const csvHeaderKey of Object.keys(csvHeaderMapping)) {
+                fileHeaders.forEach(csvHeaderKey => {
                     const internalKey = csvHeaderMapping[csvHeaderKey];
                     if (internalKey && internalKey.startsWith('pkg_')) {
-                        const actualPackageNameFromMap = reversePackageHeaderMap[csvHeaderKey] || // Try mapping from short header like 'ch'
-                                                         internalKey.substring('pkg_'.length).replace(/_/g, ' ').toUpperCase(); // Fallback from pkg_child_top_deck to CHILD TOP DECK
-                        
+                        const actualPackageName = packageReverseHeaderMap[csvHeaderKey];
                         const quantity = (parsedRow as any)[internalKey] as number | undefined;
 
-                        if (quantity !== undefined && quantity > 0) {
-                            const yachtPackage = yachtForLead.packages.find(p => p.name.toUpperCase() === actualPackageNameFromMap.toUpperCase());
+                        if (actualPackageName && quantity !== undefined && quantity > 0) {
+                            const yachtPackage = yachtForLead.packages.find(p => p.name.toUpperCase() === actualPackageName.toUpperCase());
                             if (yachtPackage) {
                                 packageQuantities.push({
                                     packageId: yachtPackage.id,
@@ -586,20 +584,19 @@ export default function LeadsPage() {
                                     quantity: quantity,
                                     rate: yachtPackage.rate,
                                 });
-                                if (isProblematicRow) {
-                                    console.log(`    Added package from CSV column (key: ${csvHeaderKey}, actual: ${actualPackageNameFromMap}): Qty: ${quantity}, Rate: ${yachtPackage.rate}`);
+                                if (isProblematicRow && i < 5) {
+                                    console.log(`    Added package from CSV column (key: ${csvHeaderKey}, actual: ${actualPackageName}): Qty: ${quantity}, Rate: ${yachtPackage.rate}`);
                                 }
                             } else {
-                                 if (isProblematicRow) console.warn(`    Package "${actualPackageNameFromMap}" (from CSV col ${csvHeaderKey}) not found on yacht "${yachtForLead.name}".`);
+                                 if (isProblematicRow && i < 5) console.warn(`    Package "${actualPackageName}" (from CSV col ${csvHeaderKey}) not found on yacht "${yachtForLead.name}".`);
                             }
                         }
                     }
-                }
-            } else if (isProblematicRow) {
+                });
+            } else if (isProblematicRow && i < 5) {
                 console.warn(`  Cannot reconstruct packages from CSV columns: Yacht "${leadYachtId}" not found or has no packages.`);
             }
           }
-
 
           const fullLead: Lead = {
             id: parsedRow.id || `imported-lead-${Date.now()}-${i}`,
@@ -628,10 +625,9 @@ export default function LeadsPage() {
             ownerUserId: parsedRow.ownerUserId || currentUserId,
           };
           
-          if (isProblematicRow) {
+          if (isProblematicRow && i < 5) {
              console.log(`  Constructed fullLead object for row ${i + 1}:`, JSON.parse(JSON.stringify(fullLead)));
           }
-
 
           const missingFields = [];
           if (!fullLead.clientName || fullLead.clientName === 'N/A from CSV') missingFields.push('clientName (missing or "N/A from CSV")');
@@ -746,22 +742,27 @@ export default function LeadsPage() {
       return;
     }
 
-    // Use the dynamic column generation logic from LeadsTable to get headers
+    
     const dynamicColumns = generateLeadColumns(allYachts);
     
     const finalCsvHeaders = dynamicColumns
-      .filter(col => col.accessorKey !== 'select' && col.accessorKey !== 'actions') // Exclude select/actions
+      .filter(col => col.accessorKey !== 'select' && col.accessorKey !== 'actions') 
       .map(col => col.header);
 
 
     const escapeCsvCell = (cellData: any): string => {
       if (cellData === null || cellData === undefined) return '';
       let stringValue = String(cellData);
-      if (String(cellData).trim() === '-' && typeof cellData === 'string') return ''; // Treat displayed '-' as empty for export
+      if (String(cellData).trim() === '-' && typeof cellData === 'string') return ''; 
       if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n')) {
         return `"${stringValue.replace(/"/g, '""')}"`;
       }
       return stringValue;
+    };
+
+    const calculateTotalGuestsFromPackageQuantities = (lead: Lead): number => {
+      if (!lead.packageQuantities || lead.packageQuantities.length === 0) return 0;
+      return lead.packageQuantities.reduce((sum, pq) => sum + (Number(pq.quantity) || 0), 0);
     };
 
     const csvRows = [
@@ -785,25 +786,20 @@ export default function LeadsPage() {
               cellValue = userId ? userMap[userId] || userId : '';
             } else if (col.isDate) {
               const dateVal = lead[col.accessorKey as keyof Lead] as string | undefined;
-              cellValue = dateVal ? format(parseISO(dateVal), 'dd/MM/yyyy HH:mm') : '';
+              cellValue = dateVal && isValid(parseISO(dateVal)) ? format(parseISO(dateVal), 'dd/MM/yyyy HH:mm') : '';
             } else if (col.isShortDate) {
                const dateVal = lead[col.accessorKey as keyof Lead] as string | undefined;
-               cellValue = dateVal ? format(parseISO(dateVal), 'dd/MM/yyyy') : '';
+               cellValue = dateVal && isValid(parseISO(dateVal)) ? format(parseISO(dateVal), 'dd/MM/yyyy') : '';
             } else {
               cellValue = lead[col.accessorKey as keyof Lead];
             }
-            // If cellValue is 0 for numeric package columns, export as empty string to match '-' display
-            if (col.isPackageColumn && (cellValue === 0 || cellValue === undefined || cellValue === null)) {
-                return '';
-            }
-            if (col.accessorKey === 'freeGuestCount' && (cellValue === 0 || cellValue === undefined || cellValue === null)) {
-                return '';
-            }
-            if (col.accessorKey === 'totalGuestsCalculated' && (cellValue === 0 || cellValue === undefined || cellValue === null)) {
+            
+            if ( (col.isPackageColumn || col.accessorKey === 'totalGuestsCalculated' || col.accessorKey === 'freeGuestCount') && 
+                 (cellValue === 0 || cellValue === undefined || cellValue === null) ) {
                 return '';
             }
             if (col.accessorKey === 'perTicketRate' && (cellValue === null || cellValue === undefined)) {
-              return ''; // Export null/undefined perTicketRate as empty
+              return ''; 
             }
 
             return escapeCsvCell(cellValue);

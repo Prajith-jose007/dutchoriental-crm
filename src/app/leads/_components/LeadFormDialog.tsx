@@ -55,7 +55,7 @@ const leadFormSchema = z.object({
   agent: z.string().min(1, 'Agent is required'),
   status: z.enum(leadStatusOptions),
   month: z.date({ required_error: "Lead/Event Date is required." }),
-  notes: z.string().optional(),
+  notes: z.string().trim().min(1, { message: "Notes are required and cannot be empty." }),
   yacht: z.string().min(1, 'Yacht selection is required'),
   type: z.enum(leadTypeOptions, { required_error: "Lead type is required."}),
   paymentConfirmationStatus: z.enum(paymentConfirmationStatusOptions, { required_error: "Payment confirmation status is required."}),
@@ -78,14 +78,6 @@ const leadFormSchema = z.object({
   updatedAt: z.string().optional(),
   lastModifiedByUserId: z.string().optional(),
   ownerUserId: z.string().optional(),
-}).refine(data => {
-  if (data.modeOfPayment === 'OTHER') {
-    return data.notes && data.notes.trim().length > 0;
-  }
-  return true;
-}, {
-  message: "Notes are required when 'OTHER' mode of payment is selected.",
-  path: ['notes'],
 });
 
 export type LeadFormData = z.infer<typeof leadFormSchema>;
@@ -113,7 +105,7 @@ const getDefaultFormValues = (existingLead?: Lead | null, currentUserId?: string
   return {
     id: existingLead?.id || undefined,
     agent: existingLead?.agent || '',
-    status: existingLead?.status || 'Active', 
+    status: existingLead?.status || 'Active',
     month: existingLead?.month && isValid(parseISO(existingLead.month)) ? parseISO(existingLead.month) : new Date(),
     yacht: existingLead?.yacht || '',
     type: existingLead?.type || 'Private Cruise',
@@ -161,7 +153,6 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
   const watchedAgentId = form.watch('agent');
   const watchedPaidAmount = form.watch('paidAmount');
   const watchedPackageQuantities = form.watch('packageQuantities');
-  const watchedModeOfPayment = form.watch('modeOfPayment');
   const watchedStatus = form.watch('status'); // Watch status for disabling
 
   const isFormDisabled = useMemo(() => {
@@ -372,7 +363,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
       netAmount: finalNetAmount,
       paidAmount: finalPaidAmount,
       balanceAmount: actualSignedBalanceAmount,
-      status: data.status, 
+      status: data.status,
     };
     onSubmitSuccess(submittedLead);
     onOpenChange(false);
@@ -662,7 +653,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
                 <FormItem className="pt-4 border-t mt-6">
                   <FormLabel>
                     Notes
-                    {watchedModeOfPayment === 'OTHER' && <span className="text-destructive">*</span>}
+                    <span className="text-destructive">*</span>
                   </FormLabel>
                   <FormControl>
                     <Textarea

@@ -7,15 +7,15 @@ import { BookingReportChart } from '../dashboard/_components/BookingReportChart'
 import { InvoiceStatusPieChart } from '../dashboard/_components/InvoiceStatusPieChart';
 import { SalesByYachtPieChart } from '../dashboard/_components/SalesByYachtPieChart';
 import { BookingsByAgentBarChart } from '../dashboard/_components/BookingsByAgentBarChart';
-import { ReportSummaryStats } from './_components/ReportSummaryStats'; // New
-import { FilteredBookedAgentsList } from './_components/FilteredBookedAgentsList'; // New
+import { ReportSummaryStats } from './_components/ReportSummaryStats';
+import { FilteredBookedAgentsList } from './_components/FilteredBookedAgentsList';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { DatePicker } from '@/components/ui/date-picker';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { Lead, Invoice, Yacht, Agent, User, LeadStatus, LeadType } from '@/lib/types';
-import { leadStatusOptions, leadTypeOptions } from '@/lib/types'; 
+import { leadStatusOptions, leadTypeOptions } from '@/lib/types';
 import { format, parseISO, isWithinInterval, startOfMonth, endOfMonth, startOfYear, endOfYear, isValid, getYear as getFullYear, getMonth as getMonthIndex } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 
@@ -37,12 +37,12 @@ export default function ReportsPage() {
   const [selectedAgentId, setSelectedAgentId] = useState<string>('all');
   const [selectedUserId, setSelectedUserId] = useState<string>('all');
   const [selectedStatusFilter, setSelectedStatusFilter] = useState<LeadStatus | 'all'>('all');
-  const [selectedLeadTypeFilter, setSelectedLeadTypeFilter] = useState<LeadType | 'all'>('all'); // New filter
+  const [selectedLeadTypeFilter, setSelectedLeadTypeFilter] = useState<LeadType | 'all'>('all');
 
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 5 }, (_, i) => currentYear - i);
   const months = Array.from({ length: 12 }, (_, i) => ({
-    value: String(i + 1).padStart(2, '0'), 
+    value: String(i + 1).padStart(2, '0'),
     label: format(new Date(2000, i, 1), 'MMMM'),
   }));
 
@@ -96,7 +96,7 @@ export default function ReportsPage() {
       }
     };
     fetchAllData();
-  }, [toast]); 
+  }, [toast]);
 
 
   const filteredLeads = useMemo(() => {
@@ -129,16 +129,16 @@ export default function ReportsPage() {
             return false;
         }
       }
-      
+
       if (selectedYachtId !== 'all' && lead.yacht !== selectedYachtId) return false;
       if (selectedAgentId !== 'all' && lead.agent !== selectedAgentId) return false;
       if (selectedUserId !== 'all' && (lead.lastModifiedByUserId !== selectedUserId && lead.ownerUserId !== selectedUserId )) return false;
       if (selectedStatusFilter !== 'all' && lead.status !== selectedStatusFilter) return false;
-      if (selectedLeadTypeFilter !== 'all' && lead.type !== selectedLeadTypeFilter) return false; // New filter
-      
+      if (selectedLeadTypeFilter !== 'all' && lead.type !== selectedLeadTypeFilter) return false;
+
       return true;
     });
-    
+
     return leadsToFilter;
   }, [allLeads, startDate, endDate, selectedReportMonth, selectedReportYear, selectedYachtId, selectedAgentId, selectedUserId, selectedStatusFilter, selectedLeadTypeFilter]);
 
@@ -173,15 +173,10 @@ export default function ReportsPage() {
             return false;
         }
       }
-      // Check if the invoice status matches the selected lead status filter, if it's not 'all'
-      // This might be too restrictive if invoice status is independent of lead status for reporting
-      // For now, filtering invoices primarily based on whether their lead matches the lead filters.
-      // if (selectedStatusFilter !== 'all' && invoice.status.toLowerCase() !== selectedStatusFilter.toLowerCase()) return false;
-
       return relevantLeadIds.has(invoice.leadId);
     });
     return invoicesToFilter;
-  }, [allInvoices, filteredLeads, startDate, endDate, selectedReportMonth, selectedReportYear /* removed selectedStatusFilter here as it might be too restrictive for invoices */]);
+  }, [allInvoices, filteredLeads, startDate, endDate, selectedReportMonth, selectedReportYear]);
 
 
   const resetFilters = () => {
@@ -192,7 +187,7 @@ export default function ReportsPage() {
     setSelectedYachtId('all');
     setSelectedAgentId('all');
     setSelectedUserId('all');
-    setSelectedStatusFilter('all'); 
+    setSelectedStatusFilter('all');
     setSelectedLeadTypeFilter('all');
   };
 
@@ -203,8 +198,8 @@ export default function ReportsPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 mb-6 p-4 border rounded-lg shadow-sm">
           {[...Array(9)].map((_,i) => <Skeleton key={i} className="h-10 w-full" />)}
         </div>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-6">
-           {[...Array(4)].map((_,i) => <Skeleton key={`stat-${i}`} className="h-24 w-full" />)}
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5 mb-6"> {/* Adjusted to 5 for stats */}
+           {[...Array(5)].map((_,i) => <Skeleton key={`stat-${i}`} className="h-24 w-full" />)}
         </div>
         <div className="grid gap-6">
           <Skeleton className="h-[350px] w-full" />
@@ -230,11 +225,11 @@ export default function ReportsPage() {
 
   return (
     <div className="container mx-auto py-2">
-      <PageHeader 
-        title="CRM Reports" 
-        description="Filter and view key metrics for your leads and invoices." 
+      <PageHeader
+        title="CRM Reports"
+        description="Filter and view key metrics for your leads and invoices."
       />
-      
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 mb-6 p-4 border rounded-lg shadow-sm">
         <div>
           <Label htmlFor="start-date-report">Start Date (Event/Creation)</Label>

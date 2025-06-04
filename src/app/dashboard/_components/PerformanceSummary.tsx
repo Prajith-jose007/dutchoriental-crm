@@ -2,7 +2,7 @@
 'use client';
 
 import { useMemo } from 'react';
-import { BookOpenCheck, Banknote, CircleDollarSign, Wallet, BookOpen } from 'lucide-react';
+import { BookOpenCheck, Banknote, CircleDollarSign, Wallet, BookOpen, Activity } from 'lucide-react'; // Added Activity
 import {
   Card,
   CardContent,
@@ -52,20 +52,23 @@ interface PerformanceSummaryProps {
 }
 
 export function PerformanceSummary({ leads, invoices, isLoading, error }: PerformanceSummaryProps) {
-  const { totalSuccessfulBookings, totalSuccessfulEarnings, totalBalanceLeadAmount, totalBookingsCount } = useMemo(() => {
+  const { totalSuccessfulBookings, totalSuccessfulEarnings, totalBalanceFromActiveLeads, totalBookingsCount, totalActiveLeads } = useMemo(() => {
     const successfulLeads = leads.filter(lead => lead.status === 'Closed');
-    const balanceLeads = leads.filter(lead => lead.status === 'Balance');
-    
+    const activeLeads = leads.filter(lead => lead.status === 'Active'); // Changed from 'Balance'
+
     const bookingsCount = leads.length;
     const closedBookings = successfulLeads.length;
     const earnings = successfulLeads.reduce((sum, lead) => sum + (lead.netAmount || 0), 0);
-    const balanceAmount = balanceLeads.reduce((sum, lead) => sum + Math.abs(lead.balanceAmount || 0), 0);
-    
+    // Calculate balance amount from 'Active' leads
+    const balanceAmount = activeLeads.reduce((sum, lead) => sum + Math.abs(lead.balanceAmount || 0), 0);
+    const activeLeadsCount = activeLeads.length;
+
     return {
       totalBookingsCount: bookingsCount,
       totalSuccessfulBookings: closedBookings,
       totalSuccessfulEarnings: earnings,
-      totalBalanceLeadAmount: balanceAmount,
+      totalBalanceFromActiveLeads: balanceAmount, // Renamed for clarity
+      totalActiveLeads: activeLeadsCount,
     };
   }, [leads]);
 
@@ -78,48 +81,55 @@ export function PerformanceSummary({ leads, invoices, isLoading, error }: Perfor
     };
   }, [invoices]);
 
-  const generalError = error && leads.length === 0 && invoices.length === 0 ? error : null;
   const leadsError = error && leads.length === 0 ? error : null;
   const invoicesError = error && invoices.length === 0 ? error : null;
 
 
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5"> {/* Adjusted to 5 columns */}
       <SummaryCard
-        title="Total Bookings"
+        title="Total Leads"
         value={leadsError ? 'Error' : totalBookingsCount}
         icon={<BookOpen className="h-5 w-5 text-muted-foreground" />}
         description={leadsError ? leadsError : "Total number of all leads"}
         isLoading={isLoading}
       />
       <SummaryCard
-        title="Closed Bookings"
+        title="Active Leads"
+        value={leadsError ? 'Error' : totalActiveLeads}
+        icon={<Activity className="h-5 w-5 text-muted-foreground" />}
+        description={leadsError ? leadsError : "Number of 'Active' leads"}
+        isLoading={isLoading}
+      />
+      <SummaryCard
+        title="Closed Leads"
         value={leadsError ? 'Error' : totalSuccessfulBookings}
         icon={<BookOpenCheck className="h-5 w-5 text-muted-foreground" />}
         description={leadsError ? leadsError : "Number of 'Closed' leads"}
         isLoading={isLoading}
       />
       <SummaryCard
-        title="Total Revenue (Closed Bookings)"
+        title="Revenue (Closed Leads)"
         value={leadsError ? 'Error' : `${totalSuccessfulEarnings.toLocaleString()} AED`}
         icon={<Banknote className="h-5 w-5 text-muted-foreground" />}
         description={leadsError ? leadsError : "Sum of net amounts for 'Closed' leads"}
         isLoading={isLoading}
       />
       <SummaryCard
-        title="Total Balance Amount (Leads)"
-        value={leadsError ? 'Error' : `${totalBalanceLeadAmount.toLocaleString()} AED`}
+        title="Balance (Active Leads)"
+        value={leadsError ? 'Error' : `${totalBalanceFromActiveLeads.toLocaleString()} AED`}
         icon={<Wallet className="h-5 w-5 text-muted-foreground" />}
-        description={leadsError ? leadsError : "Sum of balance for 'Balance' status leads"}
+        description={leadsError ? leadsError : "Sum of balance for 'Active' status leads"}
         isLoading={isLoading}
       />
-      <SummaryCard
+      {/* This one can be added if a 5th distinct summary is needed or adjust grid cols */}
+      {/* <SummaryCard
         title="Pending Payments (Invoices)"
         value={invoicesError ? 'Error' : `${totalPendingPayments.toLocaleString()} AED`}
         icon={<CircleDollarSign className="h-5 w-5 text-muted-foreground" />}
         description={invoicesError ? invoicesError : "Total from pending and overdue invoices"}
         isLoading={isLoading}
-      />
+      /> */}
     </div>
   );
 }

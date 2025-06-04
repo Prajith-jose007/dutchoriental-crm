@@ -20,9 +20,7 @@ const USER_ID_STORAGE_KEY = 'currentUserId';
 const USER_ROLE_STORAGE_KEY = 'currentUserRole';
 
 
-// This mapping helps interpret CSV headers. It should be comprehensive.
 const csvHeaderMapping: { [csvHeaderKey: string]: keyof Omit<Lead, 'packageQuantities'> | 'package_quantities_json_string' | `pkg_${string}` } = {
-  // Base Info (Order for mapping doesn't strictly matter here as it's key-based, but follows the new order)
   'id': 'id',
   'status': 'status',
   'date': 'month', 'event_date': 'month', 'lead/event_date': 'month',
@@ -34,8 +32,6 @@ const csvHeaderMapping: { [csvHeaderKey: string]: keyof Omit<Lead, 'packageQuant
   'transaction_id': 'transactionId', 'transaction id': 'transactionId',
   'payment_mode': 'modeOfPayment', 'mode_of_payment': 'modeOfPayment',
   'free': 'freeGuestCount', 'free_guests': 'freeGuestCount',
-
-  // Package short headers (lowercase) map to `pkg_<actual_package_name_lower_snake_case>`
   'ch': 'pkg_child',
   'ad': 'pkg_adult',
   'chd_top': 'pkg_child_top_deck', 'child_top_deck': 'pkg_child_top_deck',
@@ -52,13 +48,8 @@ const csvHeaderMapping: { [csvHeaderKey: string]: keyof Omit<Lead, 'packageQuant
   'prem': 'pkg_premium', 'premium': 'pkg_premium',
   'vip': 'pkg_vip',
   'hrchtr': 'pkg_hour_charter', 'hour_charter': 'pkg_hour_charter',
-
-  // Special column for full package details (including rates)
   'package_details_(json)': 'package_quantities_json_string',
   'package_details_json': 'package_quantities_json_string',
-
-
-  // Accounts section
   'other': 'perTicketRate', 'other_rate': 'perTicketRate',
   'total_amt': 'totalAmount', 'total_amount': 'totalAmount',
   'discount_%': 'commissionPercentage', 'discount_rate': 'commissionPercentage', 'discount': 'commissionPercentage',
@@ -66,8 +57,6 @@ const csvHeaderMapping: { [csvHeaderKey: string]: keyof Omit<Lead, 'packageQuant
   'net_amt': 'netAmount', 'net_amount': 'netAmount',
   'paid': 'paidAmount', 'paid_amount': 'paidAmount',
   'balance': 'balanceAmount', 'balance_amount': 'balanceAmount',
-
-  // References and Comments section
   'note': 'notes',
   'created_by': 'ownerUserId', 'created by': 'ownerUserId',
   'modified_by': 'lastModifiedByUserId', 'modified by': 'lastModifiedByUserId',
@@ -95,7 +84,7 @@ const convertCsvValue = (
     if (!trimmedValue) return null;
     try {
       const parsedJson = JSON.parse(trimmedValue);
-      if (Array.isArray(parsedJson)) { // Basic check, further validation can be added
+      if (Array.isArray(parsedJson)) {
         return parsedJson.map(pq => ({
           packageId: String(pq.packageId || ''),
           packageName: String(pq.packageName || 'Unknown CSV Pkg'),
@@ -110,7 +99,6 @@ const convertCsvValue = (
     }
   }
 
-
   if (trimmedValue === '' || value === null || value === undefined) {
     switch (key) {
       case 'totalAmount': case 'commissionPercentage': case 'commissionAmount':
@@ -118,7 +106,7 @@ const convertCsvValue = (
       case 'freeGuestCount': return 0;
       case 'perTicketRate': return null;
       case 'modeOfPayment': return 'CARD';
-      case 'status': return 'Balance';
+      case 'status': return 'Active'; // Default to Active
       case 'type': return 'Private Cruise' as LeadType;
       case 'paymentConfirmationStatus': return 'CONFIRMED' as PaymentConfirmationStatus;
       case 'notes': return '';
@@ -135,7 +123,6 @@ const convertCsvValue = (
     case 'yacht':
     case 'ownerUserId':
     case 'lastModifiedByUserId':
-
       const mapToUse = key === 'agent' ? agentMap : (key === 'yacht' ? yachtMap : userMap);
       const idByName = Object.keys(mapToUse).find(id => mapToUse[id]?.toLowerCase() === trimmedValue.toLowerCase());
       return idByName || trimmedValue;
@@ -154,7 +141,7 @@ const convertCsvValue = (
     case 'status':
       const lowerTrimmedValue = trimmedValue.toLowerCase();
       const foundStatus = leadStatusOptions.find(opt => opt.toLowerCase() === lowerTrimmedValue);
-      return foundStatus || 'Balance';
+      return foundStatus || 'Active'; // Default to Active
     case 'type':
       return leadTypeOptions.includes(trimmedValue as LeadType) ? trimmedValue : 'Private Cruise';
     case 'paymentConfirmationStatus':
@@ -176,23 +163,18 @@ const convertCsvValue = (
             const dayStr = dayMonthYearMatch[dayMonthYearMatch.length === 4 ? 1 : 2];
             const monthStr = dayMonthYearMatch[dayMonthYearMatch.length === 4 ? 2 : 1];
             const yearStr = dayMonthYearMatch[dayMonthYearMatch.length -1];
-
             let day = parseInt(dayStr, 10);
             let year = parseInt(yearStr, 10);
-
             const monthNames = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
             let monthIndex = monthNames.findIndex(m => monthStr.toLowerCase().startsWith(m));
-
             if (monthIndex === -1) {
                 const monthNum = parseInt(monthStr, 10);
                 if (monthNum >= 1 && monthNum <= 12) monthIndex = monthNum -1;
             }
-
             if (monthIndex > -1 && day >=1 && day <=31 && year > 1900 && year < 2100) {
                 dateObj = new Date(Date.UTC(year, monthIndex, day));
             }
         }
-
         if (!dateObj || !isValid(dateObj)) {
             const parts = trimmedValue.match(/(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2,4})/);
             if (parts && parts.length === 4) {
@@ -200,18 +182,15 @@ const convertCsvValue = (
                 let month = parseInt(parts[2], 10);
                 let year = parseInt(parts[3], 10);
                 if (String(year).length === 2) year += 2000;
-
                 if (month >=1 && month <=12 && day >=1 && day <=31) {
                     dateObj = new Date(Date.UTC(year, month - 1, day));
                 }
-
                 if ((!dateObj || !isValid(dateObj)) && day >=1 && day <=12 && month >=1 && month <=31) {
                     dateObj = new Date(Date.UTC(year, day - 1, month));
                 }
             }
         }
         if (dateObj && isValid(dateObj)) return formatISO(dateObj);
-
       } catch (e) {/* ignore */ }
       console.warn(`[CSV Import] Could not parse date "${trimmedValue}" for key "${String(key)}". Defaulting to current date.`);
       return formatISO(new Date());
@@ -267,7 +246,7 @@ function generateNewLeadTransactionId(existingLeads: Lead[], forYear: number, cu
 
   existingLeads.forEach(lead => {
     if (lead.transactionId && lead.transactionId.startsWith(prefix)) {
-      const numPartStr = lead.transactionId.substring(prefix.length); // No +1 for hyphen as it's part of prefix
+      const numPartStr = lead.transactionId.substring(prefix.length);
       const numPart = parseInt(numPartStr, 10);
       if (!isNaN(numPart) && numPart > maxNumber) {
         maxNumber = numPart;
@@ -275,7 +254,7 @@ function generateNewLeadTransactionId(existingLeads: Lead[], forYear: number, cu
     }
   });
   const nextNumber = maxNumber + 1;
-  return `${prefix}${String(nextNumber).padStart(5, '0')}`; // YYYYNNNNN format
+  return `${prefix}${String(nextNumber).padStart(5, '0')}`;
 }
 
 
@@ -390,7 +369,9 @@ export default function LeadsPage() {
     setIsLoading(true);
 
     let finalTransactionId = submittedLeadData.transactionId;
-    if ((!editingLead || !finalTransactionId || finalTransactionId === "Pending Generation") && (!finalTransactionId || finalTransactionId.startsWith("Pending Generation") || String(finalTransactionId).trim() === "")) {
+    const isNewLead = !editingLead;
+
+    if (isNewLead || !finalTransactionId || finalTransactionId === "Pending Generation" || String(finalTransactionId).trim() === "") {
         const leadYear = submittedLeadData.month ? getFullYear(parseISO(submittedLeadData.month)) : new Date().getFullYear();
         finalTransactionId = generateNewLeadTransactionId(allLeads, leadYear);
     }
@@ -411,9 +392,10 @@ export default function LeadsPage() {
       perTicketRate: submittedLeadData.perTicketRate !== undefined && submittedLeadData.perTicketRate !== null ? Number(submittedLeadData.perTicketRate) : undefined,
       requestingUserId: currentUserId,
       requestingUserRole: currentUserRole,
+      status: submittedLeadData.status,
     };
 
-    if (!editingLead) {
+    if (isNewLead) {
       payload.ownerUserId = currentUserId;
       payload.createdAt = new Date().toISOString();
       if (payload.id && payload.id.startsWith('temp-')) {
@@ -421,8 +403,7 @@ export default function LeadsPage() {
       } else if (!payload.id) {
          delete payload.id;
       }
-
-    } else {
+    } else if (editingLead) {
       payload.ownerUserId = editingLead.ownerUserId || currentUserId;
       payload.createdAt = editingLead.createdAt || new Date().toISOString();
     }
@@ -459,7 +440,6 @@ export default function LeadsPage() {
         const finalErrorMessage = descriptiveMessage + (errorDetailsLog ? ` - Details: ${errorDetailsLog}` : '');
         throw new Error(finalErrorMessage);
       }
-
 
       toast({
         title: editingLead ? 'Lead Updated' : 'Lead Added',
@@ -566,7 +546,6 @@ export default function LeadsPage() {
 
         const batchMaxTransactionNumbersByYear: { [year: number]: number } = {};
 
-
         for (let i = 1; i < lines.length; i++) {
           let data = parseCsvLine(lines[i]);
 
@@ -631,19 +610,18 @@ export default function LeadsPage() {
           if (!transactionIdForRow || String(transactionIdForRow).trim() === '') {
             const currentMaxForYearInBatch = batchMaxTransactionNumbersByYear[leadYear] || 0;
             transactionIdForRow = generateNewLeadTransactionId(allLeads, leadYear, currentMaxForYearInBatch);
-            const numPart = parseInt(transactionIdForRow.substring(transactionIdForRow.indexOf('-') + 1 + 4), 10); //TRN-YYYYNNNNN
+            const numPart = parseInt(transactionIdForRow.substring(transactionIdForRow.indexOf('-') + 1 + 4), 10);
             if (!isNaN(numPart)) {
                 batchMaxTransactionNumbersByYear[leadYear] = numPart;
             }
           }
-
 
           const fullLead: Lead = {
             id: parsedRow.id || `imported-lead-${Date.now()}-${i}`,
             clientName: parsedRow.clientName || 'N/A from CSV',
             agent: parsedRow.agent || '',
             yacht: parsedRow.yacht || '',
-            status: parsedRow.status || 'Balance',
+            status: parsedRow.status || 'Active', // Default to Active
             month: parsedRow.month || formatISO(new Date()),
             notes: parsedRow.notes || undefined,
             type: parsedRow.type || 'Private Cruise',

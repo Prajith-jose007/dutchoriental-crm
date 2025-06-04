@@ -136,15 +136,15 @@ export const placeholderLeads: Lead[] = [
     transactionId: `TRN-${currentYear}00001`,
     modeOfPayment: 'CARD',
     packageQuantities: [
-      { packageId: 'lr-adult', packageName: 'ADULT', quantity: 50, rate: 250 }, // Rate from placeholderYachts
-      { packageId: 'lr-ad-alc', packageName: 'ADULT ALC', quantity: 30, rate: 350 }, // Rate from placeholderYachts
+      { packageId: 'lr-adult', packageName: 'ADULT', quantity: 50, rate: 250 },
+      { packageId: 'lr-ad-alc', packageName: 'ADULT ALC', quantity: 30, rate: 350 },
     ],
     freeGuestCount: 5,
-    perTicketRate: 100, 
-    totalAmount: (50 * 250) + (30 * 350) + 100, // 12500 + 10500 + 100 = 23100
+    perTicketRate: 100,
+    totalAmount: (50 * 250) + (30 * 350) + 100,
     commissionPercentage: 10,
-    commissionAmount: 2310, // 10% of 23100
-    netAmount: 20790, // 23100 - 2310
+    commissionAmount: 2310,
+    netAmount: 20790,
     paidAmount: 20790,
     balanceAmount: 0,
     createdAt: formatISO(subDays(today, 30)),
@@ -157,7 +157,7 @@ export const placeholderLeads: Lead[] = [
     clientName: 'Sunset Tours R Us',
     agent: 'DO-002',
     yacht: 'DO-yacht-super',
-    status: 'Balance',
+    status: 'Active', // Changed from Balance
     month: formatISO(parseISO(`${currentYear}-07-25T18:30:00`)),
     notes: 'Prospective client for regular sightseeing tours.',
     type: 'Superyacht Sightseeing Cruise',
@@ -165,17 +165,16 @@ export const placeholderLeads: Lead[] = [
     transactionId: `TRN-${currentYear}00002`,
     modeOfPayment: 'CREDIT',
     packageQuantities: [
-      { packageId: 'ss-premium', packageName: 'PREMIUM', quantity: 20, rate: 299 }, // Rate from placeholderYachts
+      { packageId: 'ss-premium', packageName: 'PREMIUM', quantity: 20, rate: 299 },
     ],
     freeGuestCount: 2,
-    // perTicketRate: 299, // Assuming 'OTHER' rate is not applicable here or is different. If it's the same as a package, it's redundant.
-    perTicketRate: undefined, // Explicitly undefined or null if not applicable
-    totalAmount: 20 * 299, // 5980
+    perTicketRate: undefined,
+    totalAmount: 20 * 299,
     commissionPercentage: 15,
-    commissionAmount: 897, // 15% of 5980
-    netAmount: 5083, // 5980 - 897
+    commissionAmount: 897,
+    netAmount: 5083,
     paidAmount: 1000,
-    balanceAmount: 4083, // 5083 - 1000
+    balanceAmount: 4083,
     createdAt: formatISO(subDays(today, 25)),
     updatedAt: formatISO(subDays(today, 10)),
     lastModifiedByUserId: 'DO-user2',
@@ -186,7 +185,7 @@ export const placeholderLeads: Lead[] = [
     clientName: 'Private Celebration Planners',
     agent: 'DO-001',
     yacht: 'DO-yacht-private1',
-    status: 'Balance',
+    status: 'Active', // Changed from Balance
     month: formatISO(parseISO(`${currentYear}-08-10T16:00:00`)),
     notes: 'Birthday party, deposit paid.',
     type: 'Private Cruise',
@@ -194,16 +193,16 @@ export const placeholderLeads: Lead[] = [
     transactionId: `TRN-${currentYear}00003`,
     modeOfPayment: 'CASH / CARD',
     packageQuantities: [
-      { packageId: 'private-hourly', packageName: 'HOUR CHARTER', quantity: 4, rate: 1500 }, // Rate from placeholderYachts
+      { packageId: 'private-hourly', packageName: 'HOUR CHARTER', quantity: 4, rate: 1500 },
     ],
     freeGuestCount: 0,
     perTicketRate: undefined,
-    totalAmount: 4 * 1500, // 6000
+    totalAmount: 4 * 1500,
     commissionPercentage: 10,
-    commissionAmount: 600, // 10% of 6000
-    netAmount: 5400,    // 6000 - 600
+    commissionAmount: 600,
+    netAmount: 5400,
     paidAmount: 3000,
-    balanceAmount: 2400, // 5400 - 3000
+    balanceAmount: 2400,
     createdAt: formatISO(subDays(today, 10)),
     updatedAt: formatISO(subDays(today, 2)),
     lastModifiedByUserId: 'DO-user1',
@@ -211,15 +210,12 @@ export const placeholderLeads: Lead[] = [
   },
 ];
 
-// Update invoice amounts based on recalculated lead net amounts
 const lead1NetAmount = placeholderLeads.find(l => l.id === 'DO-001')?.netAmount || 0;
 const lead2NetAmount = placeholderLeads.find(l => l.id === 'DO-002')?.netAmount || 0;
 const lead3NetAmount = placeholderLeads.find(l => l.id === 'DO-003')?.netAmount || 0;
-
 
 export const placeholderInvoices: Invoice[] = [
   { id: 'DO-inv001', leadId: 'DO-001', clientName: 'Tech Corp Events', amount: lead1NetAmount, dueDate: format(addDays(parseISO(placeholderLeads[0].month), 7), 'yyyy-MM-dd'), status: 'Paid', createdAt: formatISO(subDays(today, 14)) },
   { id: 'DO-inv002', leadId: 'DO-002', clientName: 'Sunset Tours R Us', amount: lead2NetAmount, dueDate: format(addDays(parseISO(placeholderLeads[1].month), 7), 'yyyy-MM-dd'), status: 'Pending', createdAt: formatISO(subDays(today, 9)) },
   { id: 'DO-inv003', leadId: 'DO-003', clientName: 'Private Celebration Planners', amount: lead3NetAmount, dueDate: format(addDays(parseISO(placeholderLeads[2].month), 7), 'yyyy-MM-dd'), status: 'Pending', createdAt: formatISO(subDays(today, 1)) },
 ];
-

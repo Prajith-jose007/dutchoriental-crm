@@ -55,7 +55,7 @@ export interface Invoice {
   createdAt: string;
 }
 
-export const leadStatusOptions = ['Balance', 'Closed'] as const;
+export const leadStatusOptions = ['Active', 'Closed'] as const;
 export type LeadStatus = typeof leadStatusOptions[number];
 
 export const modeOfPaymentOptions = ['CARD', 'CASH', 'CASH / CARD', 'NOMOD', 'PAYMOD', 'RUZINN', 'CREDIT', 'OTHER'] as const;
@@ -89,7 +89,7 @@ export interface Lead {
 
   packageQuantities?: LeadPackageQuantity[];
   freeGuestCount?: number;
-  perTicketRate?: number; // New field
+  perTicketRate?: number;
 
   totalAmount: number;
   commissionPercentage: number;

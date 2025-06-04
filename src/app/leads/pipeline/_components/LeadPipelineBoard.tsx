@@ -2,6 +2,7 @@
 'use client';
 
 import type { Lead, LeadStatus } from '@/lib/types';
+import { leadStatusOptions } from '@/lib/types'; // Import the updated options
 import { LeadCard } from './LeadCard';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 
@@ -10,31 +11,34 @@ interface LeadPipelineBoardProps {
   onEditLead: (lead: Lead) => void;
 }
 
-const leadStatuses: LeadStatus[] = ['Balance', 'Closed']; // Updated to new statuses
+// Use the imported leadStatusOptions
+// const leadStatuses: LeadStatus[] = ['Balance', 'Closed']; // Old, replaced
 
 export function LeadPipelineBoard({ leads, onEditLead }: LeadPipelineBoardProps) {
   const leadsByStatus: { [key in LeadStatus]?: Lead[] } = {};
-  leadStatuses.forEach(status => leadsByStatus[status] = []);
+  leadStatusOptions.forEach(status => leadsByStatus[status] = []); // Initialize with new statuses
 
   leads.forEach(lead => {
     if (leadsByStatus[lead.status]) {
       leadsByStatus[lead.status]?.push(lead);
     } else {
-      console.warn(`Lead with ID ${lead.id} has unexpected status: ${lead.status}. Grouping under 'Balance'.`);
-      if (!leadsByStatus['Balance']) leadsByStatus['Balance'] = [];
-      leadsByStatus['Balance']?.push(lead); 
+      // This case should be less likely if lead.status is strictly typed to LeadStatus
+      // and default values are handled correctly.
+      console.warn(`Lead with ID ${lead.id} has unexpected status: ${lead.status}. Grouping under '${leadStatusOptions[0]}'.`);
+      if (!leadsByStatus[leadStatusOptions[0]]) leadsByStatus[leadStatusOptions[0]] = [];
+      leadsByStatus[leadStatusOptions[0]]?.push(lead);
     }
   });
 
   return (
     <ScrollArea className="flex-1 w-full pb-4">
       <div className="flex gap-4 p-1">
-        {leadStatuses.map(status => (
-          <div key={status} className="min-w-[300px] w-1/2 bg-muted/60 rounded-lg shadow"> {/* Adjusted width for 2 columns */}
+        {leadStatusOptions.map(status => (
+          <div key={status} className="min-w-[300px] w-1/2 bg-muted/60 rounded-lg shadow">
             <h2 className="text-lg font-semibold p-4 border-b sticky top-0 bg-muted/80 backdrop-blur-sm rounded-t-lg z-10">
               {status} ({leadsByStatus[status]?.length || 0})
             </h2>
-            <ScrollArea className="h-[calc(100vh-220px)]"> {/* Adjust height as needed */}
+            <ScrollArea className="h-[calc(100vh-220px)]">
               <div className="p-4 space-y-4">
                 {leadsByStatus[status]?.length === 0 ? (
                   <p className="text-sm text-muted-foreground p-4 text-center">No leads in this stage.</p>

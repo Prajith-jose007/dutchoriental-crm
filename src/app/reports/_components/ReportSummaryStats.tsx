@@ -5,7 +5,7 @@ import { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import type { Lead } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
-import { TrendingUp, BookOpenCheck, BookOpen, Wallet } from 'lucide-react';
+import { TrendingUp, BookOpenCheck, BookOpen, Wallet, Activity } from 'lucide-react'; // Added Activity
 
 interface SummaryStatCardProps {
   title: string;
@@ -41,25 +41,27 @@ interface ReportSummaryStatsProps {
 export function ReportSummaryStats({ filteredLeads, isLoading, error }: ReportSummaryStatsProps) {
   const summaryData = useMemo(() => {
     const closedLeads = filteredLeads.filter(lead => lead.status === 'Closed');
-    const balanceLeads = filteredLeads.filter(lead => lead.status === 'Balance');
+    const activeLeads = filteredLeads.filter(lead => lead.status === 'Active'); // Changed from 'Balance'
 
     const totalRevenue = closedLeads.reduce((sum, lead) => sum + (lead.netAmount || 0), 0);
     const totalBookings = filteredLeads.length;
     const closedBookingsCount = closedLeads.length;
-    const totalBalanceAmount = balanceLeads.reduce((sum, lead) => sum + Math.abs(lead.balanceAmount || 0), 0);
+    const activeLeadsCount = activeLeads.length;
+    const totalBalanceAmountFromActive = activeLeads.reduce((sum, lead) => sum + Math.abs(lead.balanceAmount || 0), 0);
 
     return {
       totalRevenue,
       totalBookings,
       closedBookingsCount,
-      totalBalanceAmount,
+      activeLeadsCount,
+      totalBalanceAmountFromActive,
     };
   }, [filteredLeads]);
 
   if (error) {
     return (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-6">
-            {[...Array(4)].map((_, i) => (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5 mb-6"> {/* Adjusted to 5 columns */}
+            {[...Array(5)].map((_, i) => (
                  <Card key={i}>
                     <CardHeader className="pb-2"><CardTitle className="text-sm font-medium">Stat Error</CardTitle></CardHeader>
                     <CardContent><p className="text-destructive text-xs">{error}</p></CardContent>
@@ -70,7 +72,7 @@ export function ReportSummaryStats({ filteredLeads, isLoading, error }: ReportSu
   }
 
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-6">
+    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5 mb-6"> {/* Adjusted to 5 columns */}
       <SummaryStatCard
         title="Total Revenue (Filtered)"
         value={`${summaryData.totalRevenue.toLocaleString()} AED`}
@@ -78,20 +80,26 @@ export function ReportSummaryStats({ filteredLeads, isLoading, error }: ReportSu
         isLoading={isLoading}
       />
       <SummaryStatCard
-        title="Total Bookings (Filtered)"
+        title="Total Leads (Filtered)"
         value={summaryData.totalBookings}
         icon={<BookOpen className="h-5 w-5 text-muted-foreground" />}
         isLoading={isLoading}
       />
+       <SummaryStatCard
+        title="Active Leads (Filtered)"
+        value={summaryData.activeLeadsCount}
+        icon={<Activity className="h-5 w-5 text-muted-foreground" />}
+        isLoading={isLoading}
+      />
       <SummaryStatCard
-        title="Closed Bookings (Filtered)"
+        title="Closed Leads (Filtered)"
         value={summaryData.closedBookingsCount}
         icon={<BookOpenCheck className="h-5 w-5 text-muted-foreground" />}
         isLoading={isLoading}
       />
       <SummaryStatCard
-        title="Balance Amount (Filtered)"
-        value={`${summaryData.totalBalanceAmount.toLocaleString()} AED`}
+        title="Balance (Active Leads)"
+        value={`${summaryData.totalBalanceAmountFromActive.toLocaleString()} AED`}
         icon={<Wallet className="h-5 w-5 text-muted-foreground" />}
         isLoading={isLoading}
       />

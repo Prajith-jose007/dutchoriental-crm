@@ -234,6 +234,7 @@ function parseCsvLine(line: string): string[] {
   return columns;
 }
 
+
 function generateNewLeadId(existingLeadIds: string[]): string {
   const prefix = "DO-";
   let maxNum = 0;
@@ -378,13 +379,17 @@ export default function LeadsPage() {
     }
     setIsLoading(true);
 
-    let finalTransactionId = submittedLeadData.transactionId;
     const isNewLead = !editingLead;
+    let finalTransactionId = submittedLeadData.transactionId;
 
-    if ((isNewLead && (!finalTransactionId || finalTransactionId === "Pending Generation" || String(finalTransactionId).trim() === "")) || (editingLead && !finalTransactionId) ) {
+    if (isNewLead && (!finalTransactionId || String(finalTransactionId).trim() === "" || finalTransactionId === "Pending Generation")) {
+        const leadYear = submittedLeadData.month ? getFullYear(parseISO(submittedLeadData.month)) : new Date().getFullYear();
+        finalTransactionId = generateNewLeadTransactionId(allLeads, leadYear);
+    } else if (editingLead && !finalTransactionId) { // Case for editing an existing lead that might somehow lack a transactionId
         const leadYear = submittedLeadData.month ? getFullYear(parseISO(submittedLeadData.month)) : new Date().getFullYear();
         finalTransactionId = generateNewLeadTransactionId(allLeads, leadYear);
     }
+
 
     const payload: Lead & { requestingUserId: string; requestingUserRole: string } = {
       ...submittedLeadData,
@@ -595,19 +600,13 @@ export default function LeadsPage() {
     }
     setIsLoading(true);
     try {
-      // For bulk delete, we might need a specific API or iterate DELETE calls.
-      // Assuming an API for bulk delete is not yet created, this would be a loop.
-      // For simplicity, we'll show a conceptual single call, but backend would loop.
-      // Or we make the client loop - less ideal. Let's assume the API handles an array of IDs for DELETE.
       
-      // Since PATCH is already used for status, let's stick to convention and assume DELETE /api/leads would handle multiple IDs.
-      // If not, the API route.ts for DELETE on /api/leads will need to be created or updated to handle a body with { ids: [...] }
       let successfulDeletes = 0;
       let failedDeletes = 0;
 
       for (const leadId of selectedLeadIds) {
          const leadToDelete = allLeads.find(l => l.id === leadId);
-          if (leadToDelete?.status === 'Closed' && !isAdmin) { // Should be caught by admin check above, but good to have
+          if (leadToDelete?.status === 'Closed' && !isAdmin) { 
             failedDeletes++;
             continue;
           }
@@ -630,7 +629,7 @@ export default function LeadsPage() {
       
       let toastDescription = `${successfulDeletes} leads deleted.`;
       if (failedDeletes > 0) {
-        toastDescription += ` ${failedDeletes} leads could not be deleted (e.g. already closed or permission issue).`;
+        toastDescription += ` ${failedDeletes} leads could not be deleted.`;
       }
       toast({ title: 'Bulk Delete Complete', description: toastDescription });
 
@@ -1203,3 +1202,4 @@ export default function LeadsPage() {
     </div>
   );
 }
+

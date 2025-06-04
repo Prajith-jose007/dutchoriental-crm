@@ -18,19 +18,29 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import type { Invoice } from '@/lib/types';
+import type { Invoice, Lead } from '@/lib/types'; // Added Lead
 import { Skeleton } from '@/components/ui/skeleton';
 
 interface LatestInvoicesTableProps {
   invoices: Invoice[];
+  leads: Lead[]; // Added leads prop
   isLoading?: boolean;
   error?: string | null;
 }
 
-export function LatestInvoicesTable({ invoices, isLoading, error }: LatestInvoicesTableProps) {
+export function LatestInvoicesTable({ invoices, leads, isLoading, error }: LatestInvoicesTableProps) {
   const latestFiveInvoices = useMemo(() => {
-    return invoices.slice(0, 5);
-  }, [invoices]);
+    const closedLeadIds = new Set(
+      leads.filter(lead => lead.status === 'Closed').map(lead => lead.id)
+    );
+
+    const closedLeadInvoices = invoices.filter(invoice => closedLeadIds.has(invoice.leadId));
+    
+    // Sort by createdAt (most recent first) and then take top 5
+    return closedLeadInvoices
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .slice(0, 5);
+  }, [invoices, leads]);
 
   const getStatusBadgeVariant = (status: Invoice['status']) => {
     switch (status) {
@@ -50,8 +60,8 @@ export function LatestInvoicesTable({ invoices, isLoading, error }: LatestInvoic
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Latest Invoices</CardTitle>
-          <CardDescription>A summary of your most recent invoices.</CardDescription>
+          <CardTitle>Latest Invoices (Closed Leads)</CardTitle>
+          <CardDescription>A summary of your most recent invoices from closed leads.</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-2">
@@ -68,8 +78,8 @@ export function LatestInvoicesTable({ invoices, isLoading, error }: LatestInvoic
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Latest Invoices</CardTitle>
-          <CardDescription>A summary of your most recent invoices.</CardDescription>
+          <CardTitle>Latest Invoices (Closed Leads)</CardTitle>
+          <CardDescription>A summary of your most recent invoices from closed leads.</CardDescription>
         </CardHeader>
         <CardContent>
           <p className="text-destructive">Error loading invoices: {error}</p>
@@ -82,11 +92,11 @@ export function LatestInvoicesTable({ invoices, isLoading, error }: LatestInvoic
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Latest Invoices</CardTitle>
-          <CardDescription>A summary of your most recent invoices.</CardDescription>
+          <CardTitle>Latest Invoices (Closed Leads)</CardTitle>
+          <CardDescription>A summary of your most recent invoices from closed leads.</CardDescription>
         </CardHeader>
         <CardContent>
-          <p className="text-muted-foreground">No invoices found for the selected filters.</p>
+          <p className="text-muted-foreground">No invoices found for 'Closed' leads matching the selected filters.</p>
         </CardContent>
       </Card>
     );
@@ -95,8 +105,8 @@ export function LatestInvoicesTable({ invoices, isLoading, error }: LatestInvoic
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Latest Invoices</CardTitle>
-        <CardDescription>A summary of your most recent invoices.</CardDescription>
+        <CardTitle>Latest Invoices (Closed Leads)</CardTitle>
+        <CardDescription>A summary of your most recent invoices from closed leads.</CardDescription>
       </CardHeader>
       <CardContent>
         <Table>

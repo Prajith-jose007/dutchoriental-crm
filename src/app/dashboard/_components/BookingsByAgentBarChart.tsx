@@ -2,7 +2,7 @@
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
-import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Tooltip as RechartsTooltip } from 'recharts';
+import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Tooltip as RechartsTooltip, Cell } from 'recharts'; // Added Cell
 import {
   Card,
   CardContent,
@@ -20,9 +20,22 @@ import { Skeleton } from '@/components/ui/skeleton';
 const chartConfig = {
   bookings: {
     label: 'Bookings',
-    color: 'hsl(var(--chart-2))',
+    // Base color, will be overridden by Cells but useful for tooltip/legend consistency if needed
+    color: 'hsl(var(--chart-2))', 
   },
 };
+
+// Define a list of colors to cycle through for the bars
+const BAR_COLORS = [
+  'hsl(var(--chart-1))',
+  'hsl(var(--chart-2))',
+  'hsl(var(--chart-3))',
+  'hsl(var(--chart-4))',
+  'hsl(var(--chart-5))',
+  // Add more if you have more chart colors defined in globals.css
+  // e.g., 'hsl(var(--chart-6))', 'hsl(var(--chart-7))', etc.
+];
+
 
 interface BookingsByAgentBarChartProps {
   leads: Lead[];
@@ -35,7 +48,6 @@ export function BookingsByAgentBarChart({ leads, allAgents, isLoading, error }: 
   const chartData: BookingsByAgentData[] = useMemo(() => {
     const bookingsByAgentMap = new Map<string, number>();
     leads.forEach(lead => {
-      // Only count 'Closed' leads for bookings by agent
       if (lead.status === 'Closed') { 
         const currentBookings = bookingsByAgentMap.get(lead.agent) || 0;
         bookingsByAgentMap.set(lead.agent, currentBookings + 1);
@@ -50,7 +62,7 @@ export function BookingsByAgentBarChart({ leads, allAgents, isLoading, error }: 
       };
     }).filter(item => item.bookings > 0)
       .sort((a,b) => b.bookings - a.bookings)
-      .slice(0, 10); // Take top 10 agents for better readability in vertical chart
+      .slice(0, 10);
   }, [leads, allAgents]);
 
   if (isLoading) {
@@ -111,33 +123,35 @@ export function BookingsByAgentBarChart({ leads, allAgents, isLoading, error }: 
             accessibilityLayer 
             data={chartData} 
             margin={{ top: 5, right: 20, left: -10, bottom: 5, }}
-            // layout="vertical" // Removed to make it vertical by default
           >
             <CartesianGrid vertical={false} strokeDasharray="3 3" />
             <XAxis
-              dataKey="agentName" // Agent names on X-axis
+              dataKey="agentName"
               type="category"
               tickLine={false}
               tickMargin={10}
               axisLine={false}
-              angle={-45} // Angle labels for better readability if many agents
+              angle={-45}
               textAnchor="end"
-              minTickGap={-5} // Adjust tick gap if labels overlap
-              height={60} // Increase height to accommodate angled labels
+              minTickGap={-5}
+              height={60}
             />
             <YAxis 
               type="number" 
-              allowDecimals={false} // Booking counts are whole numbers
+              allowDecimals={false}
             />
             <RechartsTooltip 
                 cursor={{ fill: 'hsl(var(--muted))' }} 
                 content={<ChartTooltipContent />} 
             />
-            <Bar dataKey="bookings" fill="var(--color-bookings)" radius={4} />
+            <Bar dataKey="bookings" radius={4}>
+              {chartData.map((entry, index) => (
+                <Cell key={`cell-${entry.agentName}-${index}`} fill={BAR_COLORS[index % BAR_COLORS.length]} />
+              ))}
+            </Bar>
           </BarChart>
         </ChartContainer>
       </CardContent>
     </Card>
   );
 }
-

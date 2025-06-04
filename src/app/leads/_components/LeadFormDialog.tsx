@@ -38,18 +38,18 @@ import type { Lead, Agent, Yacht, ModeOfPayment, LeadStatus, LeadType, YachtPack
 import { leadStatusOptions, modeOfPaymentOptions, leadTypeOptions, yachtCategoryOptions, paymentConfirmationStatusOptions } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { useEffect, useState, useMemo } from 'react';
-import { format, formatISO, parseISO, isValid } from 'date-fns';
+import { format, formatISO, parseISO, isValid, getYear } from 'date-fns';
 
 
 const leadPackageQuantitySchema = z.object({
   packageId: z.string().min(1, "Package ID is required"),
   packageName: z.string().min(1, "Package name is required"),
   quantity: z.coerce.number().min(0, "Quantity must be non-negative").default(0),
-  rate: z.coerce.number().min(0, "Rate must be non-negative").default(0),
+  rate: z.coerce.number().min(0, "Rate must be non-negative").default(0), // Rate is part of the item
 });
 
 const leadFormSchema = z.object({
-  id: z.string().optional(), // Will be auto-generated if not present
+  id: z.string().optional(), 
   agent: z.string().min(1, 'Agent is required'),
   status: z.enum(leadStatusOptions),
   month: z.date({ required_error: "Lead/Event Date is required." }),
@@ -57,7 +57,7 @@ const leadFormSchema = z.object({
   yacht: z.string().min(1, 'Yacht selection is required'),
   type: z.enum(leadTypeOptions, { required_error: "Lead type is required."}),
   paymentConfirmationStatus: z.enum(paymentConfirmationStatusOptions, { required_error: "Payment confirmation status is required."}),
-  transactionId: z.string().optional(), // Now effectively read-only in form, generated on submit by parent
+  transactionId: z.string().optional(),
   modeOfPayment: z.enum(modeOfPaymentOptions),
   clientName: z.string().min(1, 'Client name is required'),
 
@@ -96,7 +96,25 @@ interface LeadFormDialogProps {
   currentUserId?: string | null;
 }
 
-const getDefaultFormValues = (existingLead?: Lead | null, currentUserId?: string | null): LeadFormData => {
+function generateNewLeadTransactionId(existingLeads: Lead[], forYear: number): string {
+  const prefix = `TRN-${forYear}`;
+  let maxNumber = 0;
+
+  existingLeads.forEach(lead => {
+    if (lead.transactionId && lead.transactionId.startsWith(prefix)) {
+      const numPartStr = lead.transactionId.substring(prefix.length);
+      const numPart = parseInt(numPartStr, 10);
+      if (!isNaN(numPart) && numPart > maxNumber) {
+        maxNumber = numPart;
+      }
+    }
+  });
+  const nextNumber = maxNumber + 1;
+  return `${prefix}${String(nextNumber).padStart(5, '0')}`;
+}
+
+
+const getDefaultFormValues = (existingLead?: Lead | null, currentUserId?: string | null, allLeadsForTxIdGeneration?: Lead[]): LeadFormData => {
   let initialPackageQuantities: LeadPackageQuantity[] = [];
   if (existingLead?.packageQuantities && Array.isArray(existingLead.packageQuantities)) {
     initialPackageQuantities = existingLead.packageQuantities.map(pq => ({
@@ -106,6 +124,13 @@ const getDefaultFormValues = (existingLead?: Lead | null, currentUserId?: string
       rate: Number(Number(pq.rate || 0).toFixed(2)),
     }));
   }
+  
+  let transactionId = existingLead?.transactionId || "Pending Generation";
+  if (!existingLead && allLeadsForTxIdGeneration) {
+      const leadYear = getYear(new Date()); // Assuming new lead is for current year for Tx ID
+      transactionId = generateNewLeadTransactionId(allLeadsForTxIdGeneration, leadYear);
+  }
+
 
   return {
     id: existingLead?.id || undefined,
@@ -118,7 +143,7 @@ const getDefaultFormValues = (existingLead?: Lead | null, currentUserId?: string
     modeOfPayment: existingLead?.modeOfPayment || 'CARD',
     clientName: existingLead?.clientName || '',
     notes: existingLead?.notes || '',
-    transactionId: existingLead?.transactionId || "Pending Generation", // Placeholder for new leads
+    transactionId: transactionId,
     packageQuantities: initialPackageQuantities,
     freeGuestCount: Number(existingLead?.freeGuestCount || 0),
     perTicketRate: existingLead?.perTicketRate !== undefined && existingLead.perTicketRate !== null ? Number(Number(existingLead.perTicketRate).toFixed(2)) : null,
@@ -140,6 +165,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
   const { toast } = useToast();
   const [allAgents, setAllAgents] = useState<Agent[]>([]);
   const [allYachts, setAllYachts] = useState<Yacht[]>([]);
+  const [allLeadsForTxIdGen, setAllLeadsForTxIdGen] = useState<Lead[]>([]); // For Tx ID generation
   const [isLoadingDropdowns, setIsLoadingDropdowns] = useState(true);
   const [calculatedTotalGuests, setCalculatedTotalGuests] = useState(0);
 
@@ -165,23 +191,23 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
     const fetchDropdownData = async () => {
       setIsLoadingDropdowns(true);
       try {
-        const [agentsRes, yachtsRes] = await Promise.all([
+        const [agentsRes, yachtsRes, leadsRes] = await Promise.all([
           fetch('/api/agents'),
           fetch('/api/yachts'),
+          fetch('/api/leads') // Fetch all leads for Tx ID generation context
         ]);
         if (!agentsRes.ok) throw new Error('Failed to fetch agents for form');
         if (!yachtsRes.ok) throw new Error('Failed to fetch yachts for form');
+        if (!leadsRes.ok) throw new Error('Failed to fetch leads for Tx ID context');
 
         const agentsData = await agentsRes.json();
         const yachtsData = await yachtsRes.json();
-
+        const leadsRawData = await leadsRes.json();
+        
         setAllAgents(Array.isArray(agentsData) ? agentsData : []);
         setAllYachts(Array.isArray(yachtsData) ? yachtsData : []);
-        console.log('[LeadForm] Fetched Agents count:', agentsData.length);
-        console.log('[LeadForm] Fetched Yachts count:', yachtsData.length);
-        if (yachtsData.length > 0 && yachtsData[0].packages) {
-            console.log('[LeadForm] First yacht packages sample:', JSON.parse(JSON.stringify(yachtsData[0].packages.slice(0,2))));
-        }
+        setAllLeadsForTxIdGen(Array.isArray(leadsRawData) ? leadsRawData : []);
+
 
       } catch (error) {
         console.error("Error fetching dropdown data for Lead Form:", error);
@@ -208,15 +234,12 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
   useEffect(() => {
     if (!isOpen || isLoadingDropdowns || !watchedYachtId) {
         if (!watchedYachtId && form.getValues('packageQuantities')?.length > 0) {
-            console.log('[LeadForm PQ Effect] No yacht selected, clearing packageQuantities.');
             replacePackageQuantities([]);
         }
         return;
     }
 
     const selectedYacht = allYachts.find(y => y.id === watchedYachtId);
-    console.log('[LeadForm PQ Effect] Yacht ID changed. WatchedYachtID:', watchedYachtId);
-    console.log('[LeadForm PQ Effect] Selected Yacht for packages:', selectedYacht ? {id: selectedYacht.id, name: selectedYacht.name, packages: JSON.parse(JSON.stringify(selectedYacht.packages))} : 'None');
 
     if (selectedYacht && selectedYacht.packages && Array.isArray(selectedYacht.packages)) {
       const newPQs = selectedYacht.packages.map(yachtPkg => {
@@ -226,29 +249,24 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
           packageId: String(yachtPkg.id || `pkg-id-${Date.now()}-${Math.random()}`),
           packageName: String(yachtPkg.name || 'Unnamed Package'),
           quantity: existingLeadPQ ? Number(existingLeadPQ.quantity || 0) : 0,
-          rate: rateFromYacht,
+          rate: rateFromYacht, // Store the rate from the yacht's package
         };
       });
-      console.log('[LeadForm PQ Effect] Populating packageQuantities based on selected yacht. New PQs:', JSON.parse(JSON.stringify(newPQs)));
       replacePackageQuantities(newPQs);
-      form.trigger();
+      form.trigger(['packageQuantities']);
     } else {
-      console.log('[LeadForm PQ Effect] No valid packages on selected yacht or yacht not found, clearing packageQuantities.');
       replacePackageQuantities([]);
-      form.trigger();
+      form.trigger(['packageQuantities']);
     }
   }, [isOpen, watchedYachtId, allYachts, replacePackageQuantities, lead, isLoadingDropdowns, form]);
 
 
   useEffect(() => {
-    console.log('[CalcDebug] --- Calculation Effect Fired (User Snippet Logic) ---');
     const currentYachtId = watchedYachtId;
     const currentAgentId = watchedAgentId;
     const currentPackageQuantities = watchedPackageQuantities || [];
     const currentPaidAmount = Number(Number(watchedPaidAmount || 0).toFixed(2));
-
-    console.log('[CalcDebug] Watched Values: YachtID=', currentYachtId, 'AgentID=', currentAgentId, 'NumericPaid=', currentPaidAmount);
-    console.log('[CalcDebug] Watched PackageQuantities:', JSON.parse(JSON.stringify(currentPackageQuantities)));
+    const currentPerTicketRate = Number(form.getValues('perTicketRate') || 0); // Get latest "OTHER" rate
 
     const selectedYachtForCalc = allYachts.find(y => y.id === currentYachtId);
     const selectedAgentForCalc = allAgents.find(a => a.id === currentAgentId);
@@ -257,20 +275,23 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
     let calculatedTotalAmount = 0;
     let tempTotalGuests = 0;
 
-    if (selectedYachtForCalc && selectedYachtForCalc.packages && currentPackageQuantities.length > 0) {
+    if (selectedYachtForCalc && currentPackageQuantities.length > 0) {
         currentPackageQuantities.forEach((pqItem) => {
             const quantity = Number(pqItem.quantity || 0);
-            const rate = Number(Number(pqItem.rate || 0).toFixed(2));
+            // Use the rate stored in the pqItem (which came from the yacht package)
+            const rate = Number(Number(pqItem.rate || 0).toFixed(2)); 
             if (quantity > 0 && rate > 0) {
                 calculatedTotalAmount += quantity * rate;
             }
             tempTotalGuests += quantity;
         });
-        calculatedTotalAmount = Number(calculatedTotalAmount.toFixed(2));
-    } else {
-        calculatedTotalAmount = 0;
-        tempTotalGuests = 0;
     }
+    
+    // Add "OTHER" (perTicketRate) to total amount if it's a positive value
+    if (currentPerTicketRate > 0) {
+        calculatedTotalAmount += currentPerTicketRate;
+    }
+    calculatedTotalAmount = Number(calculatedTotalAmount.toFixed(2));
     
     setCalculatedTotalGuests(tempTotalGuests);
     form.setValue('totalAmount', calculatedTotalAmount);
@@ -286,9 +307,6 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
     const actualSignedBalanceAmount = Number((calculatedNetAmount - currentPaidAmount).toFixed(2));
     form.setValue('balanceAmount', actualSignedBalanceAmount);
 
-    console.log(`[CalcDebug] Final Amounts: TotalGuests=${tempTotalGuests}, Total=${calculatedTotalAmount}, CommissionPerc=${agentDiscountRate}%, CommissionAmt=${calculatedCommissionAmount}, Net=${calculatedNetAmount}, Paid=${currentPaidAmount}, Balance=${actualSignedBalanceAmount}`);
-    console.log('[CalcDebug] --- Calculation Effect End (User Snippet Logic) ---');
-
   }, [
     watchedPackageQuantities,
     watchedYachtId,
@@ -303,38 +321,41 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
 
   useEffect(() => {
     if (isOpen) {
-      const initialValues = getDefaultFormValues(lead, currentUserId);
+      // Pass allLeadsForTxIdGen to getDefaultFormValues
+      const initialValues = getDefaultFormValues(lead, currentUserId, allLeadsForTxIdGen);
       form.reset(initialValues);
-      console.log('[LeadForm] Form reset. Lead:', lead ? JSON.parse(JSON.stringify(lead)) : 'New Lead', 'Initial Values:', initialValues);
-
 
       const agentIdForCommission = lead?.agent || form.getValues('agent');
       if (agentIdForCommission && allAgents.length > 0) {
         const selectedAgentOnReset = allAgents.find(a => a.id === agentIdForCommission);
         form.setValue('commissionPercentage', Number(selectedAgentOnReset?.discount || 0));
-         console.log(`[LeadForm] Reset: Commission set to ${selectedAgentOnReset?.discount || 0}% for agent ${agentIdForCommission}`);
       } else if (!agentIdForCommission) {
          form.setValue('commissionPercentage', 0);
-         console.log(`[LeadForm] Reset: No agent, commission set to 0%`);
       }
     }
-  }, [lead, form, isOpen, allAgents, allYachts, currentUserId]);
+  }, [lead, form, isOpen, allAgents, allYachts, currentUserId, allLeadsForTxIdGen]);
 
 
   function onSubmit(data: LeadFormData) {
     let rawFinalTotalAmount = 0;
     const selectedYachtForSubmit = allYachts.find(y => y.id === data.yacht);
 
-    if (data.packageQuantities && Array.isArray(data.packageQuantities) && selectedYachtForSubmit && selectedYachtForSubmit.packages && Array.isArray(selectedYachtForSubmit.packages)) {
+    // Use rates from form.packageQuantities which should be populated from selected yacht
+    if (data.packageQuantities && Array.isArray(data.packageQuantities)) {
       data.packageQuantities.forEach(pqItem => {
         const quantity = Number(pqItem.quantity || 0);
-        const yachtPackage = selectedYachtForSubmit.packages?.find(p => p.id === pqItem.packageId);
-        const rate = yachtPackage ? Number(Number(yachtPackage.rate || 0).toFixed(2)) : 0;
+        const rate = Number(Number(pqItem.rate || 0).toFixed(2)); // Use rate from form state
         if (quantity > 0 && rate > 0) {
           rawFinalTotalAmount += quantity * rate;
         }
       });
     }
+    
+    // Add "OTHER" (perTicketRate) from form to final total amount if positive
+    if (data.perTicketRate && Number(data.perTicketRate) > 0) {
+        rawFinalTotalAmount += Number(data.perTicketRate);
+    }
+
     const finalTotalAmount = Number(rawFinalTotalAmount.toFixed(2));
 
     const selectedAgentForSubmit = allAgents.find(a => a.id === data.agent);
@@ -344,23 +365,28 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
     const finalPaidAmount = Number(Number(data.paidAmount || 0).toFixed(2));
     const actualSignedBalanceAmount = Number((finalNetAmount - finalPaidAmount).toFixed(2));
 
-    const finalPackageQuantities = (data.packageQuantities && Array.isArray(data.packageQuantities) && selectedYachtForSubmit && selectedYachtForSubmit.packages && Array.isArray(selectedYachtForSubmit.packages))
+    const finalPackageQuantities = (data.packageQuantities && Array.isArray(data.packageQuantities))
       ? data.packageQuantities.map(pq => {
-          const yachtPackage = selectedYachtForSubmit.packages?.find(p => p.id === pq.packageId);
-          const rate = yachtPackage ? Number(Number(yachtPackage.rate || 0).toFixed(2)) : 0;
           return {
             packageId: String(pq.packageId),
             packageName: String(pq.packageName),
             quantity: Number(pq.quantity || 0),
-            rate: rate,
+            rate: Number(Number(pq.rate || 0).toFixed(2)), // Ensure rate is included
           };
         })
       : [];
 
+    let finalTransactionId = data.transactionId;
+    if (!finalTransactionId || finalTransactionId === "Pending Generation") {
+        const leadYear = data.month ? getYear(data.month) : getYear(new Date());
+        finalTransactionId = generateNewLeadTransactionId(allLeadsForTxIdGen, leadYear);
+    }
+
+
     const submittedLead: Lead = {
       ...data,
-      id: lead?.id || `temp-${Date.now()}`, // Parent component (LeadsPage) handles final ID generation
-      transactionId: data.transactionId || `TRX-${Date.now()}`, // Will be generated by LeadsPage if not provided
+      id: lead?.id || `temp-${Date.now()}`, 
+      transactionId: finalTransactionId, 
       month: data.month ? formatISO(data.month) : formatISO(new Date()),
       paymentConfirmationStatus: data.paymentConfirmationStatus,
       freeGuestCount: Number(data.freeGuestCount || 0),
@@ -378,7 +404,6 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
       paidAmount: finalPaidAmount,
       balanceAmount: actualSignedBalanceAmount,
     };
-    console.log("[LeadFormDialog] Submitting lead:", JSON.parse(JSON.stringify(submittedLead, null, 2)));
     onSubmitSuccess(submittedLead);
     onOpenChange(false);
   }
@@ -688,7 +713,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
                     <FormItem>
                       <FormLabel>Total Amount (AED)</FormLabel>
                       <FormControl><Input type="number" placeholder="0.00" {...field} value={Number(field.value).toFixed(2)} readOnly className="bg-muted/50" /></FormControl>
-                       <FormDescription>Calculated from packages</FormDescription>
+                       <FormDescription>Calculated from packages & "OTHER"</FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}

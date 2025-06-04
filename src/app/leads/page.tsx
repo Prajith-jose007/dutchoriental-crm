@@ -50,6 +50,8 @@ const csvHeaderMapping: { [csvHeaderKey: string]: keyof Omit<Lead, 'packageQuant
   'prem': 'pkg_premium', 
   'vip': 'pkg_vip', 
   'hrchtr': 'pkg_hour_charter',
+  // Add 'package_details_json' for the complex object
+  'package_details_json': 'package_quantities_json',
 
 
   // Accounts section
@@ -68,8 +70,6 @@ const csvHeaderMapping: { [csvHeaderKey: string]: keyof Omit<Lead, 'packageQuant
   'modified_by': 'lastModifiedByUserId', 
   'date_of_creation': 'createdAt',
   'date_of_modification': 'updatedAt',
-
-  'package_quantities_json': 'package_quantities_json',
 };
 
 
@@ -404,10 +404,6 @@ export default function LeadsPage() {
     if (!editingLead) {
       payload.ownerUserId = currentUserId;
       payload.createdAt = new Date().toISOString();
-      // For new leads, ID is generated server-side if not provided or if it's a temp ID from client.
-      // If your form sets a specific ID (e.g. user-entered), it will be used.
-      // Otherwise, ensure no ID is sent, or a specific temp prefix if server expects to replace it.
-      // For now, we assume client might send a temp ID starting with 'temp-' or no ID, server will handle it.
       if (payload.id && payload.id.startsWith('temp-')) {
          delete payload.id;
       } else if (!payload.id) {
@@ -576,7 +572,7 @@ export default function LeadsPage() {
             continue;
           }
 
-          const parsedRow = {} as Partial<Lead & { package_quantities_json?: string } & { [key: `pkg_${string}`]: number }>;
+          const parsedRow = {} as Partial<Lead & { package_quantities_json?: LeadPackageQuantity[] } & { [key: `pkg_${string}`]: number }>;
           fileHeaders.forEach((fileHeader, index) => {
             const leadKey = csvHeaderMapping[fileHeader];
             if (leadKey) {
@@ -586,36 +582,19 @@ export default function LeadsPage() {
             }
           });
           
-          const isProblematicRow = !parsedRow.clientName || parsedRow.clientName === 'N/A from CSV' || !parsedRow.yacht;
-          if (isProblematicRow && i < 5) {
-              console.log(`[CSV Import Leads Diagnostics] Row ${i + 1} parsed as potentially problematic:`);
-              console.log(`  Raw CSV data array for row ${i + 1}:`, data);
-              console.log(`  File Headers used for mapping:`, fileHeaders);
-              console.log(`  Resulting parsedRow object for row ${i + 1}:`, JSON.parse(JSON.stringify(parsedRow)));
-          }
-
           let packageQuantities: LeadPackageQuantity[] = [];
-          if (parsedRow.package_quantities_json) {
-            try {
-              const parsedPQs = JSON.parse(parsedRow.package_quantities_json);
-              if (Array.isArray(parsedPQs)) {
-                packageQuantities = parsedPQs.map(pq => ({
-                  packageId: String(pq.packageId || ''),
-                  packageName: String(pq.packageName || 'Unknown CSV Pkg'),
-                  quantity: Number(pq.quantity || 0),
-                  rate: Number(pq.rate || 0),
-                }));
-              }
-            } catch (e) {
-              console.warn(`[CSV Import Leads] Error parsing package_quantities_json from CSV for row ${i+1}: ${parsedRow.package_quantities_json}`);
-            }
+          if (parsedRow.package_quantities_json && Array.isArray(parsedRow.package_quantities_json)) {
+            // If JSON column is present and valid, use it
+            packageQuantities = parsedRow.package_quantities_json.map(pq => ({
+              packageId: String(pq.packageId || ''),
+              packageName: String(pq.packageName || 'Unknown CSV Pkg'),
+              quantity: Number(pq.quantity || 0),
+              rate: Number(pq.rate || 0),
+            }));
           } else { 
+            // Fallback: Reconstruct from individual package columns
             const leadYachtId = parsedRow.yacht || '';
             const yachtForLead = allYachts.find(y => y.id === leadYachtId || y.name.toLowerCase() === String(leadYachtId).toLowerCase());
-            
-            if (isProblematicRow && i < 5) {
-                console.log(`  Yacht ID from parsedRow for package reconstruction: "${leadYachtId}". Yacht found: ${yachtForLead ? yachtForLead.name : 'NOT FOUND'}`);
-            }
             
             if (yachtForLead && yachtForLead.packages) {
                 fileHeaders.forEach(csvHeaderKey => {
@@ -631,19 +610,12 @@ export default function LeadsPage() {
                                     packageId: yachtPackage.id,
                                     packageName: yachtPackage.name,
                                     quantity: quantity,
-                                    rate: yachtPackage.rate,
+                                    rate: yachtPackage.rate, // Use rate from yacht's master package list
                                 });
-                                if (isProblematicRow && i < 5) {
-                                    console.log(`    Added package from CSV column (key: ${csvHeaderKey}, actual: ${actualPackageName}): Qty: ${quantity}, Rate: ${yachtPackage.rate}`);
-                                }
-                            } else {
-                                 if (isProblematicRow && i < 5) console.warn(`    Package "${actualPackageName}" (from CSV col ${csvHeaderKey}) not found on yacht "${yachtForLead.name}".`);
                             }
                         }
                     }
                 });
-            } else if (isProblematicRow && i < 5) {
-                console.warn(`  Cannot reconstruct packages from CSV columns: Yacht "${leadYachtId}" not found or has no packages.`);
             }
           }
 
@@ -686,10 +658,6 @@ export default function LeadsPage() {
             ownerUserId: parsedRow.ownerUserId || currentUserId,
           };
           
-          if (isProblematicRow && i < 5) {
-             console.log(`  Constructed fullLead object for row ${i + 1}:`, JSON.parse(JSON.stringify(fullLead)));
-          }
-
           const missingFields = [];
           if (!fullLead.clientName || fullLead.clientName === 'N/A from CSV') missingFields.push('clientName (missing or "N/A from CSV")');
           if (!fullLead.agent) missingFields.push('agent');
@@ -803,12 +771,14 @@ export default function LeadsPage() {
       return;
     }
 
-    
     const dynamicColumns = generateLeadColumns(allYachts);
     
     const finalCsvHeaders = dynamicColumns
       .filter(col => col.accessorKey !== 'select' && col.accessorKey !== 'actions') 
-      .map(col => col.header);
+      .map(col => {
+          if (col.accessorKey === 'package_quantities_json') return "Package Details (JSON)"; // Custom header for this column
+          return col.header;
+      });
 
 
     const escapeCsvCell = (cellData: any): string => {
@@ -833,7 +803,10 @@ export default function LeadsPage() {
           .filter(col => col.accessorKey !== 'select' && col.accessorKey !== 'actions')
           .map(col => {
             let cellValue: any;
-            if (col.isPackageColumn && col.actualPackageName) {
+            if (col.accessorKey === 'package_quantities_json') {
+              cellValue = lead.packageQuantities ? JSON.stringify(lead.packageQuantities) : '';
+            }
+            else if (col.isPackageColumn && col.actualPackageName) {
               const pkgQuantity = lead.packageQuantities?.find(pq => pq.packageName === col.actualPackageName);
               cellValue = pkgQuantity?.quantity;
             } else if (col.accessorKey === 'totalGuestsCalculated') {
@@ -1029,3 +1002,4 @@ export default function LeadsPage() {
     </div>
   );
 }
+

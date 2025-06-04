@@ -131,7 +131,9 @@ const convertCsvValue = (
     case 'modeOfPayment':
       return modeOfPaymentOptions.includes(trimmedValue.toUpperCase() as ModeOfPayment) ? trimmedValue.toUpperCase() : 'CARD';
     case 'status':
-      return leadStatusOptions.includes(trimmedValue as LeadStatus) ? trimmedValue : 'Balance';
+      const lowerTrimmedValue = trimmedValue.toLowerCase();
+      const foundStatus = leadStatusOptions.find(opt => opt.toLowerCase() === lowerTrimmedValue);
+      return foundStatus || 'Balance';
     case 'type':
       return leadTypeOptions.includes(trimmedValue as LeadType) ? trimmedValue : 'Private Cruise';
     case 'paymentConfirmationStatus':
@@ -230,6 +232,21 @@ function parseCsvLine(line: string): string[] {
   }
   columns.push(currentColumn.trim()); 
   return columns;
+}
+
+function generateNewLeadId(existingLeadIds: string[]): string {
+  const prefix = "DO-";
+  let maxNum = 0;
+  existingLeadIds.forEach(id => {
+    if (id && id.startsWith(prefix)) {
+      const numPart = parseInt(id.substring(prefix.length), 10);
+      if (!isNaN(numPart) && numPart > maxNum) {
+        maxNum = numPart;
+      }
+    }
+  });
+  const nextNum = maxNum + 1;
+  return `${prefix}${String(nextNum).padStart(3, '0')}`;
 }
 
 function generateNewLeadTransactionId(existingLeads: Lead[], forYear: number, currentMaxForYearInBatch: number = 0): string {
@@ -361,14 +378,14 @@ export default function LeadsPage() {
     setIsLoading(true);
     
     let finalTransactionId = submittedLeadData.transactionId;
-    if (!editingLead) { // Is a new lead
+    if (!editingLead && (!finalTransactionId || finalTransactionId === "Pending Generation")) {
         const leadYear = submittedLeadData.month ? getFullYear(parseISO(submittedLeadData.month)) : new Date().getFullYear();
         finalTransactionId = generateNewLeadTransactionId(allLeads, leadYear);
     }
     
     const payload: Lead & { requestingUserId: string; requestingUserRole: string } = {
       ...submittedLeadData,
-      transactionId: finalTransactionId, // Use the generated or existing ID
+      transactionId: finalTransactionId,
       lastModifiedByUserId: currentUserId,
       updatedAt: new Date().toISOString(),
       month: submittedLeadData.month ? formatISO(parseISO(submittedLeadData.month)) : formatISO(new Date()),
@@ -387,7 +404,16 @@ export default function LeadsPage() {
     if (!editingLead) {
       payload.ownerUserId = currentUserId;
       payload.createdAt = new Date().toISOString();
-      delete payload.id;
+      // For new leads, ID is generated server-side if not provided or if it's a temp ID from client.
+      // If your form sets a specific ID (e.g. user-entered), it will be used.
+      // Otherwise, ensure no ID is sent, or a specific temp prefix if server expects to replace it.
+      // For now, we assume client might send a temp ID starting with 'temp-' or no ID, server will handle it.
+      if (payload.id && payload.id.startsWith('temp-')) {
+         delete payload.id;
+      } else if (!payload.id) {
+         delete payload.id;
+      }
+
     } else {
       payload.ownerUserId = editingLead.ownerUserId || currentUserId;
       payload.createdAt = editingLead.createdAt || new Date().toISOString();
@@ -530,7 +556,6 @@ export default function LeadsPage() {
             }
         });
         
-        // Track max sequence number for each year within this batch
         const batchMaxTransactionNumbersByYear: { [year: number]: number } = {};
 
 
@@ -627,7 +652,7 @@ export default function LeadsPage() {
           if (!transactionIdForRow || String(transactionIdForRow).trim() === '') {
             const currentMaxForYearInBatch = batchMaxTransactionNumbersByYear[leadYear] || 0;
             transactionIdForRow = generateNewLeadTransactionId(allLeads, leadYear, currentMaxForYearInBatch);
-            const numPart = parseInt(transactionIdForRow.substring(transactionIdForRow.lastIndexOf('-') + leadYear.toString().length + 1), 10);
+            const numPart = parseInt(transactionIdForRow.substring(transactionIdForRow.lastIndexOf('-') + leadYear.toString().length), 10);
             if (!isNaN(numPart)) {
                 batchMaxTransactionNumbersByYear[leadYear] = numPart;
             }
@@ -822,10 +847,10 @@ export default function LeadsPage() {
               cellValue = userId ? userMap[userId] || userId : '';
             } else if (col.isDate) {
               const dateVal = lead[col.accessorKey as keyof Lead] as string | undefined;
-              cellValue = dateVal && isValid(parseISO(dateVal)) ? format(parseISO(dateVal), 'dd/MM/yyyy HH:mm') : '';
+              cellValue = dateVal && isValid(parseISO(dateVal)) ? format(parseISO(dateVal), 'dd/MM/yy HH:mm') : '';
             } else if (col.isShortDate) {
                const dateVal = lead[col.accessorKey as keyof Lead] as string | undefined;
-               cellValue = dateVal && isValid(parseISO(dateVal)) ? format(parseISO(dateVal), 'dd/MM/yyyy') : '';
+               cellValue = dateVal && isValid(parseISO(dateVal)) ? format(parseISO(dateVal), 'dd/MM/yy') : '';
             } else {
               cellValue = lead[col.accessorKey as keyof Lead];
             }
@@ -1004,4 +1029,3 @@ export default function LeadsPage() {
     </div>
   );
 }
-

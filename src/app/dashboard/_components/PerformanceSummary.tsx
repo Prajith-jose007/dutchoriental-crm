@@ -54,20 +54,20 @@ interface PerformanceSummaryProps {
 export function PerformanceSummary({ leads, invoices, isLoading, error }: PerformanceSummaryProps) {
   const { totalSuccessfulBookings, totalSuccessfulEarnings, totalBalanceFromActiveLeads, totalBookingsCount, totalActiveLeads } = useMemo(() => {
     const successfulLeads = leads.filter(lead => lead.status === 'Closed');
-    const activeLeads = leads.filter(lead => lead.status === 'Active'); // Changed from 'Balance'
+    const activeLeads = leads.filter(lead => lead.status === 'Active');
 
     const bookingsCount = leads.length;
     const closedBookings = successfulLeads.length;
     const earnings = successfulLeads.reduce((sum, lead) => sum + (lead.netAmount || 0), 0);
-    // Calculate balance amount from 'Active' leads
-    const balanceAmount = activeLeads.reduce((sum, lead) => sum + Math.abs(lead.balanceAmount || 0), 0);
+    // Calculate the net sum of balance amounts for 'Active' leads
+    const balanceAmount = activeLeads.reduce((sum, lead) => sum + (lead.balanceAmount || 0), 0);
     const activeLeadsCount = activeLeads.length;
 
     return {
       totalBookingsCount: bookingsCount,
       totalSuccessfulBookings: closedBookings,
       totalSuccessfulEarnings: earnings,
-      totalBalanceFromActiveLeads: balanceAmount, // Renamed for clarity
+      totalBalanceFromActiveLeads: balanceAmount,
       totalActiveLeads: activeLeadsCount,
     };
   }, [leads]);

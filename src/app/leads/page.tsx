@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -20,63 +19,65 @@ const USER_ID_STORAGE_KEY = 'currentUserId';
 const USER_ROLE_STORAGE_KEY = 'currentUserRole';
 
 
-const csvHeaderMapping: { [csvHeaderKey: string]: keyof Omit<Lead, 'packageQuantities'> | 'package_quantities_json' | `pkg_${string}` } = {
+const csvHeaderMapping: { [csvHeaderKey: string]: keyof Omit<Lead, 'packageQuantities'> | 'package_quantities_json_string' | `pkg_${string}` } = {
   'id': 'id',
   'client': 'clientName', 'client_name': 'clientName',
   'agent': 'agent', 'agent_name': 'agent', 
   'yacht': 'yacht', 'yacht_name': 'yacht', 
   'status': 'status',
-  'lead/event_date': 'month', 'event_date': 'month',
+  'lead/event_date': 'month', 'event_date': 'month', 'lead_event_date': 'month',
   'type': 'type', 'lead_type': 'type',
   'pay_status': 'paymentConfirmationStatus', 'payment_confirmation_status': 'paymentConfirmationStatus',
-  'transaction_id': 'transactionId',
-  'payment_mode': 'modeOfPayment',
-  'free_guests': 'freeGuestCount',
+  'transaction_id': 'transactionId', 'transaction id': 'transactionId',
+  'payment_mode': 'modeOfPayment', 'mode_of_payment': 'modeOfPayment',
+  'free_guests': 'freeGuestCount', 'free guests': 'freeGuestCount',
 
   // Package short headers (lowercase) map to `pkg_<actual_package_name_lower_snake_case>`
   'ch': 'pkg_child',
   'ad': 'pkg_adult',
-  'chd_top': 'pkg_child_top_deck',
-  'adt_top': 'pkg_adult_top_deck',
-  'ad_alc': 'pkg_adult_alc',
-  'vip_ch': 'pkg_vip_child',
-  'vip_ad': 'pkg_vip_adult',
-  'vip_alc': 'pkg_vip_alc',
-  'ryl_ch': 'pkg_royal_child',
-  'ryl_ad': 'pkg_royal_adult',
-  'ryl_alc': 'pkg_royal_alc',
+  'chd_top': 'pkg_child_top_deck', 'child_top_deck': 'pkg_child_top_deck',
+  'adt_top': 'pkg_adult_top_deck', 'adult_top_deck': 'pkg_adult_top_deck',
+  'ad_alc': 'pkg_adult_alc', 'adult_alc': 'pkg_adult_alc',
+  'vip_ch': 'pkg_vip_child', 'vip_child': 'pkg_vip_child',
+  'vip_ad': 'pkg_vip_adult', 'vip_adult': 'pkg_vip_adult',
+  'vip_alc': 'pkg_vip_alc', 'vip_alc': 'pkg_vip_alc',
+  'ryl_ch': 'pkg_royal_child', 'royal_child': 'pkg_royal_child',
+  'ryl_ad': 'pkg_royal_adult', 'royal_adult': 'pkg_royal_adult',
+  'ryl_alc': 'pkg_royal_alc', 'royal_alc': 'pkg_royal_alc',
   'basic': 'pkg_basic', 
-  'std': 'pkg_standard', 
-  'prem': 'pkg_premium', 
-  'vip': 'pkg_vip', 
-  'hrchtr': 'pkg_hour_charter',
-  // Add 'package_details_json' for the complex object
-  'package_details_json': 'package_quantities_json',
+  'std': 'pkg_standard', 'standard': 'pkg_standard',
+  'prem': 'pkg_premium', 'premium': 'pkg_premium',
+  'vip': 'pkg_vip', // Assuming VIP for sightseeing is distinct and might clash if not careful.
+  'hrchtr': 'pkg_hour_charter', 'hour_charter': 'pkg_hour_charter',
+  
+  // Special column for full package details (including rates)
+  'package_details_(json)': 'package_quantities_json_string', // Maps to a string to be parsed later
+  'package_details_json': 'package_quantities_json_string',
 
 
   // Accounts section
-  'other': 'perTicketRate', 
+  'other': 'perTicketRate', 'other_rate': 'perTicketRate',
   // 'total_count': 'totalGuestsCalculated', // This is derived, not directly imported to a field
-  'total_amt': 'totalAmount',
-  'discount_%': 'commissionPercentage',
-  'commission': 'commissionAmount',
-  'net_amt': 'netAmount',
-  'paid': 'paidAmount',
-  'balance': 'balanceAmount',
+  'total_amt': 'totalAmount', 'total_amount': 'totalAmount',
+  'discount_%': 'commissionPercentage', 'discount_rate': 'commissionPercentage', 'discount': 'commissionPercentage',
+  'commission': 'commissionAmount', 'commission_amount': 'commissionAmount',
+  'net_amt': 'netAmount', 'net_amount': 'netAmount',
+  'paid': 'paidAmount', 'paid_amount': 'paidAmount',
+  'balance': 'balanceAmount', 'balance_amount': 'balanceAmount',
 
   // References and Comments section
   'note': 'notes',
-  'created_by': 'ownerUserId', 
-  'modified_by': 'lastModifiedByUserId', 
-  'date_of_creation': 'createdAt',
-  'date_of_modification': 'updatedAt',
+  'created_by': 'ownerUserId', 'created by': 'ownerUserId',
+  'modified_by': 'lastModifiedByUserId', 'modified by': 'lastModifiedByUserId',
+  'date_of_creation': 'createdAt', 'creation_date': 'createdAt',
+  'date_of_modification': 'updatedAt', 'modification_date': 'updatedAt',
 };
 
 
 const convertCsvValue = (
-    key: keyof Omit<Lead, 'packageQuantities'> | 'package_quantities_json' | `pkg_${string}`,
+    key: keyof Omit<Lead, 'packageQuantities'> | 'package_quantities_json_string' | `pkg_${string}`,
     value: string,
-    allYachts: Yacht[],
+    allYachts: Yacht[], // For rate lookup if JSON isn't present
     agentMap: { [id: string]: string }, 
     userMap: { [id: string]: string }, 
     yachtMap: { [id: string]: string } 
@@ -85,9 +86,21 @@ const convertCsvValue = (
   const currentUserId = typeof window !== 'undefined' ? localStorage.getItem(USER_ID_STORAGE_KEY) : null;
 
   if (key.startsWith('pkg_')) {
+    // For individual package quantity columns, we expect just the quantity number. Rate will be fetched.
     const num = parseInt(trimmedValue, 10);
     return isNaN(num) || num < 0 ? 0 : num;
   }
+  if (key === 'package_quantities_json_string') {
+    if (!trimmedValue) return null;
+    try {
+      // Attempt to parse. The main import logic will validate if it's an array of LeadPackageQuantity.
+      return JSON.parse(trimmedValue);
+    } catch (e) {
+      console.warn(`[CSV Import Leads] Could not parse package_quantities_json_string: "${trimmedValue}". Will attempt individual package columns. Error:`, e);
+      return null; // Signal that parsing failed, fallback will be used
+    }
+  }
+
 
   if (trimmedValue === '' || value === null || value === undefined) {
     switch (key) {
@@ -104,7 +117,6 @@ const convertCsvValue = (
       case 'createdAt': case 'updatedAt': return formatISO(new Date());
       case 'lastModifiedByUserId': return currentUserId || undefined;
       case 'ownerUserId': return currentUserId || undefined;
-      case 'package_quantities_json': return null;
       default: return undefined;
     }
   }
@@ -149,12 +161,12 @@ const convertCsvValue = (
 
       try { 
         let dateObj: Date | null = null;
-        
+        // Try "DD Mon YYYY" or "Mon DD YYYY" or "DD Month YYYY" or "Month DD YYYY"
         const dayMonthYearMatch = trimmedValue.match(/(?:(?:Mon|Tues|Wednes|Thurs|Fri|Satur|Sun)day,\s*)?(\d{1,2})\s*(\w+)\s*(\d{4})/i) ||
                                   trimmedValue.match(/(\w+)\s*(\d{1,2})\s*(\d{4})/i);
         if (dayMonthYearMatch) {
-            const dayStr = dayMonthYearMatch[1];
-            const monthStr = dayMonthYearMatch[dayMonthYearMatch.length === 4 ? 2 : 1]; // Adjust based on match group count
+            const dayStr = dayMonthYearMatch[dayMonthYearMatch.length === 4 ? 1 : 2]; // Check index based on match
+            const monthStr = dayMonthYearMatch[dayMonthYearMatch.length === 4 ? 2 : 1];
             const yearStr = dayMonthYearMatch[dayMonthYearMatch.length -1];
 
             let day = parseInt(dayStr, 10);
@@ -163,13 +175,13 @@ const convertCsvValue = (
             const monthNames = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
             let monthIndex = monthNames.findIndex(m => monthStr.toLowerCase().startsWith(m));
 
-            if (monthIndex === -1) { // if month was number, like 01, 05
+            if (monthIndex === -1) { 
                 const monthNum = parseInt(monthStr, 10);
                 if (monthNum >= 1 && monthNum <= 12) monthIndex = monthNum -1;
             }
             
             if (monthIndex > -1 && day >=1 && day <=31 && year > 1900 && year < 2100) {
-                dateObj = new Date(year, monthIndex, day);
+                dateObj = new Date(Date.UTC(year, monthIndex, day)); // Use UTC to avoid timezone shifts
             }
         }
         
@@ -182,11 +194,11 @@ const convertCsvValue = (
                 if (String(year).length === 2) year += 2000;
 
                 if (month >=1 && month <=12 && day >=1 && day <=31) { 
-                    dateObj = new Date(year, month - 1, day);
+                    dateObj = new Date(Date.UTC(year, month - 1, day)); // Use UTC
                 }
                 
-                if ((!dateObj || !isValid(dateObj)) && day >=1 && day <=12 && month >=1 && month <=31) {
-                    dateObj = new Date(year, day - 1, month);
+                if ((!dateObj || !isValid(dateObj)) && day >=1 && day <=12 && month >=1 && month <=31) { // Try DD/MM if MM/DD failed
+                    dateObj = new Date(Date.UTC(year, day - 1, month)); // Use UTC
                 }
             }
         }
@@ -195,19 +207,11 @@ const convertCsvValue = (
       } catch (e) {/* ignore */ }
       console.warn(`[CSV Import] Could not parse date "${trimmedValue}" for key "${String(key)}". Defaulting to current date.`);
       return formatISO(new Date());
-
-    case 'package_quantities_json':
-      try {
-        const parsed = JSON.parse(trimmedValue);
-        return Array.isArray(parsed) ? parsed : null;
-      } catch (e) {
-        console.warn(`[CSV Import Leads] Could not parse package_quantities_json: "${trimmedValue}". Defaulting to null.`);
-        return null;
-      }
     default:
       return trimmedValue;
   }
 };
+
 
 function parseCsvLine(line: string): string[] {
   const columns: string[] = [];
@@ -255,7 +259,7 @@ function generateNewLeadTransactionId(existingLeads: Lead[], forYear: number, cu
 
   existingLeads.forEach(lead => {
     if (lead.transactionId && lead.transactionId.startsWith(prefix)) {
-      const numPartStr = lead.transactionId.substring(prefix.length);
+      const numPartStr = lead.transactionId.substring(prefix.length +1); // +1 for the hyphen
       const numPart = parseInt(numPartStr, 10);
       if (!isNaN(numPart) && numPart > maxNumber) {
         maxNumber = numPart;
@@ -546,7 +550,8 @@ export default function LeadsPage() {
         
         const packageReverseHeaderMap: { [shortHeader: string]: string } = {};
         Object.entries(csvHeaderMapping).forEach(([csvKey, internalKey]) => {
-            if (internalKey.startsWith('pkg_')) {
+            // Assuming internalKey for packages is `pkg_<actual_package_name_lower_snake_case>`
+            if (internalKey && internalKey.startsWith('pkg_')) {
                 const actualPackageName = internalKey.substring('pkg_'.length).replace(/_/g, ' ').toUpperCase();
                 packageReverseHeaderMap[csvKey] = actualPackageName;
             }
@@ -572,7 +577,7 @@ export default function LeadsPage() {
             continue;
           }
 
-          const parsedRow = {} as Partial<Lead & { package_quantities_json?: LeadPackageQuantity[] } & { [key: `pkg_${string}`]: number }>;
+          const parsedRow = {} as Partial<Lead & { package_quantities_json_string?: LeadPackageQuantity[] } & { [key: `pkg_${string}`]: number }>;
           fileHeaders.forEach((fileHeader, index) => {
             const leadKey = csvHeaderMapping[fileHeader];
             if (leadKey) {
@@ -583,14 +588,14 @@ export default function LeadsPage() {
           });
           
           let packageQuantities: LeadPackageQuantity[] = [];
-          if (parsedRow.package_quantities_json && Array.isArray(parsedRow.package_quantities_json)) {
-            // If JSON column is present and valid, use it
-            packageQuantities = parsedRow.package_quantities_json.map(pq => ({
+          // Priority: Use parsed JSON string if valid
+          if (parsedRow.package_quantities_json_string && Array.isArray(parsedRow.package_quantities_json_string)) {
+            packageQuantities = parsedRow.package_quantities_json_string.map(pq => ({
               packageId: String(pq.packageId || ''),
               packageName: String(pq.packageName || 'Unknown CSV Pkg'),
               quantity: Number(pq.quantity || 0),
               rate: Number(pq.rate || 0),
-            }));
+            })).filter(pq => pq.packageName); // Ensure packageName is present
           } else { 
             // Fallback: Reconstruct from individual package columns
             const leadYachtId = parsedRow.yacht || '';
@@ -612,6 +617,8 @@ export default function LeadsPage() {
                                     quantity: quantity,
                                     rate: yachtPackage.rate, // Use rate from yacht's master package list
                                 });
+                            } else {
+                               console.warn(`[CSV Import] Package "${actualPackageName}" from CSV not found on yacht "${yachtForLead.name}". Skipping package for this lead.`);
                             }
                         }
                     }
@@ -624,7 +631,7 @@ export default function LeadsPage() {
           if (!transactionIdForRow || String(transactionIdForRow).trim() === '') {
             const currentMaxForYearInBatch = batchMaxTransactionNumbersByYear[leadYear] || 0;
             transactionIdForRow = generateNewLeadTransactionId(allLeads, leadYear, currentMaxForYearInBatch);
-            const numPart = parseInt(transactionIdForRow.substring(transactionIdForRow.lastIndexOf('-') + leadYear.toString().length), 10);
+            const numPart = parseInt(transactionIdForRow.substring(transactionIdForRow.lastIndexOf('-') +1 ), 10);
             if (!isNaN(numPart)) {
                 batchMaxTransactionNumbersByYear[leadYear] = numPart;
             }
@@ -776,7 +783,10 @@ export default function LeadsPage() {
     const finalCsvHeaders = dynamicColumns
       .filter(col => col.accessorKey !== 'select' && col.accessorKey !== 'actions') 
       .map(col => {
-          if (col.accessorKey === 'package_quantities_json') return "Package Details (JSON)"; // Custom header for this column
+          // For package columns, use the short header from packageHeaderMap or actual name
+          if (col.isPackageColumn && col.actualPackageName) {
+             return col.header; // This should already be the short name or actual name
+          }
           return col.header;
       });
 
@@ -796,6 +806,23 @@ export default function LeadsPage() {
       return lead.packageQuantities.reduce((sum, pq) => sum + (Number(pq.quantity) || 0), 0);
     };
 
+    const formatCurrencyForCsv = (amount?: number | null) => {
+        if (amount === null || amount === undefined || isNaN(amount)) return ''; // Return empty for CSV if no value
+        return amount.toFixed(2); // Export as plain number string
+    };
+
+    const formatPercentageForCsv = (value?: number | null) => {
+        if (typeof value !== 'number' || isNaN(value)) return '';
+        return value.toFixed(1); // Export as plain number string
+    };
+    const formatNumericForCsv = (num?: number | null): string => {
+        if (num === null || num === undefined || isNaN(num) || num === 0) {
+        return '';
+        }
+        return String(num);
+    };
+
+
     const csvRows = [
       finalCsvHeaders.join(','),
       ...filteredLeads.map(lead => {
@@ -803,12 +830,18 @@ export default function LeadsPage() {
           .filter(col => col.accessorKey !== 'select' && col.accessorKey !== 'actions')
           .map(col => {
             let cellValue: any;
-            if (col.accessorKey === 'package_quantities_json') {
-              cellValue = lead.packageQuantities ? JSON.stringify(lead.packageQuantities) : '';
+            if (col.isJsonDetails) { // For 'Package Details (JSON)' column
+                cellValue = lead.packageQuantities ? JSON.stringify(lead.packageQuantities) : '[]';
             }
             else if (col.isPackageColumn && col.actualPackageName) {
-              const pkgQuantity = lead.packageQuantities?.find(pq => pq.packageName === col.actualPackageName);
-              cellValue = pkgQuantity?.quantity;
+              const pkgQuantityItem = lead.packageQuantities?.find(pq => pq.packageName === col.actualPackageName);
+              const quantity = pkgQuantityItem?.quantity;
+              const rate = pkgQuantityItem?.rate;
+              if (quantity !== undefined && quantity > 0 && rate !== undefined) {
+                cellValue = `${quantity} @ ${rate.toFixed(2)}`; // Format as "Qty @ Rate" for CSV
+              } else {
+                cellValue = ''; // Empty for CSV if no quantity
+              }
             } else if (col.accessorKey === 'totalGuestsCalculated') {
               cellValue = calculateTotalGuestsFromPackageQuantities(lead);
             } else if (col.isAgentLookup) {
@@ -820,18 +853,26 @@ export default function LeadsPage() {
               cellValue = userId ? userMap[userId] || userId : '';
             } else if (col.isDate) {
               const dateVal = lead[col.accessorKey as keyof Lead] as string | undefined;
-              cellValue = dateVal && isValid(parseISO(dateVal)) ? format(parseISO(dateVal), 'dd/MM/yy HH:mm') : '';
+              cellValue = dateVal && isValid(parseISO(dateVal)) ? format(parseISO(dateVal), 'dd/MM/yyyy HH:mm') : '';
             } else if (col.isShortDate) {
                const dateVal = lead[col.accessorKey as keyof Lead] as string | undefined;
-               cellValue = dateVal && isValid(parseISO(dateVal)) ? format(parseISO(dateVal), 'dd/MM/yy') : '';
-            } else {
+               cellValue = dateVal && isValid(parseISO(dateVal)) ? format(parseISO(dateVal), 'dd/MM/yyyy') : '';
+            } else if (col.isCurrency) {
+                cellValue = formatCurrencyForCsv(lead[col.accessorKey as keyof Lead] as number | null | undefined);
+            } else if (col.isPercentage) {
+                cellValue = formatPercentageForCsv(lead[col.accessorKey as keyof Lead] as number | null | undefined);
+            } else if (col.accessorKey === 'freeGuestCount') {
+                cellValue = formatNumericForCsv(lead.freeGuestCount);
+            }
+            else {
               cellValue = lead[col.accessorKey as keyof Lead];
             }
             
             if ( (col.isPackageColumn || col.accessorKey === 'totalGuestsCalculated' || col.accessorKey === 'freeGuestCount') && 
                  (cellValue === 0 || cellValue === undefined || cellValue === null) ) {
-                return '';
+                return ''; // Return empty string for CSV if zero or undefined for these specific numeric columns
             }
+            // For 'OTHER' (perTicketRate), export empty if null/undefined
             if (col.accessorKey === 'perTicketRate' && (cellValue === null || cellValue === undefined)) {
               return ''; 
             }
@@ -1002,4 +1043,3 @@ export default function LeadsPage() {
     </div>
   );
 }
-

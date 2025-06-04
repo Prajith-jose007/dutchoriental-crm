@@ -64,7 +64,7 @@ export type ModeOfPayment = typeof modeOfPaymentOptions[number];
 export const leadTypeOptions = ['Dinner Cruise', 'Superyacht Sightseeing Cruise', 'Private Cruise'] as const;
 export type LeadType = typeof leadTypeOptions[number];
 
-export const paymentConfirmationStatusOptions = ['PAID', 'CONFIRMED'] as const;
+export const paymentConfirmationStatusOptions = ['PAID', 'UNPAID', 'CREDIT', 'PAY AT COUNTER'] as const;
 export type PaymentConfirmationStatus = typeof paymentConfirmationStatusOptions[number];
 
 export interface LeadPackageQuantity {

@@ -69,7 +69,7 @@ export async function GET(request: NextRequest) {
         month: dbLead.month ? ensureISOFormat(dbLead.month)! : formatISO(new Date()),
         notes: dbLead.notes || undefined,
         type: (dbLead.type || 'Private Cruise') as LeadType,
-        paymentConfirmationStatus: (dbLead.paymentConfirmationStatus || 'CONFIRMED') as PaymentConfirmationStatus,
+        paymentConfirmationStatus: (dbLead.paymentConfirmationStatus || 'UNPAID') as PaymentConfirmationStatus,
         transactionId: dbLead.transactionId || undefined,
         modeOfPayment: (dbLead.modeOfPayment || 'Online') as ModeOfPayment,
 
@@ -139,7 +139,10 @@ export async function POST(request: NextRequest) {
 
     const packageQuantitiesJson = newLeadData.packageQuantities ? JSON.stringify(newLeadData.packageQuantities) : null;
 
-    const finalTransactionId = newLeadData.transactionId || `TRN-${format(new Date(), 'yyyyMMddHHmmssSSS')}`;
+    const finalTransactionId = newLeadData.transactionId && String(newLeadData.transactionId).trim() !== "" && newLeadData.transactionId !== "Pending Generation"
+      ? newLeadData.transactionId
+      : `TRN-${format(new Date(), 'yyyyMMddHHmmssSSS')}`;
+
 
     const leadToStore = {
       id: leadId!,
@@ -150,7 +153,7 @@ export async function POST(request: NextRequest) {
       month: formattedMonth,
       notes: newLeadData.notes || null,
       type: newLeadData.type || 'Private Cruise',
-      paymentConfirmationStatus: newLeadData.paymentConfirmationStatus || 'CONFIRMED',
+      paymentConfirmationStatus: newLeadData.paymentConfirmationStatus || 'UNPAID',
       transactionId: finalTransactionId,
       modeOfPayment: newLeadData.modeOfPayment || 'Online',
 
@@ -212,7 +215,7 @@ export async function POST(request: NextRequest) {
             status: (dbLead.status || 'Active') as LeadStatus,
             month: dbLead.month ? ensureISOFormat(dbLead.month)! : formatISO(new Date()),
             notes: dbLead.notes || undefined, type: (dbLead.type || 'Private Cruise') as LeadType,
-            paymentConfirmationStatus: (dbLead.paymentConfirmationStatus || 'CONFIRMED') as PaymentConfirmationStatus,
+            paymentConfirmationStatus: (dbLead.paymentConfirmationStatus || 'UNPAID') as PaymentConfirmationStatus,
             transactionId: dbLead.transactionId || undefined,
             modeOfPayment: (dbLead.modeOfPayment || 'Online') as ModeOfPayment,
             packageQuantities: pq,
@@ -301,14 +304,12 @@ export async function PATCH(request: NextRequest) {
             updatedCount++;
             console.log(`[API PATCH /api/leads] Successfully updated status for lead ID ${id} to ${newStatus}`);
           } else {
-            // This case should be rare if the SELECT found the lead, but good to log
             console.warn(`[API PATCH /api/leads] Update for lead ID ${id} reported 0 affected rows, though lead was found.`);
             failedCount++;
             updateErrors.push({ id, reason: "Update query affected 0 rows." });
           }
         } else {
           failedCount++;
-          // Reason already pushed to updateErrors
         }
       } catch (error) {
         console.error(`[API PATCH /api/leads] Error processing lead ID ${id} for status update:`, error);
@@ -330,7 +331,7 @@ export async function PATCH(request: NextRequest) {
         updatedCount,
         failedCount,
         errors: updateErrors
-      }, { status: 400 }); // Or 403 if all failures were permission based
+      }, { status: 400 });
     } else {
        return NextResponse.json({ message: 'No leads were found matching the provided IDs or no changes were necessary.' }, { status: 404 });
     }
@@ -340,3 +341,4 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ message: 'Failed to bulk update lead statuses', error: (error as Error).message }, { status: 500 });
   }
 }
+

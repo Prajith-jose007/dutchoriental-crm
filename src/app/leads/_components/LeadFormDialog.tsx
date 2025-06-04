@@ -39,6 +39,8 @@ import { leadStatusOptions, modeOfPaymentOptions, leadTypeOptions, yachtCategory
 import { useToast } from '@/hooks/use-toast';
 import { useEffect, useState, useMemo } from 'react';
 import { format, formatISO, parseISO, isValid, getYear } from 'date-fns';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Terminal } from 'lucide-react';
 
 
 const leadPackageQuantitySchema = z.object({
@@ -94,6 +96,7 @@ interface LeadFormDialogProps {
   lead?: Lead | null;
   onSubmitSuccess: (data: Lead) => void;
   currentUserId?: string | null;
+  isAdmin?: boolean; // Added for disabling form
 }
 
 const getDefaultFormValues = (existingLead?: Lead | null, currentUserId?: string | null): LeadFormData => {
@@ -110,15 +113,15 @@ const getDefaultFormValues = (existingLead?: Lead | null, currentUserId?: string
   return {
     id: existingLead?.id || undefined,
     agent: existingLead?.agent || '',
-    status: existingLead?.status || 'Active', // Default to Active for new leads
+    status: existingLead?.status || 'Active', 
     month: existingLead?.month && isValid(parseISO(existingLead.month)) ? parseISO(existingLead.month) : new Date(),
     yacht: existingLead?.yacht || '',
     type: existingLead?.type || 'Private Cruise',
-    paymentConfirmationStatus: existingLead?.paymentConfirmationStatus || 'CONFIRMED',
+    paymentConfirmationStatus: existingLead?.paymentConfirmationStatus || 'UNPAID',
     modeOfPayment: existingLead?.modeOfPayment || 'CARD',
     clientName: existingLead?.clientName || '',
     notes: existingLead?.notes || '',
-    transactionId: existingLead?.transactionId || "Pending Generation",
+    transactionId: existingLead?.id ? (existingLead?.transactionId || 'Pending Generation') : 'Pending Generation',
     packageQuantities: initialPackageQuantities,
     freeGuestCount: Number(existingLead?.freeGuestCount || 0),
     perTicketRate: existingLead?.perTicketRate !== undefined && existingLead.perTicketRate !== null ? Number(Number(existingLead.perTicketRate).toFixed(2)) : null,
@@ -136,7 +139,7 @@ const getDefaultFormValues = (existingLead?: Lead | null, currentUserId?: string
 };
 
 
-export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, currentUserId }: LeadFormDialogProps) {
+export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, currentUserId, isAdmin }: LeadFormDialogProps) {
   const { toast } = useToast();
   const [allAgents, setAllAgents] = useState<Agent[]>([]);
   const [allYachts, setAllYachts] = useState<Yacht[]>([]);
@@ -159,6 +162,11 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
   const watchedPaidAmount = form.watch('paidAmount');
   const watchedPackageQuantities = form.watch('packageQuantities');
   const watchedModeOfPayment = form.watch('modeOfPayment');
+  const watchedStatus = form.watch('status'); // Watch status for disabling
+
+  const isFormDisabled = useMemo(() => {
+    return watchedStatus === 'Closed' && !isAdmin;
+  }, [watchedStatus, isAdmin]);
 
 
   useEffect(() => {
@@ -303,6 +311,11 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
 
 
   function onSubmit(data: LeadFormData) {
+    if (isFormDisabled) {
+        toast({ title: "Action Denied", description: "This lead is closed and cannot be modified.", variant: "destructive" });
+        onOpenChange(false);
+        return;
+    }
     let rawFinalTotalAmount = 0;
 
     if (data.packageQuantities && Array.isArray(data.packageQuantities)) {
@@ -341,8 +354,8 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
 
     const submittedLead: Lead = {
       ...data,
-      id: lead?.id || `temp-${Date.now()}`,
-      transactionId: data.transactionId === "Pending Generation" && !lead?.id ? undefined : data.transactionId,
+      id: lead?.id || `temp-${Date.now()}`, // Will be replaced by server if 'temp-'
+      transactionId: lead?.id && data.transactionId === "Pending Generation" ? lead.transactionId : data.transactionId, // Preserve existing if editing and was pending
       month: data.month ? formatISO(data.month) : formatISO(new Date()),
       paymentConfirmationStatus: data.paymentConfirmationStatus,
       freeGuestCount: Number(data.freeGuestCount || 0),
@@ -359,7 +372,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
       netAmount: finalNetAmount,
       paidAmount: finalPaidAmount,
       balanceAmount: actualSignedBalanceAmount,
-      status: data.status, // Ensure status is included
+      status: data.status, 
     };
     onSubmitSuccess(submittedLead);
     onOpenChange(false);
@@ -385,15 +398,24 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[600px] md:max-w-[800px] lg:max-w-[1000px]">
         <DialogHeader>
-          <DialogTitle>{lead ? 'Edit Lead' : 'Add New Lead'}</DialogTitle>
+          <DialogTitle>{lead ? (isFormDisabled ? 'View Lead Details' : 'Edit Lead') : 'Add New Lead'}</DialogTitle>
           <DialogDescription>
-            {lead ? 'Update the details for this lead.' : 'Fill in the details for the new lead.'}
+            {lead ? (isFormDisabled ? 'This lead is closed and cannot be edited by non-administrators.' : 'Update the details for this lead.') : 'Fill in the details for the new lead.'}
           </DialogDescription>
         </DialogHeader>
         <ScrollArea className="max-h-[70vh] p-1">
+        {isFormDisabled && (
+             <Alert variant="destructive" className="mb-4">
+                <Terminal className="h-4 w-4" />
+                <AlertTitle>Lead Closed</AlertTitle>
+                <AlertDescription>
+                    This lead is marked as 'Closed'. Editing is restricted to administrators.
+                </AlertDescription>
+            </Alert>
+        )}
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 p-4">
-
+           <fieldset disabled={isFormDisabled}>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               <FormField
                 control={form.control}
@@ -428,7 +450,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Status</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value || undefined} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value || undefined} defaultValue={field.value} disabled={isFormDisabled && !isAdmin}>
                       <FormControl><SelectTrigger><SelectValue placeholder="Select status" /></SelectTrigger></FormControl>
                       <SelectContent>
                         {leadStatusOptions.map(status => (<SelectItem key={status} value={status}>{status}</SelectItem>))}
@@ -736,10 +758,11 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
                   )}
                 />
             </div>
+            </fieldset>
             <DialogFooter className="pt-6">
               <DialogClose asChild><Button type="button" variant="outline">Cancel</Button></DialogClose>
-              <Button type="submit" disabled={form.formState.isSubmitting || isLoadingDropdowns}>
-                {isLoadingDropdowns ? 'Loading...' : (lead ? 'Save Changes' : 'Add Lead')}
+              <Button type="submit" disabled={form.formState.isSubmitting || isLoadingDropdowns || isFormDisabled}>
+                {isLoadingDropdowns ? 'Loading...' : (lead ? (isFormDisabled ? 'Close' : 'Save Changes') : 'Add Lead')}
               </Button>
             </DialogFooter>
           </form>

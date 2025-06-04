@@ -89,11 +89,11 @@ export async function GET(
         clientName: String(dbLead.clientName || ''),
         agent: String(dbLead.agent || ''),
         yacht: String(dbLead.yacht || ''),
-        status: (dbLead.status || 'Active') as LeadStatus, // Default to Active
+        status: (dbLead.status || 'Active') as LeadStatus, 
         month: dbLead.month ? ensureISOFormat(dbLead.month)! : formatISO(new Date()),
         notes: dbLead.notes || undefined,
         type: (dbLead.type || 'Private Cruise') as LeadType,
-        paymentConfirmationStatus: (dbLead.paymentConfirmationStatus || 'CONFIRMED') as PaymentConfirmationStatus,
+        paymentConfirmationStatus: (dbLead.paymentConfirmationStatus || 'UNPAID') as PaymentConfirmationStatus,
         transactionId: dbLead.transactionId || undefined,
         modeOfPayment: (dbLead.modeOfPayment || 'Online') as ModeOfPayment,
 
@@ -150,6 +150,10 @@ export async function PUT(
     }
     const existingLeadDbInfo = existingLeadResult[0];
 
+    if (existingLeadDbInfo.status === 'Closed' && requestingUserRole !== 'admin') {
+        console.warn(`[API PUT /api/leads/${id}] Permission denied. User ${requestingUserId} (Role: ${requestingUserRole}) attempted to modify a Closed lead.`);
+        return NextResponse.json({ message: 'Permission denied: Closed leads cannot be modified by non-administrators.' }, { status: 403 });
+    }
     if (requestingUserRole !== 'admin' && existingLeadDbInfo.ownerUserId !== requestingUserId) {
       console.warn(`[API PUT /api/leads/${id}] Permission denied. User ${requestingUserId} is not owner or admin.`);
       return NextResponse.json({ message: 'Permission denied: You can only edit leads you own, or you must be an admin.' }, { status: 403 });
@@ -160,8 +164,8 @@ export async function PUT(
       updatedAt: formatISO(new Date()),
       lastModifiedByUserId: requestingUserId,
       ownerUserId: updatedLeadDataFromClient.ownerUserId || existingLeadDbInfo.ownerUserId,
-      paymentConfirmationStatus: updatedLeadDataFromClient.paymentConfirmationStatus || 'CONFIRMED',
-      status: updatedLeadDataFromClient.status || existingLeadDbInfo.status || 'Active', // Ensure status is updated, default to Active if missing
+      paymentConfirmationStatus: updatedLeadDataFromClient.paymentConfirmationStatus || 'UNPAID',
+      status: updatedLeadDataFromClient.status || existingLeadDbInfo.status || 'Active', 
       freeGuestCount: Number(updatedLeadDataFromClient.freeGuestCount || 0),
       perTicketRate: updatedLeadDataFromClient.perTicketRate !== undefined ? updatedLeadDataFromClient.perTicketRate : null,
     };
@@ -217,7 +221,7 @@ export async function PUT(
         id: String(dbLead.id || ''), clientName: String(dbLead.clientName || ''), agent: String(dbLead.agent || ''), yacht: String(dbLead.yacht || ''),
         status: (dbLead.status || 'Active') as LeadStatus,
         month: dbLead.month ? ensureISOFormat(dbLead.month)! : formatISO(new Date()), notes: dbLead.notes || undefined, type: (dbLead.type || 'Private Cruise') as LeadType,
-        paymentConfirmationStatus: (dbLead.paymentConfirmationStatus || 'CONFIRMED') as PaymentConfirmationStatus,
+        paymentConfirmationStatus: (dbLead.paymentConfirmationStatus || 'UNPAID') as PaymentConfirmationStatus,
         transactionId: dbLead.transactionId || undefined,
         modeOfPayment: (dbLead.modeOfPayment || 'Online') as ModeOfPayment,
         packageQuantities: pq,
@@ -256,17 +260,30 @@ export async function DELETE(
 
     console.log(`[API DELETE /api/leads/${id}] Attempting to delete lead. User: ${requestingUserId}, Role: ${requestingUserRole}`);
 
-    if (requestingUserRole !== 'admin') {
-      console.warn(`[API DELETE /api/leads/${id}] Permission denied. User ${requestingUserId} is not an admin.`);
-      return NextResponse.json({ message: 'Permission denied: Only administrators can delete leads.' }, { status: 403 });
+    const existingLeadResult: any[] = await query('SELECT status FROM leads WHERE id = ?', [id]);
+    if (existingLeadResult.length === 0) {
+      console.warn(`[API DELETE /api/leads/${id}] Lead not found for deletion.`);
+      return NextResponse.json({ message: 'Lead not found' }, { status: 404 });
     }
+    const existingLeadStatus = existingLeadResult[0].status;
+
+    if (existingLeadStatus === 'Closed' && requestingUserRole !== 'admin') {
+      console.warn(`[API DELETE /api/leads/${id}] Permission denied. User ${requestingUserId} (Role: ${requestingUserRole}) attempted to delete a Closed lead.`);
+      return NextResponse.json({ message: 'Permission denied: Closed leads cannot be deleted by non-administrators.' }, { status: 403 });
+    }
+    // If it's not a closed lead, or if the user is an admin, they can proceed with delete.
+    // (Ownership check for non-closed leads by non-admins is not implemented here, assuming only admins can delete as per previous logic for bulk delete)
+    // For individual delete, if non-admins should only delete their own non-closed leads, add an ownerUserId check here too.
+    // Current logic: Admins can delete anything. Non-admins can only delete non-closed leads.
+
 
     const result: any = await query('DELETE FROM leads WHERE id = ?', [id]);
     console.log(`[API DELETE /api/leads/${id}] DB Delete Result:`, result);
 
     if (result.affectedRows === 0) {
-      console.warn(`[API DELETE /api/leads/${id}] Lead not found for deletion.`);
-      return NextResponse.json({ message: 'Lead not found' }, { status: 404 });
+      // This might happen if the lead was deleted by another process between the check and the delete query
+      console.warn(`[API DELETE /api/leads/${id}] Lead ID ${id} found in initial check but deletion affected 0 rows.`);
+      return NextResponse.json({ message: 'Lead not found or already deleted' }, { status: 404 });
     }
 
     console.log(`[API DELETE /api/leads/${id}] Successfully deleted lead.`);
@@ -282,3 +299,4 @@ export async function DELETE(
     return NextResponse.json({ message: 'Failed to delete lead', errorDetails: errorMessage }, { status: 500 });
   }
 }
+

@@ -37,7 +37,7 @@ const csvHeaderMapping: { [csvHeaderKey: string]: keyof Omit<Lead, 'packageQuant
   'yacht': 'yacht', 'yacht_name': 'yacht',
   'agent': 'agent', 'agent_name': 'agent',
   'client': 'clientName', 'client_name': 'clientName',
-  'payment_status': 'paymentConfirmationStatus', 'pay_status': 'paymentConfirmationStatus',
+  'payment_status': 'paymentConfirmationStatus', 'pay_status': 'paymentConfirmationStatus', 'payment_confirmation_status': 'paymentConfirmationStatus',
   'type': 'type', 'lead_type': 'type',
   'transaction_id': 'transactionId', 'transaction id': 'transactionId',
   'payment_mode': 'modeOfPayment', 'mode_of_payment': 'modeOfPayment',
@@ -117,7 +117,7 @@ const convertCsvValue = (
       case 'modeOfPayment': return 'CARD';
       case 'status': return 'Active'; 
       case 'type': return 'Private Cruise' as LeadType;
-      case 'paymentConfirmationStatus': return 'CONFIRMED' as PaymentConfirmationStatus;
+      case 'paymentConfirmationStatus': return 'UNPAID' as PaymentConfirmationStatus;
       case 'notes': return '';
       case 'month': return formatISO(new Date());
       case 'createdAt': case 'updatedAt': return formatISO(new Date());
@@ -148,13 +148,18 @@ const convertCsvValue = (
     case 'modeOfPayment':
       return modeOfPaymentOptions.includes(trimmedValue.toUpperCase() as ModeOfPayment) ? trimmedValue.toUpperCase() : 'CARD';
     case 'status':
-      const lowerTrimmedValue = trimmedValue.toLowerCase();
-      const foundStatus = leadStatusOptions.find(opt => opt.toLowerCase() === lowerTrimmedValue);
+      const lowerTrimmedStatusValue = trimmedValue.toLowerCase();
+      const foundStatus = leadStatusOptions.find(opt => opt.toLowerCase() === lowerTrimmedStatusValue);
       return foundStatus || 'Active'; 
     case 'type':
       return leadTypeOptions.includes(trimmedValue as LeadType) ? trimmedValue : 'Private Cruise';
     case 'paymentConfirmationStatus':
-      return paymentConfirmationStatusOptions.includes(trimmedValue.toUpperCase() as PaymentConfirmationStatus) ? trimmedValue.toUpperCase() : 'CONFIRMED';
+      const upperTrimmedPaymentStatus = trimmedValue.toUpperCase();
+      if (paymentConfirmationStatusOptions.includes(upperTrimmedPaymentStatus as PaymentConfirmationStatus)) {
+        return upperTrimmedPaymentStatus as PaymentConfirmationStatus;
+      }
+      if (upperTrimmedPaymentStatus === 'CONFIRMED') return 'PAY AT COUNTER'; // Map old "CONFIRMED" to "PAY AT COUNTER"
+      return 'UNPAID'; // Default to 'UNPAID'
 
     case 'month':
     case 'createdAt':
@@ -256,7 +261,7 @@ function generateNewLeadTransactionId(existingLeads: Lead[], forYear: number, cu
 
   existingLeads.forEach(lead => {
     if (lead.transactionId && lead.transactionId.startsWith(prefix)) {
-      const numPartStr = lead.transactionId.substring(prefix.length);
+      const numPartStr = lead.transactionId.substring(prefix.length); // Remove "TRN-YYYY"
       const numPart = parseInt(numPartStr, 10);
       if (!isNaN(numPart) && numPart > maxNumber) {
         maxNumber = numPart;
@@ -379,13 +384,10 @@ export default function LeadsPage() {
     }
     setIsLoading(true);
 
-    const isNewLead = !editingLead;
+    const isNewLead = !editingLead || !submittedLeadData.id || submittedLeadData.id.startsWith('temp-');
     let finalTransactionId = submittedLeadData.transactionId;
 
     if (isNewLead && (!finalTransactionId || String(finalTransactionId).trim() === "" || finalTransactionId === "Pending Generation")) {
-        const leadYear = submittedLeadData.month ? getFullYear(parseISO(submittedLeadData.month)) : new Date().getFullYear();
-        finalTransactionId = generateNewLeadTransactionId(allLeads, leadYear);
-    } else if (editingLead && !finalTransactionId) { // Case for editing an existing lead that might somehow lack a transactionId
         const leadYear = submittedLeadData.month ? getFullYear(parseISO(submittedLeadData.month)) : new Date().getFullYear();
         finalTransactionId = generateNewLeadTransactionId(allLeads, leadYear);
     }
@@ -772,7 +774,7 @@ export default function LeadsPage() {
             month: parsedRow.month || formatISO(new Date()),
             notes: parsedRow.notes || undefined,
             type: parsedRow.type || 'Private Cruise',
-            paymentConfirmationStatus: parsedRow.paymentConfirmationStatus || 'CONFIRMED',
+            paymentConfirmationStatus: parsedRow.paymentConfirmationStatus || 'UNPAID',
             transactionId: transactionIdForRow,
             modeOfPayment: parsedRow.modeOfPayment || 'CARD',
             packageQuantities: packageQuantities,

@@ -214,8 +214,8 @@ export function LeadsTable({
   const getStatusVariant = (status?: LeadStatus) => {
     if (!status) return 'outline';
     switch (status) {
-      case 'Active': return 'secondary'; 
-      case 'Closed': return 'default'; 
+      case 'Active': return 'secondary'; // Typically yellow-ish or greyish via theme
+      case 'Closed': return 'default';   // Typically primary color (blue/green) via theme
       default: return 'outline';
     }
   };
@@ -224,7 +224,9 @@ export function LeadsTable({
     if (!status) return 'outline';
     switch (status) {
       case 'PAID': return 'default';
-      case 'CONFIRMED': return 'secondary';
+      case 'UNPAID': return 'destructive';
+      case 'CREDIT': return 'secondary';
+      case 'PAY AT COUNTER': return 'outline';
       default: return 'outline';
     }
   };
@@ -297,7 +299,7 @@ export function LeadsTable({
     if (column.accessorKey === 'id') {
       const canEdit = isAdmin || (lead.ownerUserId === currentUserId && lead.status !== 'Closed');
       return (
-        <Button variant="link" className="p-0 h-auto font-medium" onClick={() => onEditLead(lead)} disabled={!canEdit && lead.status === 'Closed' && !isAdmin}>
+        <Button variant="link" className="p-0 h-auto font-medium" onClick={() => onEditLead(lead)} disabled={!isAdmin && lead.status === 'Closed' && !canEdit}>
           {String(lead.id).length > 10 ? String(lead.id).substring(0, 4) + '...' + String(lead.id).substring(String(lead.id).length - 4) : lead.id}
         </Button>
       );
@@ -431,3 +433,4 @@ export function LeadsTable({
     </ScrollArea>
   );
 }
+

@@ -35,6 +35,7 @@ function generateNewLeadId(existingLeadIds: string[]): string {
   return `${prefix}${String(nextNum).padStart(3, '0')}`;
 }
 
+
 export async function GET(request: NextRequest) {
   console.log('[API GET /api/leads] Received request');
   try {
@@ -64,7 +65,7 @@ export async function GET(request: NextRequest) {
         clientName: String(dbLead.clientName || ''),
         agent: String(dbLead.agent || ''),
         yacht: String(dbLead.yacht || ''),
-        status: (dbLead.status || 'Active') as LeadStatus, // Default to Active
+        status: (dbLead.status || 'Active') as LeadStatus, 
         month: dbLead.month ? ensureISOFormat(dbLead.month)! : formatISO(new Date()),
         notes: dbLead.notes || undefined,
         type: (dbLead.type || 'Private Cruise') as LeadType,
@@ -138,16 +139,14 @@ export async function POST(request: NextRequest) {
 
     const packageQuantitiesJson = newLeadData.packageQuantities ? JSON.stringify(newLeadData.packageQuantities) : null;
 
-    const finalTransactionId = newLeadData.transactionId && String(newLeadData.transactionId).trim() !== ""
-      ? newLeadData.transactionId
-      : `TRN-${format(new Date(), 'yyyyMMddHHmmssSSS')}`; // Fallback to unique timestamp-based ID
+    const finalTransactionId = newLeadData.transactionId || `TRN-${format(new Date(), 'yyyyMMddHHmmssSSS')}`;
 
     const leadToStore = {
       id: leadId!,
       clientName: newLeadData.clientName,
       agent: newLeadData.agent,
       yacht: newLeadData.yacht,
-      status: newLeadData.status || 'Active', // Default to Active
+      status: newLeadData.status || 'Active', 
       month: formattedMonth,
       notes: newLeadData.notes || null,
       type: newLeadData.type || 'Private Cruise',
@@ -250,5 +249,94 @@ export async function POST(request: NextRequest) {
       errorMessage = err;
     }
     return NextResponse.json({ message: 'Failed to create lead', errorDetails: errorMessage }, { status: 500 });
+  }
+}
+
+export async function PATCH(request: NextRequest) {
+  try {
+    const { ids, status: newStatus, requestingUserId, requestingUserRole } = await request.json() as { ids: string[]; status: LeadStatus; requestingUserId: string; requestingUserRole: string };
+    console.log(`[API PATCH /api/leads] Received request to update status for IDs:`, ids, "to new status:", newStatus, "by User:", requestingUserId, "Role:", requestingUserRole);
+
+    if (!ids || !Array.isArray(ids) || ids.length === 0 || !newStatus || !requestingUserId || !requestingUserRole) {
+      return NextResponse.json({ message: 'Missing required fields for bulk status update (ids, status, requestingUserId, requestingUserRole)' }, { status: 400 });
+    }
+
+    let updatedCount = 0;
+    let failedCount = 0;
+    const updateErrors: { id: string, reason: string }[] = [];
+
+    for (const id of ids) {
+      try {
+        const existingLeadResults: any[] = await query('SELECT ownerUserId, status FROM leads WHERE id = ?', [id]);
+        if (existingLeadResults.length === 0) {
+          console.warn(`[API PATCH /api/leads] Lead ID ${id} not found for status update.`);
+          failedCount++;
+          updateErrors.push({ id, reason: "Lead not found." });
+          continue;
+        }
+        const leadToUpdate = existingLeadResults[0];
+
+        let canUpdate = false;
+        if (requestingUserRole === 'admin') {
+          canUpdate = true;
+        } else { // Non-admin
+          if (leadToUpdate.ownerUserId === requestingUserId) {
+            if (leadToUpdate.status === 'Closed') {
+               console.warn(`[API PATCH /api/leads] Non-admin user ${requestingUserId} attempted to change status of Closed lead ${id}. Denied.`);
+               updateErrors.push({ id, reason: "Non-admins cannot change the status of Closed leads." });
+            } else {
+              canUpdate = true;
+            }
+          } else {
+            console.warn(`[API PATCH /api/leads] Non-admin user ${requestingUserId} attempted to change status of lead ${id} not owned by them. Denied.`);
+            updateErrors.push({ id, reason: "Permission denied: Not owner." });
+          }
+        }
+
+        if (canUpdate) {
+          const updateSql = 'UPDATE leads SET status = ?, updatedAt = ?, lastModifiedByUserId = ? WHERE id = ?';
+          const updateParams = [newStatus, formatISO(new Date()), requestingUserId, id];
+          const result: any = await query(updateSql, updateParams);
+          if (result.affectedRows > 0) {
+            updatedCount++;
+            console.log(`[API PATCH /api/leads] Successfully updated status for lead ID ${id} to ${newStatus}`);
+          } else {
+            // This case should be rare if the SELECT found the lead, but good to log
+            console.warn(`[API PATCH /api/leads] Update for lead ID ${id} reported 0 affected rows, though lead was found.`);
+            failedCount++;
+            updateErrors.push({ id, reason: "Update query affected 0 rows." });
+          }
+        } else {
+          failedCount++;
+          // Reason already pushed to updateErrors
+        }
+      } catch (error) {
+        console.error(`[API PATCH /api/leads] Error processing lead ID ${id} for status update:`, error);
+        failedCount++;
+        updateErrors.push({ id, reason: (error as Error).message || "Unknown error during update." });
+      }
+    }
+
+    if (updatedCount > 0) {
+      return NextResponse.json({ 
+        message: `${updatedCount} lead(s) status updated successfully. ${failedCount > 0 ? `${failedCount} failed.` : ''}`,
+        updatedCount,
+        failedCount,
+        errors: failedCount > 0 ? updateErrors : undefined
+      }, { status: 200 });
+    } else if (failedCount > 0) {
+      return NextResponse.json({ 
+        message: `No leads were updated. ${failedCount} lead(s) failed due to errors or permissions.`,
+        updatedCount,
+        failedCount,
+        errors: updateErrors
+      }, { status: 400 }); // Or 403 if all failures were permission based
+    } else {
+       return NextResponse.json({ message: 'No leads were found matching the provided IDs or no changes were necessary.' }, { status: 404 });
+    }
+
+  } catch (error) {
+    console.error('[API PATCH /api/leads] Failed to bulk update lead statuses:', error);
+    return NextResponse.json({ message: 'Failed to bulk update lead statuses', error: (error as Error).message }, { status: 500 });
   }
 }

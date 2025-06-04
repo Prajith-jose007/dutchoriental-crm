@@ -189,6 +189,9 @@ interface LeadsTableProps {
   allYachts: Yacht[];
   currentUserId?: string | null;
   isAdmin?: boolean;
+  selectedLeadIds: string[];
+  onSelectLead: (leadId: string, isSelected: boolean) => void;
+  onSelectAllLeads: (isSelected: boolean) => void;
 }
 
 export function LeadsTable({
@@ -200,7 +203,10 @@ export function LeadsTable({
   yachtMap,
   allYachts,
   currentUserId,
-  isAdmin
+  isAdmin,
+  selectedLeadIds,
+  onSelectLead,
+  onSelectAllLeads,
 }: LeadsTableProps) {
 
   const leadColumns = useMemo(() => generateLeadColumns(allYachts), [allYachts]);
@@ -208,8 +214,8 @@ export function LeadsTable({
   const getStatusVariant = (status?: LeadStatus) => {
     if (!status) return 'outline';
     switch (status) {
-      case 'Active': return 'secondary'; // Often yellow/orange or a lighter theme color
-      case 'Closed': return 'default'; // Often primary color (can be blue/green)
+      case 'Active': return 'secondary'; 
+      case 'Closed': return 'default'; 
       default: return 'outline';
     }
   };
@@ -289,9 +295,9 @@ export function LeadsTable({
       return formatNumeric(lead.freeGuestCount);
     }
     if (column.accessorKey === 'id') {
-      const canEdit = isAdmin || lead.ownerUserId === currentUserId;
+      const canEdit = isAdmin || (lead.ownerUserId === currentUserId && lead.status !== 'Closed');
       return (
-        <Button variant="link" className="p-0 h-auto font-medium" onClick={() => onEditLead(lead)} disabled={!canEdit}>
+        <Button variant="link" className="p-0 h-auto font-medium" onClick={() => onEditLead(lead)} disabled={!canEdit && lead.status === 'Closed' && !isAdmin}>
           {String(lead.id).length > 10 ? String(lead.id).substring(0, 4) + '...' + String(lead.id).substring(String(lead.id).length - 4) : lead.id}
         </Button>
       );
@@ -337,6 +343,9 @@ export function LeadsTable({
     }
     return value !== undefined && value !== null && String(value).trim() !== '' ? String(value) : '-';
   };
+  
+  const isAllSelected = leads.length > 0 && selectedLeadIds.length === leads.length;
+  const isSomeSelected = selectedLeadIds.length > 0 && selectedLeadIds.length < leads.length;
 
   return (
     <ScrollArea className="rounded-md border whitespace-nowrap">
@@ -348,7 +357,13 @@ export function LeadsTable({
               .map(col => (
               <TableHead key={col.accessorKey} className={col.accessorKey === 'select' ? "w-[40px]" : ""}>
                 {col.accessorKey === 'select' ? (
-                  <Checkbox aria-label="Select all rows" disabled />
+                  <Checkbox 
+                    aria-label="Select all rows" 
+                    checked={isAllSelected}
+                    onCheckedChange={(checked) => onSelectAllLeads(Boolean(checked))}
+                    data-state={isSomeSelected ? 'indeterminate' : (isAllSelected ? 'checked' : 'unchecked')}
+                    disabled={leads.length === 0}
+                  />
                 ) : col.header}
               </TableHead>
             ))}
@@ -363,13 +378,20 @@ export function LeadsTable({
             </TableRow>
           ) : (
             leads.map((lead) => (
-              <TableRow key={lead.id}>
+              <TableRow 
+                key={lead.id}
+                data-state={selectedLeadIds.includes(lead.id) ? "selected" : ""}
+              >
                 {leadColumns
                   .filter(col => !col.isJsonDetails)
                   .map(col => (
                   <TableCell key={`${lead.id}-${col.accessorKey}`}>
                     {col.accessorKey === 'select' ? (
-                      <Checkbox aria-label={`Select row ${lead.id}`} disabled />
+                      <Checkbox 
+                        aria-label={`Select row ${lead.id}`} 
+                        checked={selectedLeadIds.includes(lead.id)}
+                        onCheckedChange={(checked) => onSelectLead(lead.id, Boolean(checked))}
+                      />
                     ) : col.accessorKey === 'actions' ? (
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -382,14 +404,14 @@ export function LeadsTable({
                           <DropdownMenuLabel>Actions</DropdownMenuLabel>
                           <DropdownMenuItem
                             onClick={() => onEditLead(lead)}
-                            disabled={!(isAdmin || lead.ownerUserId === currentUserId)}
+                            disabled={!isAdmin && lead.status === 'Closed'}
                           >
-                            Edit Lead
+                            {lead.status === 'Closed' && !isAdmin ? 'View Details' : 'Edit Lead'}
                           </DropdownMenuItem>
                           <DropdownMenuItem
                             className="text-destructive"
                             onClick={() => onDeleteLead(lead.id)}
-                            disabled={!isAdmin}
+                            disabled={!isAdmin && lead.status === 'Closed'}
                           >
                             Delete Lead
                           </DropdownMenuItem>

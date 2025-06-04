@@ -15,6 +15,16 @@ import { Button } from '@/components/ui/button';
 import { DatePicker } from '@/components/ui/date-picker';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format, parseISO, isWithinInterval, isValid, formatISO, getYear as getFullYear, getMonth as getMonthIndex } from 'date-fns';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { ChevronDown, Trash2 } from 'lucide-react';
+
 
 const USER_ID_STORAGE_KEY = 'currentUserId';
 const USER_ROLE_STORAGE_KEY = 'currentUserRole';
@@ -48,8 +58,7 @@ const csvHeaderMapping: { [csvHeaderKey: string]: keyof Omit<Lead, 'packageQuant
   'prem': 'pkg_premium', 'premium': 'pkg_premium',
   'vip': 'pkg_vip',
   'hrchtr': 'pkg_hour_charter', 'hour_charter': 'pkg_hour_charter',
-  'package_details_(json)': 'package_quantities_json_string',
-  'package_details_json': 'package_quantities_json_string',
+  'package_details_(json)': 'package_quantities_json_string', 'package_details_json': 'package_quantities_json_string',
   'other': 'perTicketRate', 'other_rate': 'perTicketRate',
   'total_amt': 'totalAmount', 'total_amount': 'totalAmount',
   'discount_%': 'commissionPercentage', 'discount_rate': 'commissionPercentage', 'discount': 'commissionPercentage',
@@ -106,7 +115,7 @@ const convertCsvValue = (
       case 'freeGuestCount': return 0;
       case 'perTicketRate': return null;
       case 'modeOfPayment': return 'CARD';
-      case 'status': return 'Active'; // Default to Active
+      case 'status': return 'Active'; 
       case 'type': return 'Private Cruise' as LeadType;
       case 'paymentConfirmationStatus': return 'CONFIRMED' as PaymentConfirmationStatus;
       case 'notes': return '';
@@ -141,7 +150,7 @@ const convertCsvValue = (
     case 'status':
       const lowerTrimmedValue = trimmedValue.toLowerCase();
       const foundStatus = leadStatusOptions.find(opt => opt.toLowerCase() === lowerTrimmedValue);
-      return foundStatus || 'Active'; // Default to Active
+      return foundStatus || 'Active'; 
     case 'type':
       return leadTypeOptions.includes(trimmedValue as LeadType) ? trimmedValue : 'Private Cruise';
     case 'paymentConfirmationStatus':
@@ -285,6 +294,7 @@ export default function LeadsPage() {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [selectedLeadIds, setSelectedLeadIds] = useState<string[]>([]);
 
 
   const fetchAllData = async () => {
@@ -371,7 +381,7 @@ export default function LeadsPage() {
     let finalTransactionId = submittedLeadData.transactionId;
     const isNewLead = !editingLead;
 
-    if (isNewLead || !finalTransactionId || finalTransactionId === "Pending Generation" || String(finalTransactionId).trim() === "") {
+    if ((isNewLead && (!finalTransactionId || finalTransactionId === "Pending Generation" || String(finalTransactionId).trim() === "")) || (editingLead && !finalTransactionId) ) {
         const leadYear = submittedLeadData.month ? getFullYear(parseISO(submittedLeadData.month)) : new Date().getFullYear();
         finalTransactionId = generateNewLeadTransactionId(allLeads, leadYear);
     }
@@ -406,6 +416,13 @@ export default function LeadsPage() {
     } else if (editingLead) {
       payload.ownerUserId = editingLead.ownerUserId || currentUserId;
       payload.createdAt = editingLead.createdAt || new Date().toISOString();
+       if (editingLead.status === 'Closed' && !isAdmin) {
+        toast({ title: "Action Denied", description: "Closed leads cannot be modified by non-administrators.", variant: "destructive" });
+        setIsLoading(false);
+        setIsLeadDialogOpen(false);
+        setEditingLead(null);
+        return;
+      }
     }
 
     console.log("[LeadsPage] Submitting lead payload:", payload);
@@ -463,6 +480,12 @@ export default function LeadsPage() {
       toast({ title: 'Authentication Error', description: 'User details not found. Please re-login.', variant: 'destructive' });
       return;
     }
+    const leadToDelete = allLeads.find(l => l.id === leadId);
+    if (leadToDelete?.status === 'Closed' && !isAdmin) {
+      toast({ title: "Action Denied", description: "Closed leads cannot be deleted by non-administrators.", variant: "destructive" });
+      return;
+    }
+
     if (!confirm(`Are you sure you want to delete lead ${leadId}? This action cannot be undone.`)) {
       return;
     }
@@ -490,6 +513,7 @@ export default function LeadsPage() {
       }
       toast({ title: 'Lead Deleted', description: `Lead ${leadId} has been deleted.` });
       await fetchAllData();
+      setSelectedLeadIds(prev => prev.filter(id => id !== leadId));
     } catch (error) {
       console.error("Error deleting lead:", error);
       toast({ title: 'Error Deleting Lead', description: (error as Error).message, variant: 'destructive' });
@@ -497,6 +521,130 @@ export default function LeadsPage() {
       setIsLoading(false);
     }
   };
+
+  const handleSelectLead = (leadId: string, isSelected: boolean) => {
+    setSelectedLeadIds(prevSelected =>
+      isSelected ? [...prevSelected, leadId] : prevSelected.filter(id => id !== leadId)
+    );
+  };
+
+  const handleSelectAllLeads = (isSelected: boolean) => {
+    setSelectedLeadIds(isSelected ? filteredLeads.map(lead => lead.id) : []);
+  };
+
+  const handleChangeSelectedLeadsStatus = async (newStatus: LeadStatus) => {
+    if (selectedLeadIds.length === 0) {
+      toast({ title: 'No Leads Selected', description: 'Please select leads to change their status.', variant: 'destructive' });
+      return;
+    }
+    if (!currentUserId || !currentUserRole) {
+      toast({ title: 'Authentication Error', description: 'Cannot change status. User details missing.', variant: 'destructive' });
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const response = await fetch('/api/leads', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ids: selectedLeadIds,
+          status: newStatus,
+          requestingUserId: currentUserId,
+          requestingUserRole: currentUserRole,
+        }),
+      });
+
+      const responseData = await response.json();
+
+      if (!response.ok) {
+        throw new Error(responseData.message || `Failed to update statuses: ${response.statusText}`);
+      }
+
+      const { updatedCount, failedCount, errors } = responseData;
+      let toastDescription = `${updatedCount} lead(s) updated to ${newStatus}.`;
+      if (failedCount > 0) {
+        toastDescription += ` ${failedCount} lead(s) could not be updated due to permissions.`;
+        console.warn("Bulk status update failures:", errors);
+      }
+      toast({ title: 'Status Update Complete', description: toastDescription });
+      
+      await fetchAllData();
+      setSelectedLeadIds([]);
+
+    } catch (error) {
+      console.error("Error changing selected leads status:", error);
+      toast({ title: 'Error Updating Statuses', description: (error as Error).message, variant: 'destructive' });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDeleteSelectedLeads = async () => {
+    if (selectedLeadIds.length === 0) {
+      toast({ title: "No Leads Selected", description: "Please select leads to delete.", variant: "destructive" });
+      return;
+    }
+     if (!isAdmin) {
+      toast({ title: "Access Denied", description: "Only administrators can perform bulk delete.", variant: "destructive" });
+      return;
+    }
+
+    if (!confirm(`Are you sure you want to delete ${selectedLeadIds.length} selected leads? This action cannot be undone.`)) {
+      return;
+    }
+    setIsLoading(true);
+    try {
+      // For bulk delete, we might need a specific API or iterate DELETE calls.
+      // Assuming an API for bulk delete is not yet created, this would be a loop.
+      // For simplicity, we'll show a conceptual single call, but backend would loop.
+      // Or we make the client loop - less ideal. Let's assume the API handles an array of IDs for DELETE.
+      
+      // Since PATCH is already used for status, let's stick to convention and assume DELETE /api/leads would handle multiple IDs.
+      // If not, the API route.ts for DELETE on /api/leads will need to be created or updated to handle a body with { ids: [...] }
+      let successfulDeletes = 0;
+      let failedDeletes = 0;
+
+      for (const leadId of selectedLeadIds) {
+         const leadToDelete = allLeads.find(l => l.id === leadId);
+          if (leadToDelete?.status === 'Closed' && !isAdmin) { // Should be caught by admin check above, but good to have
+            failedDeletes++;
+            continue;
+          }
+        const response = await fetch(`/api/leads/${leadId}`, {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            requestingUserId: currentUserId,
+            requestingUserRole: currentUserRole
+          }),
+        });
+        if (response.ok) {
+          successfulDeletes++;
+        } else {
+          failedDeletes++;
+          const errorData = await response.json().catch(() => ({ message: `Failed to delete lead ${leadId}`}));
+          console.warn(`Failed to delete lead ${leadId}: ${errorData.message}`);
+        }
+      }
+      
+      let toastDescription = `${successfulDeletes} leads deleted.`;
+      if (failedDeletes > 0) {
+        toastDescription += ` ${failedDeletes} leads could not be deleted (e.g. already closed or permission issue).`;
+      }
+      toast({ title: 'Bulk Delete Complete', description: toastDescription });
+
+      await fetchAllData();
+      setSelectedLeadIds([]);
+
+    } catch (error) {
+      console.error("Error deleting selected leads:", error);
+      toast({ title: 'Error Deleting Leads', description: (error as Error).message, variant: 'destructive' });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
 
   const handleCsvImport = async (file: File) => {
     if (!currentUserId) {
@@ -621,7 +769,7 @@ export default function LeadsPage() {
             clientName: parsedRow.clientName || 'N/A from CSV',
             agent: parsedRow.agent || '',
             yacht: parsedRow.yacht || '',
-            status: parsedRow.status || 'Active', // Default to Active
+            status: parsedRow.status || 'Active', 
             month: parsedRow.month || formatISO(new Date()),
             notes: parsedRow.notes || undefined,
             type: parsedRow.type || 'Private Cruise',
@@ -877,6 +1025,42 @@ export default function LeadsPage() {
     }
   };
 
+  const pageHeaderActions = (
+    <div className="flex items-center gap-2">
+      {selectedLeadIds.length > 0 && (
+        <>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" disabled={isImporting}>
+                Change Status <ChevronDown className="ml-2 h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuLabel>Set status for selected ({selectedLeadIds.length})</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              {leadStatusOptions.map(status => (
+                <DropdownMenuItem key={status} onSelect={() => handleChangeSelectedLeadsStatus(status)}>
+                  Set to {status}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+          {isAdmin && (
+             <Button variant="destructive" onClick={handleDeleteSelectedLeads} disabled={isImporting}>
+                <Trash2 className="mr-2 h-4 w-4" />
+                Delete Selected ({selectedLeadIds.length})
+              </Button>
+          )}
+        </>
+      )}
+      <ImportExportButtons
+        onAddLeadClick={handleAddLeadClick}
+        onCsvImport={handleCsvImport}
+        onCsvExport={handleCsvExport}
+      />
+    </div>
+  );
+
 
   if (isLoading) {
     return (
@@ -917,11 +1101,7 @@ export default function LeadsPage() {
       <PageHeader
         title="Leads Management"
         description="Track and manage all your sales leads."
-        actions={<ImportExportButtons
-          onAddLeadClick={handleAddLeadClick}
-          onCsvImport={handleCsvImport}
-          onCsvExport={handleCsvExport}
-        />}
+        actions={pageHeaderActions}
       />
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-6 p-4 border rounded-lg shadow-sm">
         <div>
@@ -1005,6 +1185,9 @@ export default function LeadsPage() {
         allYachts={allYachts}
         currentUserId={currentUserId}
         isAdmin={isAdmin}
+        selectedLeadIds={selectedLeadIds}
+        onSelectLead={handleSelectLead}
+        onSelectAllLeads={handleSelectAllLeads}
       />
 
       {isLeadDialogOpen && (
@@ -1014,6 +1197,7 @@ export default function LeadsPage() {
           lead={editingLead}
           onSubmitSuccess={handleLeadFormSubmit}
           currentUserId={currentUserId}
+          isAdmin={isAdmin}
         />
       )}
     </div>

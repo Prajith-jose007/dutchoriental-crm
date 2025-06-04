@@ -49,7 +49,8 @@ export function BookingsByAgentBarChart({ leads, allAgents, isLoading, error }: 
         bookings: bookingsCount,
       };
     }).filter(item => item.bookings > 0)
-      .sort((a,b) => b.bookings - a.bookings);
+      .sort((a,b) => b.bookings - a.bookings)
+      .slice(0, 10); // Take top 10 agents for better readability in vertical chart
   }, [leads, allAgents]);
 
   if (isLoading) {
@@ -57,7 +58,7 @@ export function BookingsByAgentBarChart({ leads, allAgents, isLoading, error }: 
         <Card>
             <CardHeader>
                 <CardTitle>Bookings by Agent</CardTitle>
-                <CardDescription>'Closed' leads by agent.</CardDescription>
+                <CardDescription>'Closed' leads by agent (Top 10).</CardDescription>
             </CardHeader>
             <CardContent className="h-[300px] space-y-3 py-2">
                 <Skeleton className="h-8 w-full" />
@@ -75,7 +76,7 @@ export function BookingsByAgentBarChart({ leads, allAgents, isLoading, error }: 
         <Card>
             <CardHeader>
                 <CardTitle>Bookings by Agent</CardTitle>
-                <CardDescription>'Closed' leads by agent.</CardDescription>
+                <CardDescription>'Closed' leads by agent (Top 10).</CardDescription>
             </CardHeader>
             <CardContent className="flex items-center justify-center h-[300px]">
                 <p className="text-destructive">Error loading booking data: {error}</p>
@@ -89,7 +90,7 @@ export function BookingsByAgentBarChart({ leads, allAgents, isLoading, error }: 
         <Card>
             <CardHeader>
                 <CardTitle>Bookings by Agent</CardTitle>
-                <CardDescription>'Closed' leads by agent.</CardDescription>
+                <CardDescription>'Closed' leads by agent (Top 10).</CardDescription>
             </CardHeader>
             <CardContent className="flex items-center justify-center h-[300px]">
                 <p className="text-muted-foreground">No 'Closed' booking data by agent for selected filters.</p>
@@ -102,7 +103,7 @@ export function BookingsByAgentBarChart({ leads, allAgents, isLoading, error }: 
     <Card>
       <CardHeader>
         <CardTitle>Bookings by Agent</CardTitle>
-        <CardDescription>'Closed' leads by agent.</CardDescription>
+        <CardDescription>'Closed' leads by agent (Top 10).</CardDescription>
       </CardHeader>
       <CardContent>
         <ChartContainer config={chartConfig} className="h-[300px] w-full">
@@ -110,18 +111,23 @@ export function BookingsByAgentBarChart({ leads, allAgents, isLoading, error }: 
             accessibilityLayer 
             data={chartData} 
             margin={{ top: 5, right: 20, left: -10, bottom: 5, }}
-            layout="vertical"
+            // layout="vertical" // Removed to make it vertical by default
           >
-            <CartesianGrid horizontal={false} strokeDasharray="3 3" />
-            <XAxis type="number" allowDecimals={false} />
-            <YAxis
-              dataKey="agentName"
+            <CartesianGrid vertical={false} strokeDasharray="3 3" />
+            <XAxis
+              dataKey="agentName" // Agent names on X-axis
               type="category"
               tickLine={false}
               tickMargin={10}
               axisLine={false}
-              width={100} 
-              interval={0} 
+              angle={-45} // Angle labels for better readability if many agents
+              textAnchor="end"
+              minTickGap={-5} // Adjust tick gap if labels overlap
+              height={60} // Increase height to accommodate angled labels
+            />
+            <YAxis 
+              type="number" 
+              allowDecimals={false} // Booking counts are whole numbers
             />
             <RechartsTooltip 
                 cursor={{ fill: 'hsl(var(--muted))' }} 
@@ -134,3 +140,4 @@ export function BookingsByAgentBarChart({ leads, allAgents, isLoading, error }: 
     </Card>
   );
 }
+

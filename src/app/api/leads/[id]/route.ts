@@ -83,6 +83,15 @@ export async function GET(
           console.warn(`[API GET /api/leads/${id}] Failed to parse package_quantities_json`, e);
         }
       }
+      
+      const parsedTotalAmount = parseFloat(dbLead.totalAmount);
+      const parsedCommissionPercentage = parseFloat(dbLead.commissionPercentage);
+      const parsedCommissionAmount = parseFloat(dbLead.commissionAmount);
+      const parsedNetAmount = parseFloat(dbLead.netAmount);
+      const parsedPaidAmount = parseFloat(dbLead.paidAmount);
+      const parsedBalanceAmount = parseFloat(dbLead.balanceAmount);
+      const parsedFreeGuestCount = parseInt(dbLead.freeGuestCount, 10);
+      const parsedPerTicketRate = dbLead.perTicketRate !== null && dbLead.perTicketRate !== undefined ? parseFloat(dbLead.perTicketRate) : undefined;
 
       const lead: Lead = {
         id: String(dbLead.id || ''),
@@ -98,15 +107,15 @@ export async function GET(
         modeOfPayment: (dbLead.modeOfPayment || 'Online') as ModeOfPayment,
 
         packageQuantities: packageQuantities,
-        freeGuestCount: Number(dbLead.freeGuestCount || 0),
-        perTicketRate: dbLead.perTicketRate !== null && dbLead.perTicketRate !== undefined ? parseFloat(dbLead.perTicketRate) : undefined,
+        freeGuestCount: isNaN(parsedFreeGuestCount) ? 0 : parsedFreeGuestCount,
+        perTicketRate: parsedPerTicketRate,
 
-        totalAmount: parseFloat(dbLead.totalAmount || 0),
-        commissionPercentage: parseFloat(dbLead.commissionPercentage || 0),
-        commissionAmount: parseFloat(dbLead.commissionAmount || 0),
-        netAmount: parseFloat(dbLead.netAmount || 0),
-        paidAmount: parseFloat(dbLead.paidAmount || 0),
-        balanceAmount: parseFloat(dbLead.balanceAmount || 0),
+        totalAmount: isNaN(parsedTotalAmount) ? 0 : parsedTotalAmount,
+        commissionPercentage: isNaN(parsedCommissionPercentage) ? 0 : parsedCommissionPercentage,
+        commissionAmount: isNaN(parsedCommissionAmount) ? 0 : parsedCommissionAmount,
+        netAmount: isNaN(parsedNetAmount) ? 0 : parsedNetAmount,
+        paidAmount: isNaN(parsedPaidAmount) ? 0 : parsedPaidAmount,
+        balanceAmount: isNaN(parsedBalanceAmount) ? 0 : parsedBalanceAmount,
 
         createdAt: dbLead.createdAt ? ensureISOFormat(dbLead.createdAt)! : formatISO(new Date()),
         updatedAt: dbLead.updatedAt ? ensureISOFormat(dbLead.updatedAt)! : formatISO(new Date()),
@@ -217,6 +226,16 @@ export async function PUT(
             if(Array.isArray(parsedPQs)) pq = parsedPQs;
         } catch(e){ console.warn("Error parsing PQ_JSON on fetch after update for lead:", dbLead.id, e);}
     }
+
+    const parsedTotalAmount = parseFloat(dbLead.totalAmount);
+    const parsedCommissionPercentage = parseFloat(dbLead.commissionPercentage);
+    const parsedCommissionAmount = parseFloat(dbLead.commissionAmount);
+    const parsedNetAmount = parseFloat(dbLead.netAmount);
+    const parsedPaidAmount = parseFloat(dbLead.paidAmount);
+    const parsedBalanceAmount = parseFloat(dbLead.balanceAmount);
+    const parsedFreeGuestCount = parseInt(dbLead.freeGuestCount, 10);
+    const parsedPerTicketRate = dbLead.perTicketRate !== null && dbLead.perTicketRate !== undefined ? parseFloat(dbLead.perTicketRate) : undefined;
+
     const finalUpdatedLead: Lead = {
         id: String(dbLead.id || ''), clientName: String(dbLead.clientName || ''), agent: String(dbLead.agent || ''), yacht: String(dbLead.yacht || ''),
         status: (dbLead.status || 'Active') as LeadStatus,
@@ -225,11 +244,14 @@ export async function PUT(
         transactionId: dbLead.transactionId || undefined,
         modeOfPayment: (dbLead.modeOfPayment || 'Online') as ModeOfPayment,
         packageQuantities: pq,
-        freeGuestCount: Number(dbLead.freeGuestCount || 0),
-        perTicketRate: dbLead.perTicketRate !== null && dbLead.perTicketRate !== undefined ? parseFloat(dbLead.perTicketRate) : undefined,
-        totalAmount: parseFloat(dbLead.totalAmount || 0), commissionPercentage: parseFloat(dbLead.commissionPercentage || 0),
-        commissionAmount: parseFloat(dbLead.commissionAmount || 0), netAmount: parseFloat(dbLead.netAmount || 0),
-        paidAmount: parseFloat(dbLead.paidAmount || 0), balanceAmount: parseFloat(dbLead.balanceAmount || 0),
+        freeGuestCount: isNaN(parsedFreeGuestCount) ? 0 : parsedFreeGuestCount,
+        perTicketRate: parsedPerTicketRate,
+        totalAmount: isNaN(parsedTotalAmount) ? 0 : parsedTotalAmount, 
+        commissionPercentage: isNaN(parsedCommissionPercentage) ? 0 : parsedCommissionPercentage,
+        commissionAmount: isNaN(parsedCommissionAmount) ? 0 : parsedCommissionAmount, 
+        netAmount: isNaN(parsedNetAmount) ? 0 : parsedNetAmount,
+        paidAmount: isNaN(parsedPaidAmount) ? 0 : parsedPaidAmount, 
+        balanceAmount: isNaN(parsedBalanceAmount) ? 0 : parsedBalanceAmount,
         createdAt: dbLead.createdAt ? ensureISOFormat(dbLead.createdAt)! : formatISO(new Date()),
         updatedAt: dbLead.updatedAt ? ensureISOFormat(dbLead.updatedAt)! : formatISO(new Date()),
         lastModifiedByUserId: dbLead.lastModifiedByUserId || undefined, ownerUserId: dbLead.ownerUserId || undefined,
@@ -271,17 +293,11 @@ export async function DELETE(
       console.warn(`[API DELETE /api/leads/${id}] Permission denied. User ${requestingUserId} (Role: ${requestingUserRole}) attempted to delete a Closed lead.`);
       return NextResponse.json({ message: 'Permission denied: Closed leads cannot be deleted by non-administrators.' }, { status: 403 });
     }
-    // If it's not a closed lead, or if the user is an admin, they can proceed with delete.
-    // (Ownership check for non-closed leads by non-admins is not implemented here, assuming only admins can delete as per previous logic for bulk delete)
-    // For individual delete, if non-admins should only delete their own non-closed leads, add an ownerUserId check here too.
-    // Current logic: Admins can delete anything. Non-admins can only delete non-closed leads.
-
 
     const result: any = await query('DELETE FROM leads WHERE id = ?', [id]);
     console.log(`[API DELETE /api/leads/${id}] DB Delete Result:`, result);
 
     if (result.affectedRows === 0) {
-      // This might happen if the lead was deleted by another process between the check and the delete query
       console.warn(`[API DELETE /api/leads/${id}] Lead ID ${id} found in initial check but deletion affected 0 rows.`);
       return NextResponse.json({ message: 'Lead not found or already deleted' }, { status: 404 });
     }

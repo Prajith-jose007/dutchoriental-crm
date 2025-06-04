@@ -3,7 +3,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import type { Lead, LeadStatus, ModeOfPayment, LeadType, LeadPackageQuantity, PaymentConfirmationStatus } from '@/lib/types';
 import { query } from '@/lib/db';
-import { format, formatISO, parseISO, isValid } from 'date-fns';
+import { format, formatISO, parseISO, isValid, getYear as getFullYear } from 'date-fns';
 
 const ensureISOFormat = (dateString?: string | Date): string | null => {
   if (!dateString) return null;
@@ -60,6 +60,16 @@ export async function GET(request: NextRequest) {
         }
       }
 
+      const parsedTotalAmount = parseFloat(dbLead.totalAmount);
+      const parsedCommissionPercentage = parseFloat(dbLead.commissionPercentage);
+      const parsedCommissionAmount = parseFloat(dbLead.commissionAmount);
+      const parsedNetAmount = parseFloat(dbLead.netAmount);
+      const parsedPaidAmount = parseFloat(dbLead.paidAmount);
+      const parsedBalanceAmount = parseFloat(dbLead.balanceAmount);
+      const parsedFreeGuestCount = parseInt(dbLead.freeGuestCount, 10);
+      const parsedPerTicketRate = dbLead.perTicketRate !== null && dbLead.perTicketRate !== undefined ? parseFloat(dbLead.perTicketRate) : undefined;
+
+
       const leadTyped: Lead = {
         id: String(dbLead.id || ''),
         clientName: String(dbLead.clientName || ''),
@@ -74,15 +84,15 @@ export async function GET(request: NextRequest) {
         modeOfPayment: (dbLead.modeOfPayment || 'Online') as ModeOfPayment,
 
         packageQuantities: packageQuantities,
-        freeGuestCount: Number(dbLead.freeGuestCount || 0),
-        perTicketRate: dbLead.perTicketRate !== null && dbLead.perTicketRate !== undefined ? parseFloat(dbLead.perTicketRate) : undefined,
+        freeGuestCount: isNaN(parsedFreeGuestCount) ? 0 : parsedFreeGuestCount,
+        perTicketRate: parsedPerTicketRate,
 
-        totalAmount: parseFloat(dbLead.totalAmount || 0),
-        commissionPercentage: parseFloat(dbLead.commissionPercentage || 0),
-        commissionAmount: parseFloat(dbLead.commissionAmount || 0),
-        netAmount: parseFloat(dbLead.netAmount || 0),
-        paidAmount: parseFloat(dbLead.paidAmount || 0),
-        balanceAmount: parseFloat(dbLead.balanceAmount || 0),
+        totalAmount: isNaN(parsedTotalAmount) ? 0 : parsedTotalAmount,
+        commissionPercentage: isNaN(parsedCommissionPercentage) ? 0 : parsedCommissionPercentage,
+        commissionAmount: isNaN(parsedCommissionAmount) ? 0 : parsedCommissionAmount,
+        netAmount: isNaN(parsedNetAmount) ? 0 : parsedNetAmount,
+        paidAmount: isNaN(parsedPaidAmount) ? 0 : parsedPaidAmount,
+        balanceAmount: isNaN(parsedBalanceAmount) ? 0 : parsedBalanceAmount,
 
         createdAt: dbLead.createdAt ? ensureISOFormat(dbLead.createdAt)! : formatISO(new Date()),
         updatedAt: dbLead.updatedAt ? ensureISOFormat(dbLead.updatedAt)! : formatISO(new Date()),
@@ -103,6 +113,23 @@ export async function GET(request: NextRequest) {
     }
     return NextResponse.json({ message: 'Failed to fetch leads', errorDetails: errorMessage }, { status: 500 });
   }
+}
+
+function generateNewLeadTransactionId(existingLeads: Lead[], forYear: number, currentMaxForYearInBatch: number = 0): string {
+  const prefix = `TRN-${forYear}`;
+  let maxNumber = currentMaxForYearInBatch;
+
+  existingLeads.forEach(lead => {
+    if (lead.transactionId && lead.transactionId.startsWith(prefix)) {
+      const numPartStr = lead.transactionId.substring(prefix.length);
+      const numPart = parseInt(numPartStr, 10);
+      if (!isNaN(numPart) && numPart > maxNumber) {
+        maxNumber = numPart;
+      }
+    }
+  });
+  const nextNumber = maxNumber + 1;
+  return `${prefix}${String(nextNumber).padStart(5, '0')}`;
 }
 
 export async function POST(request: NextRequest) {
@@ -139,9 +166,13 @@ export async function POST(request: NextRequest) {
 
     const packageQuantitiesJson = newLeadData.packageQuantities ? JSON.stringify(newLeadData.packageQuantities) : null;
 
-    const finalTransactionId = newLeadData.transactionId && String(newLeadData.transactionId).trim() !== "" && newLeadData.transactionId !== "Pending Generation"
-      ? newLeadData.transactionId
-      : `TRN-${format(new Date(), 'yyyyMMddHHmmssSSS')}`;
+    let finalTransactionId = newLeadData.transactionId;
+    if (!finalTransactionId || String(finalTransactionId).trim() === "" || finalTransactionId === "Pending Generation") {
+      const leadYear = newLeadData.month ? getFullYear(parseISO(newLeadData.month)) : new Date().getFullYear();
+      const allCurrentLeads: any[] = await query('SELECT transactionId FROM leads WHERE transactionId LIKE ?', [`TRN-${leadYear}%`]);
+      const existingTransactionIdsForYear = allCurrentLeads.map(l => l.transactionId);
+      finalTransactionId = generateNewLeadTransactionId(existingTransactionIdsForYear.map(tid => ({transactionId: tid} as Lead)), leadYear);
+    }
 
 
     const leadToStore = {
@@ -210,6 +241,15 @@ export async function POST(request: NextRequest) {
               if(Array.isArray(parsedPQs)) pq = parsedPQs;
             } catch(e){ console.warn("Error parsing PQ_JSON on fetch after insert for lead:", dbLead.id, e);}
         }
+        const parsedTotalAmount = parseFloat(dbLead.totalAmount);
+        const parsedCommissionPercentage = parseFloat(dbLead.commissionPercentage);
+        const parsedCommissionAmount = parseFloat(dbLead.commissionAmount);
+        const parsedNetAmount = parseFloat(dbLead.netAmount);
+        const parsedPaidAmount = parseFloat(dbLead.paidAmount);
+        const parsedBalanceAmount = parseFloat(dbLead.balanceAmount);
+        const parsedFreeGuestCount = parseInt(dbLead.freeGuestCount, 10);
+        const parsedPerTicketRate = dbLead.perTicketRate !== null && dbLead.perTicketRate !== undefined ? parseFloat(dbLead.perTicketRate) : undefined;
+
         const finalLead: Lead = {
             id: String(dbLead.id || ''), clientName: String(dbLead.clientName || ''), agent: String(dbLead.agent || ''), yacht: String(dbLead.yacht || ''),
             status: (dbLead.status || 'Active') as LeadStatus,
@@ -219,14 +259,14 @@ export async function POST(request: NextRequest) {
             transactionId: dbLead.transactionId || undefined,
             modeOfPayment: (dbLead.modeOfPayment || 'Online') as ModeOfPayment,
             packageQuantities: pq,
-            freeGuestCount: Number(dbLead.freeGuestCount || 0),
-            perTicketRate: dbLead.perTicketRate !== null && dbLead.perTicketRate !== undefined ? parseFloat(dbLead.perTicketRate) : undefined,
-            totalAmount: parseFloat(dbLead.totalAmount || 0),
-            commissionPercentage: parseFloat(dbLead.commissionPercentage || 0),
-            commissionAmount: parseFloat(dbLead.commissionAmount || 0),
-            netAmount: parseFloat(dbLead.netAmount || 0),
-            paidAmount: parseFloat(dbLead.paidAmount || 0),
-            balanceAmount: parseFloat(dbLead.balanceAmount || 0),
+            freeGuestCount: isNaN(parsedFreeGuestCount) ? 0 : parsedFreeGuestCount,
+            perTicketRate: parsedPerTicketRate,
+            totalAmount: isNaN(parsedTotalAmount) ? 0 : parsedTotalAmount,
+            commissionPercentage: isNaN(parsedCommissionPercentage) ? 0 : parsedCommissionPercentage,
+            commissionAmount: isNaN(parsedCommissionAmount) ? 0 : parsedCommissionAmount,
+            netAmount: isNaN(parsedNetAmount) ? 0 : parsedNetAmount,
+            paidAmount: isNaN(parsedPaidAmount) ? 0 : parsedPaidAmount,
+            balanceAmount: isNaN(parsedBalanceAmount) ? 0 : parsedBalanceAmount,
             createdAt: dbLead.createdAt ? ensureISOFormat(dbLead.createdAt)! : formatISO(new Date()),
             updatedAt: dbLead.updatedAt ? ensureISOFormat(dbLead.updatedAt)! : formatISO(new Date()),
             lastModifiedByUserId: dbLead.lastModifiedByUserId || undefined,
@@ -282,7 +322,7 @@ export async function PATCH(request: NextRequest) {
         let canUpdate = false;
         if (requestingUserRole === 'admin') {
           canUpdate = true;
-        } else { // Non-admin
+        } else { 
           if (leadToUpdate.ownerUserId === requestingUserId) {
             if (leadToUpdate.status === 'Closed') {
                console.warn(`[API PATCH /api/leads] Non-admin user ${requestingUserId} attempted to change status of Closed lead ${id}. Denied.`);

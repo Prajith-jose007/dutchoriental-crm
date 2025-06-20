@@ -138,14 +138,15 @@ export const placeholderLeads: Lead[] = [
     packageQuantities: [
       { packageId: 'lr-adult', packageName: 'ADULT', quantity: 50, rate: 250 },
       { packageId: 'lr-ad-alc', packageName: 'ADULT ALC', quantity: 30, rate: 350 },
+      { packageId: 'lr-vip-alc', packageName: 'VIP ALC', quantity: 2, rate: 499 } // Corrected packageId from lr-vip-ad-alc
     ],
     freeGuestCount: 5,
     perTicketRate: 100,
-    totalAmount: (50 * 250) + (30 * 350) + 100,
+    totalAmount: (50 * 250) + (30 * 350) + (2 * 499) + 100, // Recalculate totalAmount based on corrected package
     commissionPercentage: 10,
-    commissionAmount: 2310,
-    netAmount: 20790,
-    paidAmount: 20790,
+    commissionAmount: 2409.80, // Recalculated: ((50 * 250) + (30 * 350) + (2*499) + 100) * 0.10
+    netAmount: 21688.20, // Recalculated
+    paidAmount: 21688.20, // Assuming fully paid
     balanceAmount: 0,
     createdAt: formatISO(subDays(today, 30)),
     updatedAt: formatISO(subDays(today, 15)),
@@ -157,7 +158,7 @@ export const placeholderLeads: Lead[] = [
     clientName: 'Sunset Tours R Us',
     agent: 'DO-002',
     yacht: 'DO-yacht-super',
-    status: 'Balance', 
+    status: 'Balance',
     month: formatISO(parseISO(`${currentYear}-07-25T18:30:00`)),
     notes: 'Prospective client for regular sightseeing tours. Payment pending.',
     type: 'Superyacht Sightseeing Cruise',
@@ -185,7 +186,7 @@ export const placeholderLeads: Lead[] = [
     clientName: 'Private Celebration Planners',
     agent: 'DO-001',
     yacht: 'DO-yacht-private1',
-    status: 'Upcoming', 
+    status: 'Upcoming',
     month: formatISO(parseISO(`${currentYear}-08-10T16:00:00`)),
     notes: 'Birthday party, deposit paid. Awaiting event.',
     type: 'Private Cruise',

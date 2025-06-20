@@ -22,42 +22,41 @@ export function AppShell({ children }: AppShellProps) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
-    // This effect runs once on component mount to determine initial auth state
     let authStatus = false;
     try {
       authStatus = !!localStorage.getItem(USER_ROLE_STORAGE_KEY);
     } catch (e) {
       console.error("Error accessing localStorage in AppShell for auth check:", e);
-      // authStatus remains false, which is the safe default
-    }
-    setIsAuthenticated(authStatus);
-    setIsAuthLoading(false); // Auth check complete
-  }, []);
-
-  useEffect(() => {
-    // This effect handles redirection based on auth state and current path
-    if (isAuthLoading) {
-      return; // Don't do anything until the initial auth check is complete
+      // authStatus remains false, which is a safe default (prompts login)
     }
 
-    if (isAuthenticated) {
+    setIsAuthenticated(authStatus); // Set auth state based on localStorage
+
+    if (authStatus) { // User is authenticated
       if (pathname === '/login') {
-        // If authenticated and on login page, redirect to dashboard
+        // Authenticated but on login page, redirect.
+        // isAuthLoading remains true until the redirect effectively changes the pathname,
+        // causing this effect to re-run for the new path.
         router.replace('/dashboard');
+      } else {
+        // Authenticated and on a protected page. Stop loading.
+        setIsAuthLoading(false);
       }
-      // If authenticated and not on login, allow rendering (handled below)
-    } else {
-      // Not authenticated
+    } else { // User is NOT authenticated
       if (pathname !== '/login') {
-        // If not authenticated and not on login page, redirect to login
+        // Not authenticated and on a protected page, redirect.
+        // isAuthLoading remains true until redirect.
         router.replace('/login');
+      } else {
+        // Not authenticated and on login page. Stop loading.
+        setIsAuthLoading(false);
       }
-      // If not authenticated and on login page, allow rendering (handled below)
     }
-  }, [isAuthLoading, isAuthenticated, pathname, router]);
+  }, [pathname, router]);
 
   if (isAuthLoading) {
     // Show a full-page skeleton or loading indicator while checking auth
+    // or while a redirect is pending.
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4 bg-background">
         <Skeleton className="h-16 w-48 mb-6" /> {/* Logo placeholder */}
@@ -70,30 +69,11 @@ export function AppShell({ children }: AppShellProps) {
     );
   }
 
-  if (!isAuthenticated && pathname !== '/login') {
-    // User is not authenticated and is trying to access a protected page.
-    // The useEffect above should have initiated a redirect.
-    // Render a minimal loading state or null to prevent flashing protected content.
-    return (
-        <div className="flex flex-col items-center justify-center min-h-screen p-4 bg-background">
-            <p className="text-muted-foreground">Redirecting to login...</p>
-        </div>
-    );
-  }
+  // At this point, isAuthLoading is false.
+  // The correct page content (or login page) should be rendered.
 
-  if (isAuthenticated && pathname === '/login') {
-    // User is authenticated but somehow on the login page.
-    // The useEffect above should have initiated a redirect.
-    // Render a minimal loading state or null.
-     return (
-        <div className="flex flex-col items-center justify-center min-h-screen p-4 bg-background">
-            <p className="text-muted-foreground">Redirecting to dashboard...</p>
-        </div>
-    );
-  }
-
-  // Render the shell for authenticated users on protected pages
   if (isAuthenticated && pathname !== '/login') {
+    // Authenticated user on a protected page
     return (
       <SidebarProvider defaultOpen={true}>
         <SidebarNav />
@@ -107,12 +87,24 @@ export function AppShell({ children }: AppShellProps) {
     );
   }
 
-  // Render children directly if it's the login page and user is not (yet) authenticated
-  // or if it's a page that doesn't require the AppShell (though currently all non-login pages do)
-  if (pathname === '/login') {
+  if (!isAuthenticated && pathname === '/login') {
+    // Unauthenticated user on the login page
     return <>{children}</>;
   }
+  
+  // Fallback for transient states during redirects.
+  // This helps prevent rendering errors if states are briefly inconsistent.
+  // Typically, if a redirect was initiated, the skeleton (due to isAuthLoading=true)
+  // would have been shown until the route change.
+  // If isAuthLoading is false, and we hit this, it's likely a very brief moment.
+  if ((isAuthenticated && pathname === '/login') || (!isAuthenticated && pathname !== '/login')) {
+    return (
+        <div className="flex flex-col items-center justify-center min-h-screen p-4 bg-background">
+            <p className="text-muted-foreground">Loading...</p>
+        </div>
+    );
+  }
 
-  // Fallback, should ideally not be reached if logic is correct
+  // Should not be reached if logic is sound, but provides a graceful fallback.
   return null;
 }

@@ -49,7 +49,7 @@ export async function GET(request: NextRequest) {
           const parsedPQs = JSON.parse(dbLead.package_quantities_json);
           if (Array.isArray(parsedPQs)) {
             packageQuantities = parsedPQs.map((pq: any) => ({
-              packageId: String(pq.packageId || ''),
+              packageId: String(pq.packageId || pq.packageld || ''), // Check for packageld as fallback
               packageName: String(pq.packageName || 'Unknown Package'),
               quantity: Number(pq.quantity || 0),
               rate: Number(pq.rate || 0),
@@ -121,7 +121,7 @@ function generateNewLeadTransactionId(existingLeads: Lead[], forYear: number, cu
 
   existingLeads.forEach(lead => {
     if (lead.transactionId && lead.transactionId.startsWith(prefix)) {
-      const numPartStr = lead.transactionId.substring(prefix.length);
+      const numPartStr = lead.transactionId.substring(prefix.length); 
       const numPart = parseInt(numPartStr, 10);
       if (!isNaN(numPart) && numPart > maxNumber) {
         maxNumber = numPart;
@@ -238,7 +238,12 @@ export async function POST(request: NextRequest) {
         if(dbLead.package_quantities_json && typeof dbLead.package_quantities_json === 'string') {
             try {
               const parsedPQs = JSON.parse(dbLead.package_quantities_json);
-              if(Array.isArray(parsedPQs)) pq = parsedPQs;
+              if(Array.isArray(parsedPQs)) pq = parsedPQs.map((item: any) => ({
+                packageId: String(item.packageId || item.packageld || ''), // Check for packageld
+                packageName: String(item.packageName || 'Unknown Package'),
+                quantity: Number(item.quantity || 0),
+                rate: Number(item.rate || 0),
+              }));
             } catch(e){ console.warn("Error parsing PQ_JSON on fetch after insert for lead:", dbLead.id, e);}
         }
         const parsedTotalAmount = parseFloat(dbLead.totalAmount);

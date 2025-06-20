@@ -73,7 +73,7 @@ export async function GET(
           const parsedPQs = JSON.parse(dbLead.package_quantities_json);
            if (Array.isArray(parsedPQs)) {
             packageQuantities = parsedPQs.map((pq: any) => ({
-              packageId: String(pq.packageId || ''),
+              packageId: String(pq.packageId || pq.packageld || ''), // Check for packageld as fallback
               packageName: String(pq.packageName || 'Unknown Package'),
               quantity: Number(pq.quantity || 0),
               rate: Number(pq.rate || 0),
@@ -223,7 +223,12 @@ export async function PUT(
     if(dbLead.package_quantities_json && typeof dbLead.package_quantities_json === 'string') {
         try {
             const parsedPQs = JSON.parse(dbLead.package_quantities_json);
-            if(Array.isArray(parsedPQs)) pq = parsedPQs;
+            if(Array.isArray(parsedPQs)) pq = parsedPQs.map((item: any) => ({
+                packageId: String(item.packageId || item.packageld || ''), // Check for packageld
+                packageName: String(item.packageName || 'Unknown Package'),
+                quantity: Number(item.quantity || 0),
+                rate: Number(item.rate || 0),
+              }));
         } catch(e){ console.warn("Error parsing PQ_JSON on fetch after update for lead:", dbLead.id, e);}
     }
 

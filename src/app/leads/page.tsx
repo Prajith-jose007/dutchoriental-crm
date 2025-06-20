@@ -95,7 +95,7 @@ const convertCsvValue = (
       const parsedJson = JSON.parse(trimmedValue);
       if (Array.isArray(parsedJson)) {
         return parsedJson.map(pq => ({
-          packageId: String(pq.packageId || ''),
+          packageId: String(pq.packageId || pq.packageld || ''), // Handle packageld typo
           packageName: String(pq.packageName || 'Unknown CSV Pkg'),
           quantity: Number(pq.quantity || 0),
           rate: Number(pq.rate || 0),
@@ -1005,12 +1005,7 @@ export default function LeadsPage() {
 
     const finalCsvHeaders = dynamicColumns
       .filter(col => col.accessorKey !== 'select' && col.accessorKey !== 'actions')
-      .map(col => {
-          if (col.isPackageColumn && col.actualPackageName) {
-             return col.header;
-          }
-          return col.header;
-      });
+      .map(col => col.header);
 
 
     const escapeCsvCell = (cellData: any): string => {
@@ -1055,16 +1050,17 @@ export default function LeadsPage() {
             if (col.isJsonDetails) {
                 cellValue = lead.packageQuantities ? JSON.stringify(lead.packageQuantities) : '[]';
             }
-            else if (col.isPackageColumn && col.actualPackageName) {
+            else if (col.isPackageQuantityColumn && col.actualPackageName) {
+              const pkgQuantityItem = lead.packageQuantities?.find(pq => pq.packageName === col.actualPackageName);
+              const quantity = pkgQuantityItem?.quantity;
+              cellValue = (quantity !== undefined && quantity > 0) ? String(quantity) : '';
+            } else if (col.isPackageRateColumn && col.actualPackageName) {
               const pkgQuantityItem = lead.packageQuantities?.find(pq => pq.packageName === col.actualPackageName);
               const quantity = pkgQuantityItem?.quantity;
               const rate = pkgQuantityItem?.rate;
-              if (quantity !== undefined && quantity > 0 && rate !== undefined) {
-                cellValue = `${quantity} @ ${rate.toFixed(2)}`;
-              } else {
-                cellValue = '';
-              }
-            } else if (col.accessorKey === 'totalGuestsCalculated') {
+              cellValue = (quantity !== undefined && quantity > 0 && rate !== undefined) ? rate.toFixed(2) : '';
+            }
+            else if (col.accessorKey === 'totalGuestsCalculated') {
               cellValue = calculateTotalGuestsFromPackageQuantities(lead);
             } else if (col.isAgentLookup) {
               cellValue = agentMap[lead.agent as string] || lead.agent;
@@ -1090,8 +1086,8 @@ export default function LeadsPage() {
               cellValue = lead[col.accessorKey as keyof Lead];
             }
 
-            if ( (col.isPackageColumn || col.accessorKey === 'totalGuestsCalculated' || col.accessorKey === 'freeGuestCount') &&
-                 (cellValue === 0 || cellValue === undefined || cellValue === null) ) {
+            if ( (col.isPackageQuantityColumn || col.isPackageRateColumn || col.accessorKey === 'totalGuestsCalculated' || col.accessorKey === 'freeGuestCount') &&
+                 (cellValue === 0 || cellValue === undefined || cellValue === null || cellValue === '') ) { // Also check for empty string from render
                 return '';
             }
             if (col.accessorKey === 'perTicketRate' && (cellValue === null || cellValue === undefined)) {

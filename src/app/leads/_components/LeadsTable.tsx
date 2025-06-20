@@ -38,7 +38,8 @@ export type LeadTableColumn = {
   isUserLookup?: boolean;
   isAgentLookup?: boolean;
   isYachtLookup?: boolean;
-  isPackageColumn?: boolean;
+  isPackageQuantityColumn?: boolean; // New
+  isPackageRateColumn?: boolean;   // New
   actualPackageName?: string;
   yachtCategory?: string;
   isJsonDetails?: boolean;
@@ -55,7 +56,7 @@ export const packageHeaderMap: { [fullPackageName: string]: string } = {
   'VIP ALC': 'VIP ALC',
   'ROYAL CHILD': 'RYL CH',
   'ROYAL ADULT': 'RYL AD',
-  'ROYAL ALC': 'ROYAL ALC',
+  'ROYAL ALC': 'RYL ALC',
   'BASIC': 'BASIC',
   'STANDARD': 'STD',
   'PREMIUM': 'PREM',
@@ -83,6 +84,30 @@ export const generateLeadColumns = (allYachts: Yacht[]): LeadTableColumn[] => {
   ];
   columns.push(...baseInfoColumns);
 
+  const addPackageColumns = (pkgDef: { actualPackageName: string; category: string }) => {
+    if (allYachts.some(y => y.category === pkgDef.category && y.packages?.some(p => p.name === pkgDef.actualPackageName))) {
+      const shortHeader = packageHeaderMap[pkgDef.actualPackageName] || pkgDef.actualPackageName;
+      const baseAccessorKey = pkgDef.actualPackageName.replace(/\s+/g, '_').toLowerCase();
+
+      columns.push({
+        header: `${shortHeader} Qty`,
+        accessorKey: `pkgqty_${baseAccessorKey}`,
+        isPackageQuantityColumn: true,
+        actualPackageName: pkgDef.actualPackageName,
+        isNumeric: true,
+        yachtCategory: pkgDef.category,
+      });
+      columns.push({
+        header: `${shortHeader} Rate`,
+        accessorKey: `pkgrate_${baseAccessorKey}`,
+        isPackageRateColumn: true,
+        actualPackageName: pkgDef.actualPackageName,
+        isCurrency: true,
+        yachtCategory: pkgDef.category,
+      });
+    }
+  };
+
   const dinnerCruisePackageDefinitions = [
     { actualPackageName: 'CHILD', category: 'Dinner Cruise' }, { actualPackageName: 'ADULT', category: 'Dinner Cruise' },
     { actualPackageName: 'CHILD TOP DECK', category: 'Dinner Cruise' }, { actualPackageName: 'ADULT TOP DECK', category: 'Dinner Cruise' },
@@ -92,42 +117,18 @@ export const generateLeadColumns = (allYachts: Yacht[]): LeadTableColumn[] => {
     { actualPackageName: 'ROYAL CHILD', category: 'Dinner Cruise' }, { actualPackageName: 'ROYAL ADULT', category: 'Dinner Cruise' },
     { actualPackageName: 'ROYAL ALC', category: 'Dinner Cruise' }
   ];
-  dinnerCruisePackageDefinitions.forEach(pkgDef => {
-    if (allYachts.some(y => y.category === pkgDef.category && y.packages?.some(p => p.name === pkgDef.actualPackageName))) {
-      columns.push({
-        header: packageHeaderMap[pkgDef.actualPackageName] || pkgDef.actualPackageName,
-        accessorKey: `pkgqty_${pkgDef.actualPackageName.replace(/\s+/g, '_').toLowerCase()}`,
-        isPackageColumn: true, actualPackageName: pkgDef.actualPackageName, isNumeric: true, yachtCategory: pkgDef.category,
-      });
-    }
-  });
+  dinnerCruisePackageDefinitions.forEach(addPackageColumns);
 
   const sightseeingPackageDefinitions = [
     { actualPackageName: 'BASIC', category: 'Superyacht Sightseeing Cruise' }, { actualPackageName: 'STANDARD', category: 'Superyacht Sightseeing Cruise' },
     { actualPackageName: 'PREMIUM', category: 'Superyacht Sightseeing Cruise' }, { actualPackageName: 'VIP', category: 'Superyacht Sightseeing Cruise' }
   ];
-  sightseeingPackageDefinitions.forEach(pkgDef => {
-    if (allYachts.some(y => y.category === pkgDef.category && y.packages?.some(p => p.name === pkgDef.actualPackageName))) {
-      columns.push({
-        header: packageHeaderMap[pkgDef.actualPackageName] || pkgDef.actualPackageName,
-        accessorKey: `pkgqty_${pkgDef.actualPackageName.replace(/\s+/g, '_').toLowerCase()}`,
-        isPackageColumn: true, actualPackageName: pkgDef.actualPackageName, isNumeric: true, yachtCategory: pkgDef.category,
-      });
-    }
-  });
+  sightseeingPackageDefinitions.forEach(addPackageColumns);
 
   const privateCharterPackageDefinitions = [
     { actualPackageName: 'HOUR CHARTER', category: 'Private Cruise' }
   ];
-  privateCharterPackageDefinitions.forEach(pkgDef => {
-    if (allYachts.some(y => y.category === pkgDef.category && y.packages?.some(p => p.name === pkgDef.actualPackageName))) {
-      columns.push({
-        header: packageHeaderMap[pkgDef.actualPackageName] || pkgDef.actualPackageName,
-        accessorKey: `pkgqty_${pkgDef.actualPackageName.replace(/\s+/g, '_').toLowerCase()}`,
-        isPackageColumn: true, actualPackageName: pkgDef.actualPackageName, isNumeric: true, yachtCategory: pkgDef.category,
-      });
-    }
-  });
+  privateCharterPackageDefinitions.forEach(addPackageColumns);
 
   const explicitPackageNames = new Set([
     ...dinnerCruisePackageDefinitions.map(p => p.actualPackageName),
@@ -145,12 +146,9 @@ export const generateLeadColumns = (allYachts: Yacht[]): LeadTableColumn[] => {
     });
   });
   otherPackagesFound.forEach((pkgDetails, pkgName) => {
-     columns.push({
-        header: packageHeaderMap[pkgName] || pkgName,
-        accessorKey: `pkgqty_${pkgName.replace(/\s+/g, '_').toLowerCase()}`,
-        isPackageColumn: true, actualPackageName: pkgName, isNumeric: true, yachtCategory: pkgDetails.category,
-      });
+     addPackageColumns({ actualPackageName: pkgName, category: pkgDetails.category || 'Unknown' });
   });
+
 
   const accountsColumns: LeadTableColumn[] = [
     { accessorKey: 'perTicketRate', header: 'OTHER', isCurrency: true },
@@ -274,19 +272,20 @@ export function LeadsTable({
   };
 
   const renderCellContent = (lead: Lead, column: LeadTableColumn) => {
-    if (column.isPackageColumn && column.actualPackageName) {
+    if (column.isPackageQuantityColumn && column.actualPackageName) {
+      const pkgQuantityItem = lead.packageQuantities?.find(pq => pq.packageName === column.actualPackageName);
+      const quantity = pkgQuantityItem?.quantity;
+      return (quantity !== undefined && quantity > 0) ? String(quantity) : '-';
+    }
+    if (column.isPackageRateColumn && column.actualPackageName) {
       const pkgQuantityItem = lead.packageQuantities?.find(pq => pq.packageName === column.actualPackageName);
       const quantity = pkgQuantityItem?.quantity;
       const rate = pkgQuantityItem?.rate;
-      if (quantity !== undefined && quantity > 0 && rate !== undefined) {
-        return `${quantity} @ ${formatCurrency(rate)}`;
-      }
-      return '-';
+      return (quantity !== undefined && quantity > 0 && rate !== undefined) ? formatCurrency(rate) : '-';
     }
     if (column.isJsonDetails) {
         return lead.packageQuantities ? JSON.stringify(lead.packageQuantities) : '[]';
     }
-
 
     const value = lead[column.accessorKey as keyof Lead];
 
@@ -334,7 +333,7 @@ export function LeadsTable({
     if (column.isPercentage) {
       return formatPercentage(value as number | undefined);
     }
-    if (column.isNumeric && column.accessorKey !== 'totalGuestsCalculated' && column.accessorKey !== 'freeGuestCount' && !column.isPackageColumn) {
+    if (column.isNumeric && column.accessorKey !== 'totalGuestsCalculated' && column.accessorKey !== 'freeGuestCount' && !column.isPackageQuantityColumn && !column.isPackageRateColumn) {
       return (value !== null && value !== undefined && !isNaN(Number(value))) ? String(value) : '-';
     }
     if (column.isNotes) {

@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo } from 'react';
@@ -38,8 +37,7 @@ export type LeadTableColumn = {
   isUserLookup?: boolean;
   isAgentLookup?: boolean;
   isYachtLookup?: boolean;
-  isPackageQuantityColumn?: boolean; // For package quantities
-  // isPackageRateColumn removed
+  isPackageQuantityColumn?: boolean;
   actualPackageName?: string;
   yachtCategory?: string;
   isJsonDetails?: boolean;
@@ -97,7 +95,6 @@ export const generateLeadColumns = (allYachts: Yacht[]): LeadTableColumn[] => {
         isNumeric: true,
         yachtCategory: pkgDef.category,
       });
-      // Removed individual package rate column generation
     }
   };
 
@@ -144,8 +141,8 @@ export const generateLeadColumns = (allYachts: Yacht[]): LeadTableColumn[] => {
 
 
   const accountsColumns: LeadTableColumn[] = [
-    { accessorKey: 'perTicketRate', header: 'OTHER', isCurrency: true }, // This is the general rate column
     { accessorKey: 'totalGuestsCalculated', header: 'Total Count', isNumeric: true },
+    { accessorKey: 'perTicketRate', header: 'Rate/Head', isCurrency: true }, // Changed header
     { accessorKey: 'totalAmount', header: 'Total Amt', isCurrency: true },
     { accessorKey: 'commissionPercentage', header: 'Discount %', isPercentage: true },
     { accessorKey: 'commissionAmount', header: 'Commission', isCurrency: true },
@@ -270,7 +267,6 @@ export function LeadsTable({
       const quantity = pkgQuantityItem?.quantity;
       return (quantity !== undefined && quantity > 0) ? String(quantity) : '-';
     }
-    // Removed rendering for individual package rates as those columns are no longer generated
     
     if (column.isJsonDetails) {
         return lead.packageQuantities ? JSON.stringify(lead.packageQuantities) : '[]';
@@ -344,7 +340,7 @@ export function LeadsTable({
         <TableHeader>
           <TableRow>
             {leadColumns
-              .filter(col => !col.isJsonDetails) // Don't render the JSON details column header
+              .filter(col => !col.isJsonDetails) 
               .map(col => (
               <TableHead key={col.accessorKey} className={col.accessorKey === 'select' ? "w-[40px]" : ""}>
                 {col.accessorKey === 'select' ? (
@@ -374,7 +370,7 @@ export function LeadsTable({
                 data-state={selectedLeadIds.includes(lead.id) ? "selected" : ""}
               >
                 {leadColumns
-                  .filter(col => !col.isJsonDetails) // Don't render cell for JSON details column
+                  .filter(col => !col.isJsonDetails) 
                   .map(col => (
                   <TableCell key={`${lead.id}-${col.accessorKey}`}>
                     {col.accessorKey === 'select' ? (
@@ -422,4 +418,3 @@ export function LeadsTable({
     </ScrollArea>
   );
 }
-

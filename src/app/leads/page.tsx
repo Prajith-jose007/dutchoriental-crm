@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -56,10 +55,10 @@ const csvHeaderMapping: { [csvHeaderKey: string]: keyof Omit<Lead, 'packageQuant
   'basic': 'pkg_basic',
   'std': 'pkg_standard', 'standard': 'pkg_standard',
   'prem': 'pkg_premium', 'premium': 'pkg_premium',
-  'vip': 'pkg_vip', // Added direct VIP mapping
+  'vip': 'pkg_vip', 
   'hrchtr': 'pkg_hour_charter', 'hour_charter': 'pkg_hour_charter',
   'package_details_(json)': 'package_quantities_json_string', 'package_details_json': 'package_quantities_json_string',
-  'other': 'perTicketRate', 'other_rate': 'perTicketRate',
+  'rate/head': 'perTicketRate', 'other': 'perTicketRate', 'other_rate': 'perTicketRate', 'ticket_rate': 'perTicketRate',
   'total_amt': 'totalAmount', 'total_amount': 'totalAmount',
   'discount_%': 'commissionPercentage', 'discount_rate': 'commissionPercentage', 'discount': 'commissionPercentage',
   'commission': 'commissionAmount', 'commission_amount': 'commissionAmount',
@@ -95,7 +94,7 @@ const convertCsvValue = (
       const parsedJson = JSON.parse(trimmedValue);
       if (Array.isArray(parsedJson)) {
         return parsedJson.map(pq => ({
-          packageId: String(pq.packageId || pq.packageld || ''), // Handle packageld typo
+          packageId: String(pq.packageId || pq.packageld || ''), 
           packageName: String(pq.packageName || 'Unknown CSV Pkg'),
           quantity: Number(pq.quantity || 0),
           rate: Number(pq.rate || 0),
@@ -273,41 +272,19 @@ function generateNewLeadTransactionId(existingLeads: Lead[], forYear: number, cu
 }
 
 interface CalculatedPackageCounts {
-  child: number;
-  adult: number;
-  childTopDeck: number;
-  adultTopDeck: number;
-  adultAlc: number;
-  vipChild: number;
-  vipAdult: number;
-  vipAlc: number;
-  royalChild: number;
-  royalAdult: number;
-  royalAlc: number;
-  basicSY: number;
-  standardSY: number;
-  premiumSY: number;
-  vipSY: number;
+  child: number; adult: number; childTopDeck: number; adultTopDeck: number; adultAlc: number;
+  vipChild: number; vipAdult: number; vipAlc: number;
+  royalChild: number; royalAdult: number; royalAlc: number;
+  basicSY: number; standardSY: number; premiumSY: number; vipSY: number;
   hourCharterPC: number;
   others: number;
 }
 
 const packageCountLabels: Record<keyof CalculatedPackageCounts, string> = {
-  child: 'CHILD',
-  adult: 'ADULT',
-  childTopDeck: 'CHILD TOP DECK',
-  adultTopDeck: 'ADULT TOP DECK',
-  adultAlc: 'ADULT ALC',
-  vipChild: 'VIP CHILD',
-  vipAdult: 'VIP ADULT',
-  vipAlc: 'VIP ALC',
-  royalChild: 'ROYAL CHILD',
-  royalAdult: 'ROYAL ADULT',
-  royalAlc: 'ROYAL ALC',
-  basicSY: 'BASIC (SY)',
-  standardSY: 'STANDARD (SY)',
-  premiumSY: 'PREMIUM (SY)',
-  vipSY: 'VIP (SY)',
+  child: 'CHILD', adult: 'ADULT', childTopDeck: 'CHILD TOP DECK', adultTopDeck: 'ADULT TOP DECK', adultAlc: 'ADULT ALC',
+  vipChild: 'VIP CHILD', vipAdult: 'VIP ADULT', vipAlc: 'VIP ALC',
+  royalChild: 'ROYAL CHILD', royalAdult: 'ROYAL ADULT', royalAlc: 'ROYAL ALC',
+  basicSY: 'BASIC (SY)', standardSY: 'STANDARD (SY)', premiumSY: 'VIP (SY)', vipSY: 'VIP (SY)',
   hourCharterPC: 'HOUR CHARTER (PC)',
   others: 'OTHERS (Rate)',
 };
@@ -812,7 +789,7 @@ export default function LeadsPage() {
             yacht: parsedRow.yacht || '',
             status: parsedRow.status || 'Upcoming', 
             month: parsedRow.month || formatISO(new Date()),
-            notes: parsedRow.notes || '', // Ensure notes is not undefined for mandatory check
+            notes: parsedRow.notes || '', 
             type: parsedRow.type || 'Private Cruise',
             paymentConfirmationStatus: parsedRow.paymentConfirmationStatus || 'UNPAID',
             transactionId: transactionIdForRow,
@@ -954,26 +931,30 @@ export default function LeadsPage() {
 
           const pkgNameUpper = pq.packageName.toUpperCase();
 
-          if (pkgNameUpper === 'CHILD') counts.child += qty;
-          else if (pkgNameUpper === 'ADULT') counts.adult += qty;
-          else if (pkgNameUpper === 'CHILD TOP DECK') counts.childTopDeck += qty;
-          else if (pkgNameUpper === 'ADULT TOP DECK') counts.adultTopDeck += qty;
-          else if (pkgNameUpper === 'ADULT ALC') counts.adultAlc += qty;
-          else if (pkgNameUpper === 'VIP CHILD') counts.vipChild += qty;
-          else if (pkgNameUpper === 'VIP ADULT') counts.vipAdult += qty;
-          else if (pkgNameUpper === 'VIP ALC') counts.vipAlc += qty;
-          else if (pkgNameUpper === 'ROYAL CHILD') counts.royalChild += qty;
-          else if (pkgNameUpper === 'ROYAL ADULT') counts.royalAdult += qty;
-          else if (pkgNameUpper === 'ROYAL ALC') counts.royalAlc += qty;
-          else if (pkgNameUpper === 'BASIC' && leadYachtCategory === 'Superyacht Sightseeing Cruise') counts.basicSY += qty;
-          else if (pkgNameUpper === 'STANDARD' && leadYachtCategory === 'Superyacht Sightseeing Cruise') counts.standardSY += qty;
-          else if (pkgNameUpper === 'PREMIUM' && leadYachtCategory === 'Superyacht Sightseeing Cruise') counts.premiumSY += qty;
-          else if (pkgNameUpper === 'VIP' && leadYachtCategory === 'Superyacht Sightseeing Cruise') counts.vipSY += qty;
-          else if (pkgNameUpper === 'HOUR CHARTER' && leadYachtCategory === 'Private Cruise') counts.hourCharterPC += qty;
+          if (leadYachtCategory === 'Dinner Cruise') {
+            if (pkgNameUpper === 'CHILD') counts.child += qty;
+            else if (pkgNameUpper === 'ADULT') counts.adult += qty;
+            else if (pkgNameUpper === 'CHILD TOP DECK') counts.childTopDeck += qty;
+            else if (pkgNameUpper === 'ADULT TOP DECK') counts.adultTopDeck += qty;
+            else if (pkgNameUpper === 'ADULT ALC') counts.adultAlc += qty;
+            else if (pkgNameUpper === 'VIP CHILD') counts.vipChild += qty;
+            else if (pkgNameUpper === 'VIP ADULT') counts.vipAdult += qty;
+            else if (pkgNameUpper === 'VIP ALC') counts.vipAlc += qty;
+            else if (pkgNameUpper === 'ROYAL CHILD') counts.royalChild += qty;
+            else if (pkgNameUpper === 'ROYAL ADULT') counts.royalAdult += qty;
+            else if (pkgNameUpper === 'ROYAL ALC') counts.royalAlc += qty;
+          } else if (leadYachtCategory === 'Superyacht Sightseeing Cruise') {
+            if (pkgNameUpper === 'BASIC') counts.basicSY += qty;
+            else if (pkgNameUpper === 'STANDARD') counts.standardSY += qty;
+            else if (pkgNameUpper === 'PREMIUM') counts.premiumSY += qty;
+            else if (pkgNameUpper === 'VIP') counts.vipSY += qty;
+          } else if (leadYachtCategory === 'Private Cruise') {
+            if (pkgNameUpper === 'HOUR CHARTER') counts.hourCharterPC += qty;
+          }
         });
       }
       if (lead.perTicketRate && lead.perTicketRate > 0) {
-        counts.others += 1;
+        counts.others += 1; 
       }
     });
     return counts;
@@ -1052,7 +1033,6 @@ export default function LeadsPage() {
               const quantity = pkgQuantityItem?.quantity;
               cellValue = (quantity !== undefined && quantity > 0) ? String(quantity) : '';
             } 
-            // Removed individual package rate column logic for CSV
             else if (col.accessorKey === 'totalGuestsCalculated') {
               cellValue = calculateTotalGuestsFromPackageQuantities(lead);
             } else if (col.isAgentLookup) {
@@ -1312,4 +1292,3 @@ export default function LeadsPage() {
     </div>
   );
 }
-

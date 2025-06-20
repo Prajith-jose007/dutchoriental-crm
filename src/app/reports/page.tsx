@@ -198,8 +198,8 @@ export default function ReportsPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 mb-6 p-4 border rounded-lg shadow-sm">
           {[...Array(9)].map((_,i) => <Skeleton key={i} className="h-10 w-full" />)}
         </div>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5 mb-6"> {/* Adjusted to 5 for stats */}
-           {[...Array(5)].map((_,i) => <Skeleton key={`stat-${i}`} className="h-24 w-full" />)}
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 mb-6">
+           {[...Array(6)].map((_,i) => <Skeleton key={`stat-${i}`} className="h-24 w-full" />)}
         </div>
         <div className="grid gap-6">
           <Skeleton className="h-[350px] w-full" />

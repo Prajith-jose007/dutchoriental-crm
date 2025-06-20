@@ -115,7 +115,7 @@ const convertCsvValue = (
       case 'freeGuestCount': return 0;
       case 'perTicketRate': return null;
       case 'modeOfPayment': return 'CARD';
-      case 'status': return 'Active'; 
+      case 'status': return 'Upcoming'; 
       case 'type': return 'Private Cruise' as LeadType;
       case 'paymentConfirmationStatus': return 'UNPAID' as PaymentConfirmationStatus;
       case 'notes': return '';
@@ -150,7 +150,7 @@ const convertCsvValue = (
     case 'status':
       const lowerTrimmedStatusValue = trimmedValue.toLowerCase();
       const foundStatus = leadStatusOptions.find(opt => opt.toLowerCase() === lowerTrimmedStatusValue);
-      return foundStatus || 'Active'; 
+      return foundStatus || 'Upcoming'; 
     case 'type':
       return leadTypeOptions.includes(trimmedValue as LeadType) ? trimmedValue : 'Private Cruise';
     case 'paymentConfirmationStatus':
@@ -158,8 +158,8 @@ const convertCsvValue = (
       if (paymentConfirmationStatusOptions.includes(upperTrimmedPaymentStatus as PaymentConfirmationStatus)) {
         return upperTrimmedPaymentStatus as PaymentConfirmationStatus;
       }
-      if (upperTrimmedPaymentStatus === 'CONFIRMED') return 'PAY AT COUNTER'; // Map old "CONFIRMED" to "PAY AT COUNTER"
-      return 'UNPAID'; // Default to 'UNPAID'
+      if (upperTrimmedPaymentStatus === 'CONFIRMED') return 'PAY AT COUNTER'; 
+      return 'UNPAID'; 
 
     case 'month':
     case 'createdAt':
@@ -261,7 +261,7 @@ function generateNewLeadTransactionId(existingLeads: Lead[], forYear: number, cu
 
   existingLeads.forEach(lead => {
     if (lead.transactionId && lead.transactionId.startsWith(prefix)) {
-      const numPartStr = lead.transactionId.substring(prefix.length); // Remove "TRN-YYYY"
+      const numPartStr = lead.transactionId.substring(prefix.length); 
       const numPart = parseInt(numPartStr, 10);
       if (!isNaN(numPart) && numPart > maxNumber) {
         maxNumber = numPart;
@@ -571,7 +571,7 @@ export default function LeadsPage() {
       const { updatedCount, failedCount, errors } = responseData;
       let toastDescription = `${updatedCount} lead(s) updated to ${newStatus}.`;
       if (failedCount > 0) {
-        toastDescription += ` ${failedCount} lead(s) could not be updated due to permissions.`;
+        toastDescription += ` ${failedCount} lead(s) could not be updated due to permissions or status.`;
         console.warn("Bulk status update failures:", errors);
       }
       toast({ title: 'Status Update Complete', description: toastDescription });
@@ -770,7 +770,7 @@ export default function LeadsPage() {
             clientName: parsedRow.clientName || 'N/A from CSV',
             agent: parsedRow.agent || '',
             yacht: parsedRow.yacht || '',
-            status: parsedRow.status || 'Active', 
+            status: parsedRow.status || 'Upcoming', 
             month: parsedRow.month || formatISO(new Date()),
             notes: parsedRow.notes || undefined,
             type: parsedRow.type || 'Private Cruise',
@@ -1046,7 +1046,7 @@ export default function LeadsPage() {
               ))}
             </DropdownMenuContent>
           </DropdownMenu>
-          {isAdmin && (
+          {isAdmin && selectedLeadIds.length > 0 && (
              <Button variant="destructive" onClick={handleDeleteSelectedLeads} disabled={isImporting}>
                 <Trash2 className="mr-2 h-4 w-4" />
                 Delete Selected ({selectedLeadIds.length})

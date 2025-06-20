@@ -98,7 +98,7 @@ export async function GET(
         clientName: String(dbLead.clientName || ''),
         agent: String(dbLead.agent || ''),
         yacht: String(dbLead.yacht || ''),
-        status: (dbLead.status || 'Active') as LeadStatus, 
+        status: (dbLead.status || 'Upcoming') as LeadStatus, 
         month: dbLead.month ? ensureISOFormat(dbLead.month)! : formatISO(new Date()),
         notes: dbLead.notes || undefined,
         type: (dbLead.type || 'Private Cruise') as LeadType,
@@ -174,7 +174,7 @@ export async function PUT(
       lastModifiedByUserId: requestingUserId,
       ownerUserId: updatedLeadDataFromClient.ownerUserId || existingLeadDbInfo.ownerUserId,
       paymentConfirmationStatus: updatedLeadDataFromClient.paymentConfirmationStatus || 'UNPAID',
-      status: updatedLeadDataFromClient.status || existingLeadDbInfo.status || 'Active', 
+      status: updatedLeadDataFromClient.status || existingLeadDbInfo.status || 'Upcoming', 
       freeGuestCount: Number(updatedLeadDataFromClient.freeGuestCount || 0),
       perTicketRate: updatedLeadDataFromClient.perTicketRate !== undefined ? updatedLeadDataFromClient.perTicketRate : null,
     };
@@ -238,7 +238,7 @@ export async function PUT(
 
     const finalUpdatedLead: Lead = {
         id: String(dbLead.id || ''), clientName: String(dbLead.clientName || ''), agent: String(dbLead.agent || ''), yacht: String(dbLead.yacht || ''),
-        status: (dbLead.status || 'Active') as LeadStatus,
+        status: (dbLead.status || 'Upcoming') as LeadStatus,
         month: dbLead.month ? ensureISOFormat(dbLead.month)! : formatISO(new Date()), notes: dbLead.notes || undefined, type: (dbLead.type || 'Private Cruise') as LeadType,
         paymentConfirmationStatus: (dbLead.paymentConfirmationStatus || 'UNPAID') as PaymentConfirmationStatus,
         transactionId: dbLead.transactionId || undefined,
@@ -282,17 +282,22 @@ export async function DELETE(
 
     console.log(`[API DELETE /api/leads/${id}] Attempting to delete lead. User: ${requestingUserId}, Role: ${requestingUserRole}`);
 
-    const existingLeadResult: any[] = await query('SELECT status FROM leads WHERE id = ?', [id]);
+    const existingLeadResult: any[] = await query('SELECT ownerUserId, status FROM leads WHERE id = ?', [id]);
     if (existingLeadResult.length === 0) {
       console.warn(`[API DELETE /api/leads/${id}] Lead not found for deletion.`);
       return NextResponse.json({ message: 'Lead not found' }, { status: 404 });
     }
-    const existingLeadStatus = existingLeadResult[0].status;
+    const existingLeadDbInfo = existingLeadResult[0];
 
-    if (existingLeadStatus === 'Closed' && requestingUserRole !== 'admin') {
+    if (existingLeadDbInfo.status === 'Closed' && requestingUserRole !== 'admin') {
       console.warn(`[API DELETE /api/leads/${id}] Permission denied. User ${requestingUserId} (Role: ${requestingUserRole}) attempted to delete a Closed lead.`);
       return NextResponse.json({ message: 'Permission denied: Closed leads cannot be deleted by non-administrators.' }, { status: 403 });
     }
+    if (requestingUserRole !== 'admin' && existingLeadDbInfo.ownerUserId !== requestingUserId) {
+        console.warn(`[API DELETE /api/leads/${id}] Permission denied. User ${requestingUserId} (Role: ${requestingUserRole}) attempted to delete lead not owned by them.`);
+        return NextResponse.json({ message: 'Permission denied: You can only delete leads you own, or you must be an admin.' }, { status: 403 });
+    }
+
 
     const result: any = await query('DELETE FROM leads WHERE id = ?', [id]);
     console.log(`[API DELETE /api/leads/${id}] DB Delete Result:`, result);

@@ -55,7 +55,7 @@ export interface Invoice {
   createdAt: string;
 }
 
-export const leadStatusOptions = ['Active', 'Closed'] as const;
+export const leadStatusOptions = ['Upcoming', 'Balance', 'Closed'] as const;
 export type LeadStatus = typeof leadStatusOptions[number];
 
 export const modeOfPaymentOptions = ['CARD', 'CASH', 'CASH / CARD', 'NOMOD', 'PAYMOD', 'RUZINN', 'CREDIT', 'OTHER'] as const;

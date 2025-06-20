@@ -105,7 +105,7 @@ const getDefaultFormValues = (existingLead?: Lead | null, currentUserId?: string
   return {
     id: existingLead?.id || undefined,
     agent: existingLead?.agent || '',
-    status: existingLead?.status || 'Active',
+    status: existingLead?.status || 'Upcoming', // Default to Upcoming for new leads
     month: existingLead?.month && isValid(parseISO(existingLead.month)) ? parseISO(existingLead.month) : new Date(),
     yacht: existingLead?.yacht || '',
     type: existingLead?.type || 'Private Cruise',
@@ -153,7 +153,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
   const watchedAgentId = form.watch('agent');
   const watchedPaidAmount = form.watch('paidAmount');
   const watchedPackageQuantities = form.watch('packageQuantities');
-  const watchedStatus = form.watch('status'); // Watch status for disabling
+  const watchedStatus = form.watch('status'); 
 
   const isFormDisabled = useMemo(() => {
     return watchedStatus === 'Closed' && !isAdmin;
@@ -345,8 +345,8 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
 
     const submittedLead: Lead = {
       ...data,
-      id: lead?.id || `temp-${Date.now()}`, // Will be replaced by server if 'temp-'
-      transactionId: lead?.id && data.transactionId === "Pending Generation" ? lead.transactionId : data.transactionId, // Preserve existing if editing and was pending
+      id: lead?.id || `temp-${Date.now()}`, 
+      transactionId: lead?.id && data.transactionId === "Pending Generation" ? lead.transactionId : data.transactionId, 
       month: data.month ? formatISO(data.month) : formatISO(new Date()),
       paymentConfirmationStatus: data.paymentConfirmationStatus,
       freeGuestCount: Number(data.freeGuestCount || 0),

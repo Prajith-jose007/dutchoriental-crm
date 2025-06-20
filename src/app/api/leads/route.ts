@@ -75,7 +75,7 @@ export async function GET(request: NextRequest) {
         clientName: String(dbLead.clientName || ''),
         agent: String(dbLead.agent || ''),
         yacht: String(dbLead.yacht || ''),
-        status: (dbLead.status || 'Active') as LeadStatus, 
+        status: (dbLead.status || 'Upcoming') as LeadStatus, 
         month: dbLead.month ? ensureISOFormat(dbLead.month)! : formatISO(new Date()),
         notes: dbLead.notes || undefined,
         type: (dbLead.type || 'Private Cruise') as LeadType,
@@ -180,7 +180,7 @@ export async function POST(request: NextRequest) {
       clientName: newLeadData.clientName,
       agent: newLeadData.agent,
       yacht: newLeadData.yacht,
-      status: newLeadData.status || 'Active', 
+      status: newLeadData.status || 'Upcoming', 
       month: formattedMonth,
       notes: newLeadData.notes || null,
       type: newLeadData.type || 'Private Cruise',
@@ -252,7 +252,7 @@ export async function POST(request: NextRequest) {
 
         const finalLead: Lead = {
             id: String(dbLead.id || ''), clientName: String(dbLead.clientName || ''), agent: String(dbLead.agent || ''), yacht: String(dbLead.yacht || ''),
-            status: (dbLead.status || 'Active') as LeadStatus,
+            status: (dbLead.status || 'Upcoming') as LeadStatus,
             month: dbLead.month ? ensureISOFormat(dbLead.month)! : formatISO(new Date()),
             notes: dbLead.notes || undefined, type: (dbLead.type || 'Private Cruise') as LeadType,
             paymentConfirmationStatus: (dbLead.paymentConfirmationStatus || 'UNPAID') as PaymentConfirmationStatus,

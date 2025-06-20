@@ -214,8 +214,9 @@ export function LeadsTable({
   const getStatusVariant = (status?: LeadStatus) => {
     if (!status) return 'outline';
     switch (status) {
-      case 'Active': return 'secondary'; // Typically yellow-ish or greyish via theme
-      case 'Closed': return 'default';   // Typically primary color (blue/green) via theme
+      case 'Upcoming': return 'outline'; 
+      case 'Balance': return 'secondary'; 
+      case 'Closed': return 'default'; 
       default: return 'outline';
     }
   };

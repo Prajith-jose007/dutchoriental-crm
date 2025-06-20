@@ -2,7 +2,7 @@
 'use client';
 
 import type { Lead, LeadStatus } from '@/lib/types';
-import { leadStatusOptions } from '@/lib/types'; // Import the updated options
+import { leadStatusOptions } from '@/lib/types'; 
 import { LeadCard } from './LeadCard';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 
@@ -11,19 +11,15 @@ interface LeadPipelineBoardProps {
   onEditLead: (lead: Lead) => void;
 }
 
-// Use the imported leadStatusOptions
-// const leadStatuses: LeadStatus[] = ['Balance', 'Closed']; // Old, replaced
 
 export function LeadPipelineBoard({ leads, onEditLead }: LeadPipelineBoardProps) {
   const leadsByStatus: { [key in LeadStatus]?: Lead[] } = {};
-  leadStatusOptions.forEach(status => leadsByStatus[status] = []); // Initialize with new statuses
+  leadStatusOptions.forEach(status => leadsByStatus[status] = []); 
 
   leads.forEach(lead => {
     if (leadsByStatus[lead.status]) {
       leadsByStatus[lead.status]?.push(lead);
     } else {
-      // This case should be less likely if lead.status is strictly typed to LeadStatus
-      // and default values are handled correctly.
       console.warn(`Lead with ID ${lead.id} has unexpected status: ${lead.status}. Grouping under '${leadStatusOptions[0]}'.`);
       if (!leadsByStatus[leadStatusOptions[0]]) leadsByStatus[leadStatusOptions[0]] = [];
       leadsByStatus[leadStatusOptions[0]]?.push(lead);
@@ -34,7 +30,7 @@ export function LeadPipelineBoard({ leads, onEditLead }: LeadPipelineBoardProps)
     <ScrollArea className="flex-1 w-full pb-4">
       <div className="flex gap-4 p-1">
         {leadStatusOptions.map(status => (
-          <div key={status} className="min-w-[300px] w-1/2 bg-muted/60 rounded-lg shadow">
+          <div key={status} className="min-w-[300px] w-1/3 bg-muted/60 rounded-lg shadow">
             <h2 className="text-lg font-semibold p-4 border-b sticky top-0 bg-muted/80 backdrop-blur-sm rounded-t-lg z-10">
               {status} ({leadsByStatus[status]?.length || 0})
             </h2>

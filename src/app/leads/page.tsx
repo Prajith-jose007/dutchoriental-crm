@@ -56,7 +56,7 @@ const csvHeaderMapping: { [csvHeaderKey: string]: keyof Omit<Lead, 'packageQuant
   'basic': 'pkg_basic',
   'std': 'pkg_standard', 'standard': 'pkg_standard',
   'prem': 'pkg_premium', 'premium': 'pkg_premium',
-  'vip': 'pkg_vip',
+  'vip': 'pkg_vip', // Added direct VIP mapping
   'hrchtr': 'pkg_hour_charter', 'hour_charter': 'pkg_hour_charter',
   'package_details_(json)': 'package_quantities_json_string', 'package_details_json': 'package_quantities_json_string',
   'other': 'perTicketRate', 'other_rate': 'perTicketRate',
@@ -270,6 +270,16 @@ function generateNewLeadTransactionId(existingLeads: Lead[], forYear: number, cu
   });
   const nextNumber = maxNumber + 1;
   return `${prefix}${String(nextNumber).padStart(5, '0')}`;
+}
+
+interface CalculatedPackageCounts {
+  vip: number;
+  adults: number;
+  vipChild: number;
+  vipAlc: number;
+  royalChild: number;
+  royalAdult: number;
+  others: number;
 }
 
 
@@ -889,6 +899,40 @@ export default function LeadsPage() {
     });
   }, [allLeads, startDate, endDate, selectedYachtId, selectedAgentId, selectedUserIdFilter, statusFilter, paymentConfirmationStatusFilter]);
 
+  const calculatedPackageCounts = useMemo(() => {
+    const counts: CalculatedPackageCounts = {
+      vip: 0,
+      adults: 0,
+      vipChild: 0,
+      vipAlc: 0,
+      royalChild: 0,
+      royalAdult: 0,
+      others: 0,
+    };
+
+    filteredLeads.forEach(lead => {
+      if (lead.packageQuantities) {
+        lead.packageQuantities.forEach(pq => {
+          const qty = pq.quantity || 0;
+          if (qty === 0) return;
+
+          const pkgNameUpper = pq.packageName.toUpperCase();
+          if (pkgNameUpper === 'VIP') counts.vip += qty;
+          else if (pkgNameUpper === 'ADULT') counts.adults += qty;
+          else if (pkgNameUpper === 'VIP CHILD') counts.vipChild += qty;
+          else if (pkgNameUpper === 'VIP ALC') counts.vipAlc += qty;
+          else if (pkgNameUpper === 'ROYAL CHILD') counts.royalChild += qty;
+          else if (pkgNameUpper === 'ROYAL ADULT') counts.royalAdult += qty;
+        });
+      }
+      if (lead.perTicketRate && lead.perTicketRate > 0) {
+        counts.others += 1; 
+      }
+    });
+    return counts;
+  }, [filteredLeads]);
+
+
   const resetFilters = () => {
     setStartDate(undefined);
     setEndDate(undefined);
@@ -897,6 +941,12 @@ export default function LeadsPage() {
     setSelectedUserIdFilter('all');
     setStatusFilter('all');
     setPaymentConfirmationStatusFilter('all');
+    toast({title: "Filters Reset", description: "Showing all leads."});
+  };
+
+  const handleApplyFilters = () => {
+    // Filtering is dynamic, so this button is mostly for user feedback
+    toast({title: "Filters Applied", description: `Displaying ${filteredLeads.length} leads based on current selections.`});
   };
 
   const handleCsvExport = () => {
@@ -1046,7 +1096,7 @@ export default function LeadsPage() {
               ))}
             </DropdownMenuContent>
           </DropdownMenu>
-          {isAdmin && selectedLeadIds.length > 0 && (
+          {isAdmin && (
              <Button variant="destructive" onClick={handleDeleteSelectedLeads} disabled={isImporting}>
                 <Trash2 className="mr-2 h-4 w-4" />
                 Delete Selected ({selectedLeadIds.length})
@@ -1078,8 +1128,11 @@ export default function LeadsPage() {
           }
         />
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-6 p-4 border rounded-lg shadow-sm">
-          {[...Array(8)].map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}
+          {[...Array(7)].map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}
+          <Skeleton className="h-10 w-full" /> {/* For Reset button placeholder */}
+          <Skeleton className="h-10 w-full" /> {/* For Apply Filters button placeholder */}
         </div>
+        <Skeleton className="h-16 w-full mb-4" /> {/* For package counts placeholder */}
         <div className="space-y-2">
           {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}
         </div>
@@ -1104,75 +1157,101 @@ export default function LeadsPage() {
         description="Track and manage all your sales leads."
         actions={pageHeaderActions}
       />
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-6 p-4 border rounded-lg shadow-sm">
-        <div>
-          <Label htmlFor="start-date-leads">Start Date (Event)</Label>
-          <DatePicker date={startDate} setDate={setStartDate} placeholder="Start Date" />
+      <div className="mb-6 p-4 border rounded-lg shadow-sm">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            <div>
+            <Label htmlFor="start-date-leads">Start Date (Event)</Label>
+            <DatePicker date={startDate} setDate={setStartDate} placeholder="Start Date" />
+            </div>
+            <div>
+            <Label htmlFor="end-date-leads">End Date (Event)</Label>
+            <DatePicker date={endDate} setDate={setEndDate} placeholder="End Date" disabled={(date) => startDate ? date < startDate : false} />
+            </div>
+            <div>
+            <Label htmlFor="status-filter-leads">Lead Status</Label>
+            <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as LeadStatus | 'all')}>
+                <SelectTrigger id="status-filter-leads" className="w-full">
+                <SelectValue placeholder="All Statuses" />
+                </SelectTrigger>
+                <SelectContent>
+                <SelectItem value="all">All Statuses</SelectItem>
+                {leadStatusOptions.map(status => (
+                    <SelectItem key={status} value={status}>{status}</SelectItem>
+                ))}
+                </SelectContent>
+            </Select>
+            </div>
+            <div>
+            <Label htmlFor="payment-confirmation-status-filter-leads">Payment/Conf. Status</Label>
+            <Select value={paymentConfirmationStatusFilter} onValueChange={(value) => setPaymentConfirmationStatusFilter(value as PaymentConfirmationStatus | 'all')}>
+                <SelectTrigger id="payment-confirmation-status-filter-leads" className="w-full">
+                <SelectValue placeholder="All Payment/Conf. Statuses" />
+                </SelectTrigger>
+                <SelectContent>
+                <SelectItem value="all">All Payment/Conf. Statuses</SelectItem>
+                {paymentConfirmationStatusOptions.map(status => (
+                    <SelectItem key={status} value={status}>{status}</SelectItem>
+                ))}
+                </SelectContent>
+            </Select>
+            </div>
+            <div>
+            <Label htmlFor="yacht-filter-leads">Yacht</Label>
+            <Select value={selectedYachtId} onValueChange={setSelectedYachtId}>
+                <SelectTrigger id="yacht-filter-leads"><SelectValue placeholder="All Yachts" /></SelectTrigger>
+                <SelectContent>
+                <SelectItem value="all">All Yachts</SelectItem>
+                {allYachts.map(yacht => <SelectItem key={yacht.id} value={yacht.id}>{yacht.name}</SelectItem>)}
+                </SelectContent>
+            </Select>
+            </div>
+            <div>
+            <Label htmlFor="agent-filter-leads">Agent</Label>
+            <Select value={selectedAgentId} onValueChange={setSelectedAgentId}>
+                <SelectTrigger id="agent-filter-leads"><SelectValue placeholder="All Agents" /></SelectTrigger>
+                <SelectContent>
+                <SelectItem value="all">All Agents</SelectItem>
+                {allAgents.map(agent => <SelectItem key={agent.id} value={agent.id}>{agent.name}</SelectItem>)}
+                </SelectContent>
+            </Select>
+            </div>
+            <div>
+            <Label htmlFor="user-filter-leads">User (Modified/Owner)</Label>
+            <Select value={selectedUserIdFilter} onValueChange={setSelectedUserIdFilter}>
+                <SelectTrigger id="user-filter-leads"><SelectValue placeholder="All Users" /></SelectTrigger>
+                <SelectContent>
+                <SelectItem value="all">All Users</SelectItem>
+                {Object.entries(userMap).map(([id, name]) => <SelectItem key={id} value={id}>{name}</SelectItem>)}
+                </SelectContent>
+            </Select>
+            </div>
         </div>
-        <div>
-          <Label htmlFor="end-date-leads">End Date (Event)</Label>
-          <DatePicker date={endDate} setDate={setEndDate} placeholder="End Date" disabled={(date) => startDate ? date < startDate : false} />
+        <div className="flex items-center gap-2 mt-4 pt-4 border-t">
+            <Button onClick={resetFilters} variant="outline" className="w-full sm:w-auto">Reset Filters</Button>
+            <Button onClick={handleApplyFilters} variant="default" className="w-full sm:w-auto">Apply Filters</Button>
         </div>
-        <div>
-          <Label htmlFor="status-filter-leads">Lead Status</Label>
-          <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as LeadStatus | 'all')}>
-            <SelectTrigger id="status-filter-leads" className="w-full">
-              <SelectValue placeholder="All Statuses" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Statuses</SelectItem>
-              {leadStatusOptions.map(status => (
-                <SelectItem key={status} value={status}>{status}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div>
-          <Label htmlFor="payment-confirmation-status-filter-leads">Payment/Conf. Status</Label>
-          <Select value={paymentConfirmationStatusFilter} onValueChange={(value) => setPaymentConfirmationStatusFilter(value as PaymentConfirmationStatus | 'all')}>
-            <SelectTrigger id="payment-confirmation-status-filter-leads" className="w-full">
-              <SelectValue placeholder="All Payment/Conf. Statuses" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Payment/Conf. Statuses</SelectItem>
-              {paymentConfirmationStatusOptions.map(status => (
-                <SelectItem key={status} value={status}>{status}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div>
-          <Label htmlFor="yacht-filter-leads">Yacht</Label>
-          <Select value={selectedYachtId} onValueChange={setSelectedYachtId}>
-            <SelectTrigger id="yacht-filter-leads"><SelectValue placeholder="All Yachts" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Yachts</SelectItem>
-              {allYachts.map(yacht => <SelectItem key={yacht.id} value={yacht.id}>{yacht.name}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        </div>
-        <div>
-          <Label htmlFor="agent-filter-leads">Agent</Label>
-          <Select value={selectedAgentId} onValueChange={setSelectedAgentId}>
-            <SelectTrigger id="agent-filter-leads"><SelectValue placeholder="All Agents" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Agents</SelectItem>
-              {allAgents.map(agent => <SelectItem key={agent.id} value={agent.id}>{agent.name}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        </div>
-        <div>
-          <Label htmlFor="user-filter-leads">User (Modified/Owner)</Label>
-          <Select value={selectedUserIdFilter} onValueChange={setSelectedUserIdFilter}>
-            <SelectTrigger id="user-filter-leads"><SelectValue placeholder="All Users" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Users</SelectItem>
-              {Object.entries(userMap).map(([id, name]) => <SelectItem key={id} value={id}>{name}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="flex items-end">
-          <Button onClick={resetFilters} variant="outline" className="w-full">Reset Filters</Button>
+        
+        <div className="mt-6 pt-4 border-t">
+            <h3 className="text-md font-semibold mb-3 text-foreground">Filtered Leads Package Summary:</h3>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-3">
+                {(Object.keys(calculatedPackageCounts) as Array<keyof CalculatedPackageCounts>).map(key => {
+                    let label = key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+                    if (key === 'vip') label = 'VIP';
+                    if (key === 'adults') label = 'ADULTS';
+                    if (key === 'vipChild') label = 'VIP CHILD';
+                    if (key === 'vipAlc') label = 'VIP ALC';
+                    if (key === 'royalChild') label = 'ROYAL CH';
+                    if (key === 'royalAdult') label = 'ROYAL ADULT';
+                    if (key === 'others') label = 'OTHERS (Rate)';
+                    
+                    return (
+                        <div key={key} className="p-3 border rounded-lg bg-card shadow-sm text-center">
+                            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{label}</p>
+                            <p className="text-xl font-bold text-primary">{calculatedPackageCounts[key]}</p>
+                        </div>
+                    );
+                })}
+            </div>
         </div>
       </div>
 

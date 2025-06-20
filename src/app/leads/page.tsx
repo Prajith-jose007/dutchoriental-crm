@@ -1004,7 +1004,7 @@ export default function LeadsPage() {
     const dynamicColumns = generateLeadColumns(allYachts);
 
     const finalCsvHeaders = dynamicColumns
-      .filter(col => col.accessorKey !== 'select' && col.accessorKey !== 'actions')
+      .filter(col => col.accessorKey !== 'select' && col.accessorKey !== 'actions' && !col.isJsonDetails)
       .map(col => col.header);
 
 
@@ -1044,22 +1044,15 @@ export default function LeadsPage() {
       finalCsvHeaders.join(','),
       ...filteredLeads.map(lead => {
         return dynamicColumns
-          .filter(col => col.accessorKey !== 'select' && col.accessorKey !== 'actions')
+          .filter(col => col.accessorKey !== 'select' && col.accessorKey !== 'actions' && !col.isJsonDetails)
           .map(col => {
             let cellValue: any;
-            if (col.isJsonDetails) {
-                cellValue = lead.packageQuantities ? JSON.stringify(lead.packageQuantities) : '[]';
-            }
-            else if (col.isPackageQuantityColumn && col.actualPackageName) {
+            if (col.isPackageQuantityColumn && col.actualPackageName) {
               const pkgQuantityItem = lead.packageQuantities?.find(pq => pq.packageName === col.actualPackageName);
               const quantity = pkgQuantityItem?.quantity;
               cellValue = (quantity !== undefined && quantity > 0) ? String(quantity) : '';
-            } else if (col.isPackageRateColumn && col.actualPackageName) {
-              const pkgQuantityItem = lead.packageQuantities?.find(pq => pq.packageName === col.actualPackageName);
-              const quantity = pkgQuantityItem?.quantity;
-              const rate = pkgQuantityItem?.rate;
-              cellValue = (quantity !== undefined && quantity > 0 && rate !== undefined) ? rate.toFixed(2) : '';
-            }
+            } 
+            // Removed individual package rate column logic for CSV
             else if (col.accessorKey === 'totalGuestsCalculated') {
               cellValue = calculateTotalGuestsFromPackageQuantities(lead);
             } else if (col.isAgentLookup) {
@@ -1086,8 +1079,8 @@ export default function LeadsPage() {
               cellValue = lead[col.accessorKey as keyof Lead];
             }
 
-            if ( (col.isPackageQuantityColumn || col.isPackageRateColumn || col.accessorKey === 'totalGuestsCalculated' || col.accessorKey === 'freeGuestCount') &&
-                 (cellValue === 0 || cellValue === undefined || cellValue === null || cellValue === '') ) { // Also check for empty string from render
+            if ( (col.isPackageQuantityColumn || col.accessorKey === 'totalGuestsCalculated' || col.accessorKey === 'freeGuestCount') &&
+                 (cellValue === 0 || cellValue === undefined || cellValue === null || cellValue === '') ) {
                 return '';
             }
             if (col.accessorKey === 'perTicketRate' && (cellValue === null || cellValue === undefined)) {

@@ -38,8 +38,8 @@ export type LeadTableColumn = {
   isUserLookup?: boolean;
   isAgentLookup?: boolean;
   isYachtLookup?: boolean;
-  isPackageQuantityColumn?: boolean; // New
-  isPackageRateColumn?: boolean;   // New
+  isPackageQuantityColumn?: boolean; // For package quantities
+  // isPackageRateColumn removed
   actualPackageName?: string;
   yachtCategory?: string;
   isJsonDetails?: boolean;
@@ -97,14 +97,7 @@ export const generateLeadColumns = (allYachts: Yacht[]): LeadTableColumn[] => {
         isNumeric: true,
         yachtCategory: pkgDef.category,
       });
-      columns.push({
-        header: `${shortHeader} Rate`,
-        accessorKey: `pkgrate_${baseAccessorKey}`,
-        isPackageRateColumn: true,
-        actualPackageName: pkgDef.actualPackageName,
-        isCurrency: true,
-        yachtCategory: pkgDef.category,
-      });
+      // Removed individual package rate column generation
     }
   };
 
@@ -151,7 +144,7 @@ export const generateLeadColumns = (allYachts: Yacht[]): LeadTableColumn[] => {
 
 
   const accountsColumns: LeadTableColumn[] = [
-    { accessorKey: 'perTicketRate', header: 'OTHER', isCurrency: true },
+    { accessorKey: 'perTicketRate', header: 'OTHER', isCurrency: true }, // This is the general rate column
     { accessorKey: 'totalGuestsCalculated', header: 'Total Count', isNumeric: true },
     { accessorKey: 'totalAmount', header: 'Total Amt', isCurrency: true },
     { accessorKey: 'commissionPercentage', header: 'Discount %', isPercentage: true },
@@ -277,12 +270,8 @@ export function LeadsTable({
       const quantity = pkgQuantityItem?.quantity;
       return (quantity !== undefined && quantity > 0) ? String(quantity) : '-';
     }
-    if (column.isPackageRateColumn && column.actualPackageName) {
-      const pkgQuantityItem = lead.packageQuantities?.find(pq => pq.packageName === column.actualPackageName);
-      const quantity = pkgQuantityItem?.quantity;
-      const rate = pkgQuantityItem?.rate;
-      return (quantity !== undefined && quantity > 0 && rate !== undefined) ? formatCurrency(rate) : '-';
-    }
+    // Removed rendering for individual package rates as those columns are no longer generated
+    
     if (column.isJsonDetails) {
         return lead.packageQuantities ? JSON.stringify(lead.packageQuantities) : '[]';
     }
@@ -333,7 +322,7 @@ export function LeadsTable({
     if (column.isPercentage) {
       return formatPercentage(value as number | undefined);
     }
-    if (column.isNumeric && column.accessorKey !== 'totalGuestsCalculated' && column.accessorKey !== 'freeGuestCount' && !column.isPackageQuantityColumn && !column.isPackageRateColumn) {
+    if (column.isNumeric && column.accessorKey !== 'totalGuestsCalculated' && column.accessorKey !== 'freeGuestCount' && !column.isPackageQuantityColumn ) {
       return (value !== null && value !== undefined && !isNaN(Number(value))) ? String(value) : '-';
     }
     if (column.isNotes) {
@@ -355,7 +344,7 @@ export function LeadsTable({
         <TableHeader>
           <TableRow>
             {leadColumns
-              .filter(col => !col.isJsonDetails)
+              .filter(col => !col.isJsonDetails) // Don't render the JSON details column header
               .map(col => (
               <TableHead key={col.accessorKey} className={col.accessorKey === 'select' ? "w-[40px]" : ""}>
                 {col.accessorKey === 'select' ? (
@@ -385,7 +374,7 @@ export function LeadsTable({
                 data-state={selectedLeadIds.includes(lead.id) ? "selected" : ""}
               >
                 {leadColumns
-                  .filter(col => !col.isJsonDetails)
+                  .filter(col => !col.isJsonDetails) // Don't render cell for JSON details column
                   .map(col => (
                   <TableCell key={`${lead.id}-${col.accessorKey}`}>
                     {col.accessorKey === 'select' ? (

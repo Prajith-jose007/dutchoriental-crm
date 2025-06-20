@@ -49,54 +49,53 @@ export function SidebarNav() {
       console.error("Error accessing localStorage in SidebarNav:", error);
     }
     setIsAdmin(role === 'admin');
-    setLoggedInUserEmail(email);
+    setLoggedInUserEmail(email); // This might be null if not found
   }, []);
 
   useEffect(() => {
-    if (mounted && loggedInUserEmail) {
-      const fetchUserDetails = async () => {
-        setIsLoadingUserDetails(true);
-        try {
-          const response = await fetch('/api/users');
-          if (!response.ok) {
-            let errorData = { message: `Failed to fetch users. Status: ${response.status}` };
-            try {
-              // Attempt to parse the error response as JSON
-              const apiError = await response.json();
-              errorData.message = apiError.message || apiError.error || errorData.message;
-            } catch (e) {
-              // If response is not JSON, use the status text
-              console.warn("Failed to parse error response from /api/users as JSON. Response body might not be JSON.", e);
-              errorData.message = `Failed to fetch users. Status: ${response.status} - ${response.statusText || 'No status text'}`;
+    if (mounted) {
+      if (loggedInUserEmail && loggedInUserEmail !== 'Not logged in') { // Only fetch if there's a real email
+        const fetchUserDetails = async () => {
+          setIsLoadingUserDetails(true);
+          try {
+            const response = await fetch('/api/users');
+            if (!response.ok) {
+              let errorData = { message: `Failed to fetch users. Status: ${response.status}` };
+              try {
+                const apiError = await response.json();
+                errorData.message = apiError.message || apiError.error || errorData.message;
+              } catch (e) {
+                console.warn("Failed to parse error response from /api/users as JSON.", e);
+                errorData.message = `Failed to fetch users. Status: ${response.status} - ${response.statusText || 'No status text'}`;
+              }
+              console.error("[SidebarNav] Error fetching users from API:", errorData, "Full response status:", response.status);
+              throw new Error(errorData.message);
             }
-            console.error("[SidebarNav] Error fetching users from API:", errorData, "Full response status:", response.status);
-            throw new Error(errorData.message);
+            const users: User[] = await response.json();
+            const currentUser = users.find(user => user.email && user.email.toLowerCase() === loggedInUserEmail.toLowerCase());
+            if (currentUser) {
+              setLoggedInUserName(currentUser.name);
+            } else {
+              setLoggedInUserName('User'); // Fallback name
+              console.warn(`[SidebarNav] User with email ${loggedInUserEmail} not found in fetched users list.`);
+            }
+          } catch (error) {
+            console.error('[SidebarNav] Error fetching user details for sidebar:', error);
+            setLoggedInUserName('User'); 
+            toast({ title: "Error", description: "Could not load user details for sidebar.", variant: "destructive" });
+          } finally {
+            setIsLoadingUserDetails(false);
           }
-          const users: User[] = await response.json();
-          const currentUser = users.find(user => user.email && user.email.toLowerCase() === loggedInUserEmail.toLowerCase());
-          if (currentUser) {
-            setLoggedInUserName(currentUser.name);
-          } else {
-            setLoggedInUserName('User'); // Fallback name
-            console.warn(`[SidebarNav] User with email ${loggedInUserEmail} not found in fetched users list.`);
-          }
-        } catch (error) {
-          console.error('[SidebarNav] Error fetching user details for sidebar:', error);
-          setLoggedInUserName('User'); // Fallback name on error
-          // Optionally show a toast, but be careful not to spam if this happens often
-          // toast({ title: "Error", description: "Could not load user details.", variant: "destructive" });
-        } finally {
-          setIsLoadingUserDetails(false);
-        }
-      };
-      fetchUserDetails();
-    } else if (mounted) {
-      // No email in local storage, set defaults or clear
-      setLoggedInUserName('Guest');
-      setLoggedInUserEmail('Not logged in');
-      setIsLoadingUserDetails(false);
+        };
+        fetchUserDetails();
+      } else {
+        // No valid email in localStorage or it's the placeholder
+        setLoggedInUserName('Guest');
+        setLoggedInUserEmail('Not logged in'); // Ensure placeholder if email was null
+        setIsLoadingUserDetails(false);
+      }
     }
-  }, [mounted, loggedInUserEmail]);
+  }, [mounted, loggedInUserEmail, toast]);
 
   const handleLogout = () => {
     try {
@@ -108,7 +107,7 @@ export function SidebarNav() {
       setIsAdmin(false);
       
       router.push('/login');
-      toast({ // Show toast after redirection is initiated
+      toast({ 
         title: 'Logged Out',
         description: 'You have been successfully logged out.',
       });

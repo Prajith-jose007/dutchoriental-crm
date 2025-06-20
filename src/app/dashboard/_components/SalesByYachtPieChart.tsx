@@ -2,7 +2,7 @@
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
-import { PieChart, Pie, Cell, Tooltip as RechartsTooltip, Legend, ResponsiveContainer } from 'recharts';
+import { PieChart, Pie, Cell, Tooltip as RechartsTooltip, Legend } from 'recharts';
 import {
   Card,
   CardContent,
@@ -115,7 +115,6 @@ export function SalesByYachtPieChart({ leads, allYachts, isLoading, error }: Sal
       </CardHeader>
       <CardContent className="h-[300px] w-full flex items-center justify-center">
         <ChartContainer config={dynamicChartConfig} className="aspect-square h-full">
-          <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <RechartsTooltip 
                 cursor={{ fill: 'hsl(var(--muted))' }} 
@@ -152,9 +151,9 @@ export function SalesByYachtPieChart({ leads, allYachts, isLoading, error }: Sal
               </Pie>
               <Legend verticalAlign="bottom" height={36}/>
             </PieChart>
-          </ResponsiveContainer>
         </ChartContainer>
       </CardContent>
     </Card>
   );
 }
+

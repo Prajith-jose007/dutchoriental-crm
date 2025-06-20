@@ -6,7 +6,7 @@ import { PageHeader } from '@/components/PageHeader';
 import { LeadsTable, generateLeadColumns, type LeadTableColumn } from './_components/LeadsTable';
 import { ImportExportButtons } from './_components/ImportExportButtons';
 import { LeadFormDialog } from './_components/LeadFormDialog';
-import type { Lead, LeadStatus, User, Agent, Yacht, LeadType, LeadPackageQuantity, PaymentConfirmationStatus, YachtPackageItem } from '@/lib/types';
+import type { Lead, LeadStatus, User, Agent, Yacht, LeadType, LeadPackageQuantity, PaymentConfirmationStatus, YachtPackageItem, YachtCategory } from '@/lib/types';
 import { leadStatusOptions, modeOfPaymentOptions, leadTypeOptions, paymentConfirmationStatusOptions } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -273,14 +273,44 @@ function generateNewLeadTransactionId(existingLeads: Lead[], forYear: number, cu
 }
 
 interface CalculatedPackageCounts {
-  vip: number;
-  adults: number;
+  child: number;
+  adult: number;
+  childTopDeck: number;
+  adultTopDeck: number;
+  adultAlc: number;
   vipChild: number;
+  vipAdult: number;
   vipAlc: number;
   royalChild: number;
   royalAdult: number;
+  royalAlc: number;
+  basicSY: number;
+  standardSY: number;
+  premiumSY: number;
+  vipSY: number;
+  hourCharterPC: number;
   others: number;
 }
+
+const packageCountLabels: Record<keyof CalculatedPackageCounts, string> = {
+  child: 'CHILD',
+  adult: 'ADULT',
+  childTopDeck: 'CHILD TOP DECK',
+  adultTopDeck: 'ADULT TOP DECK',
+  adultAlc: 'ADULT ALC',
+  vipChild: 'VIP CHILD',
+  vipAdult: 'VIP ADULT',
+  vipAlc: 'VIP ALC',
+  royalChild: 'ROYAL CHILD',
+  royalAdult: 'ROYAL ADULT',
+  royalAlc: 'ROYAL ALC',
+  basicSY: 'BASIC (SY)',
+  standardSY: 'STANDARD (SY)',
+  premiumSY: 'PREMIUM (SY)',
+  vipSY: 'VIP (SY)',
+  hourCharterPC: 'HOUR CHARTER (PC)',
+  others: 'OTHERS (Rate)',
+};
 
 
 export default function LeadsPage() {
@@ -782,7 +812,7 @@ export default function LeadsPage() {
             yacht: parsedRow.yacht || '',
             status: parsedRow.status || 'Upcoming', 
             month: parsedRow.month || formatISO(new Date()),
-            notes: parsedRow.notes || undefined,
+            notes: parsedRow.notes || '', // Ensure notes is not undefined for mandatory check
             type: parsedRow.type || 'Private Cruise',
             paymentConfirmationStatus: parsedRow.paymentConfirmationStatus || 'UNPAID',
             transactionId: transactionIdForRow,
@@ -807,6 +837,8 @@ export default function LeadsPage() {
           if (!fullLead.agent) missingFields.push('agent');
           if (!fullLead.yacht) missingFields.push('yacht');
           if (!fullLead.month) missingFields.push('month');
+          if (!fullLead.notes) missingFields.push('notes (mandatory)');
+
 
           if (missingFields.length > 0) {
              console.warn(`[CSV Import Leads] Skipping lead at CSV row ${i+1} due to missing required fields: ${missingFields.join(', ')}. Lead data:`, JSON.parse(JSON.stringify(fullLead)));
@@ -901,36 +933,51 @@ export default function LeadsPage() {
 
   const calculatedPackageCounts = useMemo(() => {
     const counts: CalculatedPackageCounts = {
-      vip: 0,
-      adults: 0,
-      vipChild: 0,
-      vipAlc: 0,
-      royalChild: 0,
-      royalAdult: 0,
+      child: 0, adult: 0, childTopDeck: 0, adultTopDeck: 0, adultAlc: 0,
+      vipChild: 0, vipAdult: 0, vipAlc: 0,
+      royalChild: 0, royalAdult: 0, royalAlc: 0,
+      basicSY: 0, standardSY: 0, premiumSY: 0, vipSY: 0,
+      hourCharterPC: 0,
       others: 0,
     };
 
+    const yachtCategoryMap = new Map<string, YachtCategory | undefined>();
+    allYachts.forEach(y => yachtCategoryMap.set(y.id, y.category));
+
     filteredLeads.forEach(lead => {
+      const leadYachtCategory = yachtCategoryMap.get(lead.yacht);
+
       if (lead.packageQuantities) {
         lead.packageQuantities.forEach(pq => {
           const qty = pq.quantity || 0;
           if (qty === 0) return;
 
           const pkgNameUpper = pq.packageName.toUpperCase();
-          if (pkgNameUpper === 'VIP') counts.vip += qty;
-          else if (pkgNameUpper === 'ADULT') counts.adults += qty;
+
+          if (pkgNameUpper === 'CHILD') counts.child += qty;
+          else if (pkgNameUpper === 'ADULT') counts.adult += qty;
+          else if (pkgNameUpper === 'CHILD TOP DECK') counts.childTopDeck += qty;
+          else if (pkgNameUpper === 'ADULT TOP DECK') counts.adultTopDeck += qty;
+          else if (pkgNameUpper === 'ADULT ALC') counts.adultAlc += qty;
           else if (pkgNameUpper === 'VIP CHILD') counts.vipChild += qty;
+          else if (pkgNameUpper === 'VIP ADULT') counts.vipAdult += qty;
           else if (pkgNameUpper === 'VIP ALC') counts.vipAlc += qty;
           else if (pkgNameUpper === 'ROYAL CHILD') counts.royalChild += qty;
           else if (pkgNameUpper === 'ROYAL ADULT') counts.royalAdult += qty;
+          else if (pkgNameUpper === 'ROYAL ALC') counts.royalAlc += qty;
+          else if (pkgNameUpper === 'BASIC' && leadYachtCategory === 'Superyacht Sightseeing Cruise') counts.basicSY += qty;
+          else if (pkgNameUpper === 'STANDARD' && leadYachtCategory === 'Superyacht Sightseeing Cruise') counts.standardSY += qty;
+          else if (pkgNameUpper === 'PREMIUM' && leadYachtCategory === 'Superyacht Sightseeing Cruise') counts.premiumSY += qty;
+          else if (pkgNameUpper === 'VIP' && leadYachtCategory === 'Superyacht Sightseeing Cruise') counts.vipSY += qty;
+          else if (pkgNameUpper === 'HOUR CHARTER' && leadYachtCategory === 'Private Cruise') counts.hourCharterPC += qty;
         });
       }
       if (lead.perTicketRate && lead.perTicketRate > 0) {
-        counts.others += 1; 
+        counts.others += 1;
       }
     });
     return counts;
-  }, [filteredLeads]);
+  }, [filteredLeads, allYachts]);
 
 
   const resetFilters = () => {
@@ -945,7 +992,6 @@ export default function LeadsPage() {
   };
 
   const handleApplyFilters = () => {
-    // Filtering is dynamic, so this button is mostly for user feedback
     toast({title: "Filters Applied", description: `Displaying ${filteredLeads.length} leads based on current selections.`});
   };
 
@@ -1129,10 +1175,10 @@ export default function LeadsPage() {
         />
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-6 p-4 border rounded-lg shadow-sm">
           {[...Array(7)].map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}
-          <Skeleton className="h-10 w-full" /> {/* For Reset button placeholder */}
-          <Skeleton className="h-10 w-full" /> {/* For Apply Filters button placeholder */}
+          <Skeleton className="h-10 w-full" /> 
+          <Skeleton className="h-10 w-full" /> 
         </div>
-        <Skeleton className="h-16 w-full mb-4" /> {/* For package counts placeholder */}
+        <Skeleton className="h-24 w-full mb-4" /> 
         <div className="space-y-2">
           {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}
         </div>
@@ -1233,19 +1279,13 @@ export default function LeadsPage() {
         
         <div className="mt-6 pt-4 border-t">
             <h3 className="text-md font-semibold mb-3 text-foreground">Filtered Leads Package Summary:</h3>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-3">
-                {(Object.keys(calculatedPackageCounts) as Array<keyof CalculatedPackageCounts>).map(key => {
-                    let label = key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
-                    if (key === 'vip') label = 'VIP';
-                    if (key === 'adults') label = 'ADULTS';
-                    if (key === 'vipChild') label = 'VIP CHILD';
-                    if (key === 'vipAlc') label = 'VIP ALC';
-                    if (key === 'royalChild') label = 'ROYAL CH';
-                    if (key === 'royalAdult') label = 'ROYAL ADULT';
-                    if (key === 'others') label = 'OTHERS (Rate)';
-                    
+            <div className="flex flex-wrap gap-3">
+                {(Object.keys(calculatedPackageCounts) as Array<keyof CalculatedPackageCounts>)
+                  .filter(key => calculatedPackageCounts[key] > 0 || (key === 'others' && calculatedPackageCounts[key] >= 0) ) 
+                  .map(key => {
+                    const label = packageCountLabels[key] || key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
                     return (
-                        <div key={key} className="p-3 border rounded-lg bg-card shadow-sm text-center">
+                        <div key={key} className="p-3 border rounded-lg bg-card shadow-sm text-center min-w-[120px]">
                             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{label}</p>
                             <p className="text-xl font-bold text-primary">{calculatedPackageCounts[key]}</p>
                         </div>

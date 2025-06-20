@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo } from 'react';
@@ -37,7 +38,7 @@ export type LeadTableColumn = {
   isUserLookup?: boolean;
   isAgentLookup?: boolean;
   isYachtLookup?: boolean;
-  isPackageQuantityColumn?: boolean;
+  isPackageQuantityColumn?: boolean; // Changed from isPackageColumn
   actualPackageName?: string;
   yachtCategory?: string;
   isJsonDetails?: boolean;
@@ -58,7 +59,7 @@ export const packageHeaderMap: { [fullPackageName: string]: string } = {
   'BASIC': 'BASIC',
   'STANDARD': 'STD',
   'PREMIUM': 'PREM',
-  'VIP': 'VIP',
+  'VIP': 'VIP', // General VIP for sightseeing etc.
   'HOUR CHARTER': 'HrChtr',
 };
 
@@ -84,7 +85,7 @@ export const generateLeadColumns = (allYachts: Yacht[]): LeadTableColumn[] => {
 
   const addPackageColumns = (pkgDef: { actualPackageName: string; category: string }) => {
     if (allYachts.some(y => y.category === pkgDef.category && y.packages?.some(p => p.name === pkgDef.actualPackageName))) {
-      const shortHeader = packageHeaderMap[pkgDef.actualPackageName] || pkgDef.actualPackageName;
+      const shortHeader = packageHeaderMap[pkgDef.actualPackageName] || pkgDef.actualPackageName.substring(0,6);
       const baseAccessorKey = pkgDef.actualPackageName.replace(/\s+/g, '_').toLowerCase();
 
       columns.push({
@@ -142,7 +143,7 @@ export const generateLeadColumns = (allYachts: Yacht[]): LeadTableColumn[] => {
 
   const accountsColumns: LeadTableColumn[] = [
     { accessorKey: 'totalGuestsCalculated', header: 'Total Count', isNumeric: true },
-    { accessorKey: 'perTicketRate', header: 'Rate/Head', isCurrency: true }, // Changed header
+    { accessorKey: 'perTicketRate', header: 'Rate/Head', isCurrency: true },
     { accessorKey: 'totalAmount', header: 'Total Amt', isCurrency: true },
     { accessorKey: 'commissionPercentage', header: 'Discount %', isPercentage: true },
     { accessorKey: 'commissionAmount', header: 'Commission', isCurrency: true },

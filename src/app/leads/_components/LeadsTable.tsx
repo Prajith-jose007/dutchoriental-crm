@@ -38,7 +38,7 @@ export type LeadTableColumn = {
   isUserLookup?: boolean;
   isAgentLookup?: boolean;
   isYachtLookup?: boolean;
-  isPackageQuantityColumn?: boolean; // Changed from isPackageColumn
+  isPackageQuantityColumn?: boolean;
   actualPackageName?: string;
   yachtCategory?: string;
   isJsonDetails?: boolean;
@@ -59,7 +59,7 @@ export const packageHeaderMap: { [fullPackageName: string]: string } = {
   'BASIC': 'BASIC',
   'STANDARD': 'STD',
   'PREMIUM': 'PREM',
-  'VIP': 'VIP', // General VIP for sightseeing etc.
+  'VIP': 'VIP',
   'HOUR CHARTER': 'HrChtr',
 };
 
@@ -143,7 +143,7 @@ export const generateLeadColumns = (allYachts: Yacht[]): LeadTableColumn[] => {
 
   const accountsColumns: LeadTableColumn[] = [
     { accessorKey: 'totalGuestsCalculated', header: 'Total Count', isNumeric: true },
-    { accessorKey: 'perTicketRate', header: 'Rate/Head', isCurrency: true },
+    { accessorKey: 'perTicketRate', header: 'Other Charges', isCurrency: true },
     { accessorKey: 'totalAmount', header: 'Total Amt', isCurrency: true },
     { accessorKey: 'commissionPercentage', header: 'Discount %', isPercentage: true },
     { accessorKey: 'commissionAmount', header: 'Commission', isCurrency: true },
@@ -419,3 +419,5 @@ export function LeadsTable({
     </ScrollArea>
   );
 }
+
+    

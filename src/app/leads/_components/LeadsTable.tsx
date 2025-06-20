@@ -145,6 +145,7 @@ export const generateLeadColumns = (allYachts: Yacht[]): LeadTableColumn[] => {
     { accessorKey: 'totalGuestsCalculated', header: 'Total Count', isNumeric: true },
     { accessorKey: 'perTicketRate', header: 'Other Charges', isCurrency: true },
     { accessorKey: 'totalAmount', header: 'Total Amt', isCurrency: true },
+    { accessorKey: 'averageRateCalculated', header: 'Rate', isCurrency: true },
     { accessorKey: 'commissionPercentage', header: 'Discount %', isPercentage: true },
     { accessorKey: 'commissionAmount', header: 'Commission', isCurrency: true },
     { accessorKey: 'netAmount', header: 'Net Amt', isCurrency: true },
@@ -278,6 +279,14 @@ export function LeadsTable({
     if (column.accessorKey === 'totalGuestsCalculated') {
       const totalGuests = calculateTotalGuestsFromPackageQuantities(lead);
       return formatNumeric(totalGuests);
+    }
+     if (column.accessorKey === 'averageRateCalculated') {
+      const totalGuests = calculateTotalGuestsFromPackageQuantities(lead);
+      if (totalGuests > 0 && lead.totalAmount !== undefined && lead.totalAmount !== null) {
+        const averageRate = lead.totalAmount / totalGuests;
+        return formatCurrency(averageRate);
+      }
+      return '-';
     }
     if (column.accessorKey === 'freeGuestCount') {
       return formatNumeric(lead.freeGuestCount);

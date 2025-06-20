@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -58,7 +59,7 @@ const csvHeaderMapping: { [csvHeaderKey: string]: keyof Omit<Lead, 'packageQuant
   'vip': 'pkg_vip', 
   'hrchtr': 'pkg_hour_charter', 'hour_charter': 'pkg_hour_charter',
   'package_details_(json)': 'package_quantities_json_string', 'package_details_json': 'package_quantities_json_string',
-  'rate/head': 'perTicketRate', 'other': 'perTicketRate', 'other_rate': 'perTicketRate', 'ticket_rate': 'perTicketRate',
+  'other_charges': 'perTicketRate', 'other': 'perTicketRate', 'other_rate': 'perTicketRate', 'ticket_rate': 'perTicketRate',
   'total_amt': 'totalAmount', 'total_amount': 'totalAmount',
   'discount_%': 'commissionPercentage', 'discount_rate': 'commissionPercentage', 'discount': 'commissionPercentage',
   'commission': 'commissionAmount', 'commission_amount': 'commissionAmount',
@@ -284,7 +285,7 @@ const packageCountLabels: Record<keyof CalculatedPackageCounts, string> = {
   child: 'CHILD', adult: 'ADULT', childTopDeck: 'CHILD TOP DECK', adultTopDeck: 'ADULT TOP DECK', adultAlc: 'ADULT ALC',
   vipChild: 'VIP CHILD', vipAdult: 'VIP ADULT', vipAlc: 'VIP ALC',
   royalChild: 'ROYAL CHILD', royalAdult: 'ROYAL ADULT', royalAlc: 'ROYAL ALC',
-  basicSY: 'BASIC (SY)', standardSY: 'STANDARD (SY)', premiumSY: 'VIP (SY)', vipSY: 'VIP (SY)',
+  basicSY: 'BASIC (SY)', standardSY: 'STANDARD (SY)', premiumSY: 'PREMIUM (SY)', vipSY: 'VIP (SY)', // Corrected premiumSY to PREMIUM (SY) to match definition
   hourCharterPC: 'HOUR CHARTER (PC)',
   others: 'OTHERS (Rate)',
 };
@@ -976,6 +977,11 @@ export default function LeadsPage() {
     toast({title: "Filters Applied", description: `Displaying ${filteredLeads.length} leads based on current selections.`});
   };
 
+  const calculateTotalGuestsFromPackageQuantitiesForExport = (lead: Lead): number => {
+    if (!lead.packageQuantities || lead.packageQuantities.length === 0) return 0;
+    return lead.packageQuantities.reduce((sum, pq) => sum + (Number(pq.quantity) || 0), 0);
+  };
+
   const handleCsvExport = () => {
     if (filteredLeads.length === 0) {
       toast({ title: 'No Data', description: 'There are no leads (matching current filters) to export.', variant: 'default' });
@@ -997,11 +1003,6 @@ export default function LeadsPage() {
         return `"${stringValue.replace(/"/g, '""')}"`;
       }
       return stringValue;
-    };
-
-    const calculateTotalGuestsFromPackageQuantities = (lead: Lead): number => {
-      if (!lead.packageQuantities || lead.packageQuantities.length === 0) return 0;
-      return lead.packageQuantities.reduce((sum, pq) => sum + (Number(pq.quantity) || 0), 0);
     };
 
     const formatCurrencyForCsv = (amount?: number | null) => {
@@ -1034,7 +1035,15 @@ export default function LeadsPage() {
               cellValue = (quantity !== undefined && quantity > 0) ? String(quantity) : '';
             } 
             else if (col.accessorKey === 'totalGuestsCalculated') {
-              cellValue = calculateTotalGuestsFromPackageQuantities(lead);
+              cellValue = calculateTotalGuestsFromPackageQuantitiesForExport(lead);
+            } else if (col.accessorKey === 'averageRateCalculated') {
+                const totalGuests = calculateTotalGuestsFromPackageQuantitiesForExport(lead);
+                if (totalGuests > 0 && lead.totalAmount !== undefined && lead.totalAmount !== null) {
+                    const averageRate = lead.totalAmount / totalGuests;
+                    cellValue = formatCurrencyForCsv(averageRate);
+                } else {
+                    cellValue = '';
+                }
             } else if (col.isAgentLookup) {
               cellValue = agentMap[lead.agent as string] || lead.agent;
             } else if (col.isYachtLookup) {
@@ -1292,3 +1301,4 @@ export default function LeadsPage() {
     </div>
   );
 }
+

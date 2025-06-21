@@ -211,7 +211,10 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
 
     if (selectedYacht && selectedYacht.packages && Array.isArray(selectedYacht.packages)) {
       const newPQs = selectedYacht.packages.map(yachtPkg => {
-        const existingLeadPQ = lead?.packageQuantities?.find(lpq => lpq.packageId === yachtPkg.id);
+        // Only use the existing lead's quantity if the yacht hasn't changed from the initial lead.
+        const useOriginalQuantity = lead?.yacht === watchedYachtId;
+        const existingLeadPQ = useOriginalQuantity ? lead?.packageQuantities?.find(lpq => lpq.packageId === yachtPkg.id) : null;
+        
         const rateFromYacht = Number(Number(yachtPkg.rate || 0).toFixed(2));
         return {
           packageId: String(yachtPkg.id || `pkg-id-${Date.now()}-${Math.random()}`),

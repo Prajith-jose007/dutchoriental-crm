@@ -173,6 +173,7 @@ interface LeadsTableProps {
   leads: Lead[];
   onEditLead: (lead: Lead) => void;
   onDeleteLead: (leadId: string) => void;
+  onGenerateInvoice: (lead: Lead) => void;
   userMap: { [id: string]: string };
   agentMap: { [id: string]: string };
   yachtMap: { [id: string]: string };
@@ -188,6 +189,7 @@ export function LeadsTable({
   leads,
   onEditLead,
   onDeleteLead,
+  onGenerateInvoice,
   userMap,
   agentMap,
   yachtMap,
@@ -405,6 +407,10 @@ export function LeadsTable({
                           >
                             {lead.status === 'Closed' && !isAdmin ? 'View Details' : 'Edit Lead'}
                           </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => onGenerateInvoice(lead)}>
+                            Generate Invoice
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
                           <DropdownMenuItem
                             className="text-destructive"
                             onClick={() => onDeleteLead(lead.id)}
@@ -428,5 +434,3 @@ export function LeadsTable({
     </ScrollArea>
   );
 }
-
-    

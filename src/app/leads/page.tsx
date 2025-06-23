@@ -6,7 +6,7 @@ import { PageHeader } from '@/components/PageHeader';
 import { LeadsTable, generateLeadColumns, type LeadTableColumn } from './_components/LeadsTable';
 import { ImportExportButtons } from './_components/ImportExportButtons';
 import { LeadFormDialog } from './_components/LeadFormDialog';
-import type { Lead, LeadStatus, User, Agent, Yacht, LeadType, LeadPackageQuantity, PaymentConfirmationStatus, YachtPackageItem, YachtCategory } from '@/lib/types';
+import type { Lead, LeadStatus, User, Agent, Yacht, LeadType, LeadPackageQuantity, PaymentConfirmationStatus, YachtPackageItem, YachtCategory, Invoice } from '@/lib/types';
 import { leadStatusOptions, modeOfPaymentOptions, leadTypeOptions, paymentConfirmationStatusOptions } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -14,7 +14,7 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { DatePicker } from '@/components/ui/date-picker';
 import { Skeleton } from '@/components/ui/skeleton';
-import { format, parseISO, isWithinInterval, isValid, formatISO, getYear as getFullYear, getMonth as getMonthIndex } from 'date-fns';
+import { format, parseISO, isWithinInterval, isValid, formatISO, getYear as getFullYear, getMonth as getMonthIndex, addDays } from 'date-fns';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -544,6 +544,47 @@ export default function LeadsPage() {
       toast({ title: 'Error Deleting Lead', description: (error as Error).message, variant: 'destructive' });
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleGenerateInvoice = async (lead: Lead) => {
+    if (!lead) return;
+
+    toast({ title: 'Generating Invoice...', description: `Creating invoice for lead ${lead.id}.` });
+
+    try {
+      const newInvoice: Omit<Invoice, 'createdAt'> = {
+        id: `inv-${lead.id}`,
+        leadId: lead.id,
+        clientName: lead.clientName,
+        amount: lead.netAmount,
+        dueDate: formatISO(addDays(parseISO(lead.month), 7)),
+        status: 'Pending',
+      };
+
+      const response = await fetch('/api/invoices', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newInvoice),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: `API Error: ${response.statusText}` }));
+        if (response.status === 409) {
+          throw new Error('An invoice for this lead already exists.');
+        }
+        throw new Error(errorData.message || 'Failed to generate invoice.');
+      }
+
+      const createdInvoice = await response.json();
+      toast({
+        title: 'Invoice Generated Successfully',
+        description: `Invoice ${createdInvoice.id} has been created.`,
+      });
+
+    } catch (error) {
+      console.error("Error generating invoice:", error);
+      toast({ title: 'Error Generating Invoice', description: (error as Error).message, variant: 'destructive' });
     }
   };
 
@@ -1277,6 +1318,7 @@ export default function LeadsPage() {
         leads={filteredLeads}
         onEditLead={handleEditLeadClick}
         onDeleteLead={handleDeleteLead}
+        onGenerateInvoice={handleGenerateInvoice}
         userMap={userMap}
         agentMap={agentMap}
         yachtMap={yachtMap}
@@ -1301,4 +1343,3 @@ export default function LeadsPage() {
     </div>
   );
 }
-

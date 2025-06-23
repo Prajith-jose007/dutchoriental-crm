@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { PageHeader } from '@/components/PageHeader';
 import { BookingReportChart } from './_components/BookingReportChart';
 import { RevenueSummary } from './_components/RevenueSummary';
@@ -18,6 +18,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 export default function DashboardPage() {
   const router = useRouter();
+  const pathname = usePathname(); // Get the current path
   const [leads, setLeads] = useState<Lead[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]); 
   const [yachts, setYachts] = useState<Yacht[]>([]);
@@ -42,6 +43,7 @@ export default function DashboardPage() {
   }, [router]);
 
   useEffect(() => {
+    // Don't fetch data until authentication check is complete
     if (isAuthLoading) return; 
 
     const fetchData = async () => {
@@ -81,33 +83,37 @@ export default function DashboardPage() {
         setIsLoading(false);
       }
     };
-    fetchData();
-  }, [isAuthLoading]); 
+    
+    // Fetch data whenever the dashboard page is active (pathname changes to /dashboard)
+    if (pathname === '/dashboard') {
+      fetchData();
+    }
+  }, [isAuthLoading, pathname]); // Re-run fetch when pathname changes
   
-  if (isAuthLoading || isLoading) {
+  if (isAuthLoading || (isLoading && leads.length === 0)) {
     return (
       <div className="container mx-auto py-2">
         <PageHeader title="Dashboard" description="Loading data..." />
         <div className="grid gap-6">
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"> {/* Adjusted for more cards */}
-            {[...Array(4)].map((_,i) => <Skeleton key={`perf-sum-${i}`} className="h-[120px] w-full" />)}
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+            {[...Array(6)].map((_,i) => <Skeleton key={`perf-sum-${i}`} className="h-[120px] w-full" />)}
           </div>
            <div className="grid gap-4 md:grid-cols-1 lg:grid-cols-3">
             {[...Array(3)].map((_,i) => <Skeleton key={`rev-sum-${i}`} className="h-[120px] w-full" />)}
           </div>
-          <div className="grid gap-6 lg:grid-cols-1 xl:grid-cols-2"> {/* Main charts area */}
-            <Skeleton className="h-[350px] w-full" /> {/* Booking Report Chart */}
-            <Skeleton className="h-[350px] w-full" /> {/* Monthly Revenue Chart */}
-          </div>
-          <div className="grid gap-6 lg:grid-cols-2 xl:grid-cols-3"> {/* Pie charts and Agent List */}
-            <Skeleton className="h-[350px] w-full" /> {/* Invoice Status Pie */}
-            <Skeleton className="h-[350px] w-full" /> {/* Sales by Yacht Pie */}
-            <Skeleton className="h-[350px] w-full" /> {/* Agent List */}
-          </div>
-          <div className="grid gap-6 lg:grid-cols-1"> {/* Agent Bar Chart */}
+          <div className="grid gap-6 lg:grid-cols-1 xl:grid-cols-2">
+            <Skeleton className="h-[350px] w-full" />
             <Skeleton className="h-[350px] w-full" />
           </div>
-          <Skeleton className="h-[200px] w-full" /> {/* Latest Invoices */}
+          <div className="grid gap-6 lg:grid-cols-2 xl:grid-cols-3">
+            <Skeleton className="h-[350px] w-full" />
+            <Skeleton className="h-[350px] w-full" />
+            <Skeleton className="h-[350px] w-full" />
+          </div>
+          <div className="grid gap-6 lg:grid-cols-1">
+            <Skeleton className="h-[350px] w-full" />
+          </div>
+          <Skeleton className="h-[200px] w-full" />
         </div>
       </div>
     );
@@ -146,7 +152,7 @@ export default function DashboardPage() {
           <BookedAgentsList leads={leads} allAgents={agents} isLoading={isLoading} error={error && (leads.length === 0 || agents.length === 0) ? error : null} />
         </div>
         
-        <div className="grid-cols-1"> {/* Bar chart takes full width */}
+        <div className="grid-cols-1">
           <BookingsByAgentBarChart leads={leads} allAgents={agents} isLoading={isLoading} error={error && (leads.length === 0 || agents.length === 0) ? error : null} />
         </div>
         

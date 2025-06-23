@@ -39,14 +39,9 @@ export function LatestInvoicesTable({ invoices, isLoading, error }: LatestInvoic
     switch (status) {
       case 'Paid': return 'default';
       case 'Pending': return 'secondary';
-      case 'Overdue': return 'secondary'; // Treat Overdue as Pending for badge variant
+      case 'Overdue': return 'destructive'; // Use destructive for Overdue for better visibility
       default: return 'outline';
     }
-  };
-
-  const getDisplayStatusText = (status: Invoice['status']) => {
-    if (status === 'Overdue') return 'Pending';
-    return status;
   };
 
   if (isLoading) {
@@ -120,7 +115,7 @@ export function LatestInvoicesTable({ invoices, isLoading, error }: LatestInvoic
                 <TableCell>{invoice.amount.toLocaleString()} AED</TableCell>
                 <TableCell>{new Date(invoice.createdAt).toLocaleDateString()}</TableCell>
                 <TableCell>
-                  <Badge variant={getStatusBadgeVariant(invoice.status)}>{getDisplayStatusText(invoice.status)}</Badge>
+                  <Badge variant={getStatusBadgeVariant(invoice.status)}>{invoice.status}</Badge>
                 </TableCell>
               </TableRow>
             ))}

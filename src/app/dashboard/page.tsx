@@ -150,7 +150,7 @@ export default function DashboardPage() {
           <BookingsByAgentBarChart leads={leads} allAgents={agents} isLoading={isLoading} error={error && (leads.length === 0 || agents.length === 0) ? error : null} />
         </div>
         
-        <LatestInvoicesTable invoices={invoices} leads={leads} isLoading={isLoading} error={commonErrorInvoices} />
+        <LatestInvoicesTable invoices={invoices} isLoading={isLoading} error={commonErrorInvoices} />
       </div>
     </div>
   );

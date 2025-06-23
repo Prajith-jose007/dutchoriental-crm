@@ -293,6 +293,26 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
       const initialValues = getDefaultFormValues(lead, currentUserId);
       form.reset(initialValues);
 
+      if (initialValues.yacht && allYachts.length > 0) {
+        const selectedYachtOnReset = allYachts.find(y => y.id === initialValues.yacht);
+        if (selectedYachtOnReset?.packages) {
+            const newPQs = selectedYachtOnReset.packages.map(yachtPkg => {
+                const existingPQ = initialValues.packageQuantities?.find(lpq => lpq.packageId === yachtPkg.id);
+                return {
+                    packageId: yachtPkg.id,
+                    packageName: yachtPkg.name,
+                    quantity: existingPQ?.quantity || 0,
+                    rate: yachtPkg.rate || 0,
+                };
+            });
+            replacePackageQuantities(newPQs);
+        } else {
+            replacePackageQuantities([]);
+        }
+      } else {
+        replacePackageQuantities([]);
+      }
+
       const agentIdForCommission = lead?.agent || form.getValues('agent');
       if (agentIdForCommission && allAgents.length > 0) {
         const selectedAgentOnReset = allAgents.find(a => a.id === agentIdForCommission);
@@ -301,7 +321,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
          form.setValue('commissionPercentage', 0);
       }
     }
-  }, [lead, form, isOpen, allAgents, allYachts, currentUserId]);
+  }, [lead, form, isOpen, allAgents, allYachts, currentUserId, replacePackageQuantities]);
 
 
   function onSubmit(data: LeadFormData) {
@@ -733,7 +753,17 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Paid Amount (AED)</FormLabel>
-                      <FormControl><Input type="number" min="0" placeholder="0.00" {...field} onChange={e => field.onChange(e.target.value)} /></FormControl>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          placeholder="0.00"
+                          {...field}
+                          value={field.value ?? ''} 
+                          onChange={(e) => field.onChange(e.target.value)}
+                        />
+                      </FormControl>
                       <FormDescription>Amount paid by client</FormDescription>
                       <FormMessage />
                     </FormItem>

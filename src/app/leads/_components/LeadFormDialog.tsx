@@ -638,28 +638,52 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
 
             {watchedYachtId && packageQuantityFields.length > 0 && (
               <div className="pt-4 border-t mt-6">
-                  <h3 className="text-lg font-medium mb-1">Package Item Quantities</h3>
-                  <p className="text-sm text-muted-foreground mb-3">Enter quantities for packages offered by the selected yacht. Rates are shown for reference.</p>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-6 mt-2">
-                    {packageQuantityFields.map((fieldItem, index) => {
-                      return (
+                <h3 className="text-lg font-medium mb-1">Package Item Quantities & Rates</h3>
+                <p className="text-sm text-muted-foreground mb-3">
+                  Enter quantities for the new boat. Rates are pre-filled but can be overridden to match an original boat's pricing for upgrades.
+                </p>
+                <div className="space-y-4">
+                  {packageQuantityFields.map((fieldItem, index) => (
+                    <div key={fieldItem.id} className="p-3 border rounded-md">
+                      <p className="font-medium mb-2">{fieldItem.packageName}</p>
+                      <div className="grid grid-cols-2 gap-4">
                         <FormField
-                          key={fieldItem.id}
                           control={form.control}
                           name={`packageQuantities.${index}.quantity`}
-                          render={({ field: qtyField }) => (
+                          render={({ field }) => (
                             <FormItem>
-                              <FormLabel>{fieldItem.packageName} (Rate: {Number(fieldItem.rate || 0).toFixed(2)} AED)</FormLabel>
+                              <FormLabel>Quantity</FormLabel>
                               <FormControl>
-                                  <Input type="number" min="0" placeholder="0" {...qtyField} onChange={e => qtyField.onChange(parseInt(e.target.value,10) || 0)} />
+                                <Input type="number" min="0" placeholder="0" {...field} onChange={e => field.onChange(parseInt(e.target.value, 10) || 0)} />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
                           )}
                         />
-                      );
-                    })}
-                  </div>
+                        <FormField
+                          control={form.control}
+                          name={`packageQuantities.${index}.rate`}
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Rate (AED)</FormLabel>
+                              <FormControl>
+                                <Input
+                                  type="number"
+                                  step="0.01"
+                                  min="0"
+                                  placeholder="0.00"
+                                  {...field}
+                                  onChange={e => field.onChange(parseFloat(e.target.value) || 0)}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
              {watchedYachtId && (!selectedYachtForRateDisplay || !selectedYachtForRateDisplay.packages || selectedYachtForRateDisplay.packages.length === 0) && !isLoadingDropdowns && (
@@ -796,4 +820,3 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
     </Dialog>
   );
 }
-

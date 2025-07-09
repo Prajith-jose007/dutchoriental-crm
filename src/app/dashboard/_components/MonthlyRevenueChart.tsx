@@ -1,8 +1,7 @@
-
 'use client';
 
 import { useMemo } from 'react';
-import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Tooltip as RechartsTooltip } from 'recharts';
+import { Line, LineChart, CartesianGrid, XAxis, YAxis, Tooltip as RechartsTooltip } from 'recharts';
 import {
   Card,
   CardContent,
@@ -124,7 +123,7 @@ export function MonthlyRevenueChart({ leads, isLoading, error }: MonthlyRevenueC
       </CardHeader>
       <CardContent>
         <ChartContainer config={chartConfig} className="h-[300px] w-full">
-          <BarChart accessibilityLayer data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+          <LineChart accessibilityLayer data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
             <CartesianGrid vertical={false} strokeDasharray="3 3" />
             <XAxis
               dataKey="month"
@@ -138,11 +137,17 @@ export function MonthlyRevenueChart({ leads, isLoading, error }: MonthlyRevenueC
                 allowDecimals={false}
             />
             <RechartsTooltip 
-                cursor={{ fill: 'hsl(var(--muted))' }} 
+                cursor={true} 
                 content={<ChartTooltipContent formatter={(value) => `${Number(value).toLocaleString()} AED`} />} 
             />
-            <Bar dataKey="revenue" fill="var(--color-revenue)" radius={4} />
-          </BarChart>
+            <Line
+              type="monotone"
+              dataKey="revenue"
+              stroke="var(--color-revenue)"
+              strokeWidth={2}
+              dot={false}
+            />
+          </LineChart>
         </ChartContainer>
       </CardContent>
     </Card>

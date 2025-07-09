@@ -1,8 +1,7 @@
-
 'use client';
 
 import { useMemo } from 'react';
-import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Tooltip as RechartsTooltip } from 'recharts';
+import { Line, LineChart, CartesianGrid, XAxis, YAxis, Tooltip as RechartsTooltip } from 'recharts';
 import {
   Card,
   CardContent,
@@ -124,7 +123,7 @@ export function BookingReportChart({ leads, isLoading, error }: BookingReportCha
       </CardHeader>
       <CardContent>
         <ChartContainer config={chartConfig} className="h-[300px] w-full">
-          <BarChart accessibilityLayer data={chartData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
+          <LineChart accessibilityLayer data={chartData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
             <CartesianGrid vertical={false} strokeDasharray="3 3" />
             <XAxis
               dataKey="month"
@@ -135,11 +134,17 @@ export function BookingReportChart({ leads, isLoading, error }: BookingReportCha
             />
             <YAxis allowDecimals={false}/>
             <RechartsTooltip 
-                cursor={{ fill: 'hsl(var(--muted))' }} 
+                cursor={true} 
                 content={<ChartTooltipContent />} 
             />
-            <Bar dataKey="bookings" fill="var(--color-bookings)" radius={4} />
-          </BarChart>
+            <Line
+              type="monotone"
+              dataKey="bookings"
+              stroke="var(--color-bookings)"
+              strokeWidth={2}
+              dot={false}
+            />
+          </LineChart>
         </ChartContainer>
       </CardContent>
     </Card>

@@ -73,7 +73,7 @@ export function Logo({ className, textClassName, hideDefaultText = false, ...res
 
   return (
     <div 
-      className={cn("relative flex items-center justify-center w-full h-10", className)}
+      className={cn("relative flex items-center justify-center w-full", className)}
       {...rest}
     >
       {showImage ? (

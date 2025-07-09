@@ -137,6 +137,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
   const [allYachts, setAllYachts] = useState<Yacht[]>([]);
   const [isLoadingDropdowns, setIsLoadingDropdowns] = useState(true);
   const [calculatedTotalGuests, setCalculatedTotalGuests] = useState(0);
+  const [cruiseScope, setCruiseScope] = useState<'private' | 'shared' | ''>('');
 
   const form = useForm<LeadFormData>({
     resolver: zodResolver(leadFormSchema),
@@ -197,6 +198,16 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
     const filtered = allYachts.filter(yacht => yacht.category === watchedLeadType);
     return filtered;
   }, [watchedLeadType, allYachts]);
+
+  const filteredLeadTypeOptions = useMemo(() => {
+    if (cruiseScope === 'private') {
+      return leadTypeOptions.filter(opt => opt === 'Private Cruise');
+    }
+    if (cruiseScope === 'shared') {
+      return leadTypeOptions.filter(opt => opt !== 'Private Cruise');
+    }
+    return [];
+  }, [cruiseScope]);
 
 
   useEffect(() => {
@@ -304,6 +315,14 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
     if (isOpen) {
       const initialValues = getDefaultFormValues(lead, currentUserId);
       form.reset(initialValues);
+
+      if (initialValues.type === 'Private Cruise') {
+        setCruiseScope('private');
+      } else if (initialValues.type) {
+        setCruiseScope('shared');
+      } else {
+        setCruiseScope('');
+      }
 
       if (initialValues.yacht && allYachts.length > 0) {
         const selectedYachtOnReset = allYachts.find(y => y.id === initialValues.yacht);
@@ -505,6 +524,29 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
                   </FormItem>
                 )}
               />
+              <FormItem>
+                <FormLabel>Cruise Scope</FormLabel>
+                <Select
+                    value={cruiseScope}
+                    onValueChange={(value: 'private' | 'shared') => {
+                        setCruiseScope(value);
+                        form.setValue('type', '' as any);
+                        form.setValue('yacht', '');
+                        replacePackageQuantities([]);
+                    }}
+                    disabled={isFormDisabled}
+                >
+                    <FormControl>
+                        <SelectTrigger>
+                            <SelectValue placeholder="Select cruise scope" />
+                        </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                        <SelectItem value="shared">Shared Cruise</SelectItem>
+                        <SelectItem value="private">Private Cruise</SelectItem>
+                    </SelectContent>
+                </Select>
+              </FormItem>
               <FormField
                 control={form.control}
                 name="type"
@@ -519,10 +561,11 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
                         }}
                         value={field.value || undefined}
                         defaultValue={field.value}
+                        disabled={isFormDisabled || !cruiseScope}
                      >
-                      <FormControl><SelectTrigger><SelectValue placeholder="Select booking type" /></SelectTrigger></FormControl>
+                      <FormControl><SelectTrigger><SelectValue placeholder={!cruiseScope ? "Select Scope first" : "Select booking type"} /></SelectTrigger></FormControl>
                       <SelectContent>
-                        {leadTypeOptions.map(typeOpt => (<SelectItem key={typeOpt} value={typeOpt}>{typeOpt}</SelectItem>))}
+                        {filteredLeadTypeOptions.map(typeOpt => (<SelectItem key={typeOpt} value={typeOpt}>{typeOpt}</SelectItem>))}
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -675,21 +718,21 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
                         <FormField
                           control={form.control}
                           name={`packageQuantities.${index}.rate`}
-                          render={({ field }) => (
+                          render={({ field: rateField }) => (
                             <FormItem>
                               <FormLabel>Rate (AED)</FormLabel>
                               <FormControl>
-                                <Input
-                                  type="number"
-                                  step="0.01"
-                                  min="0"
-                                  placeholder="0.00"
-                                  {...field}
-                                  onChange={e => field.onChange(parseFloat(e.target.value) || 0)}
+                                <Input 
+                                  type="number" 
+                                  placeholder="0.00" 
+                                  min="0" 
+                                  step="0.01" 
+                                  {...rateField} 
+                                  onChange={e => rateField.onChange(parseFloat(e.target.value) || 0)}
                                   onBlur={e => { // Optionally round on blur
                                     const val = parseFloat(e.target.value);
                                     if (!isNaN(val)) {
-                                      field.onChange(Number(val.toFixed(2)));
+                                      rateField.onChange(Number(val.toFixed(2)));
                                     }
                                   }}
                                 />

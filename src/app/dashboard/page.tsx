@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -134,7 +135,7 @@ export default function DashboardPage() {
 
   return (
     <div className="container mx-auto py-2">
-      <PageHeader title="Dashboard" description="Welcome to DutchOriental CRM. Here's an overview of your yacht business." />
+      <PageHeader title="Dashboard" description="Internal Booking System (IBS)" />
       
       <div className="grid gap-6">
         <PerformanceSummary leads={leads} isLoading={isLoading} error={error} />

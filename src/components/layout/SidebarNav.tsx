@@ -122,8 +122,8 @@ export function SidebarNav() {
 
   return (
     <Sidebar collapsible="icon" variant="sidebar" side="left">
-      <SidebarHeader className="p-4">
-        <Logo className="h-12 w-auto" />
+      <SidebarHeader className="p-2">
+        <Logo className="h-12 w-full group-data-[[data-collapsible=icon]]:h-8" />
       </SidebarHeader>
       <SidebarContent>
         <SidebarMenu>

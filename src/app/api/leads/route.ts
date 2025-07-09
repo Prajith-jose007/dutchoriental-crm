@@ -79,6 +79,8 @@ export async function GET(request: NextRequest) {
         month: dbLead.month ? ensureISOFormat(dbLead.month)! : formatISO(new Date()),
         notes: dbLead.notes || undefined,
         type: (dbLead.type || 'Private Cruise') as LeadType,
+        hoursOfBooking: dbLead.hoursOfBooking,
+        catering: dbLead.catering,
         paymentConfirmationStatus: (dbLead.paymentConfirmationStatus || 'UNPAID') as PaymentConfirmationStatus,
         transactionId: dbLead.transactionId || undefined,
         modeOfPayment: (dbLead.modeOfPayment || 'Online') as ModeOfPayment,
@@ -184,6 +186,8 @@ export async function POST(request: NextRequest) {
       month: formattedMonth,
       notes: newLeadData.notes || null,
       type: newLeadData.type || 'Private Cruise',
+      hoursOfBooking: newLeadData.hoursOfBooking || null,
+      catering: newLeadData.catering || null,
       paymentConfirmationStatus: newLeadData.paymentConfirmationStatus || 'UNPAID',
       transactionId: finalTransactionId,
       modeOfPayment: newLeadData.modeOfPayment || 'Online',
@@ -209,16 +213,16 @@ export async function POST(request: NextRequest) {
 
     const sql = `
       INSERT INTO leads (
-        id, clientName, agent, yacht, status, month, notes, type, paymentConfirmationStatus, transactionId, modeOfPayment,
+        id, clientName, agent, yacht, status, month, notes, type, hoursOfBooking, catering, paymentConfirmationStatus, transactionId, modeOfPayment,
         package_quantities_json, freeGuestCount, perTicketRate,
         totalAmount, commissionPercentage, commissionAmount, netAmount,
         paidAmount, balanceAmount,
         createdAt, updatedAt, lastModifiedByUserId, ownerUserId
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
     const params = [
       leadToStore.id, leadToStore.clientName, leadToStore.agent, leadToStore.yacht, leadToStore.status,
-      leadToStore.month, leadToStore.notes, leadToStore.type, leadToStore.paymentConfirmationStatus, leadToStore.transactionId, leadToStore.modeOfPayment,
+      leadToStore.month, leadToStore.notes, leadToStore.type, leadToStore.hoursOfBooking, leadToStore.catering, leadToStore.paymentConfirmationStatus, leadToStore.transactionId, leadToStore.modeOfPayment,
       leadToStore.package_quantities_json, leadToStore.freeGuestCount, leadToStore.perTicketRate,
       leadToStore.totalAmount, leadToStore.commissionPercentage, leadToStore.commissionAmount, leadToStore.netAmount,
       leadToStore.paidAmount, leadToStore.balanceAmount,
@@ -260,6 +264,8 @@ export async function POST(request: NextRequest) {
             status: (dbLead.status || 'Upcoming') as LeadStatus,
             month: dbLead.month ? ensureISOFormat(dbLead.month)! : formatISO(new Date()),
             notes: dbLead.notes || undefined, type: (dbLead.type || 'Private Cruise') as LeadType,
+            hoursOfBooking: dbLead.hoursOfBooking,
+            catering: dbLead.catering,
             paymentConfirmationStatus: (dbLead.paymentConfirmationStatus || 'UNPAID') as PaymentConfirmationStatus,
             transactionId: dbLead.transactionId || undefined,
             modeOfPayment: (dbLead.modeOfPayment || 'Online') as ModeOfPayment,
@@ -386,4 +392,3 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ message: 'Failed to bulk update lead statuses', error: (error as Error).message }, { status: 500 });
   }
 }
-

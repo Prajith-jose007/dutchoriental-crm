@@ -25,7 +25,9 @@ function buildLeadUpdateSetClause(data: Partial<Omit<Lead, 'id' | 'createdAt' | 
   const valuesToUpdate: any[] = [];
 
   const allowedKeys: (keyof Lead | 'package_quantities_json')[] = [
-    'clientName', 'agent', 'yacht', 'status', 'month', 'notes', 'type', 'paymentConfirmationStatus', 'transactionId', 'modeOfPayment',
+    'clientName', 'agent', 'yacht', 'status', 'month', 'notes', 'type', 
+    'hoursOfBooking', 'catering',
+    'paymentConfirmationStatus', 'transactionId', 'modeOfPayment',
     'package_quantities_json', 'freeGuestCount', 'perTicketRate',
     'totalAmount', 'commissionPercentage', 'commissionAmount',
     'netAmount', 'paidAmount', 'balanceAmount', 'updatedAt',
@@ -38,7 +40,7 @@ function buildLeadUpdateSetClause(data: Partial<Omit<Lead, 'id' | 'createdAt' | 
       if (['month', 'updatedAt', 'createdAt'].includes(key)) {
         valuesToUpdate.push(ensureISOFormat(value as string) || null);
       } else if (typeof value === 'string' && value.trim() === '' &&
-                 ['notes', 'transactionId', 'lastModifiedByUserId', 'ownerUserId', 'agent', 'yacht'].includes(key)) {
+                 ['notes', 'transactionId', 'lastModifiedByUserId', 'ownerUserId', 'agent', 'yacht', 'catering'].includes(key)) {
         valuesToUpdate.push(null);
       } else if (typeof value === 'number' && isNaN(value)) {
         valuesToUpdate.push(key === 'perTicketRate' ? null : 0);
@@ -102,6 +104,8 @@ export async function GET(
         month: dbLead.month ? ensureISOFormat(dbLead.month)! : formatISO(new Date()),
         notes: dbLead.notes || undefined,
         type: (dbLead.type || 'Private Cruise') as LeadType,
+        hoursOfBooking: dbLead.hoursOfBooking,
+        catering: dbLead.catering,
         paymentConfirmationStatus: (dbLead.paymentConfirmationStatus || 'UNPAID') as PaymentConfirmationStatus,
         transactionId: dbLead.transactionId || undefined,
         modeOfPayment: (dbLead.modeOfPayment || 'Online') as ModeOfPayment,
@@ -245,6 +249,8 @@ export async function PUT(
         id: String(dbLead.id || ''), clientName: String(dbLead.clientName || ''), agent: String(dbLead.agent || ''), yacht: String(dbLead.yacht || ''),
         status: (dbLead.status || 'Upcoming') as LeadStatus,
         month: dbLead.month ? ensureISOFormat(dbLead.month)! : formatISO(new Date()), notes: dbLead.notes || undefined, type: (dbLead.type || 'Private Cruise') as LeadType,
+        hoursOfBooking: dbLead.hoursOfBooking,
+        catering: dbLead.catering,
         paymentConfirmationStatus: (dbLead.paymentConfirmationStatus || 'UNPAID') as PaymentConfirmationStatus,
         transactionId: dbLead.transactionId || undefined,
         modeOfPayment: (dbLead.modeOfPayment || 'Online') as ModeOfPayment,
@@ -325,4 +331,3 @@ export async function DELETE(
     return NextResponse.json({ message: 'Failed to delete lead', errorDetails: errorMessage }, { status: 500 });
   }
 }
-

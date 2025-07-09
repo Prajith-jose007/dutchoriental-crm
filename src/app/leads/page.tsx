@@ -39,6 +39,8 @@ const csvHeaderMapping: { [csvHeaderKey: string]: keyof Omit<Lead, 'packageQuant
   'client': 'clientName', 'client_name': 'clientName',
   'payment_status': 'paymentConfirmationStatus', 'pay_status': 'paymentConfirmationStatus', 'payment_confirmation_status': 'paymentConfirmationStatus',
   'type': 'type', 'lead_type': 'type',
+  'hours_of_booking': 'hoursOfBooking', 'booking_hours': 'hoursOfBooking',
+  'catering': 'catering', 'catering_details': 'catering',
   'transaction_id': 'transactionId', 'transaction id': 'transactionId',
   'payment_mode': 'modeOfPayment', 'mode_of_payment': 'modeOfPayment',
   'free': 'freeGuestCount', 'free_guests': 'freeGuestCount',
@@ -119,6 +121,8 @@ const convertCsvValue = (
       case 'type': return 'Private Cruise' as LeadType;
       case 'paymentConfirmationStatus': return 'UNPAID' as PaymentConfirmationStatus;
       case 'notes': return '';
+      case 'catering': return '';
+      case 'hoursOfBooking': return 0;
       case 'month': return formatISO(new Date());
       case 'createdAt': case 'updatedAt': return formatISO(new Date());
       case 'lastModifiedByUserId': return currentUserId || undefined;
@@ -139,6 +143,7 @@ const convertCsvValue = (
     case 'totalAmount': case 'commissionPercentage': case 'commissionAmount':
     case 'netAmount': case 'paidAmount': case 'balanceAmount':
     case 'freeGuestCount':
+    case 'hoursOfBooking':
       const numFinancial = parseFloat(trimmedValue.replace(/,/g, ''));
       return isNaN(numFinancial) ? 0 : numFinancial;
     case 'perTicketRate':
@@ -833,6 +838,8 @@ export default function LeadsPage() {
             month: parsedRow.month || formatISO(new Date()),
             notes: parsedRow.notes || '', 
             type: parsedRow.type || 'Private Cruise',
+            hoursOfBooking: parsedRow.hoursOfBooking || undefined,
+            catering: parsedRow.catering || undefined,
             paymentConfirmationStatus: parsedRow.paymentConfirmationStatus || 'UNPAID',
             transactionId: transactionIdForRow,
             modeOfPayment: parsedRow.modeOfPayment || 'CARD',
@@ -1104,6 +1111,8 @@ export default function LeadsPage() {
                 cellValue = formatPercentageForCsv(lead[col.accessorKey as keyof Lead] as number | null | undefined);
             } else if (col.accessorKey === 'freeGuestCount') {
                 cellValue = formatNumericForCsv(lead.freeGuestCount);
+            } else if (col.accessorKey === 'hoursOfBooking') {
+                cellValue = formatNumericForCsv(lead.hoursOfBooking);
             }
             else {
               cellValue = lead[col.accessorKey as keyof Lead];

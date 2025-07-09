@@ -82,6 +82,8 @@ export interface Lead {
   notes?: string;
   yacht: string;
   type: LeadType;
+  hoursOfBooking?: number;
+  catering?: string;
   paymentConfirmationStatus: PaymentConfirmationStatus;
   transactionId?: string;
   modeOfPayment: ModeOfPayment;
@@ -128,4 +130,5 @@ export interface BookingsByAgentData {
 
 
 export type { LeadStatus as ExportedLeadStatus, ModeOfPayment as ExportedModeOfPayment, LeadType as ExportedLeadType, PaymentConfirmationStatus as ExportedPaymentConfirmationStatus };
+
 

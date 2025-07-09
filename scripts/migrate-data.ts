@@ -134,6 +134,8 @@ async function createLeadsTable() {
       month DATETIME, -- Stores the Lead/Event Date
       notes TEXT,
       type VARCHAR(255),
+      hoursOfBooking INT DEFAULT NULL,
+      catering TEXT DEFAULT NULL,
       paymentConfirmationStatus VARCHAR(50) DEFAULT 'CONFIRMED',
       transactionId VARCHAR(255),
       modeOfPayment VARCHAR(50),
@@ -157,6 +159,8 @@ async function createLeadsTable() {
     console.log(`Table ${tableName} checked/created successfully.`);
     
     // Ensure newer columns exist
+    await addColumnIfNotExists(tableName, 'hoursOfBooking', 'INT DEFAULT NULL');
+    await addColumnIfNotExists(tableName, 'catering', 'TEXT DEFAULT NULL');
     await addColumnIfNotExists(tableName, 'paymentConfirmationStatus', 'VARCHAR(50) DEFAULT \'CONFIRMED\'');
     await addColumnIfNotExists(tableName, 'transactionId', 'VARCHAR(255) DEFAULT NULL');
     await addColumnIfNotExists(tableName, 'modeOfPayment', 'VARCHAR(50) DEFAULT \'Online\'');
@@ -289,13 +293,17 @@ async function migrateLeads() {
   for (const lead of placeholderLeads) {
     const sql = `
       INSERT INTO leads (
-        id, clientName, agent, yacht, status, month, notes, type, paymentConfirmationStatus, transactionId, modeOfPayment,
+        id, clientName, agent, yacht, status, month, notes, type, 
+        hoursOfBooking, catering,
+        paymentConfirmationStatus, transactionId, modeOfPayment,
         package_quantities_json, freeGuestCount, perTicketRate,
         totalAmount, commissionPercentage, commissionAmount, netAmount,
         paidAmount, balanceAmount,
         createdAt, updatedAt, lastModifiedByUserId, ownerUserId
       ) VALUES (
-        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 
+        ?, ?, ?, ?, ?, ?, ?, ?, 
+        ?, ?,
+        ?, ?, ?, 
         ?, ?, ?,
         ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
       )
@@ -328,6 +336,8 @@ async function migrateLeads() {
         monthDate, // This is the Booking/Event Date
         lead.notes || null,
         lead.type,
+        lead.hoursOfBooking || null,
+        lead.catering || null,
         lead.paymentConfirmationStatus || 'CONFIRMED', 
         lead.transactionId || null,
         lead.modeOfPayment,

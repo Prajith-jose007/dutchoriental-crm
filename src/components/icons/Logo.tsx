@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, type HTMLAttributes } from 'react';
@@ -64,7 +63,7 @@ export function Logo({ className, textClassName, hideDefaultText = false, ...res
   if (isLoading) {
     return (
       <div
-        className={cn("animate-pulse bg-muted/50 rounded-md flex items-center justify-center h-full w-full", className)}
+        className={cn("animate-pulse bg-muted/50 rounded-md flex items-center justify-center h-10 w-full", className)}
         {...rest}
       />
     );
@@ -74,7 +73,7 @@ export function Logo({ className, textClassName, hideDefaultText = false, ...res
 
   return (
     <div 
-      className={cn("relative flex items-center justify-center w-full h-full", className)}
+      className={cn("relative flex items-center justify-center w-full h-10", className)}
       {...rest}
     >
       {showImage ? (
@@ -89,7 +88,7 @@ export function Logo({ className, textClassName, hideDefaultText = false, ...res
       ) : null}
       {showDefaultAppName && !showImage && ( // Only show AppName text if image isn't shown
         <span className={cn(
-          "font-semibold text-xl text-primary whitespace-nowrap overflow-hidden text-ellipsis", // Slightly larger text if image fails
+          "font-semibold text-lg text-primary whitespace-nowrap overflow-hidden text-ellipsis",
           textClassName
         )}>
           {AppName}

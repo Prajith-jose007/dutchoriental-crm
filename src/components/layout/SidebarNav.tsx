@@ -1,4 +1,3 @@
-
 'use client';
 
 import Link from 'next/link';
@@ -123,11 +122,8 @@ export function SidebarNav() {
 
   return (
     <Sidebar collapsible="icon" variant="sidebar" side="left">
-      <SidebarHeader className="p-4 flex flex-row items-center gap-2">
-        <div className="h-10">
-          <Logo hideDefaultText={true} className="w-auto h-full" />
-        </div>
-        {state === 'expanded' && <h1 className="font-bold text-xl text-sidebar-foreground">CRM</h1>}
+      <SidebarHeader className="p-4">
+        <Logo className="w-auto" />
       </SidebarHeader>
       <SidebarContent>
         <SidebarMenu>

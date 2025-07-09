@@ -406,7 +406,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
       id: lead?.id || `temp-${Date.now()}`, 
       transactionId: lead?.id && data.transactionId === "Pending Generation" ? lead.transactionId : data.transactionId, 
       month: data.month ? formatISO(data.month) : formatISO(new Date()),
-      hoursOfBooking: data.type === 'Private Cruise' ? data.hoursOfBooking : undefined,
+      hoursOfBooking: data.type === 'Private Cruise' ? (data.hoursOfBooking ?? undefined) : undefined,
       catering: data.type === 'Private Cruise' ? data.catering : undefined,
       paymentConfirmationStatus: data.paymentConfirmationStatus,
       freeGuestCount: Number(data.freeGuestCount || 0),

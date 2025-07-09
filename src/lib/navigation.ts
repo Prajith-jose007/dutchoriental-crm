@@ -1,6 +1,6 @@
 
 import type { LucideIcon } from 'lucide-react';
-import { LayoutDashboard, ClipboardList, Users, Ship, Settings, Briefcase, KanbanSquare, BarChart3 } from 'lucide-react';
+import { LayoutDashboard, ClipboardList, Users, Ship, Settings, Briefcase, BarChart3, Activity } from 'lucide-react';
 
 export interface NavItem {
   title: string;
@@ -49,6 +49,11 @@ export const mainNavItems: NavItem[] = [
     href: '/settings',
     icon: Settings,
     adminOnly: true, // Mark as admin only
+  },
+  {
+    title: 'CRM',
+    href: '/dashboard',
+    icon: Activity,
   },
 ];
 

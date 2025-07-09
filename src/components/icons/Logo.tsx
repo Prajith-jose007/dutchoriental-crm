@@ -64,8 +64,7 @@ export function Logo({ className, textClassName, hideDefaultText = false, ...res
   if (isLoading) {
     return (
       <div
-        style={{ height: '60px', width: '100%' }} // Updated skeleton height
-        className={cn("animate-pulse bg-muted/50 rounded-md flex items-center justify-center", className)}
+        className={cn("animate-pulse bg-muted/50 rounded-md flex items-center justify-center h-full w-full", className)}
         {...rest}
       />
     );
@@ -75,8 +74,7 @@ export function Logo({ className, textClassName, hideDefaultText = false, ...res
 
   return (
     <div 
-      className={cn("relative flex items-center justify-center w-full", className)}
-      style={{ height: '60px' }} // Increased height from 50px to 60px
+      className={cn("relative flex items-center justify-center w-full h-full", className)}
       {...rest}
     >
       {showImage ? (

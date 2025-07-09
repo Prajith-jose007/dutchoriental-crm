@@ -23,11 +23,6 @@ export const mainNavItems: NavItem[] = [
     icon: ClipboardList,
   },
   {
-    title: 'Booking Pipeline',
-    href: '/leads/pipeline',
-    icon: KanbanSquare,
-  },
-  {
     title: 'Agents',
     href: '/agents',
     icon: Briefcase,

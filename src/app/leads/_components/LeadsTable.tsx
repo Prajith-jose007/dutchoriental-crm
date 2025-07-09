@@ -372,7 +372,7 @@ export function LeadsTable({
           {leads.length === 0 ? (
             <TableRow>
               <TableCell colSpan={leadColumns.filter(col => !col.isJsonDetails).length} className="h-24 text-center">
-                No leads found.
+                No bookings found.
               </TableCell>
             </TableRow>
           ) : (
@@ -405,7 +405,7 @@ export function LeadsTable({
                             onClick={() => onEditLead(lead)}
                             disabled={!isAdmin && lead.status === 'Closed'}
                           >
-                            {lead.status === 'Closed' && !isAdmin ? 'View Details' : 'Edit Lead'}
+                            {lead.status === 'Closed' && !isAdmin ? 'View Details' : 'Edit Booking'}
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => onGenerateInvoice(lead)}>
                             Generate Invoice
@@ -416,7 +416,7 @@ export function LeadsTable({
                             onClick={() => onDeleteLead(lead.id)}
                             disabled={!isAdmin && lead.status === 'Closed'}
                           >
-                            Delete Lead
+                            Delete Booking
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>

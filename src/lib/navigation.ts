@@ -18,12 +18,12 @@ export const mainNavItems: NavItem[] = [
     icon: LayoutDashboard,
   },
   {
-    title: 'Leads',
+    title: 'Bookings',
     href: '/leads',
     icon: ClipboardList,
   },
   {
-    title: 'Pipeline',
+    title: 'Booking Pipeline',
     href: '/leads/pipeline',
     icon: KanbanSquare,
   },

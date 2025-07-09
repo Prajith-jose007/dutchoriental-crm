@@ -23,13 +23,13 @@ export default function LeadPipelinePage() {
     try {
       const response = await fetch('/api/leads');
       if (!response.ok) {
-        throw new Error(`Failed to fetch leads: ${response.statusText}`);
+        throw new Error(`Failed to fetch bookings: ${response.statusText}`);
       }
       const data = await response.json();
       setLeads(Array.isArray(data) ? data : []);
     } catch (error) {
-      console.error("Error fetching leads for pipeline:", error);
-      toast({ title: 'Error Fetching Leads', description: (error as Error).message, variant: 'destructive' });
+      console.error("Error fetching bookings for pipeline:", error);
+      toast({ title: 'Error Fetching Bookings', description: (error as Error).message, variant: 'destructive' });
       setLeads([]);
     } finally {
       setIsLoading(false);
@@ -57,18 +57,18 @@ export default function LeadPipelinePage() {
         });
       } else {
         // This case should ideally not happen if triggered from pipeline card
-        toast({ title: 'Error', description: 'Lead ID missing for update.', variant: 'destructive' });
+        toast({ title: 'Error', description: 'Booking ID missing for update.', variant: 'destructive' });
         return;
       }
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || `Failed to save lead: ${response.statusText}`);
+        throw new Error(errorData.message || `Failed to save booking: ${response.statusText}`);
       }
       
       toast({
-        title: 'Lead Updated',
-        description: `Lead for ${submittedLeadData.clientName} has been updated.`,
+        title: 'Booking Updated',
+        description: `Booking for ${submittedLeadData.clientName} has been updated.`,
       });
       
       fetchLeads(); // Re-fetch all leads to update the pipeline
@@ -76,8 +76,8 @@ export default function LeadPipelinePage() {
       setEditingLead(null);
 
     } catch (error) {
-      console.error("Error saving lead from pipeline:", error);
-      toast({ title: 'Error Saving Lead', description: (error as Error).message, variant: 'destructive' });
+      console.error("Error saving booking from pipeline:", error);
+      toast({ title: 'Error Saving Booking', description: (error as Error).message, variant: 'destructive' });
     }
   };
 
@@ -85,8 +85,8 @@ export default function LeadPipelinePage() {
   return (
     <div className="container mx-auto py-2 flex flex-col h-full">
       <PageHeader
-        title="Lead Pipeline"
-        description="Visualize your leads across different stages."
+        title="Booking Pipeline"
+        description="Visualize your bookings across different stages."
       />
       {isLoading ? (
         <div className="flex-1 grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 p-4 overflow-x-auto">
@@ -101,7 +101,7 @@ export default function LeadPipelinePage() {
         </div>
       ) : leads.length === 0 ? (
          <div className="flex-1 flex items-center justify-center">
-            <p className="text-muted-foreground text-xl">No leads found to display in the pipeline.</p>
+            <p className="text-muted-foreground text-xl">No bookings found to display in the pipeline.</p>
          </div>
       ) : (
         <LeadPipelineBoard leads={leads} onEditLead={handleEditLeadClick} />

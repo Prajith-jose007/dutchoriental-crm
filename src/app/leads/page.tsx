@@ -103,7 +103,7 @@ const convertCsvValue = (
       }
       return null;
     } catch (e) {
-      console.warn(`[CSV Import Leads] Could not parse package_quantities_json_string: "${trimmedValue}". Error:`, e);
+      console.warn(`[CSV Import Bookings] Could not parse package_quantities_json_string: "${trimmedValue}". Error:`, e);
       return null;
     }
   }
@@ -332,7 +332,7 @@ export default function LeadsPage() {
         fetch('/api/users'),
       ]);
 
-      if (!leadsRes.ok) throw new Error(`Failed to fetch leads: ${leadsRes.statusText}`);
+      if (!leadsRes.ok) throw new Error(`Failed to fetch bookings: ${leadsRes.statusText}`);
       const leadsData = await leadsRes.json();
       setAllLeads(Array.isArray(leadsData) ? leadsData : []);
 
@@ -363,7 +363,7 @@ export default function LeadsPage() {
       setUserMap(map);
 
     } catch (error) {
-      console.error("Error fetching initial data for Leads page:", error);
+      console.error("Error fetching initial data for Bookings page:", error);
       setFetchError((error as Error).message);
       toast({ title: 'Error Fetching Data', description: (error as Error).message, variant: 'destructive' });
       setAllLeads([]); setAllAgents([]); setAllYachts([]); setUserMap({}); setAgentMap({}); setYachtMap({});
@@ -385,7 +385,7 @@ export default function LeadsPage() {
     fetchAllData();
   }, []);
 
-  const handleAddLeadClick = () => {
+  const handleAddBookingClick = () => {
     setEditingLead(null);
     setIsLeadDialogOpen(true);
   };
@@ -442,7 +442,7 @@ export default function LeadsPage() {
       payload.ownerUserId = editingLead.ownerUserId || currentUserId;
       payload.createdAt = editingLead.createdAt || new Date().toISOString();
        if (editingLead.status === 'Closed' && !isAdmin) {
-        toast({ title: "Action Denied", description: "Closed leads cannot be modified by non-administrators.", variant: "destructive" });
+        toast({ title: "Action Denied", description: "Closed bookings cannot be modified by non-administrators.", variant: "destructive" });
         setIsLoading(false);
         setIsLeadDialogOpen(false);
         setEditingLead(null);
@@ -450,7 +450,7 @@ export default function LeadsPage() {
       }
     }
 
-    console.log("[LeadsPage] Submitting lead payload:", payload);
+    console.log("[BookingsPage] Submitting booking payload:", payload);
 
     try {
       let response;
@@ -473,19 +473,19 @@ export default function LeadsPage() {
         let errorDetailsLog = '';
         try {
           const parsedError = await response.json();
-          console.error("[LeadsPage] Parsed API error response from form submit:", parsedError);
+          console.error("[BookingsPage] Parsed API error response from form submit:", parsedError);
           descriptiveMessage = parsedError.message || descriptiveMessage;
           errorDetailsLog = parsedError.errorDetails || parsedError.error || '';
         } catch (jsonError) {
-          console.warn("[LeadsPage] API error response body was not valid JSON or was empty. Status:", response.status, "StatusText:", response.statusText, "JSON parse error:", jsonError);
+          console.warn("[BookingsPage] API error response body was not valid JSON or was empty. Status:", response.status, "StatusText:", response.statusText, "JSON parse error:", jsonError);
         }
         const finalErrorMessage = descriptiveMessage + (errorDetailsLog ? ` - Details: ${errorDetailsLog}` : '');
         throw new Error(finalErrorMessage);
       }
 
       toast({
-        title: editingLead ? 'Lead Updated' : 'Lead Added',
-        description: `Lead for ${submittedLeadData.clientName} has been saved.`,
+        title: editingLead ? 'Booking Updated' : 'Booking Added',
+        description: `Booking for ${submittedLeadData.clientName} has been saved.`,
       });
 
       await fetchAllData();
@@ -493,8 +493,8 @@ export default function LeadsPage() {
       setEditingLead(null);
 
     } catch (error) {
-      console.error("[LeadsPage] Error saving lead:", error);
-      toast({ title: 'Error Saving Lead', description: (error as Error).message, variant: 'destructive' });
+      console.error("[BookingsPage] Error saving booking:", error);
+      toast({ title: 'Error Saving Booking', description: (error as Error).message, variant: 'destructive' });
     } finally {
       setIsLoading(false);
     }
@@ -507,11 +507,11 @@ export default function LeadsPage() {
     }
     const leadToDelete = allLeads.find(l => l.id === leadId);
     if (leadToDelete?.status === 'Closed' && !isAdmin) {
-      toast({ title: "Action Denied", description: "Closed leads cannot be deleted by non-administrators.", variant: "destructive" });
+      toast({ title: "Action Denied", description: "Closed bookings cannot be deleted by non-administrators.", variant: "destructive" });
       return;
     }
 
-    if (!confirm(`Are you sure you want to delete lead ${leadId}? This action cannot be undone.`)) {
+    if (!confirm(`Are you sure you want to delete booking ${leadId}? This action cannot be undone.`)) {
       return;
     }
     setIsLoading(true);
@@ -531,17 +531,17 @@ export default function LeadsPage() {
           errorData.message = parsedError.message || errorData.message;
           errorData.details = parsedError.errorDetails || parsedError.error || '';
         } catch (jsonError) {
-           console.warn("[LeadsPage] API error response on delete was not valid JSON or was empty.", jsonError);
+           console.warn("[BookingsPage] API error response on delete was not valid JSON or was empty.", jsonError);
         }
-        console.error("[LeadsPage] API Delete Error response data (parsed or fallback):", errorData);
+        console.error("[BookingsPage] API Delete Error response data (parsed or fallback):", errorData);
         throw new Error(errorData.message + (errorData.details ? ` - Details: ${errorData.details}` : ''));
       }
-      toast({ title: 'Lead Deleted', description: `Lead ${leadId} has been deleted.` });
+      toast({ title: 'Booking Deleted', description: `Booking ${leadId} has been deleted.` });
       await fetchAllData();
       setSelectedLeadIds(prev => prev.filter(id => id !== leadId));
     } catch (error) {
-      console.error("Error deleting lead:", error);
-      toast({ title: 'Error Deleting Lead', description: (error as Error).message, variant: 'destructive' });
+      console.error("Error deleting booking:", error);
+      toast({ title: 'Error Deleting Booking', description: (error as Error).message, variant: 'destructive' });
     } finally {
       setIsLoading(false);
     }
@@ -550,7 +550,7 @@ export default function LeadsPage() {
   const handleGenerateInvoice = async (lead: Lead) => {
     if (!lead) return;
 
-    toast({ title: 'Generating Invoice...', description: `Creating invoice for lead ${lead.id}.` });
+    toast({ title: 'Generating Invoice...', description: `Creating invoice for booking ${lead.id}.` });
 
     try {
       const newInvoice: Omit<Invoice, 'createdAt'> = {
@@ -571,7 +571,7 @@ export default function LeadsPage() {
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ message: `API Error: ${response.statusText}` }));
         if (response.status === 409) {
-          throw new Error('An invoice for this lead already exists.');
+          throw new Error('An invoice for this booking already exists.');
         }
         throw new Error(errorData.message || 'Failed to generate invoice.');
       }
@@ -600,7 +600,7 @@ export default function LeadsPage() {
 
   const handleChangeSelectedLeadsStatus = async (newStatus: LeadStatus) => {
     if (selectedLeadIds.length === 0) {
-      toast({ title: 'No Leads Selected', description: 'Please select leads to change their status.', variant: 'destructive' });
+      toast({ title: 'No Bookings Selected', description: 'Please select bookings to change their status.', variant: 'destructive' });
       return;
     }
     if (!currentUserId || !currentUserRole) {
@@ -628,9 +628,9 @@ export default function LeadsPage() {
       }
 
       const { updatedCount, failedCount, errors } = responseData;
-      let toastDescription = `${updatedCount} lead(s) updated to ${newStatus}.`;
+      let toastDescription = `${updatedCount} booking(s) updated to ${newStatus}.`;
       if (failedCount > 0) {
-        toastDescription += ` ${failedCount} lead(s) could not be updated due to permissions or status.`;
+        toastDescription += ` ${failedCount} booking(s) could not be updated due to permissions or status.`;
         console.warn("Bulk status update failures:", errors);
       }
       toast({ title: 'Status Update Complete', description: toastDescription });
@@ -639,7 +639,7 @@ export default function LeadsPage() {
       setSelectedLeadIds([]);
 
     } catch (error) {
-      console.error("Error changing selected leads status:", error);
+      console.error("Error changing selected bookings status:", error);
       toast({ title: 'Error Updating Statuses', description: (error as Error).message, variant: 'destructive' });
     } finally {
       setIsLoading(false);
@@ -648,7 +648,7 @@ export default function LeadsPage() {
 
   const handleDeleteSelectedLeads = async () => {
     if (selectedLeadIds.length === 0) {
-      toast({ title: "No Leads Selected", description: "Please select leads to delete.", variant: "destructive" });
+      toast({ title: "No Bookings Selected", description: "Please select bookings to delete.", variant: "destructive" });
       return;
     }
      if (!isAdmin) {
@@ -656,7 +656,7 @@ export default function LeadsPage() {
       return;
     }
 
-    if (!confirm(`Are you sure you want to delete ${selectedLeadIds.length} selected leads? This action cannot be undone.`)) {
+    if (!confirm(`Are you sure you want to delete ${selectedLeadIds.length} selected bookings? This action cannot be undone.`)) {
       return;
     }
     setIsLoading(true);
@@ -683,14 +683,14 @@ export default function LeadsPage() {
           successfulDeletes++;
         } else {
           failedDeletes++;
-          const errorData = await response.json().catch(() => ({ message: `Failed to delete lead ${leadId}`}));
-          console.warn(`Failed to delete lead ${leadId}: ${errorData.message}`);
+          const errorData = await response.json().catch(() => ({ message: `Failed to delete booking ${leadId}`}));
+          console.warn(`Failed to delete booking ${leadId}: ${errorData.message}`);
         }
       }
       
-      let toastDescription = `${successfulDeletes} leads deleted.`;
+      let toastDescription = `${successfulDeletes} bookings deleted.`;
       if (failedDeletes > 0) {
-        toastDescription += ` ${failedDeletes} leads could not be deleted.`;
+        toastDescription += ` ${failedDeletes} bookings could not be deleted.`;
       }
       toast({ title: 'Bulk Delete Complete', description: toastDescription });
 
@@ -698,8 +698,8 @@ export default function LeadsPage() {
       setSelectedLeadIds([]);
 
     } catch (error) {
-      console.error("Error deleting selected leads:", error);
-      toast({ title: 'Error Deleting Leads', description: (error as Error).message, variant: 'destructive' });
+      console.error("Error deleting selected bookings:", error);
+      toast({ title: 'Error Deleting Bookings', description: (error as Error).message, variant: 'destructive' });
     } finally {
       setIsLoading(false);
     }
@@ -708,7 +708,7 @@ export default function LeadsPage() {
 
   const handleCsvImport = async (file: File) => {
     if (!currentUserId) {
-      toast({ title: 'Error', description: 'Current user ID not found. Cannot set owner for imported leads.', variant: 'destructive' });
+      toast({ title: 'Error', description: 'Current user ID not found. Cannot set owner for imported bookings.', variant: 'destructive' });
       return;
     }
     setIsImporting(true);
@@ -739,7 +739,7 @@ export default function LeadsPage() {
             headerLine = headerLine.substring(1);
         }
         const fileHeaders = parseCsvLine(headerLine).map(h => h.trim().toLowerCase().replace(/\s+/g, '_'));
-        console.log("[CSV Import Leads] Detected Normalized Headers:", fileHeaders);
+        console.log("[CSV Import Bookings] Detected Normalized Headers:", fileHeaders);
 
         const newLeadsFromCsv: Lead[] = [];
         const currentLeadIds = new Set(allLeads.map(l => l.id));
@@ -766,7 +766,7 @@ export default function LeadsPage() {
           }
 
           if (data.length !== fileHeaders.length) {
-            console.warn(`[CSV Import Leads] Skipping malformed CSV line ${i + 1}: Expected ${fileHeaders.length} columns, got ${data.length}. Line: "${lines[i]}"`);
+            console.warn(`[CSV Import Bookings] Skipping malformed CSV line ${i + 1}: Expected ${fileHeaders.length} columns, got ${data.length}. Line: "${lines[i]}"`);
             skippedCount++;
             continue;
           }
@@ -777,7 +777,7 @@ export default function LeadsPage() {
             if (leadKey) {
                 (parsedRow as any)[leadKey] = convertCsvValue(leadKey, data[index], allYachts, agentMap, userMap, yachtMap);
             } else {
-                console.warn(`[CSV Import Leads] Unknown header "${fileHeader}" (normalized: ${fileHeader}) in CSV row ${i+1}. Skipping this column.`);
+                console.warn(`[CSV Import Bookings] Unknown header "${fileHeader}" (normalized: ${fileHeader}) in CSV row ${i+1}. Skipping this column.`);
             }
           });
 
@@ -805,7 +805,7 @@ export default function LeadsPage() {
                                     rate: yachtPackage.rate,
                                 });
                             } else {
-                               console.warn(`[CSV Import] Package "${actualPackageName}" from CSV not found on yacht "${yachtForLead.name}". Skipping package for this lead.`);
+                               console.warn(`[CSV Import] Package "${actualPackageName}" from CSV not found on yacht "${yachtForLead.name}". Skipping package for this booking.`);
                             }
                         }
                     }
@@ -825,7 +825,7 @@ export default function LeadsPage() {
           }
 
           const fullLead: Lead = {
-            id: parsedRow.id || `imported-lead-${Date.now()}-${i}`,
+            id: parsedRow.id || `imported-booking-${Date.now()}-${i}`,
             clientName: parsedRow.clientName || 'N/A from CSV',
             agent: parsedRow.agent || '',
             yacht: parsedRow.yacht || '',
@@ -860,12 +860,12 @@ export default function LeadsPage() {
 
 
           if (missingFields.length > 0) {
-             console.warn(`[CSV Import Leads] Skipping lead at CSV row ${i+1} due to missing required fields: ${missingFields.join(', ')}. Lead data:`, JSON.parse(JSON.stringify(fullLead)));
+             console.warn(`[CSV Import Bookings] Skipping booking at CSV row ${i+1} due to missing required fields: ${missingFields.join(', ')}. Booking data:`, JSON.parse(JSON.stringify(fullLead)));
              skippedCount++;
              continue;
           }
           if (currentLeadIds.has(fullLead.id) || newLeadsFromCsv.some(l => l.id === fullLead.id)) {
-             console.warn(`[CSV Import Leads] Skipping lead with duplicate ID "${fullLead.id}" from CSV row ${i+1}.`);
+             console.warn(`[CSV Import Bookings] Skipping booking with duplicate ID "${fullLead.id}" from CSV row ${i+1}.`);
              skippedCount++;
              continue;
           }
@@ -877,7 +877,7 @@ export default function LeadsPage() {
           for (const leadToImport of newLeadsFromCsv) {
             try {
               const payload = { ...leadToImport, requestingUserId: currentUserId, requestingUserRole: currentUserRole };
-              if (payload.id.startsWith('imported-lead-')) {
+              if (payload.id.startsWith('imported-booking-')) {
                 delete payload.id;
               }
 
@@ -890,11 +890,11 @@ export default function LeadsPage() {
                 successCount++;
               } else {
                 const errorData = await response.json().catch(() => ({ message: `API Error: ${response.statusText}` }));
-                console.warn(`[CSV Import Leads] API Error for lead client ${leadToImport.clientName} (ID: ${leadToImport.id}): ${errorData.message || response.statusText}. Payload:`, payload);
+                console.warn(`[CSV Import Bookings] API Error for booking client ${leadToImport.clientName} (ID: ${leadToImport.id}): ${errorData.message || response.statusText}. Payload:`, payload);
                 skippedCount++;
               }
             } catch (apiError) {
-                console.warn(`[CSV Import Leads] Network/JS Error importing lead client ${leadToImport.clientName} (ID: ${leadToImport.id}):`, apiError, "Payload:", leadToImport);
+                console.warn(`[CSV Import Bookings] Network/JS Error importing booking client ${leadToImport.clientName} (ID: ${leadToImport.id}):`, apiError, "Payload:", leadToImport);
                 skippedCount++;
             }
           }
@@ -910,7 +910,7 @@ export default function LeadsPage() {
         }
         toast({
             title: 'Import Processed',
-            description: `${successCount} leads imported. ${skippedCount} rows skipped. Processed in ${durationInSeconds} seconds. Check console for details on skipped rows.`
+            description: `${successCount} bookings imported. ${skippedCount} rows skipped. Processed in ${durationInSeconds} seconds. Check console for details on skipped rows.`
         });
         setIsImporting(false);
       }
@@ -929,7 +929,7 @@ export default function LeadsPage() {
         if (lead.month && isValid(parseISO(lead.month))) {
           leadEventDate = parseISO(lead.month);
         }
-      } catch (e) { console.warn(`Invalid month/event date for lead ${lead.id}: ${lead.month}`); }
+      } catch (e) { console.warn(`Invalid month/event date for booking ${lead.id}: ${lead.month}`); }
 
       if (startDate && endDate && leadEventDate) {
         if (!isWithinInterval(leadEventDate, { start: startDate, end: endDate })) return false;
@@ -1011,11 +1011,11 @@ export default function LeadsPage() {
     setSelectedUserIdFilter('all');
     setStatusFilter('all');
     setPaymentConfirmationStatusFilter('all');
-    toast({title: "Filters Reset", description: "Showing all leads."});
+    toast({title: "Filters Reset", description: "Showing all bookings."});
   };
 
   const handleApplyFilters = () => {
-    toast({title: "Filters Applied", description: `Displaying ${filteredLeads.length} leads based on current selections.`});
+    toast({title: "Filters Applied", description: `Displaying ${filteredLeads.length} bookings based on current selections.`});
   };
 
   const calculateTotalGuestsFromPackageQuantitiesForExport = (lead: Lead): number => {
@@ -1025,7 +1025,7 @@ export default function LeadsPage() {
 
   const handleCsvExport = () => {
     if (filteredLeads.length === 0) {
-      toast({ title: 'No Data', description: 'There are no leads (matching current filters) to export.', variant: 'default' });
+      toast({ title: 'No Data', description: 'There are no bookings (matching current filters) to export.', variant: 'default' });
       return;
     }
 
@@ -1129,13 +1129,13 @@ export default function LeadsPage() {
     if (link.download !== undefined) {
       const url = URL.createObjectURL(blob);
       link.setAttribute('href', url);
-      link.setAttribute('download', 'dutchoriental_leads_export.csv');
+      link.setAttribute('download', 'dutchoriental_bookings_export.csv');
       link.style.visibility = 'hidden';
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
-      toast({ title: 'Export Successful', description: 'Leads have been exported to CSV.' });
+      toast({ title: 'Export Successful', description: 'Bookings have been exported to CSV.' });
     } else {
       toast({ title: 'Export Failed', description: 'Your browser does not support this feature.', variant: 'destructive' });
     }
@@ -1170,7 +1170,7 @@ export default function LeadsPage() {
         </>
       )}
       <ImportExportButtons
-        onAddLeadClick={handleAddLeadClick}
+        onAddBookingClick={handleAddBookingClick}
         onCsvImport={handleCsvImport}
         onCsvExport={handleCsvExport}
       />
@@ -1182,8 +1182,8 @@ export default function LeadsPage() {
     return (
       <div className="container mx-auto py-2">
         <PageHeader
-          title="Leads Management"
-          description="Track and manage all your sales leads."
+          title="Bookings Management"
+          description="Track and manage all your sales bookings."
           actions={
             <div className="flex items-center gap-2">
               <Skeleton className="h-10 w-32" />
@@ -1208,7 +1208,7 @@ export default function LeadsPage() {
   if (fetchError) {
     return (
       <div className="container mx-auto py-2">
-        <PageHeader title="Leads Management" description="Error loading data." />
+        <PageHeader title="Bookings Management" description="Error loading data." />
         <p className="text-destructive text-center py-10">Failed to load essential data for this page: {fetchError}</p>
       </div>
     );
@@ -1218,8 +1218,8 @@ export default function LeadsPage() {
   return (
     <div className="container mx-auto py-2">
       <PageHeader
-        title="Leads Management"
-        description="Track and manage all your sales leads."
+        title="Bookings Management"
+        description="Track and manage all your sales bookings."
         actions={pageHeaderActions}
       />
       <div className="mb-6 p-4 border rounded-lg shadow-sm">
@@ -1233,7 +1233,7 @@ export default function LeadsPage() {
             <DatePicker date={endDate} setDate={setEndDate} placeholder="End Date" disabled={(date) => startDate ? date < startDate : false} />
             </div>
             <div>
-            <Label htmlFor="status-filter-leads">Lead Status</Label>
+            <Label htmlFor="status-filter-leads">Booking Status</Label>
             <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as LeadStatus | 'all')}>
                 <SelectTrigger id="status-filter-leads" className="w-full">
                 <SelectValue placeholder="All Statuses" />
@@ -1297,7 +1297,7 @@ export default function LeadsPage() {
         </div>
         
         <div className="mt-6 pt-4 border-t">
-            <h3 className="text-md font-semibold mb-3 text-foreground">Filtered Leads Package Summary:</h3>
+            <h3 className="text-md font-semibold mb-3 text-foreground">Filtered Bookings Package Summary:</h3>
             <div className="flex flex-wrap gap-3">
                 {(Object.keys(calculatedPackageCounts) as Array<keyof CalculatedPackageCounts>)
                   .filter(key => calculatedPackageCounts[key] > 0 || (key === 'others' && calculatedPackageCounts[key] >= 0) ) 

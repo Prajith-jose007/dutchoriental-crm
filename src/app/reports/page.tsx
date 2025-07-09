@@ -63,7 +63,7 @@ export default function ReportsPage() {
           fetch('/api/users'),
         ]);
 
-        if (!leadsRes.ok) throw new Error(`Failed to fetch leads: ${leadsRes.statusText}`);
+        if (!leadsRes.ok) throw new Error(`Failed to fetch bookings: ${leadsRes.statusText}`);
         if (!invoicesRes.ok) throw new Error(`Failed to fetch invoices: ${invoicesRes.statusText}`);
         if (!yachtsRes.ok) throw new Error(`Failed to fetch yachts: ${yachtsRes.statusText}`);
         if (!agentsRes.ok) throw new Error(`Failed to fetch agents: ${agentsRes.statusText}`);
@@ -108,7 +108,7 @@ export default function ReportsPage() {
         if(lead.month && isValid(parseISO(lead.month))) {
           leadEventDate = parseISO(lead.month);
         }
-      } catch(e) { console.warn(`Invalid event date for lead ${lead.id} in reports: ${lead.month}`); }
+      } catch(e) { console.warn(`Invalid event date for booking ${lead.id} in reports: ${lead.month}`); }
 
       if (startDate && endDate && leadEventDate) {
          if (!isWithinInterval(leadEventDate, { start: startDate, end: endDate })) return false;
@@ -227,7 +227,7 @@ export default function ReportsPage() {
     <div className="container mx-auto py-2">
       <PageHeader
         title="CRM Reports"
-        description="Filter and view key metrics for your leads and invoices."
+        description="Filter and view key metrics for your bookings and invoices."
       />
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 mb-6 p-4 border rounded-lg shadow-sm">
@@ -260,7 +260,7 @@ export default function ReportsPage() {
           </Select>
         </div>
         <div>
-          <Label htmlFor="status-filter-report">Lead Status</Label>
+          <Label htmlFor="status-filter-report">Booking Status</Label>
           <Select value={selectedStatusFilter} onValueChange={(value) => setSelectedStatusFilter(value as LeadStatus | 'all')}>
             <SelectTrigger id="status-filter-report" className="w-full">
               <SelectValue placeholder="All Statuses" />
@@ -274,13 +274,13 @@ export default function ReportsPage() {
           </Select>
         </div>
          <div>
-          <Label htmlFor="lead-type-filter-report">Lead Type</Label>
+          <Label htmlFor="lead-type-filter-report">Booking Type</Label>
           <Select value={selectedLeadTypeFilter} onValueChange={(value) => setSelectedLeadTypeFilter(value as LeadType | 'all')}>
             <SelectTrigger id="lead-type-filter-report" className="w-full">
-              <SelectValue placeholder="All Lead Types" />
+              <SelectValue placeholder="All Booking Types" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Lead Types</SelectItem>
+              <SelectItem value="all">All Booking Types</SelectItem>
               {leadTypeOptions.map(type => (
                 <SelectItem key={type} value={type}>{type}</SelectItem>
               ))}

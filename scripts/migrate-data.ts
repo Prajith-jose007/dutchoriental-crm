@@ -285,7 +285,7 @@ async function migrateYachts() {
 }
 
 async function migrateLeads() {
-  console.log('Migrating Leads...');
+  console.log('Migrating Bookings (formerly Leads)...');
   for (const lead of placeholderLeads) {
     const sql = `
       INSERT INTO leads (
@@ -308,10 +308,10 @@ async function migrateLeads() {
               if (isValid(parsedMonth)) {
                   monthDate = formatISO(parsedMonth);
               } else {
-                  console.warn(`Invalid month date string for lead ${lead.id}: ${lead.month}. Using current date as fallback.`);
+                  console.warn(`Invalid month date string for booking ${lead.id}: ${lead.month}. Using current date as fallback.`);
               }
           } catch(e) {
-              console.warn(`Error parsing month date string for lead ${lead.id}: ${lead.month}. Using current date as fallback. Error: ${(e as Error).message}`);
+              console.warn(`Error parsing month date string for booking ${lead.id}: ${lead.month}. Using current date as fallback. Error: ${(e as Error).message}`);
           }
       }
 
@@ -325,7 +325,7 @@ async function migrateLeads() {
         lead.agent,
         lead.yacht,
         lead.status,
-        monthDate, // This is the Lead/Event Date
+        monthDate, // This is the Booking/Event Date
         lead.notes || null,
         lead.type,
         lead.paymentConfirmationStatus || 'CONFIRMED', 
@@ -345,16 +345,16 @@ async function migrateLeads() {
         lead.lastModifiedByUserId || null,
         lead.ownerUserId || null,
       ]);
-      console.log(`Inserted lead: ${lead.clientName} (ID: ${lead.id})`);
+      console.log(`Inserted booking: ${lead.clientName} (ID: ${lead.id})`);
     } catch (error) {
       if ((error as any).code === 'ER_DUP_ENTRY' || (error as any).errno === 1062) {
-        console.warn(`Lead ${lead.clientName} (ID: ${lead.id}) already exists. Skipping insertion.`);
+        console.warn(`Booking ${lead.clientName} (ID: ${lead.id}) already exists. Skipping insertion.`);
       } else {
-        console.error(`Error inserting lead ${lead.clientName} (ID: ${lead.id}):`, (error as Error).message);
+        console.error(`Error inserting booking ${lead.clientName} (ID: ${lead.id}):`, (error as Error).message);
       }
     }
   }
-  console.log('Lead migration finished.');
+  console.log('Booking migration finished.');
 }
 
 async function migrateInvoices() {
@@ -421,8 +421,8 @@ async function main() {
       await createYachtsTable();
       await migrateYachts();
     } else if (entityToMigrate === 'leads') {
-      console.log('Running migration for: leads');
-      // Note: For placeholder leads to insert correctly with their references,
+      console.log('Running migration for: bookings (table name: leads)');
+      // Note: For placeholder bookings to insert correctly with their references,
       // agents and yachts tables should ideally exist and be populated.
       // This targeted migration will only ensure the leads table schema and data.
       await createLeadsTable();
@@ -496,4 +496,3 @@ main().catch(async err => {
   }
   process.exit(1);
 });
-

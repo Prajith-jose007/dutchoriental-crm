@@ -82,45 +82,45 @@ export function PerformanceSummary({ leads, invoices, isLoading, error }: Perfor
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
       <SummaryCard
-        title="Total Leads"
+        title="Total Bookings"
         value={leadsError ? 'Error' : summaryData.totalLeadsCount}
         icon={<BookOpen className="h-5 w-5 text-muted-foreground" />}
-        description={leadsError ? leadsError : "All leads regardless of status"}
+        description={leadsError ? leadsError : "All bookings regardless of status"}
         isLoading={isLoading}
       />
       <SummaryCard
-        title="Upcoming Leads"
+        title="Upcoming Bookings"
         value={leadsError ? 'Error' : summaryData.upcomingLeadsCount}
         icon={<CalendarClock className="h-5 w-5 text-muted-foreground" />}
-        description={leadsError ? leadsError : "Leads scheduled for the future"}
+        description={leadsError ? leadsError : "Bookings scheduled for the future"}
         isLoading={isLoading}
       />
       <SummaryCard
-        title="Balance Leads"
+        title="Balance Bookings"
         value={leadsError ? 'Error' : summaryData.balanceLeadsCount}
         icon={<Hourglass className="h-5 w-5 text-muted-foreground" />}
-        description={leadsError ? leadsError : "Leads with outstanding payments"}
+        description={leadsError ? leadsError : "Bookings with outstanding payments"}
         isLoading={isLoading}
       />
       <SummaryCard
-        title="Closed Leads"
+        title="Closed Bookings"
         value={leadsError ? 'Error' : summaryData.closedLeadsCount}
         icon={<BookOpenCheck className="h-5 w-5 text-muted-foreground" />}
-        description={leadsError ? leadsError : "Completed and paid leads"}
+        description={leadsError ? leadsError : "Completed and paid bookings"}
         isLoading={isLoading}
       />
       <SummaryCard
         title="Revenue (Closed)"
         value={leadsError ? 'Error' : `${summaryData.revenueFromClosedLeads.toLocaleString()} AED`}
         icon={<Banknote className="h-5 w-5 text-muted-foreground" />}
-        description={leadsError ? leadsError : "Sum of net amounts (Closed leads)"}
+        description={leadsError ? leadsError : "Sum of net amounts (Closed bookings)"}
         isLoading={isLoading}
       />
       <SummaryCard
         title="Outstanding (Balance)"
         value={leadsError ? 'Error' : `${summaryData.outstandingBalanceFromBalanceLeads.toLocaleString()} AED`}
         icon={<Wallet className="h-5 w-5 text-muted-foreground" />}
-        description={leadsError ? leadsError : "Sum of balance (Balance leads)"}
+        description={leadsError ? leadsError : "Sum of balance (Balance bookings)"}
         isLoading={isLoading}
       />
     </div>

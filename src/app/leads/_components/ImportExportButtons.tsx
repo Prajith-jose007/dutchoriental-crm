@@ -7,12 +7,12 @@ import { Upload, Download, PlusCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface ImportExportButtonsProps {
-  onAddLeadClick: () => void;
+  onAddBookingClick: () => void;
   onCsvImport: (file: File) => void;
-  onCsvExport: () => void; // Added prop for export handler
+  onCsvExport: () => void;
 }
 
-export function ImportExportButtons({ onAddLeadClick, onCsvImport, onCsvExport }: ImportExportButtonsProps) {
+export function ImportExportButtons({ onAddBookingClick, onCsvImport, onCsvExport }: ImportExportButtonsProps) {
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -38,8 +38,6 @@ export function ImportExportButtons({ onAddLeadClick, onCsvImport, onCsvExport }
       }
     }
   };
-
-  // Removed handleExport, will use onCsvExport prop directly
   
   return (
     <div className="flex items-center gap-2">
@@ -54,13 +52,13 @@ export function ImportExportButtons({ onAddLeadClick, onCsvImport, onCsvExport }
         <Upload className="mr-2 h-4 w-4" />
         Import CSV
       </Button>
-      <Button variant="outline" onClick={onCsvExport}> {/* Calls the passed export handler */}
+      <Button variant="outline" onClick={onCsvExport}>
         <Download className="mr-2 h-4 w-4" />
         Export CSV
       </Button>
-      <Button onClick={onAddLeadClick}>
+      <Button onClick={onAddBookingClick}>
         <PlusCircle className="mr-2 h-4 w-4" />
-        Add Lead
+        Add Booking
       </Button>
     </div>
   );

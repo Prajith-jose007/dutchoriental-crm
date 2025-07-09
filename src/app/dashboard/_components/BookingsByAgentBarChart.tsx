@@ -70,7 +70,7 @@ export function BookingsByAgentBarChart({ leads, allAgents, isLoading, error }: 
         <Card>
             <CardHeader>
                 <CardTitle>Bookings by Agent</CardTitle>
-                <CardDescription>'Closed' leads by agent (Top 10).</CardDescription>
+                <CardDescription>'Closed' bookings by agent (Top 10).</CardDescription>
             </CardHeader>
             <CardContent className="h-[300px] space-y-3 py-2">
                 <Skeleton className="h-8 w-full" />
@@ -88,7 +88,7 @@ export function BookingsByAgentBarChart({ leads, allAgents, isLoading, error }: 
         <Card>
             <CardHeader>
                 <CardTitle>Bookings by Agent</CardTitle>
-                <CardDescription>'Closed' leads by agent (Top 10).</CardDescription>
+                <CardDescription>'Closed' bookings by agent (Top 10).</CardDescription>
             </CardHeader>
             <CardContent className="flex items-center justify-center h-[300px]">
                 <p className="text-destructive">Error loading booking data: {error}</p>
@@ -102,7 +102,7 @@ export function BookingsByAgentBarChart({ leads, allAgents, isLoading, error }: 
         <Card>
             <CardHeader>
                 <CardTitle>Bookings by Agent</CardTitle>
-                <CardDescription>'Closed' leads by agent (Top 10).</CardDescription>
+                <CardDescription>'Closed' bookings by agent (Top 10).</CardDescription>
             </CardHeader>
             <CardContent className="flex items-center justify-center h-[300px]">
                 <p className="text-muted-foreground">No 'Closed' booking data by agent for selected filters.</p>
@@ -115,7 +115,7 @@ export function BookingsByAgentBarChart({ leads, allAgents, isLoading, error }: 
     <Card>
       <CardHeader>
         <CardTitle>Bookings by Agent</CardTitle>
-        <CardDescription>'Closed' leads by agent (Top 10).</CardDescription>
+        <CardDescription>'Closed' bookings by agent (Top 10).</CardDescription>
       </CardHeader>
       <CardContent>
         <ChartContainer config={chartConfig} className="h-[300px] w-full">

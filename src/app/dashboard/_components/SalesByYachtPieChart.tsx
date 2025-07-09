@@ -66,7 +66,7 @@ export function SalesByYachtPieChart({ leads, allYachts, isLoading, error }: Sal
       <Card>
         <CardHeader>
           <CardTitle>Sales Revenue by Yacht</CardTitle>
-          <CardDescription>Breakdown of 'Closed' lead revenue by yacht (Net Amount in AED).</CardDescription>
+          <CardDescription>Breakdown of 'Closed' booking revenue by yacht (Net Amount in AED).</CardDescription>
         </CardHeader>
         <CardContent className="flex items-center justify-center h-[300px]">
           <div className="flex flex-col items-center gap-2">
@@ -84,7 +84,7 @@ export function SalesByYachtPieChart({ leads, allYachts, isLoading, error }: Sal
         <Card>
             <CardHeader>
                 <CardTitle>Sales Revenue by Yacht</CardTitle>
-                <CardDescription>Breakdown of 'Closed' lead revenue by yacht (Net Amount in AED).</CardDescription>
+                <CardDescription>Breakdown of 'Closed' booking revenue by yacht (Net Amount in AED).</CardDescription>
             </CardHeader>
             <CardContent className="flex items-center justify-center h-[300px]">
                 <p className="text-destructive">Error loading sales data: {error}</p>
@@ -98,7 +98,7 @@ export function SalesByYachtPieChart({ leads, allYachts, isLoading, error }: Sal
         <Card>
             <CardHeader>
                 <CardTitle>Sales Revenue by Yacht</CardTitle>
-                <CardDescription>Breakdown of 'Closed' lead revenue by yacht (Net Amount in AED).</CardDescription>
+                <CardDescription>Breakdown of 'Closed' booking revenue by yacht (Net Amount in AED).</CardDescription>
             </CardHeader>
             <CardContent className="flex items-center justify-center h-[300px]">
                 <p className="text-muted-foreground">No 'Closed' sales data for selected filters.</p>
@@ -111,7 +111,7 @@ export function SalesByYachtPieChart({ leads, allYachts, isLoading, error }: Sal
     <Card>
       <CardHeader>
         <CardTitle>Sales Revenue by Yacht</CardTitle>
-        <CardDescription>Breakdown of 'Closed' lead revenue by yacht (Net Amount in AED).</CardDescription>
+        <CardDescription>Breakdown of 'Closed' booking revenue by yacht (Net Amount in AED).</CardDescription>
       </CardHeader>
       <CardContent className="h-[300px] w-full flex items-center justify-center">
         <ChartContainer config={dynamicChartConfig} className="aspect-square h-full">
@@ -156,4 +156,3 @@ export function SalesByYachtPieChart({ leads, allYachts, isLoading, error }: Sal
     </Card>
   );
 }
-

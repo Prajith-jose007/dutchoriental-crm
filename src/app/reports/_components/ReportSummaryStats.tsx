@@ -77,25 +77,25 @@ export function ReportSummaryStats({ filteredLeads, isLoading, error }: ReportSu
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 mb-6">
       <SummaryStatCard
-        title="Total Leads (Filtered)"
+        title="Total Bookings (Filtered)"
         value={summaryData.totalBookings}
         icon={<BookOpen className="h-5 w-5 text-muted-foreground" />}
         isLoading={isLoading}
       />
       <SummaryStatCard
-        title="Upcoming Leads (Filtered)"
+        title="Upcoming Bookings (Filtered)"
         value={summaryData.upcomingLeadsCount}
         icon={<CalendarClock className="h-5 w-5 text-muted-foreground" />}
         isLoading={isLoading}
       />
        <SummaryStatCard
-        title="Balance Leads (Filtered)"
+        title="Balance Bookings (Filtered)"
         value={summaryData.balanceLeadsCount}
         icon={<Hourglass className="h-5 w-5 text-muted-foreground" />}
         isLoading={isLoading}
       />
       <SummaryStatCard
-        title="Closed Leads (Filtered)"
+        title="Closed Bookings (Filtered)"
         value={summaryData.closedBookingsCount}
         icon={<BookOpenCheck className="h-5 w-5 text-muted-foreground" />}
         isLoading={isLoading}
@@ -107,7 +107,7 @@ export function ReportSummaryStats({ filteredLeads, isLoading, error }: ReportSu
         isLoading={isLoading}
       />
       <SummaryStatCard
-        title="Outstanding (Balance Leads)"
+        title="Outstanding (Balance Bookings)"
         value={`${summaryData.totalOutstandingBalance.toLocaleString()} AED`}
         icon={<Wallet className="h-5 w-5 text-muted-foreground" />}
         isLoading={isLoading}

@@ -21,7 +21,7 @@ export function LeadCard({ lead, onEditLead }: LeadCardProps) {
     <Card className="shadow-md hover:shadow-lg transition-shadow duration-200">
       <CardHeader className="pb-2">
         <CardTitle className="text-base">{lead.clientName}</CardTitle>
-        <CardDescription className="text-xs">{lead.type} - Lead ID: {lead.id && lead.id.length > 8 ? lead.id.substring(0, 8) + '...' : lead.id}</CardDescription>
+        <CardDescription className="text-xs">{lead.type} - Booking ID: {lead.id && lead.id.length > 8 ? lead.id.substring(0, 8) + '...' : lead.id}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-2 text-sm pb-3">
         <div className="flex items-center gap-2 text-muted-foreground">

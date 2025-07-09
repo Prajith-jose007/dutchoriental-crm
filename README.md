@@ -80,7 +80,7 @@ If you have created your database tables (e.g., `agents`, `leads`, `yachts`, `in
     ```bash
     npm run migrate:data
     ```
-    This script uses `tsx` to execute the TypeScript migration file. It will attempt to insert the data from `src/lib/placeholder-data.ts` into your database.
+    This script uses `tsx` to execute the TypeScript migration file. It will attempt to insert the data from `src/lib/placeholder-data.ts` into your database. Note: While the UI refers to "Bookings," the underlying database table is named `leads`.
 
 ## Running the Application in a Production-like Mode with WAMP/Apache (Advanced Local Setup)
 
@@ -156,5 +156,3 @@ If you want to test a setup where Apache (from WAMP) serves your Next.js applica
             5.  Run `npm install` via the cPanel interface.
             6.  Ensure your production environment variables (like database credentials) are set in the cPanel Node.js app settings.
             7.  Start the application.
-            
-    

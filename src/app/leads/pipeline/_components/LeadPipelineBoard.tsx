@@ -20,7 +20,7 @@ export function LeadPipelineBoard({ leads, onEditLead }: LeadPipelineBoardProps)
     if (leadsByStatus[lead.status]) {
       leadsByStatus[lead.status]?.push(lead);
     } else {
-      console.warn(`Lead with ID ${lead.id} has unexpected status: ${lead.status}. Grouping under '${leadStatusOptions[0]}'.`);
+      console.warn(`Booking with ID ${lead.id} has unexpected status: ${lead.status}. Grouping under '${leadStatusOptions[0]}'.`);
       if (!leadsByStatus[leadStatusOptions[0]]) leadsByStatus[leadStatusOptions[0]] = [];
       leadsByStatus[leadStatusOptions[0]]?.push(lead);
     }
@@ -37,7 +37,7 @@ export function LeadPipelineBoard({ leads, onEditLead }: LeadPipelineBoardProps)
             <ScrollArea className="h-[calc(100vh-220px)]">
               <div className="p-4 space-y-4">
                 {leadsByStatus[status]?.length === 0 ? (
-                  <p className="text-sm text-muted-foreground p-4 text-center">No leads in this stage.</p>
+                  <p className="text-sm text-muted-foreground p-4 text-center">No bookings in this stage.</p>
                 ) : (
                   leadsByStatus[status]?.map(lead => (
                     <LeadCard key={lead.id} lead={lead} onEditLead={onEditLead} />

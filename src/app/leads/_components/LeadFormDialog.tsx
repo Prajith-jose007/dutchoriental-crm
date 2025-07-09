@@ -54,10 +54,10 @@ const leadFormSchema = z.object({
   id: z.string().optional(),
   agent: z.string().min(1, 'Agent is required'),
   status: z.enum(leadStatusOptions),
-  month: z.date({ required_error: "Lead/Event Date is required." }),
+  month: z.date({ required_error: "Booking/Event Date is required." }),
   notes: z.string().trim().min(1, { message: "Notes are required and cannot be empty." }),
   yacht: z.string().min(1, 'Yacht selection is required'),
-  type: z.enum(leadTypeOptions, { required_error: "Lead type is required."}),
+  type: z.enum(leadTypeOptions, { required_error: "Booking type is required."}),
   paymentConfirmationStatus: z.enum(paymentConfirmationStatusOptions, { required_error: "Payment confirmation status is required."}),
   transactionId: z.string().optional(),
   modeOfPayment: z.enum(modeOfPaymentOptions),
@@ -65,7 +65,7 @@ const leadFormSchema = z.object({
 
   packageQuantities: z.array(leadPackageQuantitySchema).optional().default([]),
   freeGuestCount: z.coerce.number().min(0, "Free guest count must be non-negative").optional().default(0),
-  perTicketRate: z.coerce.number().min(0, "OTHER rate must be non-negative").optional().nullable(),
+  perTicketRate: z.coerce.number().min(0, "Other Charges must be non-negative").optional().nullable(),
 
   totalAmount: z.coerce.number().default(0),
   commissionPercentage: z.coerce.number().min(0).max(100).default(0),
@@ -178,7 +178,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
         setAllYachts(Array.isArray(yachtsData) ? yachtsData : []);
 
       } catch (error) {
-        console.error("Error fetching dropdown data for Lead Form:", error);
+        console.error("Error fetching dropdown data for Booking Form:", error);
         toast({ title: 'Error loading form data', description: (error as Error).message, variant: 'destructive' });
       } finally {
         setIsLoadingDropdowns(false);
@@ -208,28 +208,40 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
     }
 
     const selectedYacht = allYachts.find(y => y.id === watchedYachtId);
+    
+    // Check if the yacht selection has actually changed from the lead's original yacht
+    const yachtChanged = lead?.yacht !== watchedYachtId;
 
     if (selectedYacht && selectedYacht.packages && Array.isArray(selectedYacht.packages)) {
-      const newPQs = selectedYacht.packages.map(yachtPkg => {
-        // Only use the existing lead's quantity if the yacht hasn't changed from the initial lead.
-        const useOriginalQuantity = lead?.yacht === watchedYachtId;
-        const existingLeadPQ = useOriginalQuantity ? lead?.packageQuantities?.find(lpq => lpq.packageId === yachtPkg.id) : null;
-        
-        const rateFromYacht = Number(Number(yachtPkg.rate || 0).toFixed(2));
-        return {
+      if (yachtChanged) {
+        // Yacht has changed, so reset quantities to 0 and load new default rates
+        const newPQs = selectedYacht.packages.map(yachtPkg => ({
           packageId: String(yachtPkg.id || `pkg-id-${Date.now()}-${Math.random()}`),
           packageName: String(yachtPkg.name || 'Unnamed Package'),
-          quantity: existingLeadPQ ? Number(existingLeadPQ.quantity || 0) : 0,
-          rate: rateFromYacht,
-        };
-      });
-      replacePackageQuantities(newPQs);
-      form.trigger(['packageQuantities']);
+          quantity: 0,
+          rate: Number(Number(yachtPkg.rate || 0).toFixed(2)),
+        }));
+        replacePackageQuantities(newPQs);
+      } else {
+        // Yacht is the same as the initial one (or form is loading for the first time with a lead)
+        // Preserve existing quantities and rates from the lead data
+        const currentPQs = form.getValues('packageQuantities') || [];
+        const newPQs = selectedYacht.packages.map(yachtPkg => {
+            const existingPQ = currentPQs.find(lpq => lpq.packageId === yachtPkg.id);
+            return {
+                packageId: String(yachtPkg.id),
+                packageName: String(yachtPkg.name),
+                quantity: existingPQ?.quantity || 0,
+                rate: existingPQ?.rate !== undefined ? existingPQ.rate : Number(Number(yachtPkg.rate || 0).toFixed(2)),
+            };
+        });
+        replacePackageQuantities(newPQs);
+      }
     } else {
       replacePackageQuantities([]);
-      form.trigger(['packageQuantities']);
     }
-  }, [isOpen, watchedYachtId, allYachts, replacePackageQuantities, lead, isLoadingDropdowns, form]);
+    form.trigger(['packageQuantities']);
+}, [isOpen, watchedYachtId, allYachts, replacePackageQuantities, lead, isLoadingDropdowns, form]);
 
 
   useEffect(() => {
@@ -302,7 +314,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
                     packageId: yachtPkg.id,
                     packageName: yachtPkg.name,
                     quantity: existingPQ?.quantity || 0,
-                    rate: yachtPkg.rate || 0,
+                    rate: existingPQ?.rate || 0,
                 };
             });
             replacePackageQuantities(newPQs);
@@ -326,7 +338,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
 
   function onSubmit(data: LeadFormData) {
     if (isFormDisabled) {
-        toast({ title: "Action Denied", description: "This lead is closed and cannot be modified.", variant: "destructive" });
+        toast({ title: "Action Denied", description: "This booking is closed and cannot be modified.", variant: "destructive" });
         onOpenChange(false);
         return;
     }
@@ -401,7 +413,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
     return (
       <Dialog open={isOpen} onOpenChange={onOpenChange}>
         <DialogContent className="sm:max-w-[600px] md:max-w-[800px] lg:max-w-[1000px]">
-          <DialogHeader><DialogTitle>{lead ? 'Edit Lead' : 'Add New Lead'}</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{lead ? 'Edit Booking' : 'Add New Booking'}</DialogTitle></DialogHeader>
           <div className="p-6 text-center">Loading form data...</div>
         </DialogContent>
       </Dialog>
@@ -412,18 +424,18 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[600px] md:max-w-[800px] lg:max-w-[1000px]">
         <DialogHeader>
-          <DialogTitle>{lead ? (isFormDisabled ? 'View Lead Details' : 'Edit Lead') : 'Add New Lead'}</DialogTitle>
+          <DialogTitle>{lead ? (isFormDisabled ? 'View Booking Details' : 'Edit Booking') : 'Add New Booking'}</DialogTitle>
           <DialogDescription>
-            {lead ? (isFormDisabled ? 'This lead is closed and cannot be edited by non-administrators.' : 'Update the details for this lead.') : 'Fill in the details for the new lead.'}
+            {lead ? (isFormDisabled ? 'This booking is closed and cannot be edited by non-administrators.' : 'Update the details for this booking.') : 'Fill in the details for the new booking.'}
           </DialogDescription>
         </DialogHeader>
         <ScrollArea className="max-h-[70vh] p-1">
         {isFormDisabled && (
              <Alert variant="destructive" className="mb-4">
                 <Terminal className="h-4 w-4" />
-                <AlertTitle>Lead Closed</AlertTitle>
+                <AlertTitle>Booking Closed</AlertTitle>
                 <AlertDescription>
-                    This lead is marked as 'Closed'. Editing is restricted to administrators.
+                    This booking is marked as 'Closed'. Editing is restricted to administrators.
                 </AlertDescription>
             </Alert>
         )}
@@ -479,7 +491,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
                 name="month"
                 render={({ field }) => (
                   <FormItem className="flex flex-col">
-                    <FormLabel>Lead/Event Date</FormLabel>
+                    <FormLabel>Booking/Event Date</FormLabel>
                      <DatePicker
                         date={field.value ? (isValid(field.value) ? field.value : new Date()) : new Date()}
                         setDate={(date) => {
@@ -498,7 +510,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
                 name="type"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Lead Type</FormLabel>
+                    <FormLabel>Booking Type</FormLabel>
                      <Select
                         onValueChange={(value) => {
                             field.onChange(value);
@@ -508,7 +520,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
                         value={field.value || undefined}
                         defaultValue={field.value}
                      >
-                      <FormControl><SelectTrigger><SelectValue placeholder="Select lead type" /></SelectTrigger></FormControl>
+                      <FormControl><SelectTrigger><SelectValue placeholder="Select booking type" /></SelectTrigger></FormControl>
                       <SelectContent>
                         {leadTypeOptions.map(typeOpt => (<SelectItem key={typeOpt} value={typeOpt}>{typeOpt}</SelectItem>))}
                       </SelectContent>
@@ -531,7 +543,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
                         defaultValue={field.value}
                         disabled={!watchedLeadType || isLoadingDropdowns || filteredYachts.length === 0}
                     >
-                      <FormControl><SelectTrigger><SelectValue placeholder={!watchedLeadType ? "Select Lead Type first" : (filteredYachts.length === 0 && !isLoadingDropdowns ? "No yachts for this type" : "Select a yacht")} /></SelectTrigger></FormControl>
+                      <FormControl><SelectTrigger><SelectValue placeholder={!watchedLeadType ? "Select Booking Type first" : (filteredYachts.length === 0 && !isLoadingDropdowns ? "No yachts for this type" : "Select a yacht")} /></SelectTrigger></FormControl>
                       <SelectContent>
                         {filteredYachts.map((yacht) => (<SelectItem key={yacht.id} value={yacht.id}>{yacht.name}</SelectItem>))}
                       </SelectContent>
@@ -608,7 +620,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
                 name="perTicketRate"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>OTHER</FormLabel>
+                    <FormLabel>Other Charges</FormLabel>
                     <FormControl>
                       <Input
                         type="number"
@@ -674,6 +686,12 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
                                   placeholder="0.00"
                                   {...field}
                                   onChange={e => field.onChange(parseFloat(e.target.value) || 0)}
+                                  onBlur={e => { // Optionally round on blur
+                                    const val = parseFloat(e.target.value);
+                                    if (!isNaN(val)) {
+                                      field.onChange(Number(val.toFixed(2)));
+                                    }
+                                  }}
                                 />
                               </FormControl>
                               <FormMessage />
@@ -704,7 +722,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
                   </FormLabel>
                   <FormControl>
                     <Textarea
-                      placeholder="Add any notes or updates about this lead..."
+                      placeholder="Add any notes or updates about this booking..."
                       className="resize-y min-h-[100px]"
                       {...field}
                       value={field.value || ''}
@@ -810,7 +828,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
             <DialogFooter className="pt-6">
               <DialogClose asChild><Button type="button" variant="outline">Cancel</Button></DialogClose>
               <Button type="submit" disabled={form.formState.isSubmitting || isLoadingDropdowns || isFormDisabled}>
-                {isLoadingDropdowns ? 'Loading...' : (lead ? (isFormDisabled ? 'Close' : 'Save Changes') : 'Add Lead')}
+                {isLoadingDropdowns ? 'Loading...' : (lead ? (isFormDisabled ? 'Close' : 'Save Changes') : 'Add Booking')}
               </Button>
             </DialogFooter>
           </form>

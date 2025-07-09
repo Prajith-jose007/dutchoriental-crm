@@ -123,7 +123,7 @@ export function SidebarNav() {
   return (
     <Sidebar collapsible="icon" variant="sidebar" side="left">
       <SidebarHeader className="p-4">
-        <Logo className="w-auto" />
+        <Logo className="h-12 w-auto" />
       </SidebarHeader>
       <SidebarContent>
         <SidebarMenu>

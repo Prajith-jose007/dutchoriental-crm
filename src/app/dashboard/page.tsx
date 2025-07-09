@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -95,8 +94,8 @@ export default function DashboardPage() {
       <div className="container mx-auto py-2">
         <PageHeader title="Dashboard" description="Loading data..." />
         <div className="grid gap-6">
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-            {[...Array(6)].map((_,i) => <Skeleton key={`perf-sum-${i}`} className="h-[120px] w-full" />)}
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {[...Array(3)].map((_,i) => <Skeleton key={`perf-sum-${i}`} className="h-[120px] w-full" />)}
           </div>
            <div className="grid gap-4 md:grid-cols-1 lg:grid-cols-3">
             {[...Array(3)].map((_,i) => <Skeleton key={`rev-sum-${i}`} className="h-[120px] w-full" />)}
@@ -138,7 +137,7 @@ export default function DashboardPage() {
       <PageHeader title="Dashboard" description="Welcome to DutchOriental CRM. Here's an overview of your yacht business." />
       
       <div className="grid gap-6">
-        <PerformanceSummary leads={leads} invoices={invoices} isLoading={isLoading} error={error} />
+        <PerformanceSummary leads={leads} isLoading={isLoading} error={error} />
         <RevenueSummary leads={leads} isLoading={isLoading} error={commonErrorLeads} />
         
         <div className="grid gap-6 lg:grid-cols-1 xl:grid-cols-2">

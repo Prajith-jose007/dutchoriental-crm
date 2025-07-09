@@ -1,15 +1,14 @@
-
 'use client';
 
 import { useMemo } from 'react';
-import { BookOpenCheck, Banknote, CircleDollarSign, Wallet, BookOpen, Activity, CalendarClock, Hourglass } from 'lucide-react';
+import { Users, Banknote, Ticket } from 'lucide-react';
 import {
   Card,
   CardContent,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import type { Lead, Invoice } from '@/lib/types';
+import type { Lead } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 
 interface SummaryCardProps {
@@ -46,81 +45,52 @@ function SummaryCard({ title, value, description, icon, isLoading }: SummaryCard
 
 interface PerformanceSummaryProps {
   leads: Lead[];
-  invoices: Invoice[];
   isLoading?: boolean;
   error?: string | null;
 }
 
-export function PerformanceSummary({ leads, invoices, isLoading, error }: PerformanceSummaryProps) {
+export function PerformanceSummary({ leads, isLoading, error }: PerformanceSummaryProps) {
   const summaryData = useMemo(() => {
-    const closedLeads = leads.filter(lead => lead.status === 'Closed');
-    const upcomingLeads = leads.filter(lead => lead.status === 'Upcoming');
-    const balanceLeads = leads.filter(lead => lead.status === 'Balance');
+    const totalPassengers = leads.reduce((acc, lead) => {
+      const passengersInLead = lead.packageQuantities?.reduce((sum, pkg) => sum + (pkg.quantity || 0), 0) || 0;
+      return acc + passengersInLead;
+    }, 0);
 
-    const totalLeadsCount = leads.length;
-    const upcomingLeadsCount = upcomingLeads.length;
-    const balanceLeadsCount = balanceLeads.length;
-    const closedLeadsCount = closedLeads.length;
+    const totalRevenue = leads.reduce((acc, lead) => acc + (lead.netAmount || 0), 0);
 
-    const revenueFromClosedLeads = closedLeads.reduce((sum, lead) => sum + (lead.netAmount || 0), 0);
-    const outstandingBalanceFromBalanceLeads = balanceLeads.reduce((sum, lead) => sum + (lead.balanceAmount || 0), 0);
+    const averageTicketPrice = totalPassengers > 0 ? totalRevenue / totalPassengers : 0;
 
     return {
-      totalLeadsCount,
-      upcomingLeadsCount,
-      balanceLeadsCount,
-      closedLeadsCount,
-      revenueFromClosedLeads,
-      outstandingBalanceFromBalanceLeads,
+      totalPassengers,
+      totalRevenue,
+      averageTicketPrice,
     };
   }, [leads]);
 
 
   const leadsError = error && leads.length === 0 ? error : null;
 
-
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
       <SummaryCard
-        title="Total Bookings"
-        value={leadsError ? 'Error' : summaryData.totalLeadsCount}
-        icon={<BookOpen className="h-5 w-5 text-muted-foreground" />}
-        description={leadsError ? leadsError : "All bookings regardless of status"}
+        title="Total Passengers"
+        value={leadsError ? 'Error' : summaryData.totalPassengers.toLocaleString()}
+        icon={<Users className="h-5 w-5 text-muted-foreground" />}
+        description={leadsError ? leadsError : "Total passengers from all bookings"}
         isLoading={isLoading}
       />
       <SummaryCard
-        title="Upcoming Bookings"
-        value={leadsError ? 'Error' : summaryData.upcomingLeadsCount}
-        icon={<CalendarClock className="h-5 w-5 text-muted-foreground" />}
-        description={leadsError ? leadsError : "Bookings scheduled for the future"}
-        isLoading={isLoading}
-      />
-      <SummaryCard
-        title="Balance Bookings"
-        value={leadsError ? 'Error' : summaryData.balanceLeadsCount}
-        icon={<Hourglass className="h-5 w-5 text-muted-foreground" />}
-        description={leadsError ? leadsError : "Bookings with outstanding payments"}
-        isLoading={isLoading}
-      />
-      <SummaryCard
-        title="Closed Bookings"
-        value={leadsError ? 'Error' : summaryData.closedLeadsCount}
-        icon={<BookOpenCheck className="h-5 w-5 text-muted-foreground" />}
-        description={leadsError ? leadsError : "Completed and paid bookings"}
-        isLoading={isLoading}
-      />
-      <SummaryCard
-        title="Revenue (Closed)"
-        value={leadsError ? 'Error' : `${summaryData.revenueFromClosedLeads.toLocaleString()} AED`}
+        title="Total Revenue"
+        value={leadsError ? 'Error' : `${summaryData.totalRevenue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} AED`}
         icon={<Banknote className="h-5 w-5 text-muted-foreground" />}
-        description={leadsError ? leadsError : "Sum of net amounts (Closed bookings)"}
+        description={leadsError ? leadsError : "Sum of net amounts from all bookings"}
         isLoading={isLoading}
       />
       <SummaryCard
-        title="Outstanding (Balance)"
-        value={leadsError ? 'Error' : `${summaryData.outstandingBalanceFromBalanceLeads.toLocaleString()} AED`}
-        icon={<Wallet className="h-5 w-5 text-muted-foreground" />}
-        description={leadsError ? leadsError : "Sum of balance (Balance bookings)"}
+        title="Average Ticket Price"
+        value={leadsError ? 'Error' : `${summaryData.averageTicketPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} AED`}
+        icon={<Ticket className="h-5 w-5 text-muted-foreground" />}
+        description={leadsError ? leadsError : "Total revenue / Total passengers"}
         isLoading={isLoading}
       />
     </div>

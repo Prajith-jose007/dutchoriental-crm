@@ -40,7 +40,7 @@ export function FilteredBookedAgentsList({ filteredLeads, allAgents, isLoading, 
     const bookingsByAgent = new Map<string, number>();
 
     filteredLeads.forEach(lead => {
-      if (lead.status === 'Closed' && lead.agent) {
+      if (lead.status === 'Confirmed' && lead.agent) {
         bookingsByAgent.set(lead.agent, (bookingsByAgent.get(lead.agent) || 0) + 1);
       }
     });
@@ -59,7 +59,7 @@ export function FilteredBookedAgentsList({ filteredLeads, allAgents, isLoading, 
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center"><Briefcase className="mr-2 h-5 w-5" /> Agents with Closed Bookings (Filtered)</CardTitle>
+          <CardTitle className="flex items-center"><Briefcase className="mr-2 h-5 w-5" /> Agents with Confirmed Bookings (Filtered)</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-2">
@@ -79,7 +79,7 @@ export function FilteredBookedAgentsList({ filteredLeads, allAgents, isLoading, 
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center"><Briefcase className="mr-2 h-5 w-5" /> Agents with Closed Bookings (Filtered)</CardTitle>
+          <CardTitle className="flex items-center"><Briefcase className="mr-2 h-5 w-5" /> Agents with Confirmed Bookings (Filtered)</CardTitle>
         </CardHeader>
         <CardContent>
           <p className="text-destructive">Error loading agent data: {error}</p>
@@ -92,11 +92,11 @@ export function FilteredBookedAgentsList({ filteredLeads, allAgents, isLoading, 
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center"><Briefcase className="mr-2 h-5 w-5" /> Agents with Closed Bookings (Filtered)</CardTitle>
-          <CardDescription>Agents with 'Closed' bookings based on current filters.</CardDescription>
+          <CardTitle className="flex items-center"><Briefcase className="mr-2 h-5 w-5" /> Agents with Confirmed Bookings (Filtered)</CardTitle>
+          <CardDescription>Agents with 'Confirmed' bookings based on current filters.</CardDescription>
         </CardHeader>
         <CardContent>
-          <p className="text-muted-foreground">No agents found with 'Closed' bookings matching the current filters.</p>
+          <p className="text-muted-foreground">No agents found with 'Confirmed' bookings matching the current filters.</p>
         </CardContent>
       </Card>
     );
@@ -105,15 +105,15 @@ export function FilteredBookedAgentsList({ filteredLeads, allAgents, isLoading, 
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center"><Briefcase className="mr-2 h-5 w-5" /> Agents with Closed Bookings (Filtered)</CardTitle>
-        <CardDescription>Agents with 'Closed' bookings based on current filters.</CardDescription>
+        <CardTitle className="flex items-center"><Briefcase className="mr-2 h-5 w-5" /> Agents with Confirmed Bookings (Filtered)</CardTitle>
+        <CardDescription>Agents with 'Confirmed' bookings based on current filters.</CardDescription>
       </CardHeader>
       <CardContent>
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead>Agent Name</TableHead>
-              <TableHead className="text-right">Closed Bookings</TableHead>
+              <TableHead className="text-right">Confirmed Bookings</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>

@@ -40,7 +40,7 @@ export function BookedAgentsList({ leads, allAgents, isLoading, error }: BookedA
     const bookingsByAgent = new Map<string, number>();
 
     leads.forEach(lead => {
-      if (lead.status === 'Closed' && lead.agent) {
+      if (lead.status === 'Confirmed' && lead.agent) {
         bookingsByAgent.set(lead.agent, (bookingsByAgent.get(lead.agent) || 0) + 1);
       }
     });
@@ -58,8 +58,8 @@ export function BookedAgentsList({ leads, allAgents, isLoading, error }: BookedA
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center"><Briefcase className="mr-2 h-5 w-5" /> Agents with Closed Bookings</CardTitle>
-          <CardDescription>Top performing agents by closed bookings.</CardDescription>
+          <CardTitle className="flex items-center"><Briefcase className="mr-2 h-5 w-5" /> Agents with Confirmed Bookings</CardTitle>
+          <CardDescription>Top performing agents by confirmed bookings.</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-2">
@@ -79,7 +79,7 @@ export function BookedAgentsList({ leads, allAgents, isLoading, error }: BookedA
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center"><Briefcase className="mr-2 h-5 w-5" /> Agents with Closed Bookings</CardTitle>
+          <CardTitle className="flex items-center"><Briefcase className="mr-2 h-5 w-5" /> Agents with Confirmed Bookings</CardTitle>
         </CardHeader>
         <CardContent>
           <p className="text-destructive">Error loading agent booking data: {error}</p>
@@ -92,11 +92,11 @@ export function BookedAgentsList({ leads, allAgents, isLoading, error }: BookedA
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center"><Briefcase className="mr-2 h-5 w-5" /> Agents with Closed Bookings</CardTitle>
-          <CardDescription>Top performing agents by closed bookings.</CardDescription>
+          <CardTitle className="flex items-center"><Briefcase className="mr-2 h-5 w-5" /> Agents with Confirmed Bookings</CardTitle>
+          <CardDescription>Top performing agents by confirmed bookings.</CardDescription>
         </CardHeader>
         <CardContent>
-          <p className="text-muted-foreground">No agents found with closed bookings for the selected period.</p>
+          <p className="text-muted-foreground">No agents found with confirmed bookings for the selected period.</p>
         </CardContent>
       </Card>
     );
@@ -105,15 +105,15 @@ export function BookedAgentsList({ leads, allAgents, isLoading, error }: BookedA
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center"><Briefcase className="mr-2 h-5 w-5" /> Agents with Closed Bookings</CardTitle>
-        <CardDescription>Agents ranked by number of 'Closed' bookings.</CardDescription>
+        <CardTitle className="flex items-center"><Briefcase className="mr-2 h-5 w-5" /> Agents with Confirmed Bookings</CardTitle>
+        <CardDescription>Agents ranked by number of 'Confirmed' bookings.</CardDescription>
       </CardHeader>
       <CardContent>
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead>Agent Name</TableHead>
-              <TableHead className="text-right">Closed Bookings</TableHead>
+              <TableHead className="text-right">Confirmed Bookings</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>

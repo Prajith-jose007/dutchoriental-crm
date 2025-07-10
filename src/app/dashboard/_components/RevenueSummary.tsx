@@ -65,8 +65,8 @@ export function RevenueSummary({ leads, isLoading, error }: RevenueSummaryProps)
     let thisYearsRevenue = 0;
 
     leads.forEach(lead => {
-      // Revenue is now calculated from 'Closed' leads only
-      if (lead.status === 'Closed' && typeof lead.netAmount === 'number') {
+      // Revenue is now calculated from 'Confirmed' leads only
+      if (lead.status === 'Confirmed' && typeof lead.netAmount === 'number') {
         try {
           let eventDate: Date | null = null;
           if (lead.month && isValid(parseISO(lead.month))) {
@@ -85,7 +85,7 @@ export function RevenueSummary({ leads, isLoading, error }: RevenueSummaryProps)
           if (lead.createdAt) {
             const leadCreationDate = parseISO(lead.createdAt);
             if (isValid(leadCreationDate) && isToday(leadCreationDate)) {
-              todaysRevenue += lead.netAmount; // Today's revenue based on creation of 'Closed' leads
+              todaysRevenue += lead.netAmount; // Today's revenue based on creation of 'Confirmed' leads
             }
           }
         } catch (e) {
@@ -95,9 +95,9 @@ export function RevenueSummary({ leads, isLoading, error }: RevenueSummaryProps)
     });
 
     return [
-      { period: "Today's Revenue", amount: todaysRevenue, icon: <DollarSign className="h-5 w-5 text-muted-foreground" />, description: "Based on 'Closed' bookings created today" },
-      { period: "This Month's Revenue", amount: thisMonthsRevenue, icon: <CalendarDays className="h-5 w-5 text-muted-foreground" />, description: "Based on 'Closed' bookings with event date this month" },
-      { period: "This Year's Revenue", amount: thisYearsRevenue, icon: <TrendingUp className="h-5 w-5 text-muted-foreground" />, description: "Based on 'Closed' bookings with event date this year" },
+      { period: "Today's Revenue", amount: todaysRevenue, icon: <DollarSign className="h-5 w-5 text-muted-foreground" />, description: "Based on 'Confirmed' bookings created today" },
+      { period: "This Month's Revenue", amount: thisMonthsRevenue, icon: <CalendarDays className="h-5 w-5 text-muted-foreground" />, description: "Based on 'Confirmed' bookings with event date this month" },
+      { period: "This Year's Revenue", amount: thisYearsRevenue, icon: <TrendingUp className="h-5 w-5 text-muted-foreground" />, description: "Based on 'Confirmed' bookings with event date this year" },
     ];
   }, [leads]);
 

@@ -34,8 +34,8 @@ export function SalesByYachtPieChart({ leads, allYachts, isLoading, error }: Sal
   const chartData: PieChartDataItem[] = useMemo(() => {
     const salesByYachtMap = new Map<string, number>();
     leads.forEach(lead => {
-      // Sales revenue is now calculated from 'Closed' leads only
-      if (lead.status === 'Closed' && typeof lead.netAmount === 'number') {
+      // Sales revenue is now calculated from 'Confirmed' leads only
+      if (lead.status === 'Confirmed' && typeof lead.netAmount === 'number') {
         const currentSales = salesByYachtMap.get(lead.yacht) || 0;
         salesByYachtMap.set(lead.yacht, currentSales + lead.netAmount);
       }
@@ -66,7 +66,7 @@ export function SalesByYachtPieChart({ leads, allYachts, isLoading, error }: Sal
       <Card>
         <CardHeader>
           <CardTitle>Sales Revenue by Yacht</CardTitle>
-          <CardDescription>Breakdown of 'Closed' booking revenue by yacht (Net Amount in AED).</CardDescription>
+          <CardDescription>Breakdown of 'Confirmed' booking revenue by yacht (Net Amount in AED).</CardDescription>
         </CardHeader>
         <CardContent className="flex items-center justify-center h-[300px]">
           <div className="flex flex-col items-center gap-2">
@@ -84,7 +84,7 @@ export function SalesByYachtPieChart({ leads, allYachts, isLoading, error }: Sal
         <Card>
             <CardHeader>
                 <CardTitle>Sales Revenue by Yacht</CardTitle>
-                <CardDescription>Breakdown of 'Closed' booking revenue by yacht (Net Amount in AED).</CardDescription>
+                <CardDescription>Breakdown of 'Confirmed' booking revenue by yacht (Net Amount in AED).</CardDescription>
             </CardHeader>
             <CardContent className="flex items-center justify-center h-[300px]">
                 <p className="text-destructive">Error loading sales data: {error}</p>
@@ -98,10 +98,10 @@ export function SalesByYachtPieChart({ leads, allYachts, isLoading, error }: Sal
         <Card>
             <CardHeader>
                 <CardTitle>Sales Revenue by Yacht</CardTitle>
-                <CardDescription>Breakdown of 'Closed' booking revenue by yacht (Net Amount in AED).</CardDescription>
+                <CardDescription>Breakdown of 'Confirmed' booking revenue by yacht (Net Amount in AED).</CardDescription>
             </CardHeader>
             <CardContent className="flex items-center justify-center h-[300px]">
-                <p className="text-muted-foreground">No 'Closed' sales data for selected filters.</p>
+                <p className="text-muted-foreground">No 'Confirmed' sales data for selected filters.</p>
             </CardContent>
         </Card>
     );
@@ -111,7 +111,7 @@ export function SalesByYachtPieChart({ leads, allYachts, isLoading, error }: Sal
     <Card>
       <CardHeader>
         <CardTitle>Sales Revenue by Yacht</CardTitle>
-        <CardDescription>Breakdown of 'Closed' booking revenue by yacht (Net Amount in AED).</CardDescription>
+        <CardDescription>Breakdown of 'Confirmed' booking revenue by yacht (Net Amount in AED).</CardDescription>
       </CardHeader>
       <CardContent className="h-[300px] w-full flex items-center justify-center">
         <ChartContainer config={dynamicChartConfig} className="aspect-square h-full">

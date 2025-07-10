@@ -40,31 +40,28 @@ interface ReportSummaryStatsProps {
 
 export function ReportSummaryStats({ filteredLeads, isLoading, error }: ReportSummaryStatsProps) {
   const summaryData = useMemo(() => {
-    const closedLeads = filteredLeads.filter(lead => lead.status === 'Closed');
-    const upcomingLeads = filteredLeads.filter(lead => lead.status === 'Upcoming');
-    const balanceLeads = filteredLeads.filter(lead => lead.status === 'Balance');
+    const confirmedLeads = filteredLeads.filter(lead => lead.status === 'Confirmed');
+    const unconfirmedLeads = filteredLeads.filter(lead => lead.status === 'Unconfirmed');
 
-    const totalRevenue = closedLeads.reduce((sum, lead) => sum + (lead.netAmount || 0), 0);
+    const totalRevenue = confirmedLeads.reduce((sum, lead) => sum + (lead.netAmount || 0), 0);
     const totalBookings = filteredLeads.length;
-    const upcomingLeadsCount = upcomingLeads.length;
-    const balanceLeadsCount = balanceLeads.length;
-    const closedBookingsCount = closedLeads.length;
-    const totalOutstandingBalance = balanceLeads.reduce((sum, lead) => sum + (lead.balanceAmount || 0), 0);
+    const confirmedBookingsCount = confirmedLeads.length;
+    const unconfirmedBookingsCount = unconfirmedLeads.length;
+    const totalOutstandingBalance = filteredLeads.reduce((sum, lead) => sum + (lead.balanceAmount || 0), 0);
 
     return {
       totalRevenue,
       totalBookings,
-      upcomingLeadsCount,
-      balanceLeadsCount,
-      closedBookingsCount,
+      confirmedBookingsCount,
+      unconfirmedBookingsCount,
       totalOutstandingBalance,
     };
   }, [filteredLeads]);
 
   if (error) {
     return (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 mb-6">
-            {[...Array(6)].map((_, i) => (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 mb-6">
+            {[...Array(5)].map((_, i) => (
                  <Card key={i}>
                     <CardHeader className="pb-2"><CardTitle className="text-sm font-medium">Stat Error</CardTitle></CardHeader>
                     <CardContent><p className="text-destructive text-xs">{error}</p></CardContent>
@@ -75,7 +72,7 @@ export function ReportSummaryStats({ filteredLeads, isLoading, error }: ReportSu
   }
 
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 mb-6">
+    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 mb-6">
       <SummaryStatCard
         title="Total Bookings (Filtered)"
         value={summaryData.totalBookings}
@@ -83,31 +80,25 @@ export function ReportSummaryStats({ filteredLeads, isLoading, error }: ReportSu
         isLoading={isLoading}
       />
       <SummaryStatCard
-        title="Upcoming Bookings (Filtered)"
-        value={summaryData.upcomingLeadsCount}
-        icon={<CalendarClock className="h-5 w-5 text-muted-foreground" />}
-        isLoading={isLoading}
-      />
-       <SummaryStatCard
-        title="Balance Bookings (Filtered)"
-        value={summaryData.balanceLeadsCount}
+        title="Unconfirmed Bookings"
+        value={summaryData.unconfirmedBookingsCount}
         icon={<Hourglass className="h-5 w-5 text-muted-foreground" />}
         isLoading={isLoading}
       />
       <SummaryStatCard
-        title="Closed Bookings (Filtered)"
-        value={summaryData.closedBookingsCount}
+        title="Confirmed Bookings"
+        value={summaryData.confirmedBookingsCount}
         icon={<BookOpenCheck className="h-5 w-5 text-muted-foreground" />}
         isLoading={isLoading}
       />
       <SummaryStatCard
-        title="Revenue (Filtered)"
+        title="Revenue (Confirmed)"
         value={`${summaryData.totalRevenue.toLocaleString()} AED`}
         icon={<TrendingUp className="h-5 w-5 text-muted-foreground" />}
         isLoading={isLoading}
       />
       <SummaryStatCard
-        title="Outstanding (Balance Bookings)"
+        title="Total Outstanding"
         value={`${summaryData.totalOutstandingBalance.toLocaleString()} AED`}
         icon={<Wallet className="h-5 w-5 text-muted-foreground" />}
         isLoading={isLoading}

@@ -208,9 +208,8 @@ export function LeadsTable({
   const getStatusVariant = (status?: LeadStatus) => {
     if (!status) return 'outline';
     switch (status) {
-      case 'Upcoming': return 'outline'; 
-      case 'Balance': return 'secondary'; 
-      case 'Closed': return 'default'; 
+      case 'Unconfirmed': return 'secondary'; 
+      case 'Confirmed': return 'default'; 
       default: return 'outline';
     }
   };
@@ -300,9 +299,9 @@ export function LeadsTable({
       return formatNotes(lead.catering);
     }
     if (column.accessorKey === 'id') {
-      const canEdit = isAdmin || (lead.ownerUserId === currentUserId && lead.status !== 'Closed');
+      const canEdit = isAdmin || (lead.status !== 'Confirmed');
       return (
-        <Button variant="link" className="p-0 h-auto font-medium" onClick={() => onEditLead(lead)} disabled={!isAdmin && lead.status === 'Closed' && !canEdit}>
+        <Button variant="link" className="p-0 h-auto font-medium" onClick={() => onEditLead(lead)} disabled={!canEdit}>
           {String(lead.id).length > 10 ? String(lead.id).substring(0, 4) + '...' + String(lead.id).substring(String(lead.id).length - 4) : lead.id}
         </Button>
       );
@@ -409,9 +408,9 @@ export function LeadsTable({
                           <DropdownMenuLabel>Actions</DropdownMenuLabel>
                           <DropdownMenuItem
                             onClick={() => onEditLead(lead)}
-                            disabled={!isAdmin && lead.status === 'Closed'}
+                            disabled={!isAdmin && lead.status === 'Confirmed'}
                           >
-                            {lead.status === 'Closed' && !isAdmin ? 'View Details' : 'Edit Booking'}
+                            {lead.status === 'Confirmed' && !isAdmin ? 'View Details' : 'Edit Booking'}
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => onGenerateInvoice(lead)}>
                             Generate Invoice
@@ -420,7 +419,7 @@ export function LeadsTable({
                           <DropdownMenuItem
                             className="text-destructive"
                             onClick={() => onDeleteLead(lead.id)}
-                            disabled={!isAdmin && lead.status === 'Closed'}
+                            disabled={!isAdmin && lead.status === 'Confirmed'}
                           >
                             Delete Booking
                           </DropdownMenuItem>

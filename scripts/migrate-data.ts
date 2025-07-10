@@ -136,7 +136,7 @@ async function createLeadsTable() {
       type VARCHAR(255),
       hoursOfBooking INT DEFAULT NULL,
       catering TEXT DEFAULT NULL,
-      paymentConfirmationStatus VARCHAR(50) DEFAULT 'CONFIRMED',
+      paymentConfirmationStatus VARCHAR(50) DEFAULT 'UNCONFIRMED',
       transactionId VARCHAR(255),
       modeOfPayment VARCHAR(50),
       package_quantities_json TEXT DEFAULT NULL,
@@ -161,7 +161,7 @@ async function createLeadsTable() {
     // Ensure newer columns exist
     await addColumnIfNotExists(tableName, 'hoursOfBooking', 'INT DEFAULT NULL');
     await addColumnIfNotExists(tableName, 'catering', 'TEXT DEFAULT NULL');
-    await addColumnIfNotExists(tableName, 'paymentConfirmationStatus', 'VARCHAR(50) DEFAULT \'CONFIRMED\'');
+    await addColumnIfNotExists(tableName, 'paymentConfirmationStatus', 'VARCHAR(50) DEFAULT \'UNCONFIRMED\'');
     await addColumnIfNotExists(tableName, 'transactionId', 'VARCHAR(255) DEFAULT NULL');
     await addColumnIfNotExists(tableName, 'modeOfPayment', 'VARCHAR(50) DEFAULT \'Online\'');
     await addColumnIfNotExists(tableName, 'package_quantities_json', 'TEXT DEFAULT NULL');
@@ -338,7 +338,7 @@ async function migrateLeads() {
         lead.type,
         lead.hoursOfBooking || null,
         lead.catering || null,
-        lead.paymentConfirmationStatus || 'CONFIRMED', 
+        lead.paymentConfirmationStatus || 'UNCONFIRMED', 
         lead.transactionId || null,
         lead.modeOfPayment,
         packageQuantitiesJson,

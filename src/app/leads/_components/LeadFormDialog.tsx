@@ -67,7 +67,7 @@ const leadFormSchema = z.object({
 
   packageQuantities: z.array(leadPackageQuantitySchema).optional().default([]),
   freeGuestCount: z.coerce.number().min(0, "Free guest count must be non-negative").optional().default(0),
-  perTicketRate: z.coerce.number().min(0, "Other Charges must be non-negative").optional().nullable(),
+  perTicketRate: z.coerce.number().min(0, "Addons must be non-negative").optional().nullable(),
 
   totalAmount: z.coerce.number().default(0),
   commissionPercentage: z.coerce.number().min(0).max(100).default(0),
@@ -113,7 +113,7 @@ const getDefaultFormValues = (existingLead?: Lead | null, currentUserId?: string
     type: existingLead?.type || 'Private Cruise',
     hoursOfBooking: existingLead?.hoursOfBooking,
     catering: existingLead?.catering || '',
-    paymentConfirmationStatus: existingLead?.paymentConfirmationStatus || 'UNPAID',
+    paymentConfirmationStatus: existingLead?.paymentConfirmationStatus || 'UNCONFIRMED',
     modeOfPayment: existingLead?.modeOfPayment || 'CARD',
     clientName: existingLead?.clientName || '',
     notes: existingLead?.notes || '',
@@ -719,7 +719,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
                 name="perTicketRate"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Other Charges</FormLabel>
+                    <FormLabel>Addons</FormLabel>
                     <FormControl>
                       <Input
                         type="number"
@@ -739,7 +739,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
                         min="0"
                       />
                     </FormControl>
-                     <FormDescription>Specify any other charges or rate.</FormDescription>
+                     <FormDescription>Specify any other charges or addons.</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -847,7 +847,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
                     <FormItem>
                       <FormLabel>Total Amount (AED)</FormLabel>
                       <FormControl><Input type="number" placeholder="0.00" {...field} value={Number(field.value).toFixed(2)} readOnly className="bg-muted/50" /></FormControl>
-                       <FormDescription>Calculated from packages & "OTHER"</FormDescription>
+                       <FormDescription>Calculated from packages & addons</FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}

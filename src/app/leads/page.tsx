@@ -61,7 +61,7 @@ const csvHeaderMapping: { [csvHeaderKey: string]: keyof Omit<Lead, 'packageQuant
   'vip': 'pkg_vip', 
   'hrchtr': 'pkg_hour_charter', 'hour_charter': 'pkg_hour_charter',
   'package_details_(json)': 'package_quantities_json_string', 'package_details_json': 'package_quantities_json_string',
-  'other_charges': 'perTicketRate', 'other': 'perTicketRate', 'other_rate': 'perTicketRate', 'ticket_rate': 'perTicketRate',
+  'addons': 'perTicketRate', 'other_charges': 'perTicketRate', 'other': 'perTicketRate', 'other_rate': 'perTicketRate', 'ticket_rate': 'perTicketRate',
   'total_amt': 'totalAmount', 'total_amount': 'totalAmount',
   'discount_%': 'commissionPercentage', 'discount_rate': 'commissionPercentage', 'discount': 'commissionPercentage',
   'commission': 'commissionAmount', 'commission_amount': 'commissionAmount',
@@ -119,7 +119,7 @@ const convertCsvValue = (
       case 'modeOfPayment': return 'CARD';
       case 'status': return 'Upcoming'; 
       case 'type': return 'Private Cruise' as LeadType;
-      case 'paymentConfirmationStatus': return 'UNPAID' as PaymentConfirmationStatus;
+      case 'paymentConfirmationStatus': return 'UNCONFIRMED' as PaymentConfirmationStatus;
       case 'notes': return '';
       case 'catering': return '';
       case 'hoursOfBooking': return 0;
@@ -163,8 +163,9 @@ const convertCsvValue = (
       if (paymentConfirmationStatusOptions.includes(upperTrimmedPaymentStatus as PaymentConfirmationStatus)) {
         return upperTrimmedPaymentStatus as PaymentConfirmationStatus;
       }
-      if (upperTrimmedPaymentStatus === 'CONFIRMED') return 'PAY AT COUNTER'; 
-      return 'UNPAID'; 
+      if (upperTrimmedPaymentStatus === 'PAID') return 'CONFIRMED'; 
+      if (upperTrimmedPaymentStatus === 'UNPAID') return 'UNCONFIRMED'; 
+      return 'UNCONFIRMED'; 
 
     case 'month':
     case 'createdAt':
@@ -840,7 +841,7 @@ export default function LeadsPage() {
             type: parsedRow.type || 'Private Cruise',
             hoursOfBooking: parsedRow.hoursOfBooking || undefined,
             catering: parsedRow.catering || undefined,
-            paymentConfirmationStatus: parsedRow.paymentConfirmationStatus || 'UNPAID',
+            paymentConfirmationStatus: parsedRow.paymentConfirmationStatus || 'UNCONFIRMED',
             transactionId: transactionIdForRow,
             modeOfPayment: parsedRow.modeOfPayment || 'CARD',
             packageQuantities: packageQuantities,

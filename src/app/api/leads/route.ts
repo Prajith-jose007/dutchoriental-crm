@@ -81,7 +81,7 @@ export async function GET(request: NextRequest) {
         type: (dbLead.type || 'Private Cruise') as LeadType,
         hoursOfBooking: dbLead.hoursOfBooking,
         catering: dbLead.catering,
-        paymentConfirmationStatus: (dbLead.paymentConfirmationStatus || 'UNPAID') as PaymentConfirmationStatus,
+        paymentConfirmationStatus: (dbLead.paymentConfirmationStatus || 'UNCONFIRMED') as PaymentConfirmationStatus,
         transactionId: dbLead.transactionId || undefined,
         modeOfPayment: (dbLead.modeOfPayment || 'Online') as ModeOfPayment,
 
@@ -188,7 +188,7 @@ export async function POST(request: NextRequest) {
       type: newLeadData.type || 'Private Cruise',
       hoursOfBooking: newLeadData.hoursOfBooking || null,
       catering: newLeadData.catering || null,
-      paymentConfirmationStatus: newLeadData.paymentConfirmationStatus || 'UNPAID',
+      paymentConfirmationStatus: newLeadData.paymentConfirmationStatus || 'UNCONFIRMED',
       transactionId: finalTransactionId,
       modeOfPayment: newLeadData.modeOfPayment || 'Online',
 
@@ -266,7 +266,7 @@ export async function POST(request: NextRequest) {
             notes: dbLead.notes || undefined, type: (dbLead.type || 'Private Cruise') as LeadType,
             hoursOfBooking: dbLead.hoursOfBooking,
             catering: dbLead.catering,
-            paymentConfirmationStatus: (dbLead.paymentConfirmationStatus || 'UNPAID') as PaymentConfirmationStatus,
+            paymentConfirmationStatus: (dbLead.paymentConfirmationStatus || 'UNCONFIRMED') as PaymentConfirmationStatus,
             transactionId: dbLead.transactionId || undefined,
             modeOfPayment: (dbLead.modeOfPayment || 'Online') as ModeOfPayment,
             packageQuantities: pq,

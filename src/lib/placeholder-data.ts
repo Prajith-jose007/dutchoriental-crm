@@ -132,7 +132,7 @@ export const placeholderLeads: Lead[] = [
     month: formatISO(parseISO(`${currentYear}-07-15T14:00:00`)),
     notes: 'Confirmed booking for annual dinner.',
     type: 'Dinner Cruise',
-    paymentConfirmationStatus: 'PAID',
+    paymentConfirmationStatus: 'CONFIRMED',
     transactionId: `TRN-${currentYear}00001`,
     modeOfPayment: 'CARD',
     packageQuantities: [
@@ -162,7 +162,7 @@ export const placeholderLeads: Lead[] = [
     month: formatISO(parseISO(`${currentYear}-07-25T18:30:00`)),
     notes: 'Prospective client for regular sightseeing tours. Payment pending.',
     type: 'Superyacht Sightseeing Cruise',
-    paymentConfirmationStatus: 'CREDIT',
+    paymentConfirmationStatus: 'CONFIRMED',
     transactionId: `TRN-${currentYear}00002`,
     modeOfPayment: 'CREDIT',
     packageQuantities: [
@@ -190,7 +190,7 @@ export const placeholderLeads: Lead[] = [
     month: formatISO(parseISO(`${currentYear}-08-10T16:00:00`)),
     notes: 'Birthday party, deposit paid. Awaiting event.',
     type: 'Private Cruise',
-    paymentConfirmationStatus: 'UNPAID',
+    paymentConfirmationStatus: 'UNCONFIRMED',
     transactionId: `TRN-${currentYear}00003`,
     modeOfPayment: 'CASH / CARD',
     packageQuantities: [
@@ -220,4 +220,3 @@ export const placeholderInvoices: Invoice[] = [
   { id: 'DO-inv002', leadId: 'DO-002', clientName: 'Sunset Tours R Us', amount: lead2NetAmount, dueDate: format(addDays(parseISO(placeholderLeads[1].month), 7), 'yyyy-MM-dd'), status: 'Pending', createdAt: formatISO(subDays(today, 9)) },
   { id: 'DO-inv003', leadId: 'DO-003', clientName: 'Private Celebration Planners', amount: lead3NetAmount, dueDate: format(addDays(parseISO(placeholderLeads[2].month), 7), 'yyyy-MM-dd'), status: 'Pending', createdAt: formatISO(subDays(today, 1)) },
 ];
-

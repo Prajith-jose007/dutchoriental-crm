@@ -67,7 +67,7 @@ const leadFormSchema = z.object({
 
   packageQuantities: z.array(leadPackageQuantitySchema).optional().default([]),
   freeGuestCount: z.coerce.number().min(0, "Free guest count must be non-negative").optional().default(0),
-  perTicketRate: z.coerce.number().min(0, "Addons must be non-negative").optional().nullable(),
+  perTicketRate: z.coerce.number().min(0, "Other charges must be non-negative").optional().nullable(),
 
   totalAmount: z.coerce.number().default(0),
   commissionPercentage: z.coerce.number().min(0).max(100).default(0),
@@ -107,7 +107,7 @@ const getDefaultFormValues = (existingLead?: Lead | null, currentUserId?: string
   return {
     id: existingLead?.id || undefined,
     agent: existingLead?.agent || '',
-    status: existingLead?.status || 'Unconfirmed', // Default to Unconfirmed for new leads
+    status: existingLead?.status || 'Balance', // Default to Balance for new leads
     month: existingLead?.month && isValid(parseISO(existingLead.month)) ? parseISO(existingLead.month) : new Date(),
     yacht: existingLead?.yacht || '',
     type: existingLead?.type || 'Private Cruise',
@@ -161,8 +161,8 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
   const watchedStatus = form.watch('status'); 
 
   const isFormDisabled = useMemo(() => {
-    // A form should be disabled if the status is 'Confirmed' and the user is not an admin.
-    return watchedStatus === 'Confirmed' && !isAdmin;
+    // A form should be disabled if the status is 'Closed' and the user is not an admin.
+    return watchedStatus === 'Closed' && !isAdmin;
   }, [watchedStatus, isAdmin]);
 
 
@@ -362,7 +362,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
 
   function onSubmit(data: LeadFormData) {
     if (isFormDisabled) {
-        toast({ title: "Action Denied", description: "This booking is confirmed and cannot be modified by non-administrators.", variant: "destructive" });
+        toast({ title: "Action Denied", description: "This booking is closed and cannot be modified by non-administrators.", variant: "destructive" });
         onOpenChange(false);
         return;
     }
@@ -452,16 +452,16 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
         <DialogHeader>
           <DialogTitle>{lead ? (isFormDisabled ? 'View Booking Details' : 'Edit Booking') : 'Add New Booking'}</DialogTitle>
           <DialogDescription>
-            {lead ? (isFormDisabled ? 'This booking is confirmed and cannot be edited by non-administrators.' : 'Update the details for this booking.') : 'Fill in the details for the new booking.'}
+            {lead ? (isFormDisabled ? 'This booking is closed and cannot be edited by non-administrators.' : 'Update the details for this booking.') : 'Fill in the details for the new booking.'}
           </DialogDescription>
         </DialogHeader>
         <ScrollArea className="max-h-[70vh] p-1">
         {isFormDisabled && (
              <Alert variant="destructive" className="mb-4">
                 <Terminal className="h-4 w-4" />
-                <AlertTitle>Booking Confirmed</AlertTitle>
+                <AlertTitle>Booking Closed</AlertTitle>
                 <AlertDescription>
-                    This booking is marked as 'Confirmed'. Editing is restricted to administrators.
+                    This booking is marked as 'Closed'. Editing is restricted to administrators.
                 </AlertDescription>
             </Alert>
         )}
@@ -673,7 +673,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
                 name="paymentConfirmationStatus"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Payment Status</FormLabel>
+                    <FormLabel>Payment/Conf. Status</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value || undefined} defaultValue={field.value}>
                       <FormControl><SelectTrigger><SelectValue placeholder="Select payment status" /></SelectTrigger></FormControl>
                       <SelectContent>
@@ -720,7 +720,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
                 name="perTicketRate"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Addons</FormLabel>
+                    <FormLabel>Other Charges (Optional)</FormLabel>
                     <FormControl>
                       <Input
                         type="number"

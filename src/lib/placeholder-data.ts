@@ -128,7 +128,7 @@ export const placeholderLeads: Lead[] = [
     clientName: 'Tech Corp Events',
     agent: 'DO-001',
     yacht: 'DO-yacht-lotus',
-    status: 'Confirmed',
+    status: 'Closed',
     month: formatISO(parseISO(`${currentYear}-07-15T14:00:00`)),
     notes: 'Confirmed booking for annual dinner.',
     type: 'Dinner Cruise',
@@ -138,15 +138,15 @@ export const placeholderLeads: Lead[] = [
     packageQuantities: [
       { packageId: 'lr-adult', packageName: 'ADULT', quantity: 50, rate: 250 },
       { packageId: 'lr-ad-alc', packageName: 'ADULT ALC', quantity: 30, rate: 350 },
-      { packageId: 'lr-vip-alc', packageName: 'VIP ALC', quantity: 2, rate: 499 } // Corrected packageId from lr-vip-ad-alc
+      { packageId: 'lr-vip-alc', packageName: 'VIP ALC', quantity: 2, rate: 499 }
     ],
     freeGuestCount: 5,
     perTicketRate: 100,
-    totalAmount: (50 * 250) + (30 * 350) + (2 * 499) + 100, // Recalculate totalAmount based on corrected package
+    totalAmount: (50 * 250) + (30 * 350) + (2 * 499) + 100,
     commissionPercentage: 10,
-    commissionAmount: 2409.80, // Recalculated: ((50 * 250) + (30 * 350) + (2*499) + 100) * 0.10
-    netAmount: 21688.20, // Recalculated
-    paidAmount: 21688.20, // Assuming fully paid
+    commissionAmount: 2409.80,
+    netAmount: 21688.20,
+    paidAmount: 21688.20,
     balanceAmount: 0,
     createdAt: formatISO(subDays(today, 30)),
     updatedAt: formatISO(subDays(today, 15)),
@@ -158,11 +158,11 @@ export const placeholderLeads: Lead[] = [
     clientName: 'Sunset Tours R Us',
     agent: 'DO-002',
     yacht: 'DO-yacht-super',
-    status: 'Confirmed',
+    status: 'Balance',
     month: formatISO(parseISO(`${currentYear}-07-25T18:30:00`)),
     notes: 'Prospective client for regular sightseeing tours. Payment pending.',
     type: 'Superyacht Sightseeing Cruise',
-    paymentConfirmationStatus: 'CONFIRMED',
+    paymentConfirmationStatus: 'UNCONFIRMED',
     transactionId: `TRN-${currentYear}00002`,
     modeOfPayment: 'CREDIT',
     packageQuantities: [
@@ -186,7 +186,7 @@ export const placeholderLeads: Lead[] = [
     clientName: 'Private Celebration Planners',
     agent: 'DO-001',
     yacht: 'DO-yacht-private1',
-    status: 'Unconfirmed',
+    status: 'Balance',
     month: formatISO(parseISO(`${currentYear}-08-10T16:00:00`)),
     notes: 'Birthday party, deposit paid. Awaiting event.',
     type: 'Private Cruise',

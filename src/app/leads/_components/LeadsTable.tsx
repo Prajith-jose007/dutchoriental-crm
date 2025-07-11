@@ -75,7 +75,7 @@ export const generateLeadColumns = (allYachts: Yacht[]): LeadTableColumn[] => {
     { accessorKey: 'yacht', header: 'Yacht', isYachtLookup: true },
     { accessorKey: 'agent', header: 'Agent', isAgentLookup: true },
     { accessorKey: 'clientName', header: 'Client' },
-    { accessorKey: 'paymentConfirmationStatus', header: 'Payment Status' },
+    { accessorKey: 'paymentConfirmationStatus', header: 'Payment/Conf. Status' },
     { accessorKey: 'type', header: 'Type' },
     { accessorKey: 'hoursOfBooking', header: 'Hours', isNumeric: true },
     { accessorKey: 'catering', header: 'Catering', isNotes: true },
@@ -145,7 +145,7 @@ export const generateLeadColumns = (allYachts: Yacht[]): LeadTableColumn[] => {
 
   const accountsColumns: LeadTableColumn[] = [
     { accessorKey: 'totalGuestsCalculated', header: 'Total Count', isNumeric: true },
-    { accessorKey: 'perTicketRate', header: 'Addons', isCurrency: true },
+    { accessorKey: 'perTicketRate', header: 'Other Charges', isCurrency: true },
     { accessorKey: 'totalAmount', header: 'Total Amt', isCurrency: true },
     { accessorKey: 'averageRateCalculated', header: 'Rate', isCurrency: true },
     { accessorKey: 'commissionPercentage', header: 'Discount %', isPercentage: true },
@@ -208,8 +208,10 @@ export function LeadsTable({
   const getStatusVariant = (status?: LeadStatus) => {
     if (!status) return 'outline';
     switch (status) {
-      case 'Unconfirmed': return 'secondary'; 
-      case 'Confirmed': return 'default'; 
+      case 'Upcoming': return 'secondary'; 
+      case 'Pending': return 'destructive';
+      case 'Balance': return 'secondary';
+      case 'Closed': return 'default'; 
       default: return 'outline';
     }
   };
@@ -299,7 +301,7 @@ export function LeadsTable({
       return formatNotes(lead.catering);
     }
     if (column.accessorKey === 'id') {
-      const canEdit = isAdmin || (lead.status !== 'Confirmed');
+      const canEdit = isAdmin || (lead.status !== 'Closed');
       return (
         <Button variant="link" className="p-0 h-auto font-medium" onClick={() => onEditLead(lead)} disabled={!canEdit}>
           {String(lead.id).length > 10 ? String(lead.id).substring(0, 4) + '...' + String(lead.id).substring(String(lead.id).length - 4) : lead.id}
@@ -408,9 +410,9 @@ export function LeadsTable({
                           <DropdownMenuLabel>Actions</DropdownMenuLabel>
                           <DropdownMenuItem
                             onClick={() => onEditLead(lead)}
-                            disabled={!isAdmin && lead.status === 'Confirmed'}
+                            disabled={!isAdmin && lead.status === 'Closed'}
                           >
-                            {lead.status === 'Confirmed' && !isAdmin ? 'View Details' : 'Edit Booking'}
+                            {lead.status === 'Closed' && !isAdmin ? 'View Details' : 'Edit Booking'}
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => onGenerateInvoice(lead)}>
                             Generate Invoice
@@ -419,7 +421,7 @@ export function LeadsTable({
                           <DropdownMenuItem
                             className="text-destructive"
                             onClick={() => onDeleteLead(lead.id)}
-                            disabled={!isAdmin && lead.status === 'Confirmed'}
+                            disabled={!isAdmin && lead.status === 'Closed'}
                           >
                             Delete Booking
                           </DropdownMenuItem>

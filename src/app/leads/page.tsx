@@ -61,7 +61,7 @@ const csvHeaderMapping: { [csvHeaderKey: string]: keyof Omit<Lead, 'packageQuant
   'vip': 'pkg_vip', 
   'hrchtr': 'pkg_hour_charter', 'hour_charter': 'pkg_hour_charter',
   'package_details_(json)': 'package_quantities_json_string', 'package_details_json': 'package_quantities_json_string',
-  'addons': 'perTicketRate', 'other_charges': 'perTicketRate', 'other': 'perTicketRate', 'other_rate': 'perTicketRate', 'ticket_rate': 'perTicketRate',
+  'other_charges': 'perTicketRate', 'other': 'perTicketRate', 'other_rate': 'perTicketRate', 'ticket_rate': 'perTicketRate',
   'total_amt': 'totalAmount', 'total_amount': 'totalAmount',
   'discount_%': 'commissionPercentage', 'discount_rate': 'commissionPercentage', 'discount': 'commissionPercentage',
   'commission': 'commissionAmount', 'commission_amount': 'commissionAmount',
@@ -117,7 +117,7 @@ const convertCsvValue = (
       case 'freeGuestCount': return 0;
       case 'perTicketRate': return null;
       case 'modeOfPayment': return 'CARD';
-      case 'status': return 'Upcoming'; 
+      case 'status': return 'Balance'; 
       case 'type': return 'Private Cruise' as LeadType;
       case 'paymentConfirmationStatus': return 'UNCONFIRMED' as PaymentConfirmationStatus;
       case 'notes': return '';
@@ -155,7 +155,7 @@ const convertCsvValue = (
     case 'status':
       const lowerTrimmedStatusValue = trimmedValue.toLowerCase();
       const foundStatus = leadStatusOptions.find(opt => opt.toLowerCase() === lowerTrimmedStatusValue);
-      return foundStatus || 'Upcoming'; 
+      return foundStatus || 'Balance'; 
     case 'type':
       return leadTypeOptions.includes(trimmedValue as LeadType) ? trimmedValue : 'Private Cruise';
     case 'paymentConfirmationStatus':
@@ -291,7 +291,7 @@ const packageCountLabels: Record<keyof CalculatedPackageCounts, string> = {
   child: 'CHILD', adult: 'ADULT', childTopDeck: 'CHILD TOP DECK', adultTopDeck: 'ADULT TOP DECK', adultAlc: 'ADULT ALC',
   vipChild: 'VIP CHILD', vipAdult: 'VIP ADULT', vipAlc: 'VIP ALC',
   royalChild: 'ROYAL CHILD', royalAdult: 'ROYAL ADULT', royalAlc: 'ROYAL ALC',
-  basicSY: 'BASIC (SY)', standardSY: 'STANDARD (SY)', premiumSY: 'PREMIUM (SY)', vipSY: 'VIP (SY)', // Corrected premiumSY to PREMIUM (SY) to match definition
+  basicSY: 'BASIC (SY)', standardSY: 'STANDARD (SY)', premiumSY: 'PREMIUM (SY)', vipSY: 'VIP (SY)',
   hourCharterPC: 'HOUR CHARTER (PC)',
   others: 'OTHERS (Rate)',
 };
@@ -835,7 +835,7 @@ export default function LeadsPage() {
             clientName: parsedRow.clientName || 'N/A from CSV',
             agent: parsedRow.agent || '',
             yacht: parsedRow.yacht || '',
-            status: parsedRow.status || 'Upcoming', 
+            status: parsedRow.status || 'Balance', 
             month: parsedRow.month || formatISO(new Date()),
             notes: parsedRow.notes || '', 
             type: parsedRow.type || 'Private Cruise',
@@ -1235,11 +1235,11 @@ export default function LeadsPage() {
       <div className="mb-6 p-4 border rounded-lg shadow-sm">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             <div>
-            <Label htmlFor="start-date-leads">Start Date (Event)</Label>
+            <Label htmlFor="start-date-leads">Start Date (Booking/Event)</Label>
             <DatePicker date={startDate} setDate={setStartDate} placeholder="Start Date" />
             </div>
             <div>
-            <Label htmlFor="end-date-leads">End Date (Event)</Label>
+            <Label htmlFor="end-date-leads">End Date (Booking/Event)</Label>
             <DatePicker date={endDate} setDate={setEndDate} placeholder="End Date" disabled={(date) => startDate ? date < startDate : false} />
             </div>
             <div>

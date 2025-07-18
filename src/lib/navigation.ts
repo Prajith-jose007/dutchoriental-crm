@@ -57,4 +57,4 @@ export const mainNavItems: NavItem[] = [
   },
 ];
 
-export const AppName = "aqualeads CRM";
+export const AppName = "DutchOriental CRM";

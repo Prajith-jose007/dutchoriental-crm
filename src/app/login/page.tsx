@@ -162,7 +162,7 @@ export default function LoginPage() {
           </div>
           <CardTitle className="text-2xl">Member Login</CardTitle>
           <CardDescription>
-            Enter your credentials to access the aqualeads CRM.
+            Enter your credentials to access the DutchOriental CRM.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -198,7 +198,7 @@ export default function LoginPage() {
           </form>
         </CardContent>
         <CardFooter className="flex flex-col items-center text-xs text-muted-foreground">
-          <p>&copy; {new Date().getFullYear()} aqualeads CRM. All rights reserved.</p>
+          <p>&copy; {new Date().getFullYear()} DutchOriental CRM. All rights reserved.</p>
         </CardFooter>
       </Card>
     </div>

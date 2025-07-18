@@ -10,7 +10,7 @@ export default function SettingsPage() {
     <div className="container mx-auto py-2">
       <PageHeader 
         title="Settings"
-        description="Configure and customize your DutchOriental CRM."
+        description="Configure and customize your aqualeads CRM."
       />
       
       <Tabs defaultValue="general" className="w-full">

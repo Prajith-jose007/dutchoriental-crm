@@ -1,7 +1,7 @@
 
-# DutchOriental CRM (Next.js Application)
+# aqualeads CRM (Next.js Application)
 
-This is a Next.js CRM application designed for DutchOriental. It utilizes Next.js for the frontend and backend API routes, React for UI components, ShadCN UI for pre-built components, Tailwind CSS for styling, and connects to a MySQL database.
+This is a Next.js CRM application designed for aqualeads. It utilizes Next.js for the frontend and backend API routes, React for UI components, ShadCN UI for pre-built components, Tailwind CSS for styling, and connects to a MySQL database.
 
 ## Prerequisites
 

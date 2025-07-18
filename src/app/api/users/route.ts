@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(users, { status: 200 });
   } catch (error) {
     console.error('[API GET /api/users] Error in GET handler:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error fetching users from API';
+    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred while fetching users.';
     return NextResponse.json(
       { message: 'Failed to fetch users. Check server logs for details.', error: errorMessage },
       { status: 500 }

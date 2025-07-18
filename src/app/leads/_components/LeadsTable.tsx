@@ -145,7 +145,7 @@ export const generateLeadColumns = (allYachts: Yacht[]): LeadTableColumn[] => {
 
   const accountsColumns: LeadTableColumn[] = [
     { accessorKey: 'totalGuestsCalculated', header: 'Total Count', isNumeric: true },
-    { accessorKey: 'perTicketRate', header: 'Other Charges', isCurrency: true },
+    { accessorKey: 'perTicketRate', header: 'Addon Pack', isCurrency: true },
     { accessorKey: 'totalAmount', header: 'Total Amt', isCurrency: true },
     { accessorKey: 'averageRateCalculated', header: 'Rate', isCurrency: true },
     { accessorKey: 'commissionPercentage', header: 'Discount %', isPercentage: true },
@@ -208,8 +208,6 @@ export function LeadsTable({
   const getStatusVariant = (status?: LeadStatus) => {
     if (!status) return 'outline';
     switch (status) {
-      case 'Upcoming': return 'secondary'; 
-      case 'Pending': return 'destructive';
       case 'Balance': return 'secondary';
       case 'Closed': return 'default'; 
       default: return 'outline';

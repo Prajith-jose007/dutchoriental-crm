@@ -54,7 +54,7 @@ const leadFormSchema = z.object({
   id: z.string().optional(),
   agent: z.string().min(1, 'Agent is required'),
   status: z.enum(leadStatusOptions),
-  month: z.date({ required_error: "Booking/Event Date is required." }),
+  month: z.date({ required_error: "Event Date is required." }),
   notes: z.string().trim().min(1, { message: "Notes are required and cannot be empty." }),
   yacht: z.string().min(1, 'Yacht selection is required'),
   type: z.enum(leadTypeOptions, { required_error: "Booking type is required."}),
@@ -67,7 +67,7 @@ const leadFormSchema = z.object({
 
   packageQuantities: z.array(leadPackageQuantitySchema).optional().default([]),
   freeGuestCount: z.coerce.number().min(0, "Free guest count must be non-negative").optional().default(0),
-  perTicketRate: z.coerce.number().min(0, "Other charges must be non-negative").optional().nullable(),
+  perTicketRate: z.coerce.number().min(0, "Addon Pack value must be non-negative").optional().nullable(),
 
   totalAmount: z.coerce.number().default(0),
   commissionPercentage: z.coerce.number().min(0).max(100).default(0),
@@ -517,7 +517,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
                 name="month"
                 render={({ field }) => (
                   <FormItem className="flex flex-col">
-                    <FormLabel>Booking/Event Date</FormLabel>
+                    <FormLabel>Event Date</FormLabel>
                      <DatePicker
                         date={field.value ? (isValid(field.value) ? field.value : new Date()) : new Date()}
                         setDate={(date) => {
@@ -720,7 +720,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
                 name="perTicketRate"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Other Charges (Optional)</FormLabel>
+                    <FormLabel>Addon Pack (Optional)</FormLabel>
                     <FormControl>
                       <Input
                         type="number"
@@ -740,7 +740,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
                         min="0"
                       />
                     </FormControl>
-                     <FormDescription>Specify any other charges or addons.</FormDescription>
+                     <FormDescription>Specify any charges for addon packs.</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}

@@ -61,7 +61,7 @@ const csvHeaderMapping: { [csvHeaderKey: string]: keyof Omit<Lead, 'packageQuant
   'vip': 'pkg_vip', 
   'hrchtr': 'pkg_hour_charter', 'hour_charter': 'pkg_hour_charter',
   'package_details_(json)': 'package_quantities_json_string', 'package_details_json': 'package_quantities_json_string',
-  'other_charges': 'perTicketRate', 'other': 'perTicketRate', 'other_rate': 'perTicketRate', 'ticket_rate': 'perTicketRate',
+  'addon_pack': 'perTicketRate', 'addon': 'perTicketRate', 'per_ticket_rate': 'perTicketRate',
   'total_amt': 'totalAmount', 'total_amount': 'totalAmount',
   'discount_%': 'commissionPercentage', 'discount_rate': 'commissionPercentage', 'discount': 'commissionPercentage',
   'commission': 'commissionAmount', 'commission_amount': 'commissionAmount',
@@ -972,8 +972,6 @@ export default function LeadsPage() {
     allYachts.forEach(y => yachtCategoryMap.set(y.id, y.category));
 
     filteredLeads.forEach(lead => {
-      const leadYachtCategory = yachtCategoryMap.get(lead.yacht);
-
       if (lead.packageQuantities) {
         lead.packageQuantities.forEach(pq => {
           const qty = pq.quantity || 0;
@@ -981,7 +979,7 @@ export default function LeadsPage() {
 
           const pkgNameUpper = pq.packageName.toUpperCase();
 
-          if (leadYachtCategory === 'Dinner Cruise') {
+          if (yachtCategoryMap.get(lead.yacht) === 'Dinner Cruise') {
             if (pkgNameUpper === 'CHILD') counts.child += qty;
             else if (pkgNameUpper === 'ADULT') counts.adult += qty;
             else if (pkgNameUpper === 'CHILD TOP DECK') counts.childTopDeck += qty;
@@ -993,12 +991,12 @@ export default function LeadsPage() {
             else if (pkgNameUpper === 'ROYAL CHILD') counts.royalChild += qty;
             else if (pkgNameUpper === 'ROYAL ADULT') counts.royalAdult += qty;
             else if (pkgNameUpper === 'ROYAL ALC') counts.royalAlc += qty;
-          } else if (leadYachtCategory === 'Superyacht Sightseeing Cruise') {
+          } else if (yachtCategoryMap.get(lead.yacht) === 'Superyacht Sightseeing Cruise') {
             if (pkgNameUpper === 'BASIC') counts.basicSY += qty;
             else if (pkgNameUpper === 'STANDARD') counts.standardSY += qty;
             else if (pkgNameUpper === 'PREMIUM') counts.premiumSY += qty;
             else if (pkgNameUpper === 'VIP') counts.vipSY += qty;
-          } else if (leadYachtCategory === 'Private Cruise') {
+          } else if (yachtCategoryMap.get(lead.yacht) === 'Private Cruise') {
             if (pkgNameUpper === 'HOUR CHARTER') counts.hourCharterPC += qty;
           }
         });
@@ -1235,11 +1233,11 @@ export default function LeadsPage() {
       <div className="mb-6 p-4 border rounded-lg shadow-sm">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             <div>
-            <Label htmlFor="start-date-leads">Start Date (Booking/Event)</Label>
+            <Label htmlFor="start-date-leads">Start Date (Event)</Label>
             <DatePicker date={startDate} setDate={setStartDate} placeholder="Start Date" />
             </div>
             <div>
-            <Label htmlFor="end-date-leads">End Date (Booking/Event)</Label>
+            <Label htmlFor="end-date-leads">End Date (Event)</Label>
             <DatePicker date={endDate} setDate={setEndDate} placeholder="End Date" disabled={(date) => startDate ? date < startDate : false} />
             </div>
             <div>

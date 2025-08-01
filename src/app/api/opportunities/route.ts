@@ -41,6 +41,7 @@ export async function GET(request: NextRequest) {
       followUpUpdates: dbOpp.followUpUpdates,
       createdAt: ensureISOFormat(dbOpp.createdAt)!,
       updatedAt: ensureISOFormat(dbOpp.updatedAt)!,
+      // closingProbability is a derived field, not stored directly
     }));
 
     return NextResponse.json(opportunities, { status: 200 });
@@ -55,7 +56,7 @@ export async function POST(request: NextRequest) {
     const newOppData = await request.json() as Opportunity;
     console.log('[API POST /api/opportunities] Received new opportunity data:', newOppData);
 
-    const { id, potentialCustomer, estimatedClosingDate, ownerUserId, yachtId, productType, pipelinePhase, priority, estimatedRevenue, currentStatus, createdAt, updatedAt } = newOppData;
+    const { id, potentialCustomer, estimatedClosingDate, ownerUserId, yachtId, productType, pipelinePhase, priority, estimatedRevenue, meanExpectedValue, currentStatus, createdAt, updatedAt } = newOppData;
 
     if (!potentialCustomer || !estimatedClosingDate || !ownerUserId || !yachtId || !productType || !pipelinePhase || !priority || estimatedRevenue === undefined || !currentStatus) {
         return NextResponse.json({ message: 'Missing required opportunity fields' }, { status: 400 });
@@ -69,7 +70,10 @@ export async function POST(request: NextRequest) {
         estimatedClosingDate: ensureISOFormat(estimatedClosingDate)!,
         createdAt: ensureISOFormat(createdAt)!,
         updatedAt: ensureISOFormat(updatedAt)!,
+        meanExpectedValue: meanExpectedValue ?? 0, // Ensure it's not undefined
     };
+    // remove derived field before storing
+    delete (oppToStore as Partial<Opportunity>).closingProbability;
 
     const sql = `
       INSERT INTO opportunities (

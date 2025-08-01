@@ -20,10 +20,10 @@ const ensureISOFormat = (dateSource?: string | Date): string | null => {
   }
 };
 
-function buildOpportunityUpdateSetClause(data: Partial<Omit<Opportunity, 'id'>>): { clause: string, values: any[] } {
+function buildOpportunityUpdateSetClause(data: Partial<Omit<Opportunity, 'id' | 'closingProbability'>>): { clause: string, values: any[] } {
   const fieldsToUpdate: string[] = [];
   const valuesToUpdate: any[] = [];
-  const allowedKeys: (keyof Omit<Opportunity, 'id'>)[] = [
+  const allowedKeys: (keyof Omit<Opportunity, 'id' | 'closingProbability'>)[] = [
     'estimatedClosingDate', 'potentialCustomer', 'ownerUserId', 'yachtId', 'productType',
     'pipelinePhase', 'priority', 'estimatedRevenue', 'meanExpectedValue', 'currentStatus',
     'followUpUpdates', 'createdAt', 'updatedAt'
@@ -98,8 +98,11 @@ export async function PUT(
       console.log(`[API PUT /api/opportunities/${id}] Opportunity not found for update.`);
       return NextResponse.json({ message: 'Opportunity not found' }, { status: 404 });
     }
+
+    const dataToUpdate = { ...updatedOppData };
+    delete (dataToUpdate as Partial<Opportunity>).closingProbability; // Remove derived field before update
     
-    const { clause, values } = buildOpportunityUpdateSetClause(updatedOppData);
+    const { clause, values } = buildOpportunityUpdateSetClause(dataToUpdate);
     if (clause.length === 0) {
       console.log(`[API PUT /api/opportunities/${id}] No valid fields to update.`);
       return NextResponse.json({ message: 'No valid fields to update' }, { status: 400 });

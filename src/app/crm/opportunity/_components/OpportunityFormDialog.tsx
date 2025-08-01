@@ -17,6 +17,7 @@ import {
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -33,6 +34,7 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Textarea } from '@/components/ui/textarea';
 import { DatePicker } from '@/components/ui/date-picker';
+import { Slider } from '@/components/ui/slider';
 import type { Opportunity, Yacht, YachtCategory } from '@/lib/types';
 import { opportunityPipelinePhaseOptions, opportunityPriorityOptions, opportunityStatusOptions, yachtCategoryOptions } from '@/lib/types';
 import { useEffect, useMemo } from 'react';
@@ -51,6 +53,7 @@ const opportunityFormSchema = z.object({
   currentStatus: z.enum(opportunityStatusOptions),
   estimatedClosingDate: z.date({ required_error: "Estimated closing date is required." }),
   estimatedRevenue: z.coerce.number().min(0, "Estimated revenue must be non-negative"),
+  closingProbability: z.coerce.number().min(0).max(100).optional().default(50),
   meanExpectedValue: z.coerce.number().min(0, "Mean expected value must be non-negative").optional(),
   followUpUpdates: z.string().optional(),
 });
@@ -70,6 +73,16 @@ export function OpportunityFormDialog({ isOpen, onOpenChange, opportunity, onSub
   
   const getInitialFormValues = (): OpportunityFormData => {
     const currentUserId = typeof window !== 'undefined' ? localStorage.getItem(USER_ID_STORAGE_KEY) : null;
+    let closingProbability = 50;
+    if (opportunity?.estimatedRevenue && opportunity?.meanExpectedValue) {
+        if (opportunity.estimatedRevenue > 0) {
+            closingProbability = Math.round((opportunity.meanExpectedValue / opportunity.estimatedRevenue) * 100);
+        }
+    } else if (opportunity?.closingProbability) {
+        closingProbability = opportunity.closingProbability;
+    }
+
+
     return {
       id: opportunity?.id,
       potentialCustomer: opportunity?.potentialCustomer || '',
@@ -81,7 +94,8 @@ export function OpportunityFormDialog({ isOpen, onOpenChange, opportunity, onSub
       currentStatus: opportunity?.currentStatus || 'Active',
       estimatedClosingDate: opportunity?.estimatedClosingDate && isValid(parseISO(opportunity.estimatedClosingDate)) ? parseISO(opportunity.estimatedClosingDate) : new Date(),
       estimatedRevenue: opportunity?.estimatedRevenue || 0,
-      meanExpectedValue: opportunity?.meanExpectedValue || 0,
+      closingProbability: closingProbability,
+      meanExpectedValue: opportunity?.meanExpectedValue || (opportunity?.estimatedRevenue || 0) * (closingProbability / 100),
       followUpUpdates: opportunity?.followUpUpdates || '',
     };
   };
@@ -91,11 +105,22 @@ export function OpportunityFormDialog({ isOpen, onOpenChange, opportunity, onSub
     defaultValues: getInitialFormValues(),
   });
 
+  const watchedEstimatedRevenue = form.watch('estimatedRevenue');
+  const watchedClosingProbability = form.watch('closingProbability');
+
   useEffect(() => {
     if (isOpen) {
       form.reset(getInitialFormValues());
     }
   }, [opportunity, isOpen]);
+  
+   useEffect(() => {
+    const revenue = watchedEstimatedRevenue || 0;
+    const probability = (watchedClosingProbability || 0) / 100;
+    const meanValue = revenue * probability;
+    form.setValue('meanExpectedValue', parseFloat(meanValue.toFixed(2)));
+  }, [watchedEstimatedRevenue, watchedClosingProbability, form]);
+
 
   const onSubmit = (data: OpportunityFormData) => {
     const currentUserId = typeof window !== 'undefined' ? localStorage.getItem(USER_ID_STORAGE_KEY) : null;
@@ -128,7 +153,7 @@ export function OpportunityFormDialog({ isOpen, onOpenChange, opportunity, onSub
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-xl">
+      <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>{opportunity ? 'Edit Opportunity' : 'Add New Opportunity'}</DialogTitle>
           <DialogDescription>
@@ -251,28 +276,6 @@ export function OpportunityFormDialog({ isOpen, onOpenChange, opportunity, onSub
                     </FormItem>
                   )}
                 />
-                <FormField
-                  control={form.control}
-                  name="estimatedRevenue"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Estimated Revenue (AED)</FormLabel>
-                      <FormControl><Input type="number" placeholder="0" {...field} /></FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                 <FormField
-                  control={form.control}
-                  name="meanExpectedValue"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Mean Expected Value (AED)</FormLabel>
-                      <FormControl><Input type="number" placeholder="0" {...field} value={field.value || ''} /></FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
                  <FormField
                   control={form.control}
                   name="currentStatus"
@@ -287,6 +290,47 @@ export function OpportunityFormDialog({ isOpen, onOpenChange, opportunity, onSub
                           ))}
                         </SelectContent>
                       </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="estimatedRevenue"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Estimated Revenue (AED)</FormLabel>
+                      <FormControl><Input type="number" placeholder="0" {...field} /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                    control={form.control}
+                    name="closingProbability"
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Probability of Closing ({field.value || 0}%)</FormLabel>
+                            <FormControl>
+                                <Slider
+                                    defaultValue={[field.value || 50]}
+                                    value={[field.value || 50]}
+                                    max={100}
+                                    step={5}
+                                    onValueChange={(value) => field.onChange(value[0])}
+                                />
+                            </FormControl>
+                        </FormItem>
+                    )}
+                    />
+                 <FormField
+                  control={form.control}
+                  name="meanExpectedValue"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Mean Expected Value (AED)</FormLabel>
+                      <FormControl><Input type="number" placeholder="0" {...field} value={field.value || ''} readOnly className="bg-muted/50 cursor-not-allowed" /></FormControl>
+                      <FormDescription>Auto-calculated from revenue & probability.</FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}

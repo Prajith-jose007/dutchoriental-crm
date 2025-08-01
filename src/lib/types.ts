@@ -125,6 +125,7 @@ export interface Opportunity {
     pipelinePhase: OpportunityPipelinePhase;
     priority: OpportunityPriority;
     estimatedRevenue: number;
+    closingProbability?: number; // New field
     meanExpectedValue?: number; // Optional, can be calculated
     currentStatus: OpportunityStatus;
     followUpUpdates?: string; // Text field for notes/updates

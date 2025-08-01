@@ -73,6 +73,19 @@ export function OpportunitiesTable({
     return text.length > maxLength ? text.substring(0, maxLength - 3) + '...' : text;
   };
 
+  const calculateProbability = (opp: Opportunity): string => {
+    if (opp.pipelinePhase === 'Closed Won') return '100%';
+    if (opp.pipelinePhase === 'Closed Lost') return '0%';
+    if (typeof opp.estimatedRevenue === 'number' && typeof opp.meanExpectedValue === 'number' && opp.estimatedRevenue > 0) {
+      return `${Math.round((opp.meanExpectedValue / opp.estimatedRevenue) * 100)}%`;
+    }
+    if (typeof opp.closingProbability === 'number') {
+        return `${opp.closingProbability}%`;
+    }
+    return '-';
+  };
+
+
   return (
     <ScrollArea className="rounded-md border whitespace-nowrap">
       <Table>
@@ -81,6 +94,7 @@ export function OpportunitiesTable({
             <TableHead>ID</TableHead>
             <TableHead>Potential Customer</TableHead>
             <TableHead>Est. Closing</TableHead>
+            <TableHead>Probability</TableHead>
             <TableHead>Est. Revenue</TableHead>
             <TableHead>Mean Exp. Value</TableHead>
             <TableHead>Product Type</TableHead>
@@ -96,7 +110,7 @@ export function OpportunitiesTable({
         <TableBody>
           {opportunities.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={13} className="h-24 text-center">
+              <TableCell colSpan={14} className="h-24 text-center">
                 No opportunities found.
               </TableCell>
             </TableRow>
@@ -110,6 +124,7 @@ export function OpportunitiesTable({
                 </TableCell>
                 <TableCell className="font-medium">{opp.potentialCustomer}</TableCell>
                 <TableCell>{formatDate(opp.estimatedClosingDate)}</TableCell>
+                <TableCell>{calculateProbability(opp)}</TableCell>
                 <TableCell>{formatCurrency(opp.estimatedRevenue)}</TableCell>
                 <TableCell>{formatCurrency(opp.meanExpectedValue)}</TableCell>
                 <TableCell>{opp.productType}</TableCell>

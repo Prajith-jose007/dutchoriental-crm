@@ -40,12 +40,12 @@ interface ReportSummaryStatsProps {
 
 export function ReportSummaryStats({ filteredLeads, isLoading, error }: ReportSummaryStatsProps) {
   const summaryData = useMemo(() => {
-    const closedLeads = filteredLeads.filter(lead => lead.status === 'Closed');
+    const closedLeads = filteredLeads.filter(lead => lead.status === 'Closed (Won)');
     const balanceLeads = filteredLeads.filter(lead => lead.status === 'Balance');
 
     const totalRevenue = closedLeads.reduce((sum, lead) => sum + (lead.netAmount || 0), 0);
     const totalBookings = filteredLeads.length;
-    const closedBookingsCount = closedLeads.length;
+    const closedBookingsCount = filteredLeads.filter(l => l.status.startsWith('Closed')).length;
     const balanceBookingsCount = balanceLeads.length;
     const totalOutstandingBalance = filteredLeads.reduce((sum, lead) => sum + (lead.balanceAmount || 0), 0);
 
@@ -92,7 +92,7 @@ export function ReportSummaryStats({ filteredLeads, isLoading, error }: ReportSu
         isLoading={isLoading}
       />
       <SummaryStatCard
-        title="Revenue (Closed)"
+        title="Revenue (Closed Won)"
         value={`${summaryData.totalRevenue.toLocaleString()} AED`}
         icon={<TrendingUp className="h-5 w-5 text-muted-foreground" />}
         isLoading={isLoading}

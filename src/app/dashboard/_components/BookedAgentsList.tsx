@@ -40,7 +40,7 @@ export function BookedAgentsList({ leads, allAgents, isLoading, error }: BookedA
     const bookingsByAgent = new Map<string, number>();
 
     leads.forEach(lead => {
-      if (lead.status === 'Closed' && lead.agent) {
+      if (lead.status.startsWith('Closed') && lead.agent) {
         bookingsByAgent.set(lead.agent, (bookingsByAgent.get(lead.agent) || 0) + 1);
       }
     });

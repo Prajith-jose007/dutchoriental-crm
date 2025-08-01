@@ -43,8 +43,8 @@ export function BookingReportChart({ leads, isLoading, error }: BookingReportCha
     }
     
     leads.forEach(lead => {
-      // Assuming 'Closed' status now signifies a completed/successful booking for reporting
-      if (lead.status === 'Closed' && lead.month) {
+      // Assuming 'Closed (Won)' status now signifies a completed/successful booking for reporting
+      if (lead.status === 'Closed (Won)' && lead.month) {
         try {
           const eventDate = parseISO(lead.month);
           if (isValid(eventDate)) {
@@ -75,7 +75,7 @@ export function BookingReportChart({ leads, isLoading, error }: BookingReportCha
       <Card>
         <CardHeader>
           <CardTitle>Booking Reports</CardTitle>
-          <CardDescription>Monthly 'Closed' booking trends for the last 7 months.</CardDescription>
+          <CardDescription>Monthly 'Closed (Won)' booking trends for the last 7 months.</CardDescription>
         </CardHeader>
         <CardContent className="h-[300px] space-y-3 py-2">
           <Skeleton className="h-8 w-full" />
@@ -93,7 +93,7 @@ export function BookingReportChart({ leads, isLoading, error }: BookingReportCha
         <Card>
             <CardHeader>
                 <CardTitle>Booking Reports</CardTitle>
-                <CardDescription>Monthly 'Closed' booking trends for the last 7 months.</CardDescription>
+                <CardDescription>Monthly 'Closed (Won)' booking trends for the last 7 months.</CardDescription>
             </CardHeader>
             <CardContent className="flex items-center justify-center h-[300px]">
                 <p className="text-destructive">Error loading booking report data: {error}</p>
@@ -107,10 +107,10 @@ export function BookingReportChart({ leads, isLoading, error }: BookingReportCha
         <Card>
             <CardHeader>
                 <CardTitle>Booking Reports</CardTitle>
-                <CardDescription>Monthly 'Closed' booking trends for the last 7 months.</CardDescription>
+                <CardDescription>Monthly 'Closed (Won)' booking trends for the last 7 months.</CardDescription>
             </CardHeader>
             <CardContent className="flex items-center justify-center h-[300px]">
-                <p className="text-muted-foreground">No 'Closed' booking data available for the selected period or filters.</p>
+                <p className="text-muted-foreground">No 'Closed (Won)' booking data available for the selected period or filters.</p>
             </CardContent>
         </Card>
     );
@@ -120,7 +120,7 @@ export function BookingReportChart({ leads, isLoading, error }: BookingReportCha
     <Card>
       <CardHeader>
         <CardTitle>Booking Reports</CardTitle>
-        <CardDescription>Monthly 'Closed' booking trends for the last 7 months.</CardDescription>
+        <CardDescription>Monthly 'Closed (Won)' booking trends for the last 7 months.</CardDescription>
       </CardHeader>
       <CardContent>
         <ChartContainer config={chartConfig} className="h-[300px] w-full">

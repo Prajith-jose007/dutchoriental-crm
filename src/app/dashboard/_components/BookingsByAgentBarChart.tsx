@@ -48,7 +48,7 @@ export function BookingsByAgentBarChart({ leads, allAgents, isLoading, error }: 
   const chartData: BookingsByAgentData[] = useMemo(() => {
     const bookingsByAgentMap = new Map<string, number>();
     leads.forEach(lead => {
-      if (lead.status === 'Closed') { 
+      if (lead.status.startsWith('Closed')) { 
         const currentBookings = bookingsByAgentMap.get(lead.agent) || 0;
         bookingsByAgentMap.set(lead.agent, currentBookings + 1);
       }

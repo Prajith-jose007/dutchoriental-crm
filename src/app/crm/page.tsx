@@ -123,11 +123,11 @@ export default function CrmDashboardPage() {
     const currentMonthStart = startOfMonth(now);
     const currentMonthEnd = endOfMonth(now);
 
-    const closedLeads = leads.filter(l => l.status === 'Closed');
+    const closedLeads = leads.filter(l => l.status.startsWith('Closed'));
     const balanceLeads = leads.filter(l => l.status === 'Balance');
 
-    const revenueThisMonth = closedLeads.reduce((sum, lead) => {
-      if (lead.month) {
+    const revenueThisMonth = leads.reduce((sum, lead) => {
+      if (lead.status === 'Closed (Won)' && lead.month) {
         const eventDate = parseISO(lead.month);
         if (isValid(eventDate) && isWithinInterval(eventDate, { start: currentMonthStart, end: currentMonthEnd })) {
           return sum + (lead.netAmount || 0);

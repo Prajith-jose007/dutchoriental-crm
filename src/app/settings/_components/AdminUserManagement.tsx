@@ -13,7 +13,7 @@ export function AdminUserManagement() {
         <CardDescription>Add, edit, or remove users from the CRM system.</CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col sm:flex-row gap-4 items-start">
-        <Link href="/users" passHref legacyBehavior>
+        <Link href="/users">
           <Button variant="outline">
             <Users className="mr-2 h-4 w-4" />
             Go to User Management Page

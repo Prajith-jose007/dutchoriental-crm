@@ -21,7 +21,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import type { Opportunity, OpportunityPipelinePhase } from '@/lib/types';
+import type { Opportunity, OpportunityPipelinePhase, YachtCategory } from '@/lib/types';
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { format, parseISO, isValid } from 'date-fns';
 
@@ -68,6 +68,11 @@ export function OpportunitiesTable({
     }
   };
 
+  const truncateText = (text?: string, maxLength: number = 25) => {
+    if (!text) return '-';
+    return text.length > maxLength ? text.substring(0, maxLength - 3) + '...' : text;
+  };
+
   return (
     <ScrollArea className="rounded-md border whitespace-nowrap">
       <Table>
@@ -77,18 +82,21 @@ export function OpportunitiesTable({
             <TableHead>Potential Customer</TableHead>
             <TableHead>Est. Closing</TableHead>
             <TableHead>Est. Revenue</TableHead>
+            <TableHead>Mean Exp. Value</TableHead>
+            <TableHead>Product Type</TableHead>
             <TableHead>Phase</TableHead>
-            <TableHead>Owner</TableHead>
-            <TableHead>Yacht</TableHead>
             <TableHead>Priority</TableHead>
             <TableHead>Status</TableHead>
+            <TableHead>Owner</TableHead>
+            <TableHead>Yacht</TableHead>
+            <TableHead>Follow-up Notes</TableHead>
             <TableHead>Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {opportunities.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={10} className="h-24 text-center">
+              <TableCell colSpan={13} className="h-24 text-center">
                 No opportunities found.
               </TableCell>
             </TableRow>
@@ -103,13 +111,16 @@ export function OpportunitiesTable({
                 <TableCell className="font-medium">{opp.potentialCustomer}</TableCell>
                 <TableCell>{formatDate(opp.estimatedClosingDate)}</TableCell>
                 <TableCell>{formatCurrency(opp.estimatedRevenue)}</TableCell>
+                <TableCell>{formatCurrency(opp.meanExpectedValue)}</TableCell>
+                <TableCell>{opp.productType}</TableCell>
                 <TableCell>
                   <Badge variant={getPhaseBadgeVariant(opp.pipelinePhase)}>{opp.pipelinePhase}</Badge>
                 </TableCell>
-                <TableCell>{userMap[opp.ownerUserId] || opp.ownerUserId}</TableCell>
-                <TableCell>{yachtMap[opp.yachtId] || opp.yachtId}</TableCell>
                 <TableCell>{opp.priority}</TableCell>
                 <TableCell>{opp.currentStatus}</TableCell>
+                <TableCell>{userMap[opp.ownerUserId] || opp.ownerUserId}</TableCell>
+                <TableCell>{yachtMap[opp.yachtId] || opp.yachtId}</TableCell>
+                <TableCell>{truncateText(opp.followUpUpdates)}</TableCell>
                 <TableCell>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>

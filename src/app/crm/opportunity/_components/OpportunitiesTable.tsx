@@ -47,7 +47,7 @@ export function OpportunitiesTable({
       case 'Qualification': return 'outline';
       case 'Proposal': return 'default';
       case 'Negotiation': return 'default';
-      case 'Closed Won': return 'default';
+      case 'Closed Won': return 'success';
       case 'Closed Lost': return 'destructive';
       default: return 'outline';
     }

@@ -42,14 +42,14 @@ export default function OpportunityPage() {
       if (!usersRes.ok) throw new Error(`Failed to fetch users: ${usersRes.statusText}`);
       const usersData = await usersRes.json();
       if(Array.isArray(usersData)) {
-          setUserMap(usersData.reduce((acc, user) => { acc[user.id] = user.name; return acc; }, {}));
+          setUserMap(usersData.reduce((acc: any, user: User) => { acc[user.id] = user.name; return acc; }, {}));
       }
 
       if (!yachtsRes.ok) throw new Error(`Failed to fetch yachts: ${yachtsRes.statusText}`);
       const yachtsData = await yachtsRes.json();
       setAllYachts(Array.isArray(yachtsData) ? yachtsData : []);
       if(Array.isArray(yachtsData)) {
-        setYachtMap(yachtsData.reduce((acc, yacht) => { acc[yacht.id] = yacht.name; return acc; }, {}));
+        setYachtMap(yachtsData.reduce((acc: any, yacht: Yacht) => { acc[yacht.id] = yacht.name; return acc; }, {}));
       }
 
     } catch (error) {

@@ -85,7 +85,7 @@ export default function LeadPipelinePage() {
   return (
     <div className="container mx-auto py-2 flex flex-col h-full">
       <PageHeader
-        title="Leads Pipeline"
+        title="Leads"
         description="Visualize your bookings across different stages."
       />
       {isLoading ? (

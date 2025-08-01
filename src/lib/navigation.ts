@@ -34,7 +34,7 @@ export const mainNavItems: NavItem[] = [
         icon: KanbanSquare,
       },
       {
-        title: 'Leads Pipeline',
+        title: 'Leads',
         href: '/leads/pipeline',
         icon: KanbanSquare,
       },

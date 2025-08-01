@@ -40,20 +40,20 @@ interface ReportSummaryStatsProps {
 
 export function ReportSummaryStats({ filteredLeads, isLoading, error }: ReportSummaryStatsProps) {
   const summaryData = useMemo(() => {
-    const confirmedLeads = filteredLeads.filter(lead => lead.status === 'Confirmed');
-    const unconfirmedLeads = filteredLeads.filter(lead => lead.status === 'Unconfirmed');
+    const closedLeads = filteredLeads.filter(lead => lead.status === 'Closed');
+    const balanceLeads = filteredLeads.filter(lead => lead.status === 'Balance');
 
-    const totalRevenue = confirmedLeads.reduce((sum, lead) => sum + (lead.netAmount || 0), 0);
+    const totalRevenue = closedLeads.reduce((sum, lead) => sum + (lead.netAmount || 0), 0);
     const totalBookings = filteredLeads.length;
-    const confirmedBookingsCount = confirmedLeads.length;
-    const unconfirmedBookingsCount = unconfirmedLeads.length;
+    const closedBookingsCount = closedLeads.length;
+    const balanceBookingsCount = balanceLeads.length;
     const totalOutstandingBalance = filteredLeads.reduce((sum, lead) => sum + (lead.balanceAmount || 0), 0);
 
     return {
       totalRevenue,
       totalBookings,
-      confirmedBookingsCount,
-      unconfirmedBookingsCount,
+      closedBookingsCount,
+      balanceBookingsCount,
       totalOutstandingBalance,
     };
   }, [filteredLeads]);
@@ -80,19 +80,19 @@ export function ReportSummaryStats({ filteredLeads, isLoading, error }: ReportSu
         isLoading={isLoading}
       />
       <SummaryStatCard
-        title="Unconfirmed Bookings"
-        value={summaryData.unconfirmedBookingsCount}
+        title="Balance Bookings"
+        value={summaryData.balanceBookingsCount}
         icon={<Hourglass className="h-5 w-5 text-muted-foreground" />}
         isLoading={isLoading}
       />
       <SummaryStatCard
-        title="Confirmed Bookings"
-        value={summaryData.confirmedBookingsCount}
+        title="Closed Bookings"
+        value={summaryData.closedBookingsCount}
         icon={<BookOpenCheck className="h-5 w-5 text-muted-foreground" />}
         isLoading={isLoading}
       />
       <SummaryStatCard
-        title="Revenue (Confirmed)"
+        title="Revenue (Closed)"
         value={`${summaryData.totalRevenue.toLocaleString()} AED`}
         icon={<TrendingUp className="h-5 w-5 text-muted-foreground" />}
         isLoading={isLoading}

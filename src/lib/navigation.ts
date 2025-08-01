@@ -18,9 +18,14 @@ export const mainNavItems: NavItem[] = [
     icon: LayoutDashboard,
   },
   {
-    title: 'CRM',
+    title: 'CRM Dashboard',
     href: '/crm',
     icon: Target,
+  },
+  {
+    title: 'Opportunity',
+    href: '/crm/opportunity',
+    icon: KanbanSquare,
   },
   {
     title: 'Bookings',

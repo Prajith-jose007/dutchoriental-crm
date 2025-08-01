@@ -26,7 +26,7 @@ export const mainNavItems: NavItem[] = [
       {
         title: 'CRM Dashboard',
         href: '/crm',
-        icon: Target, // Keep original icon for sub-item
+        icon: Target,
       },
       {
         title: 'Opportunity',
@@ -34,16 +34,16 @@ export const mainNavItems: NavItem[] = [
         icon: KanbanSquare,
       },
       {
-        title: 'Booking Pipeline',
+        title: 'Leads',
         href: '/leads/pipeline',
         icon: KanbanSquare,
       },
-      {
-        title: 'Bookings',
-        href: '/leads',
-        icon: KanbanSquare,
-      },
     ]
+  },
+  {
+    title: 'Bookings',
+    href: '/leads',
+    icon: Briefcase,
   },
   {
     title: 'Agents',

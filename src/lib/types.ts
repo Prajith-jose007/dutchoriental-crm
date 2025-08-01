@@ -106,6 +106,32 @@ export interface Lead {
   ownerUserId?: string;
 }
 
+export const opportunityPipelinePhaseOptions = ['New', 'Qualification', 'Proposal', 'Negotiation', 'Closed Won', 'Closed Lost'] as const;
+export type OpportunityPipelinePhase = typeof opportunityPipelinePhaseOptions[number];
+
+export const opportunityPriorityOptions = ['Low', 'Medium', 'High'] as const;
+export type OpportunityPriority = typeof opportunityPriorityOptions[number];
+
+export const opportunityStatusOptions = ['Active', 'On Hold', 'Inactive'] as const;
+export type OpportunityStatus = typeof opportunityStatusOptions[number];
+
+export interface Opportunity {
+    id: string;
+    estimatedClosingDate: string; // ISO Date String
+    potentialCustomer: string;
+    ownerUserId: string;
+    yachtId: string;
+    productType: YachtCategory;
+    pipelinePhase: OpportunityPipelinePhase;
+    priority: OpportunityPriority;
+    estimatedRevenue: number;
+    meanExpectedValue?: number; // Optional, can be calculated
+    currentStatus: OpportunityStatus;
+    followUpUpdates?: string; // Text field for notes/updates
+    createdAt: string; // ISO Date String
+    updatedAt: string; // ISO Date String
+}
+
 
 export interface BookingReportData {
   month: string;

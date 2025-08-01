@@ -7,8 +7,9 @@ import {
   placeholderYachts,
   placeholderLeads,
   placeholderInvoices,
+  placeholderOpportunities,
 } from '../src/lib/placeholder-data'; // Adjusted path
-import type { Agent, Lead, Yacht, Invoice, User, YachtPackageItem, LeadPackageQuantity } from '../src/lib/types';
+import type { Agent, Lead, Yacht, Invoice, User, YachtPackageItem, LeadPackageQuantity, Opportunity } from '../src/lib/types';
 import { formatISO, parseISO, isValid, format } from 'date-fns';
 import 'dotenv/config'; // Ensures .env.local is loaded
 
@@ -18,6 +19,7 @@ const MYSQL_TABLE_NAMES = {
   yachts: 'yachts',
   leads: 'leads',
   invoices: 'invoices',
+  opportunities: 'opportunities',
 };
 
 // --- Helper function to add column if it doesn't exist ---
@@ -194,6 +196,35 @@ async function createInvoicesTable() {
     console.error(`Error creating table ${tableName}:`, (error as Error).message);
     throw error;
   }
+}
+
+async function createOpportunitiesTable() {
+    const tableName = MYSQL_TABLE_NAMES.opportunities;
+    const createTableSql = `
+      CREATE TABLE IF NOT EXISTS ${tableName} (
+        id VARCHAR(191) PRIMARY KEY,
+        potentialCustomer VARCHAR(255) NOT NULL,
+        estimatedClosingDate DATETIME,
+        ownerUserId VARCHAR(191),
+        yachtId VARCHAR(191),
+        productType VARCHAR(255),
+        pipelinePhase VARCHAR(255),
+        priority VARCHAR(50),
+        estimatedRevenue DECIMAL(12, 2) DEFAULT 0.00,
+        meanExpectedValue DECIMAL(12, 2) DEFAULT 0.00,
+        currentStatus VARCHAR(50),
+        followUpUpdates TEXT,
+        createdAt DATETIME,
+        updatedAt DATETIME
+      );
+    `;
+    try {
+      await query(createTableSql);
+      console.log(`Table ${tableName} checked/created successfully.`);
+    } catch (error) {
+      console.error(`Error creating table ${tableName}:`, (error as Error).message);
+      throw error;
+    }
 }
 
 
@@ -395,6 +426,49 @@ async function migrateInvoices() {
   console.log('Invoice migration finished.');
 }
 
+async function migrateOpportunities() {
+    console.log('Migrating Opportunities...');
+    for (const opp of placeholderOpportunities) {
+      const sql = `
+        INSERT INTO opportunities (
+          id, potentialCustomer, estimatedClosingDate, ownerUserId, yachtId, productType, 
+          pipelinePhase, priority, estimatedRevenue, meanExpectedValue, currentStatus, 
+          followUpUpdates, createdAt, updatedAt
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `;
+      try {
+        const estimatedClosingDate = opp.estimatedClosingDate && isValid(parseISO(opp.estimatedClosingDate)) ? formatISO(parseISO(opp.estimatedClosingDate)) : formatISO(new Date());
+        const createdAt = opp.createdAt && isValid(parseISO(opp.createdAt)) ? formatISO(parseISO(opp.createdAt)) : formatISO(new Date());
+        const updatedAt = opp.updatedAt && isValid(parseISO(opp.updatedAt)) ? formatISO(parseISO(opp.updatedAt)) : formatISO(new Date());
+
+        await query(sql, [
+          opp.id,
+          opp.potentialCustomer,
+          estimatedClosingDate,
+          opp.ownerUserId,
+          opp.yachtId,
+          opp.productType,
+          opp.pipelinePhase,
+          opp.priority,
+          opp.estimatedRevenue,
+          opp.meanExpectedValue,
+          opp.currentStatus,
+          opp.followUpUpdates,
+          createdAt,
+          updatedAt
+        ]);
+        console.log(`Inserted opportunity: ${opp.potentialCustomer} (ID: ${opp.id})`);
+      } catch (error) {
+        if ((error as any).code === 'ER_DUP_ENTRY' || (error as any).errno === 1062) {
+          console.warn(`Opportunity ${opp.potentialCustomer} (ID: ${opp.id}) already exists. Skipping insertion.`);
+        } else {
+          console.error(`Error inserting opportunity ${opp.potentialCustomer} (ID: ${opp.id}):`, (error as Error).message);
+        }
+      }
+    }
+    console.log('Opportunity migration finished.');
+}
+
 async function main() {
   const args = process.argv.slice(2); // Get arguments passed to the script
   const onlyArg = args.find(arg => arg.startsWith('--only='));
@@ -411,6 +485,7 @@ async function main() {
       await createYachtsTable();
       await createLeadsTable();
       await createInvoicesTable();
+      await createOpportunitiesTable();
       
       // Then migrate all data
       await migrateUsers();
@@ -418,6 +493,7 @@ async function main() {
       await migrateYachts();
       await migrateLeads();
       await migrateInvoices();
+      await migrateOpportunities();
     } else if (entityToMigrate === 'users') {
       console.log('Running migration for: users');
       await createUsersTable();
@@ -432,16 +508,16 @@ async function main() {
       await migrateYachts();
     } else if (entityToMigrate === 'leads') {
       console.log('Running migration for: bookings (table name: leads)');
-      // Note: For placeholder bookings to insert correctly with their references,
-      // agents and yachts tables should ideally exist and be populated.
-      // This targeted migration will only ensure the leads table schema and data.
       await createLeadsTable();
       await migrateLeads();
     } else if (entityToMigrate === 'invoices') {
       console.log('Running migration for: invoices');
-      // Note: Invoices reference leads.
       await createInvoicesTable();
       await migrateInvoices();
+    } else if (entityToMigrate === 'opportunities') {
+        console.log('Running migration for: opportunities');
+        await createOpportunitiesTable();
+        await migrateOpportunities();
     } else {
       console.warn(`Unknown entity to migrate: "${entityToMigrate}". Running all migrations by default.`);
       // Default to all if entity is not recognized
@@ -450,11 +526,13 @@ async function main() {
       await createYachtsTable();
       await createLeadsTable();
       await createInvoicesTable();
+      await createOpportunitiesTable();
       await migrateUsers();
       await migrateAgents();
       await migrateYachts();
       await migrateLeads();
       await migrateInvoices();
+      await migrateOpportunities();
     }
     
     console.log('Data migration tasks complete! Make sure to close the DB connection if your db.ts doesn\'t do it automatically after a pool query.');

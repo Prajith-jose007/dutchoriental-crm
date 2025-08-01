@@ -52,7 +52,14 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(users, { status: 200 });
   } catch (error) {
     console.error('[API GET /api/users] Error in GET handler:', error);
-    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred while fetching users.';
+    let errorMessage = 'An unknown error occurred while fetching users.';
+    if (error instanceof Error) {
+        errorMessage = error.message;
+    } else if (typeof error === 'string') {
+        errorMessage = error;
+    } else if (typeof error === 'object' && error !== null && 'message' in error && typeof (error as any).message === 'string') {
+        errorMessage = (error as any).message;
+    }
     return NextResponse.json(
       { message: 'Failed to fetch users. Check server logs for details.', error: errorMessage },
       { status: 500 }

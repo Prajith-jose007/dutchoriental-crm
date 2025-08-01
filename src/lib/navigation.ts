@@ -1,6 +1,6 @@
 
 import type { LucideIcon } from 'lucide-react';
-import { LayoutDashboard, Users, Ship, Settings, Briefcase, BarChart3, KanbanSquare, Target } from 'lucide-react';
+import { LayoutDashboard, Users, Ship, Settings, Briefcase, BarChart3, KanbanSquare, Target, FolderKanban } from 'lucide-react';
 
 export interface NavItem {
   title: string;
@@ -8,7 +8,8 @@ export interface NavItem {
   icon: LucideIcon;
   disabled?: boolean;
   external?: boolean;
-  adminOnly?: boolean; // Added for role-based visibility
+  adminOnly?: boolean;
+  items?: NavItem[]; // Added for sub-menus
 }
 
 export const mainNavItems: NavItem[] = [
@@ -18,19 +19,31 @@ export const mainNavItems: NavItem[] = [
     icon: LayoutDashboard,
   },
   {
-    title: 'CRM Dashboard',
+    title: 'CRM',
     href: '/crm',
-    icon: Target,
-  },
-  {
-    title: 'Opportunity',
-    href: '/crm/opportunity',
-    icon: KanbanSquare,
-  },
-  {
-    title: 'Bookings',
-    href: '/leads',
-    icon: KanbanSquare,
+    icon: FolderKanban,
+    items: [
+      {
+        title: 'CRM Dashboard',
+        href: '/crm',
+        icon: Target, // Keep original icon for sub-item
+      },
+      {
+        title: 'Opportunity',
+        href: '/crm/opportunity',
+        icon: KanbanSquare,
+      },
+      {
+        title: 'Booking Pipeline',
+        href: '/leads/pipeline',
+        icon: KanbanSquare,
+      },
+      {
+        title: 'Bookings',
+        href: '/leads',
+        icon: KanbanSquare,
+      },
+    ]
   },
   {
     title: 'Agents',
@@ -59,11 +72,6 @@ export const mainNavItems: NavItem[] = [
     href: '/settings',
     icon: Settings,
     adminOnly: true, // Mark as admin only
-  },
-  {
-    title: 'Booking Pipeline',
-    href: '/leads/pipeline',
-    icon: KanbanSquare,
   },
 ];
 

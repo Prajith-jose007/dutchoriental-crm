@@ -1,6 +1,6 @@
 
 import type { LucideIcon } from 'lucide-react';
-import { LayoutDashboard, ClipboardList, Users, Ship, Settings, Briefcase, BarChart3, Kanban } from 'lucide-react';
+import { LayoutDashboard, ClipboardList, Users, Ship, Settings, Briefcase, BarChart3, KanbanSquare } from 'lucide-react';
 
 export interface NavItem {
   title: string;
@@ -51,9 +51,9 @@ export const mainNavItems: NavItem[] = [
     adminOnly: true, // Mark as admin only
   },
   {
-    title: 'CRM',
+    title: 'Booking Pipeline',
     href: '/leads/pipeline',
-    icon: Kanban,
+    icon: KanbanSquare,
   },
 ];
 

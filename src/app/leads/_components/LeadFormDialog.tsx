@@ -54,7 +54,7 @@ const leadFormSchema = z.object({
   id: z.string().optional(),
   agent: z.string().min(1, 'Agent is required'),
   status: z.enum(leadStatusOptions),
-  month: z.date({ required_error: "Event Date is required." }),
+  month: z.date({ required_error: "Booking/Event Date is required." }),
   notes: z.string().trim().min(1, { message: "Notes are required and cannot be empty." }),
   yacht: z.string().min(1, 'Yacht selection is required'),
   type: z.enum(leadTypeOptions, { required_error: "Booking type is required."}),
@@ -67,7 +67,7 @@ const leadFormSchema = z.object({
 
   packageQuantities: z.array(leadPackageQuantitySchema).optional().default([]),
   freeGuestCount: z.coerce.number().min(0, "Free guest count must be non-negative").optional().default(0),
-  perTicketRate: z.coerce.number().min(0, "Addon Pack value must be non-negative").optional().nullable(),
+  perTicketRate: z.coerce.number().min(0, "Other charges must be non-negative").optional().nullable(),
 
   totalAmount: z.coerce.number().default(0),
   commissionPercentage: z.coerce.number().min(0).max(100).default(0),
@@ -107,7 +107,7 @@ const getDefaultFormValues = (existingLead?: Lead | null, currentUserId?: string
   return {
     id: existingLead?.id || undefined,
     agent: existingLead?.agent || '',
-    status: existingLead?.status || 'Unconfirmed', // Default to Unconfirmed for new leads
+    status: existingLead?.status || 'Balance', // Default to Balance for new leads
     month: existingLead?.month && isValid(parseISO(existingLead.month)) ? parseISO(existingLead.month) : new Date(),
     yacht: existingLead?.yacht || '',
     type: existingLead?.type || 'Private Cruise',
@@ -517,7 +517,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
                 name="month"
                 render={({ field }) => (
                   <FormItem className="flex flex-col">
-                    <FormLabel>Event Date</FormLabel>
+                    <FormLabel>Booking/Event Date</FormLabel>
                      <DatePicker
                         date={field.value ? (isValid(field.value) ? field.value : new Date()) : new Date()}
                         setDate={(date) => {
@@ -525,7 +525,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
                                 field.onChange(date);
                             }
                         }}
-                        placeholder="Pick event date"
+                        placeholder="Pick booking date"
                     />
                     <FormMessage />
                   </FormItem>
@@ -720,7 +720,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
                 name="perTicketRate"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Addon Pack (Optional)</FormLabel>
+                    <FormLabel>Other Charges (Optional)</FormLabel>
                     <FormControl>
                       <Input
                         type="number"
@@ -740,7 +740,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
                         min="0"
                       />
                     </FormControl>
-                     <FormDescription>Specify any charges for addon packs.</FormDescription>
+                     <FormDescription>Specify any other charges for this booking.</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -848,7 +848,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
                     <FormItem>
                       <FormLabel>Total Amount (AED)</FormLabel>
                       <FormControl><Input type="number" placeholder="0.00" {...field} value={Number(field.value).toFixed(2)} readOnly className="bg-muted/50" /></FormControl>
-                       <FormDescription>Calculated from packages & addons</FormDescription>
+                       <FormDescription>Calculated from packages & other charges</FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}

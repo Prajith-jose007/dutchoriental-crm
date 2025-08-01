@@ -44,7 +44,7 @@ export function MonthlyRevenueChart({ leads, isLoading, error }: MonthlyRevenueC
     }
     
     leads.forEach(lead => {
-      if (lead.status === 'Confirmed' && lead.month && typeof lead.netAmount === 'number') {
+      if (lead.status === 'Closed' && lead.month && typeof lead.netAmount === 'number') {
         try {
           const eventDate = parseISO(lead.month);
           if (isValid(eventDate)) {
@@ -75,7 +75,7 @@ export function MonthlyRevenueChart({ leads, isLoading, error }: MonthlyRevenueC
       <Card>
         <CardHeader>
           <CardTitle>Monthly Revenue</CardTitle>
-          <CardDescription>Revenue from 'Confirmed' bookings over the last 7 months.</CardDescription>
+          <CardDescription>Revenue from 'Closed' bookings over the last 7 months.</CardDescription>
         </CardHeader>
         <CardContent className="h-[300px] space-y-3 py-2">
           <Skeleton className="h-8 w-full" />
@@ -93,7 +93,7 @@ export function MonthlyRevenueChart({ leads, isLoading, error }: MonthlyRevenueC
         <Card>
             <CardHeader>
                 <CardTitle>Monthly Revenue</CardTitle>
-                <CardDescription>Revenue from 'Confirmed' bookings over the last 7 months.</CardDescription>
+                <CardDescription>Revenue from 'Closed' bookings over the last 7 months.</CardDescription>
             </CardHeader>
             <CardContent className="flex items-center justify-center h-[300px]">
                 <p className="text-destructive">Error loading monthly revenue data: {error}</p>
@@ -107,10 +107,10 @@ export function MonthlyRevenueChart({ leads, isLoading, error }: MonthlyRevenueC
         <Card>
             <CardHeader>
                 <CardTitle>Monthly Revenue</CardTitle>
-                <CardDescription>Revenue from 'Confirmed' bookings over the last 7 months.</CardDescription>
+                <CardDescription>Revenue from 'Closed' bookings over the last 7 months.</CardDescription>
             </CardHeader>
             <CardContent className="flex items-center justify-center h-[300px]">
-                <p className="text-muted-foreground">No revenue data from 'Confirmed' bookings for the selected period.</p>
+                <p className="text-muted-foreground">No revenue data from 'Closed' bookings for the selected period.</p>
             </CardContent>
         </Card>
     );
@@ -120,7 +120,7 @@ export function MonthlyRevenueChart({ leads, isLoading, error }: MonthlyRevenueC
     <Card>
       <CardHeader>
         <CardTitle>Monthly Revenue</CardTitle>
-        <CardDescription>Revenue (Net Amount) from 'Confirmed' bookings over the last 7 months.</CardDescription>
+        <CardDescription>Revenue (Net Amount) from 'Closed' bookings over the last 7 months.</CardDescription>
       </CardHeader>
       <CardContent>
         <ChartContainer config={chartConfig} className="h-[300px] w-full">

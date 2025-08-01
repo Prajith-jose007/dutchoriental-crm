@@ -75,7 +75,7 @@ export async function GET(request: NextRequest) {
         clientName: String(dbLead.clientName || ''),
         agent: String(dbLead.agent || ''),
         yacht: String(dbLead.yacht || ''),
-        status: (dbLead.status || 'Unconfirmed') as LeadStatus, 
+        status: (dbLead.status || 'Balance') as LeadStatus, 
         month: dbLead.month ? ensureISOFormat(dbLead.month)! : formatISO(new Date()),
         notes: dbLead.notes || undefined,
         type: (dbLead.type || 'Private Cruise') as LeadType,
@@ -182,7 +182,7 @@ export async function POST(request: NextRequest) {
       clientName: newLeadData.clientName,
       agent: newLeadData.agent,
       yacht: newLeadData.yacht,
-      status: newLeadData.status || 'Unconfirmed', 
+      status: newLeadData.status || 'Balance', 
       month: formattedMonth,
       notes: newLeadData.notes || null,
       type: newLeadData.type || 'Private Cruise',
@@ -261,7 +261,7 @@ export async function POST(request: NextRequest) {
 
         const finalLead: Lead = {
             id: String(dbLead.id || ''), clientName: String(dbLead.clientName || ''), agent: String(dbLead.agent || ''), yacht: String(dbLead.yacht || ''),
-            status: (dbLead.status || 'Unconfirmed') as LeadStatus,
+            status: (dbLead.status || 'Balance') as LeadStatus,
             month: dbLead.month ? ensureISOFormat(dbLead.month)! : formatISO(new Date()),
             notes: dbLead.notes || undefined, type: (dbLead.type || 'Private Cruise') as LeadType,
             hoursOfBooking: dbLead.hoursOfBooking,
@@ -335,9 +335,9 @@ export async function PATCH(request: NextRequest) {
           canUpdate = true;
         } else { 
           if (leadToUpdate.ownerUserId === requestingUserId) {
-            if (leadToUpdate.status === 'Confirmed') {
-               console.warn(`[API PATCH /api/leads] Non-admin user ${requestingUserId} attempted to change status of Confirmed lead ${id}. Denied.`);
-               updateErrors.push({ id, reason: "Non-admins cannot change the status of Confirmed leads." });
+            if (leadToUpdate.status === 'Closed') {
+               console.warn(`[API PATCH /api/leads] Non-admin user ${requestingUserId} attempted to change status of Closed lead ${id}. Denied.`);
+               updateErrors.push({ id, reason: "Non-admins cannot change the status of Closed leads." });
             } else {
               canUpdate = true;
             }

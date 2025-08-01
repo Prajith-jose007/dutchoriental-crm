@@ -100,7 +100,7 @@ export async function GET(
         clientName: String(dbLead.clientName || ''),
         agent: String(dbLead.agent || ''),
         yacht: String(dbLead.yacht || ''),
-        status: (dbLead.status || 'Unconfirmed') as LeadStatus, 
+        status: (dbLead.status || 'Balance') as LeadStatus, 
         month: dbLead.month ? ensureISOFormat(dbLead.month)! : formatISO(new Date()),
         notes: dbLead.notes || undefined,
         type: (dbLead.type || 'Private Cruise') as LeadType,
@@ -163,9 +163,9 @@ export async function PUT(
     }
     const existingLeadDbInfo = existingLeadResult[0];
 
-    if (existingLeadDbInfo.status === 'Confirmed' && requestingUserRole !== 'admin') {
-        console.warn(`[API PUT /api/leads/${id}] Permission denied. User ${requestingUserId} (Role: ${requestingUserRole}) attempted to modify a Confirmed lead.`);
-        return NextResponse.json({ message: 'Permission denied: Confirmed leads cannot be modified by non-administrators.' }, { status: 403 });
+    if (existingLeadDbInfo.status === 'Closed' && requestingUserRole !== 'admin') {
+        console.warn(`[API PUT /api/leads/${id}] Permission denied. User ${requestingUserId} (Role: ${requestingUserRole}) attempted to modify a Closed lead.`);
+        return NextResponse.json({ message: 'Permission denied: Closed leads cannot be modified by non-administrators.' }, { status: 403 });
     }
     if (requestingUserRole !== 'admin' && existingLeadDbInfo.ownerUserId !== requestingUserId) {
       console.warn(`[API PUT /api/leads/${id}] Permission denied. User ${requestingUserId} is not owner or admin.`);
@@ -178,7 +178,7 @@ export async function PUT(
       lastModifiedByUserId: requestingUserId,
       ownerUserId: updatedLeadDataFromClient.ownerUserId || existingLeadDbInfo.ownerUserId,
       paymentConfirmationStatus: updatedLeadDataFromClient.paymentConfirmationStatus || 'UNCONFIRMED',
-      status: updatedLeadDataFromClient.status || existingLeadDbInfo.status || 'Unconfirmed', 
+      status: updatedLeadDataFromClient.status || existingLeadDbInfo.status || 'Balance', 
       freeGuestCount: Number(updatedLeadDataFromClient.freeGuestCount || 0),
       perTicketRate: updatedLeadDataFromClient.perTicketRate !== undefined ? updatedLeadDataFromClient.perTicketRate : null,
     };
@@ -247,7 +247,7 @@ export async function PUT(
 
     const finalUpdatedLead: Lead = {
         id: String(dbLead.id || ''), clientName: String(dbLead.clientName || ''), agent: String(dbLead.agent || ''), yacht: String(dbLead.yacht || ''),
-        status: (dbLead.status || 'Unconfirmed') as LeadStatus,
+        status: (dbLead.status || 'Balance') as LeadStatus,
         month: dbLead.month ? ensureISOFormat(dbLead.month)! : formatISO(new Date()), notes: dbLead.notes || undefined, type: (dbLead.type || 'Private Cruise') as LeadType,
         hoursOfBooking: dbLead.hoursOfBooking,
         catering: dbLead.catering,
@@ -300,9 +300,9 @@ export async function DELETE(
     }
     const existingLeadDbInfo = existingLeadResult[0];
 
-    if (existingLeadDbInfo.status === 'Confirmed' && requestingUserRole !== 'admin') {
-      console.warn(`[API DELETE /api/leads/${id}] Permission denied. User ${requestingUserId} (Role: ${requestingUserRole}) attempted to delete a Confirmed lead.`);
-      return NextResponse.json({ message: 'Permission denied: Confirmed leads cannot be deleted by non-administrators.' }, { status: 403 });
+    if (existingLeadDbInfo.status === 'Closed' && requestingUserRole !== 'admin') {
+      console.warn(`[API DELETE /api/leads/${id}] Permission denied. User ${requestingUserId} (Role: ${requestingUserRole}) attempted to delete a Closed lead.`);
+      return NextResponse.json({ message: 'Permission denied: Closed leads cannot be deleted by non-administrators.' }, { status: 403 });
     }
     if (requestingUserRole !== 'admin' && existingLeadDbInfo.ownerUserId !== requestingUserId) {
         console.warn(`[API DELETE /api/leads/${id}] Permission denied. User ${requestingUserId} (Role: ${requestingUserRole}) attempted to delete lead not owned by them.`);

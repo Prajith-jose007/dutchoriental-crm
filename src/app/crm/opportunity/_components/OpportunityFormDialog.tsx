@@ -79,7 +79,7 @@ export function OpportunityFormDialog({ isOpen, onOpenChange, opportunity, onSub
       pipelinePhase: opportunity?.pipelinePhase || 'New',
       priority: opportunity?.priority || 'Medium',
       currentStatus: opportunity?.currentStatus || 'Active',
-      estimatedClosingDate: opportunity?.estimatedClosingDate ? parseISO(opportunity.estimatedClosingDate) : new Date(),
+      estimatedClosingDate: opportunity?.estimatedClosingDate && isValid(parseISO(opportunity.estimatedClosingDate)) ? parseISO(opportunity.estimatedClosingDate) : new Date(),
       estimatedRevenue: opportunity?.estimatedRevenue || 0,
       meanExpectedValue: opportunity?.meanExpectedValue || 0,
       followUpUpdates: opportunity?.followUpUpdates || '',
@@ -95,7 +95,7 @@ export function OpportunityFormDialog({ isOpen, onOpenChange, opportunity, onSub
     if (isOpen) {
       form.reset(getInitialFormValues());
     }
-  }, [opportunity, isOpen, form]);
+  }, [opportunity, isOpen]);
 
   const onSubmit = (data: OpportunityFormData) => {
     const currentUserId = typeof window !== 'undefined' ? localStorage.getItem(USER_ID_STORAGE_KEY) : null;
@@ -114,7 +114,17 @@ export function OpportunityFormDialog({ isOpen, onOpenChange, opportunity, onSub
   const filteredYachts = useMemo(() => {
     const selectedProductType = form.watch('productType');
     return allYachts.filter(y => y.category === selectedProductType);
-  }, [form, allYachts]);
+  }, [form.watch('productType'), allYachts]);
+
+  useEffect(() => {
+    const subscription = form.watch((value, { name, type }) => {
+      if (name === 'productType' && type === 'change') {
+        form.setValue('yachtId', ''); // Reset yacht when product type changes
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, [form]);
+
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -164,10 +174,7 @@ export function OpportunityFormDialog({ isOpen, onOpenChange, opportunity, onSub
                     render={({ field }) => (
                         <FormItem>
                         <FormLabel>Product Type</FormLabel>
-                        <Select onValueChange={(value) => {
-                            field.onChange(value);
-                            form.setValue('yachtId', ''); // Reset yacht when type changes
-                        }} value={field.value} defaultValue={field.value}>
+                        <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value}>
                             <FormControl><SelectTrigger><SelectValue placeholder="Select product type" /></SelectTrigger></FormControl>
                             <SelectContent>
                             {yachtCategoryOptions.map(type => (
@@ -237,7 +244,7 @@ export function OpportunityFormDialog({ isOpen, onOpenChange, opportunity, onSub
                   control={form.control}
                   name="estimatedClosingDate"
                   render={({ field }) => (
-                    <FormItem>
+                    <FormItem className="flex flex-col pt-2">
                       <FormLabel>Estimated Closing Date</FormLabel>
                       <DatePicker date={field.value} setDate={field.onChange} />
                       <FormMessage />

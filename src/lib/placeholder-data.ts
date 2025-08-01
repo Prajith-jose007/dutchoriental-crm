@@ -1,5 +1,5 @@
 
-import type { Lead, User, Yacht, Invoice, Agent, YachtCategory, YachtPackageItem, LeadPackageQuantity, PaymentConfirmationStatus } from './types';
+import type { Lead, User, Yacht, Invoice, Agent, Opportunity, YachtCategory, YachtPackageItem, LeadPackageQuantity, PaymentConfirmationStatus } from './types';
 import { formatISO, subDays, addDays, format, parseISO, getYear } from 'date-fns';
 
 export const placeholderUsers: User[] = [
@@ -245,4 +245,55 @@ export const placeholderInvoices: Invoice[] = [
   { id: 'DO-inv001', leadId: 'DO-001', clientName: 'Tech Corp Events', amount: lead1NetAmount, dueDate: format(addDays(parseISO(placeholderLeads[0].month), 7), 'yyyy-MM-dd'), status: 'Paid', createdAt: formatISO(subDays(today, 14)) },
   { id: 'DO-inv002', leadId: 'DO-002', clientName: 'Sunset Tours R Us', amount: lead2NetAmount, dueDate: format(addDays(parseISO(placeholderLeads[1].month), 7), 'yyyy-MM-dd'), status: 'Pending', createdAt: formatISO(subDays(today, 9)) },
   { id: 'DO-inv003', leadId: 'DO-003', clientName: 'Private Celebration Planners', amount: lead3NetAmount, dueDate: format(addDays(parseISO(placeholderLeads[2].month), 7), 'yyyy-MM-dd'), status: 'Pending', createdAt: formatISO(subDays(today, 1)) },
+];
+
+export const placeholderOpportunities: Opportunity[] = [
+    {
+        id: 'OPP-001',
+        estimatedClosingDate: formatISO(addDays(today, 30)),
+        potentialCustomer: 'Global Tech Innovations',
+        ownerUserId: 'DO-user2',
+        yachtId: 'DO-yacht-private1',
+        productType: 'Private Cruise',
+        pipelinePhase: 'Proposal',
+        priority: 'High',
+        estimatedRevenue: 25000,
+        meanExpectedValue: 18750, // 75% probability
+        currentStatus: 'Active',
+        followUpUpdates: 'Proposal sent on ' + format(subDays(today, 2), 'yyyy-MM-dd') + '. Awaiting feedback.',
+        createdAt: formatISO(subDays(today, 10)),
+        updatedAt: formatISO(subDays(today, 2)),
+    },
+    {
+        id: 'OPP-002',
+        estimatedClosingDate: formatISO(addDays(today, 60)),
+        potentialCustomer: 'Luxury Travel Co.',
+        ownerUserId: 'DO-user1',
+        yachtId: 'DO-yacht-lotus',
+        productType: 'Dinner Cruise',
+        pipelinePhase: 'Qualification',
+        priority: 'Medium',
+        estimatedRevenue: 80000,
+        meanExpectedValue: 40000, // 50% probability
+        currentStatus: 'Active',
+        followUpUpdates: 'Initial call held. Client is interested in a fleet discount for regular corporate events.',
+        createdAt: formatISO(subDays(today, 5)),
+        updatedAt: formatISO(subDays(today, 1)),
+    },
+    {
+        id: 'OPP-003',
+        estimatedClosingDate: formatISO(subDays(today, 15)),
+        potentialCustomer: 'Startup X',
+        ownerUserId: 'DO-user2',
+        yachtId: 'DO-yacht-super',
+        productType: 'Superyacht Sightseeing Cruise',
+        pipelinePhase: 'Closed Lost',
+        priority: 'Low',
+        estimatedRevenue: 5000,
+        meanExpectedValue: 0,
+        currentStatus: 'Inactive',
+        followUpUpdates: 'Lost to competitor due to pricing.',
+        createdAt: formatISO(subDays(today, 45)),
+        updatedAt: formatISO(subDays(today, 15)),
+    }
 ];

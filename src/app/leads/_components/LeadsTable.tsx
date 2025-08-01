@@ -210,7 +210,7 @@ export function LeadsTable({
     switch (status) {
       case 'Unconfirmed': return 'destructive';
       case 'Confirmed': return 'secondary';
-      case 'Closed (Won)': return 'default';
+      case 'Closed (Won)': return 'success';
       case 'Closed (Lost)': return 'outline';
       default: return 'outline';
     }

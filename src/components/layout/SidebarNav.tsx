@@ -150,7 +150,18 @@ export function SidebarNav() {
                 return null;
               }
               
-              const isActive = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href));
+              let isActive = false;
+              if (item.items && item.items.length > 0) {
+                isActive = hasActiveSubItem(item);
+              } else {
+                // For top-level items without children, check for exact match or prefix if it's not a sub-path of another item.
+                // A more specific check for '/leads' to avoid matching '/leads/pipeline'.
+                if (item.href === '/leads') {
+                    isActive = pathname === item.href;
+                } else {
+                    isActive = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href));
+                }
+              }
 
               if (item.items && item.items.length > 0) {
                 return (
@@ -187,7 +198,7 @@ export function SidebarNav() {
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton
                     asChild
-                    isActive={isActive && !hasActiveSubItem(item)}
+                    isActive={isActive}
                     tooltip={item.title}
                     aria-label={item.title}
                   >

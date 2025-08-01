@@ -208,8 +208,10 @@ export function LeadsTable({
   const getStatusVariant = (status?: LeadStatus) => {
     if (!status) return 'outline';
     switch (status) {
-      case 'Balance': return 'secondary';
-      case 'Closed': return 'default'; 
+      case 'Unconfirmed': return 'destructive';
+      case 'Confirmed': return 'secondary';
+      case 'Closed (Won)': return 'default';
+      case 'Closed (Lost)': return 'outline';
       default: return 'outline';
     }
   };
@@ -299,7 +301,7 @@ export function LeadsTable({
       return formatNotes(lead.catering);
     }
     if (column.accessorKey === 'id') {
-      const canEdit = isAdmin || (lead.status !== 'Closed');
+      const canEdit = isAdmin || (!lead.status.startsWith('Closed'));
       return (
         <Button variant="link" className="p-0 h-auto font-medium" onClick={() => onEditLead(lead)} disabled={!canEdit}>
           {String(lead.id).length > 10 ? String(lead.id).substring(0, 4) + '...' + String(lead.id).substring(String(lead.id).length - 4) : lead.id}
@@ -408,9 +410,9 @@ export function LeadsTable({
                           <DropdownMenuLabel>Actions</DropdownMenuLabel>
                           <DropdownMenuItem
                             onClick={() => onEditLead(lead)}
-                            disabled={!isAdmin && lead.status === 'Closed'}
+                            disabled={!isAdmin && lead.status.startsWith('Closed')}
                           >
-                            {lead.status === 'Closed' && !isAdmin ? 'View Details' : 'Edit Booking'}
+                            {lead.status.startsWith('Closed') && !isAdmin ? 'View Details' : 'Edit Booking'}
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => onGenerateInvoice(lead)}>
                             Generate Invoice
@@ -419,7 +421,7 @@ export function LeadsTable({
                           <DropdownMenuItem
                             className="text-destructive"
                             onClick={() => onDeleteLead(lead.id)}
-                            disabled={!isAdmin && lead.status === 'Closed'}
+                            disabled={!isAdmin && lead.status.startsWith('Closed')}
                           >
                             Delete Booking
                           </DropdownMenuItem>

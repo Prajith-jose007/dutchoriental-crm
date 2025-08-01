@@ -30,7 +30,7 @@ export function LeadPipelineBoard({ leads, onEditLead }: LeadPipelineBoardProps)
     <ScrollArea className="flex-1 w-full pb-4">
       <div className="flex gap-4 p-1">
         {leadStatusOptions.map(status => (
-          <div key={status} className="min-w-[300px] w-1/3 bg-muted/60 rounded-lg shadow">
+          <div key={status} className="min-w-[300px] w-1/4 bg-muted/60 rounded-lg shadow">
             <h2 className="text-lg font-semibold p-4 border-b sticky top-0 bg-muted/80 backdrop-blur-sm rounded-t-lg z-10">
               {status} ({leadsByStatus[status]?.length || 0})
             </h2>

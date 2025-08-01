@@ -107,7 +107,7 @@ const getDefaultFormValues = (existingLead?: Lead | null, currentUserId?: string
   return {
     id: existingLead?.id || undefined,
     agent: existingLead?.agent || '',
-    status: existingLead?.status || 'Balance', // Default to Balance for new leads
+    status: existingLead?.status || 'Unconfirmed', // Default to Unconfirmed for new leads
     month: existingLead?.month && isValid(parseISO(existingLead.month)) ? parseISO(existingLead.month) : new Date(),
     yacht: existingLead?.yacht || '',
     type: existingLead?.type || 'Private Cruise',
@@ -161,8 +161,8 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
   const watchedStatus = form.watch('status'); 
 
   const isFormDisabled = useMemo(() => {
-    // A form should be disabled if the status is 'Closed' and the user is not an admin.
-    return watchedStatus === 'Closed' && !isAdmin;
+    // A form should be disabled if the status is 'Closed (Won)' or 'Closed (Lost)' and the user is not an admin.
+    return (watchedStatus.startsWith('Closed') && !isAdmin);
   }, [watchedStatus, isAdmin]);
 
 
@@ -461,7 +461,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
                 <Terminal className="h-4 w-4" />
                 <AlertTitle>Booking Closed</AlertTitle>
                 <AlertDescription>
-                    This booking is marked as 'Closed'. Editing is restricted to administrators.
+                    This booking is closed and cannot be edited by non-administrators.
                 </AlertDescription>
             </Alert>
         )}

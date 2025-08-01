@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
-import { Users, Banknote, Ticket } from 'lucide-react';
+import { Users, Banknote, Ticket, BookOpen, Activity, CheckCircle, XCircle } from 'lucide-react';
 import {
   Card,
   CardContent,
@@ -43,27 +43,24 @@ function SummaryCard({ title, value, description, icon, isLoading }: SummaryCard
   );
 }
 
-interface PerformanceSummaryProps {
+interface CrmSummaryProps {
   leads: Lead[];
   isLoading?: boolean;
   error?: string | null;
 }
 
-export function PerformanceSummary({ leads, isLoading, error }: PerformanceSummaryProps) {
+export function PerformanceSummary({ leads, isLoading, error }: CrmSummaryProps) {
   const summaryData = useMemo(() => {
-    const totalPassengers = leads.reduce((acc, lead) => {
-      const passengersInLead = lead.packageQuantities?.reduce((sum, pkg) => sum + (pkg.quantity || 0), 0) || 0;
-      return acc + passengersInLead;
-    }, 0);
-
-    const totalRevenue = leads.reduce((acc, lead) => acc + (lead.netAmount || 0), 0);
-
-    const averageTicketPrice = totalPassengers > 0 ? totalRevenue / totalPassengers : 0;
-
+    const totalLeads = leads.length;
+    const activeLeads = leads.filter(lead => lead.status === 'Unconfirmed' || lead.status === 'Confirmed').length;
+    const closedWon = leads.filter(lead => lead.status === 'Closed (Won)').length;
+    const closedLost = leads.filter(lead => lead.status === 'Closed (Lost)').length;
+    
     return {
-      totalPassengers,
-      totalRevenue,
-      averageTicketPrice,
+      totalLeads,
+      activeLeads,
+      closedWon,
+      closedLost,
     };
   }, [leads]);
 
@@ -71,26 +68,33 @@ export function PerformanceSummary({ leads, isLoading, error }: PerformanceSumma
   const leadsError = error && leads.length === 0 ? error : null;
 
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
       <SummaryCard
-        title="Total Passengers"
-        value={leadsError ? 'Error' : summaryData.totalPassengers.toLocaleString()}
-        icon={<Users className="h-5 w-5 text-muted-foreground" />}
-        description={leadsError ? leadsError : "Total passengers from all bookings"}
+        title="Total Leads"
+        value={leadsError ? 'Error' : summaryData.totalLeads.toLocaleString()}
+        icon={<BookOpen className="h-5 w-5 text-muted-foreground" />}
+        description={leadsError ? leadsError : "All bookings in the system"}
         isLoading={isLoading}
       />
       <SummaryCard
-        title="Total Revenue"
-        value={leadsError ? 'Error' : `${summaryData.totalRevenue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} AED`}
-        icon={<Banknote className="h-5 w-5 text-muted-foreground" />}
-        description={leadsError ? leadsError : "Sum of net amounts from all bookings"}
+        title="Active Leads"
+        value={leadsError ? 'Error' : summaryData.activeLeads.toLocaleString()}
+        icon={<Activity className="h-5 w-5 text-muted-foreground" />}
+        description={leadsError ? leadsError : "Bookings that are 'Unconfirmed' or 'Confirmed'"}
         isLoading={isLoading}
       />
       <SummaryCard
-        title="Average Ticket Price"
-        value={leadsError ? 'Error' : `${summaryData.averageTicketPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} AED`}
-        icon={<Ticket className="h-5 w-5 text-muted-foreground" />}
-        description={leadsError ? leadsError : "Total revenue / Total passengers"}
+        title="Closed (Won)"
+        value={leadsError ? 'Error' : summaryData.closedWon.toLocaleString()}
+        icon={<CheckCircle className="h-5 w-5 text-muted-foreground" />}
+        description={leadsError ? leadsError : "Successfully completed bookings"}
+        isLoading={isLoading}
+      />
+       <SummaryCard
+        title="Closed (Lost)"
+        value={leadsError ? 'Error' : summaryData.closedLost.toLocaleString()}
+        icon={<XCircle className="h-5 w-5 text-muted-foreground" />}
+        description={leadsError ? leadsError : "Bookings that were cancelled or lost"}
         isLoading={isLoading}
       />
     </div>

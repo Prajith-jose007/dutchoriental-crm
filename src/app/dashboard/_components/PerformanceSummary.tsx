@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo } from 'react';
@@ -52,15 +53,13 @@ interface CrmSummaryProps {
 export function PerformanceSummary({ leads, isLoading, error }: CrmSummaryProps) {
   const summaryData = useMemo(() => {
     const totalLeads = leads.length;
-    const activeLeads = leads.filter(lead => lead.status === 'Unconfirmed' || lead.status === 'Confirmed').length;
-    const closedWon = leads.filter(lead => lead.status === 'Closed (Won)').length;
-    const closedLost = leads.filter(lead => lead.status === 'Closed (Lost)').length;
+    const activeLeads = leads.filter(lead => lead.status === 'Balance').length;
+    const closedLeads = leads.filter(lead => lead.status === 'Closed').length;
     
     return {
       totalLeads,
       activeLeads,
-      closedWon,
-      closedLost,
+      closedLeads,
     };
   }, [leads]);
 
@@ -68,7 +67,7 @@ export function PerformanceSummary({ leads, isLoading, error }: CrmSummaryProps)
   const leadsError = error && leads.length === 0 ? error : null;
 
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 mt-4">
       <SummaryCard
         title="Total Leads"
         value={leadsError ? 'Error' : summaryData.totalLeads.toLocaleString()}
@@ -80,21 +79,14 @@ export function PerformanceSummary({ leads, isLoading, error }: CrmSummaryProps)
         title="Active Leads"
         value={leadsError ? 'Error' : summaryData.activeLeads.toLocaleString()}
         icon={<Activity className="h-5 w-5 text-muted-foreground" />}
-        description={leadsError ? leadsError : "Bookings that are 'Unconfirmed' or 'Confirmed'"}
+        description={leadsError ? leadsError : "Bookings with a 'Balance' status"}
         isLoading={isLoading}
       />
       <SummaryCard
-        title="Closed (Won)"
-        value={leadsError ? 'Error' : summaryData.closedWon.toLocaleString()}
+        title="Closed Leads"
+        value={leadsError ? 'Error' : summaryData.closedLeads.toLocaleString()}
         icon={<CheckCircle className="h-5 w-5 text-muted-foreground" />}
         description={leadsError ? leadsError : "Successfully completed bookings"}
-        isLoading={isLoading}
-      />
-       <SummaryCard
-        title="Closed (Lost)"
-        value={leadsError ? 'Error' : summaryData.closedLost.toLocaleString()}
-        icon={<XCircle className="h-5 w-5 text-muted-foreground" />}
-        description={leadsError ? leadsError : "Bookings that were cancelled or lost"}
         isLoading={isLoading}
       />
     </div>

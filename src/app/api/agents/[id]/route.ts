@@ -35,8 +35,9 @@ export async function GET(
       return NextResponse.json({ message: 'Agent not found' }, { status: 404 });
     }
   } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
     console.error(`[API GET /api/agents/${params.id}] Error:`, error);
-    return NextResponse.json({ message: 'Failed to fetch agent', error: (error as Error).message }, { status: 500 });
+    return NextResponse.json({ message: 'Failed to fetch agent', error: errorMessage }, { status: 500 });
   }
 }
 
@@ -117,8 +118,9 @@ export async function PUT(
     return NextResponse.json({ message: 'Agent updated, but failed to fetch confirmation.' }, { status: 200 });
 
   } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
     console.error(`[API PUT /api/agents/${params.id}] Error:`, error);
-    return NextResponse.json({ message: 'Failed to update agent', error: (error as Error).message }, { status: 500 });
+    return NextResponse.json({ message: 'Failed to update agent', error: errorMessage }, { status: 500 });
   }
 }
 
@@ -140,7 +142,8 @@ export async function DELETE(
     console.log(`[API DELETE /api/agents/${id}] Successfully deleted agent.`);
     return NextResponse.json({ message: 'Agent deleted successfully' }, { status: 200 });
   } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
     console.error(`[API DELETE /api/agents/${params.id}] Error:`, error);
-    return NextResponse.json({ message: 'Failed to delete agent', error: (error as Error).message }, { status: 500 });
+    return NextResponse.json({ message: 'Failed to delete agent', error: errorMessage }, { status: 500 });
   }
 }

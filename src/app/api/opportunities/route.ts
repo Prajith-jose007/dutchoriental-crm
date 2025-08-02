@@ -20,10 +20,8 @@ const ensureISOFormat = (dateSource?: string | Date): string | null => {
   }
 };
 
-
 export async function GET(request: NextRequest) {
   try {
-    console.log('[API GET /api/opportunities] Received request');
     const oppsDataDb: any[] = await query('SELECT * FROM opportunities ORDER BY createdAt DESC');
     
     const opportunities: Opportunity[] = oppsDataDb.map(dbOpp => ({
@@ -41,28 +39,27 @@ export async function GET(request: NextRequest) {
       followUpUpdates: dbOpp.followUpUpdates,
       createdAt: ensureISOFormat(dbOpp.createdAt)!,
       updatedAt: ensureISOFormat(dbOpp.updatedAt)!,
-      // closingProbability is a derived field, not stored directly
     }));
 
     return NextResponse.json(opportunities, { status: 200 });
   } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
     console.error('[API GET /api/opportunities] Error fetching opportunities:', error);
-    return NextResponse.json({ message: 'Failed to fetch opportunities', error: (error as Error).message }, { status: 500 });
+    return NextResponse.json({ message: 'Failed to fetch opportunities', error: errorMessage }, { status: 500 });
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
     const newOppData = await request.json() as Opportunity;
-    console.log('[API POST /api/opportunities] Received new opportunity data:', newOppData);
-
-    const { id, potentialCustomer, estimatedClosingDate, ownerUserId, yachtId, productType, pipelinePhase, priority, estimatedRevenue, meanExpectedValue, currentStatus, createdAt, updatedAt } = newOppData;
+    
+    const { potentialCustomer, estimatedClosingDate, ownerUserId, yachtId, productType, pipelinePhase, priority, estimatedRevenue, currentStatus, createdAt, updatedAt } = newOppData;
 
     if (!potentialCustomer || !estimatedClosingDate || !ownerUserId || !yachtId || !productType || !pipelinePhase || !priority || estimatedRevenue === undefined || !currentStatus) {
         return NextResponse.json({ message: 'Missing required opportunity fields' }, { status: 400 });
     }
     
-    const finalId = id || `OPP-${Date.now()}`;
+    const finalId = newOppData.id || `OPP-${Date.now()}`;
 
     const oppToStore = {
         ...newOppData,
@@ -70,9 +67,8 @@ export async function POST(request: NextRequest) {
         estimatedClosingDate: ensureISOFormat(estimatedClosingDate)!,
         createdAt: ensureISOFormat(createdAt)!,
         updatedAt: ensureISOFormat(updatedAt)!,
-        meanExpectedValue: meanExpectedValue ?? 0, // Ensure it's not undefined
+        meanExpectedValue: newOppData.meanExpectedValue ?? 0,
     };
-    // remove derived field before storing
     delete (oppToStore as Partial<Opportunity>).closingProbability;
 
     const sql = `
@@ -92,23 +88,15 @@ export async function POST(request: NextRequest) {
     const result: any = await query(sql, params);
 
     if (result.affectedRows === 1) {
-       console.log(`[API POST /api/opportunities] Successfully created opportunity: ${finalId}`);
        const createdOppDb: any[] = await query('SELECT * FROM opportunities WHERE id = ?', [finalId]);
        if (createdOppDb.length > 0) {
-         const finalOpp: Opportunity = {
-            ...createdOppDb[0],
-            estimatedClosingDate: ensureISOFormat(createdOppDb[0].estimatedClosingDate)!,
-            createdAt: ensureISOFormat(createdOppDb[0].createdAt)!,
-            updatedAt: ensureISOFormat(createdOppDb[0].updatedAt)!,
-         };
-         return NextResponse.json(finalOpp, { status: 201 });
+         return NextResponse.json(createdOppDb[0] as Opportunity, { status: 201 });
        }
-       return NextResponse.json(oppToStore, { status: 201 }); // Fallback
-    } else {
-       throw new Error('Failed to insert opportunity into database');
     }
+    throw new Error('Failed to insert opportunity into database');
   } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
     console.error('[API POST /api/opportunities] Error creating opportunity:', error);
-    return NextResponse.json({ message: 'Failed to create opportunity', error: (error as Error).message }, { status: 500 });
+    return NextResponse.json({ message: 'Failed to create opportunity', error: errorMessage }, { status: 500 });
   }
 }

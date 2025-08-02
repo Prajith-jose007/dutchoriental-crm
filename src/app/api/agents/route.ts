@@ -8,8 +8,7 @@ export async function GET(request: NextRequest) {
   try {
     console.log('[API GET /api/agents] Received request');
     const agentsDataDb: any[] = await query('SELECT * FROM agents ORDER BY name ASC');
-    console.log('[API GET /api/agents] Raw DB Data (first item):', agentsDataDb.length > 0 ? agentsDataDb[0] : 'No agents found from DB');
-
+    
     const agents: Agent[] = agentsDataDb.map(dbAgent => ({
       id: String(dbAgent.id || ''),
       name: dbAgent.name || '',
@@ -24,11 +23,11 @@ export async function GET(request: NextRequest) {
       websiteUrl: dbAgent.websiteUrl || undefined,
     }));
 
-    console.log('[API GET /api/agents] Mapped Agents Data (first item):', agents.length > 0 ? agents[0] : 'No agents mapped');
     return NextResponse.json(agents, { status: 200 });
   } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
     console.error('[API GET /api/agents] Error fetching agents:', error);
-    return NextResponse.json({ message: 'Failed to fetch agents', error: (error as Error).message }, { status: 500 });
+    return NextResponse.json({ message: 'Failed to fetch agents', error: errorMessage }, { status: 500 });
   }
 }
 
@@ -62,7 +61,6 @@ export async function POST(request: NextRequest) {
       websiteUrl: newAgentData.websiteUrl || null,
     };
     
-    console.log('[API POST /api/agents] Agent object to store:', agentToStore);
     const result: any = await query(
       `INSERT INTO agents (id, name, agency_code, address, phone_no, email, status, TRN_number, customer_type_id, discount, websiteUrl) 
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -72,11 +70,9 @@ export async function POST(request: NextRequest) {
         agentToStore.customer_type_id, agentToStore.discount, agentToStore.websiteUrl
       ]
     );
-    console.log('[API POST /api/agents] DB Insert Result:', result);
 
     if (result.affectedRows === 1) {
        console.log(`[API POST /api/agents] Successfully created agent: ${agentToStore.id}`);
-       // Fetch and return the created agent to ensure consistency
        const createdAgentDb: any[] = await query('SELECT * FROM agents WHERE id = ?', [agentToStore.id]);
        if (createdAgentDb.length > 0) {
          const createdAgent: Agent = {
@@ -91,8 +87,9 @@ export async function POST(request: NextRequest) {
        throw new Error('Failed to insert agent into database');
     }
   } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
     console.error('[API POST /api/agents] Error creating agent:', error);
-    return NextResponse.json({ message: 'Failed to create agent', error: (error as Error).message }, { status: 500 });
+    return NextResponse.json({ message: 'Failed to create agent', error: errorMessage }, { status: 500 });
   }
 }
 
@@ -106,23 +103,22 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ message: 'Agent IDs are required for bulk delete' }, { status: 400 });
     }
 
-    // Parameterized query for IN clause
     const placeholders = ids.map(() => '?').join(',');
     const sql = `DELETE FROM agents WHERE id IN (${placeholders})`;
     
     console.log(`[API DELETE /api/agents] Executing SQL: ${sql} with IDs:`, ids);
     const result: any = await query(sql, ids);
     const deletedCount = result.affectedRows;
-    console.log(`[API DELETE /api/agents] DB Delete Result: ${deletedCount} rows affected.`);
 
     if (deletedCount > 0) {
-      return NextResponse.json({ message: `${deletedCount} agents deleted successfully. Requested: ${ids.length}.` }, { status: 200 });
+      return NextResponse.json({ message: `${deletedCount} agents deleted successfully.` }, { status: 200 });
     } else {
       console.warn('[API DELETE /api/agents] No matching agents found for deletion with provided IDs:', ids);
-      return NextResponse.json({ message: 'No matching agents found for deletion based on provided IDs.' }, { status: 404 });
+      return NextResponse.json({ message: 'No matching agents found for deletion.' }, { status: 404 });
     }
   } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
     console.error('[API DELETE /api/agents] Failed to bulk delete agents:', error);
-    return NextResponse.json({ message: 'Failed to bulk delete agents', error: (error as Error).message }, { status: 500 });
+    return NextResponse.json({ message: 'Failed to bulk delete agents', error: errorMessage }, { status: 500 });
   }
 }

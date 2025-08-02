@@ -37,8 +37,8 @@ function generateNewLeadId(existingLeadIds: string[]): string {
 
 
 export async function GET(request: NextRequest) {
-  console.log('[API GET /api/leads] Received request');
   try {
+    console.log('[API GET /api/leads] Received request');
     const leadsDataDb: any[] = await query('SELECT * FROM leads ORDER BY createdAt DESC');
     console.log('[API GET /api/leads] Raw DB Data Sample (first item):', leadsDataDb.length > 0 ? leadsDataDb[0] : 'No leads found');
 
@@ -108,7 +108,7 @@ export async function GET(request: NextRequest) {
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : String(err);
     console.error('[API GET /api/leads] Error:', errorMessage);
-    return NextResponse.json({ message: 'Failed to fetch leads', errorDetails: errorMessage }, { status: 500 });
+    return NextResponse.json({ message: 'Failed to fetch leads', error: errorMessage }, { status: 500 });
   }
 }
 
@@ -292,7 +292,7 @@ export async function POST(request: NextRequest) {
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : String(err);
     console.error('[API POST /api/leads] Error in POST handler:', errorMessage);
-    return NextResponse.json({ message: 'Failed to create lead', errorDetails: errorMessage }, { status: 500 });
+    return NextResponse.json({ message: 'Failed to create lead', error: errorMessage }, { status: 500 });
   }
 }
 
@@ -380,6 +380,6 @@ export async function PATCH(request: NextRequest) {
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     console.error('[API PATCH /api/leads] Failed to bulk update lead statuses:', errorMessage);
-    return NextResponse.json({ message: 'Failed to bulk update lead statuses', errorDetails: errorMessage }, { status: 500 });
+    return NextResponse.json({ message: 'Failed to bulk update lead statuses', error: errorMessage }, { status: 500 });
   }
 }

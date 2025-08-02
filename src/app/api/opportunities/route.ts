@@ -90,7 +90,13 @@ export async function POST(request: NextRequest) {
     if (result.affectedRows === 1) {
        const createdOppDb: any[] = await query('SELECT * FROM opportunities WHERE id = ?', [finalId]);
        if (createdOppDb.length > 0) {
-         return NextResponse.json(createdOppDb[0] as Opportunity, { status: 201 });
+         const returnedOpp: Opportunity = {
+           ...createdOppDb[0],
+           estimatedClosingDate: ensureISOFormat(createdOppDb[0].estimatedClosingDate)!,
+           createdAt: ensureISOFormat(createdOppDb[0].createdAt)!,
+           updatedAt: ensureISOFormat(createdOppDb[0].updatedAt)!,
+         }
+         return NextResponse.json(returnedOpp, { status: 201 });
        }
     }
     throw new Error('Failed to insert opportunity into database');

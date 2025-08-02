@@ -135,7 +135,7 @@ export async function GET(
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : String(err);
     console.error(`[API GET /api/leads/${params.id}] Error:`, errorMessage);
-    return NextResponse.json({ message: 'Failed to fetch lead', errorDetails: errorMessage }, { status: 500 });
+    return NextResponse.json({ message: 'Failed to fetch lead', error: errorMessage }, { status: 500 });
   }
 }
 
@@ -268,7 +268,7 @@ export async function PUT(
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : String(err);
     console.error(`[API PUT /api/leads/${params.id}] Error:`, errorMessage);
-    return NextResponse.json({ message: 'Failed to update lead', errorDetails: errorMessage }, { status: 500 });
+    return NextResponse.json({ message: 'Failed to update lead', error: errorMessage }, { status: 500 });
   }
 }
 
@@ -313,6 +313,6 @@ export async function DELETE(
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : String(err);
     console.error(`[API DELETE /api/leads/${params.id}] Error:`, errorMessage);
-    return NextResponse.json({ message: 'Failed to delete lead', errorDetails: errorMessage }, { status: 500 });
+    return NextResponse.json({ message: 'Failed to delete lead', error: errorMessage }, { status: 500 });
   }
 }

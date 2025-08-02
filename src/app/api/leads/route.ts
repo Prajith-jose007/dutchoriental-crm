@@ -106,13 +106,8 @@ export async function GET(request: NextRequest) {
     console.log('[API GET /api/leads] Mapped Leads Data Sample (first item):', leads.length > 0 ? leads[0] : 'No leads mapped');
     return NextResponse.json(leads, { status: 200 });
   } catch (err) {
-    console.error('[API GET /api/leads] Error:', err);
-    let errorMessage = 'Failed to fetch leads.';
-    if (err instanceof Error) {
-      errorMessage = err.message;
-    } else if (typeof err === 'string') {
-      errorMessage = err;
-    }
+    const errorMessage = err instanceof Error ? err.message : String(err);
+    console.error('[API GET /api/leads] Error:', errorMessage);
     return NextResponse.json({ message: 'Failed to fetch leads', errorDetails: errorMessage }, { status: 500 });
   }
 }
@@ -295,13 +290,8 @@ export async function POST(request: NextRequest) {
       throw new Error('Failed to insert lead into database');
     }
   } catch (err) {
-    console.error('[API POST /api/leads] Error in POST handler:', err);
-    let errorMessage = 'Failed to create lead.';
-    if (err instanceof Error) {
-      errorMessage = err.message;
-    } else if (typeof err === 'string') {
-      errorMessage = err;
-    }
+    const errorMessage = err instanceof Error ? err.message : String(err);
+    console.error('[API POST /api/leads] Error in POST handler:', errorMessage);
     return NextResponse.json({ message: 'Failed to create lead', errorDetails: errorMessage }, { status: 500 });
   }
 }
@@ -335,7 +325,7 @@ export async function PATCH(request: NextRequest) {
           canUpdate = true;
         } else { 
           if (leadToUpdate.ownerUserId === requestingUserId) {
-            if (leadToUpdate.status === 'Closed') {
+            if (leadToUpdate.status.startsWith('Closed')) {
                console.warn(`[API PATCH /api/leads] Non-admin user ${requestingUserId} attempted to change status of Closed lead ${id}. Denied.`);
                updateErrors.push({ id, reason: "Non-admins cannot change the status of Closed leads." });
             } else {
@@ -388,7 +378,8 @@ export async function PATCH(request: NextRequest) {
     }
 
   } catch (error) {
-    console.error('[API PATCH /api/leads] Failed to bulk update lead statuses:', error);
-    return NextResponse.json({ message: 'Failed to bulk update lead statuses', error: (error as Error).message }, { status: 500 });
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error('[API PATCH /api/leads] Failed to bulk update lead statuses:', errorMessage);
+    return NextResponse.json({ message: 'Failed to bulk update lead statuses', errorDetails: errorMessage }, { status: 500 });
   }
 }

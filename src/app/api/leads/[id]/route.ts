@@ -133,13 +133,8 @@ export async function GET(
       return NextResponse.json({ message: 'Lead not found' }, { status: 404 });
     }
   } catch (err) {
-    console.error(`[API GET /api/leads/${params.id}] Error:`, err);
-    let errorMessage = 'Failed to fetch lead.';
-    if (err instanceof Error) {
-      errorMessage = err.message;
-    } else if (typeof err === 'string') {
-      errorMessage = err;
-    }
+    const errorMessage = err instanceof Error ? err.message : String(err);
+    console.error(`[API GET /api/leads/${params.id}] Error:`, errorMessage);
     return NextResponse.json({ message: 'Failed to fetch lead', errorDetails: errorMessage }, { status: 500 });
   }
 }
@@ -163,7 +158,7 @@ export async function PUT(
     }
     const existingLeadDbInfo = existingLeadResult[0];
 
-    if (existingLeadDbInfo.status === 'Closed' && requestingUserRole !== 'admin') {
+    if (existingLeadDbInfo.status.startsWith('Closed') && requestingUserRole !== 'admin') {
         console.warn(`[API PUT /api/leads/${id}] Permission denied. User ${requestingUserId} (Role: ${requestingUserRole}) attempted to modify a Closed lead.`);
         return NextResponse.json({ message: 'Permission denied: Closed leads cannot be modified by non-administrators.' }, { status: 403 });
     }
@@ -271,13 +266,8 @@ export async function PUT(
     return NextResponse.json(finalUpdatedLead, { status: 200 });
 
   } catch (err) {
-    console.error(`[API PUT /api/leads/${params.id}] Error:`, err);
-    let errorMessage = 'Failed to update lead.';
-    if (err instanceof Error) {
-      errorMessage = err.message;
-    } else if (typeof err === 'string') {
-      errorMessage = err;
-    }
+    const errorMessage = err instanceof Error ? err.message : String(err);
+    console.error(`[API PUT /api/leads/${params.id}] Error:`, errorMessage);
     return NextResponse.json({ message: 'Failed to update lead', errorDetails: errorMessage }, { status: 500 });
   }
 }
@@ -300,7 +290,7 @@ export async function DELETE(
     }
     const existingLeadDbInfo = existingLeadResult[0];
 
-    if (existingLeadDbInfo.status === 'Closed' && requestingUserRole !== 'admin') {
+    if (existingLeadDbInfo.status.startsWith('Closed') && requestingUserRole !== 'admin') {
       console.warn(`[API DELETE /api/leads/${id}] Permission denied. User ${requestingUserId} (Role: ${requestingUserRole}) attempted to delete a Closed lead.`);
       return NextResponse.json({ message: 'Permission denied: Closed leads cannot be deleted by non-administrators.' }, { status: 403 });
     }
@@ -321,13 +311,8 @@ export async function DELETE(
     console.log(`[API DELETE /api/leads/${id}] Successfully deleted lead.`);
     return NextResponse.json({ message: 'Lead deleted successfully' }, { status: 200 });
   } catch (err) {
-    console.error(`[API DELETE /api/leads/${params.id}] Error:`, err);
-    let errorMessage = 'Failed to delete lead.';
-    if (err instanceof Error) {
-      errorMessage = err.message;
-    } else if (typeof err === 'string') {
-      errorMessage = err;
-    }
+    const errorMessage = err instanceof Error ? err.message : String(err);
+    console.error(`[API DELETE /api/leads/${params.id}] Error:`, errorMessage);
     return NextResponse.json({ message: 'Failed to delete lead', errorDetails: errorMessage }, { status: 500 });
   }
 }

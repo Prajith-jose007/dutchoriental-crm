@@ -49,8 +49,8 @@ const csvHeaderMapping: { [csvHeaderKey: string]: keyof Omit<Lead, 'packageQuant
   'chd_top': 'pkg_child_top_deck', 'child_top_deck': 'pkg_child_top_deck',
   'adt_top': 'pkg_adult_top_deck', 'adult_top_deck': 'pkg_adult_top_deck',
   'ad_alc': 'pkg_adult_alc', 'adult_alc': 'pkg_adult_alc',
-  'vip_ch': 'pkg_vip_child', 
-  'vip_ad': 'pkg_vip_adult', 
+  'vip_ch': 'pkg_vip_child',
+  'vip_ad': 'pkg_vip_adult',
   'vip_alc': 'pkg_vip_alc',
   'ryl_ch': 'pkg_royal_child', 'royal_child': 'pkg_royal_child',
   'ryl_ad': 'pkg_royal_adult', 'royal_adult': 'pkg_royal_adult',
@@ -58,7 +58,7 @@ const csvHeaderMapping: { [csvHeaderKey: string]: keyof Omit<Lead, 'packageQuant
   'basic': 'pkg_basic',
   'std': 'pkg_standard', 'standard': 'pkg_standard',
   'prem': 'pkg_premium', 'premium': 'pkg_premium',
-  'vip': 'pkg_vip', 
+  'vip': 'pkg_vip', // Note: 'vip' is duplicated for different cruise types. Logic will handle based on yacht.
   'hrchtr': 'pkg_hour_charter', 'hour_charter': 'pkg_hour_charter',
   'package_details_(json)': 'package_quantities_json_string', 'package_details_json': 'package_quantities_json_string',
   'addon_pack': 'perTicketRate', 'addon': 'perTicketRate', 'per_ticket_rate': 'perTicketRate',
@@ -151,13 +151,15 @@ const convertCsvValue = (
         return isNaN(numRate) ? null : numRate;
 
     case 'modeOfPayment':
-      return modeOfPaymentOptions.includes(trimmedValue.toUpperCase() as ModeOfPayment) ? trimmedValue.toUpperCase() : 'CARD';
+      const foundMop = modeOfPaymentOptions.find(opt => opt.toLowerCase() === trimmedValue.toLowerCase());
+      return foundMop || 'CARD';
     case 'status':
       const lowerTrimmedStatusValue = trimmedValue.toLowerCase();
       const foundStatus = leadStatusOptions.find(opt => opt.toLowerCase() === lowerTrimmedStatusValue);
       return foundStatus || 'Balance'; 
     case 'type':
-      return leadTypeOptions.includes(trimmedValue as LeadType) ? trimmedValue : 'Private Cruise';
+      const foundType = leadTypeOptions.find(opt => opt.toLowerCase() === trimmedValue.toLowerCase());
+      return foundType || 'Private Cruise';
     case 'paymentConfirmationStatus':
       const upperTrimmedPaymentStatus = trimmedValue.toUpperCase();
       if (paymentConfirmationStatusOptions.includes(upperTrimmedPaymentStatus as PaymentConfirmationStatus)) {
@@ -483,7 +485,8 @@ export default function LeadsPage() {
           const parsedError = await response.json();
           console.error("[BookingsPage] Parsed API error response from form submit:", parsedError);
           descriptiveMessage = parsedError.message || descriptiveMessage;
-          errorDetailsLog = (parsedError.errorDetails || parsedError.error) ? JSON.stringify(parsedError.errorDetails || parsedError.error) : '';
+          if (parsedError.errorDetails) errorDetailsLog = JSON.stringify(parsedError.errorDetails);
+          else if(parsedError.error) errorDetailsLog = JSON.stringify(parsedError.error);
         } catch (jsonError) {
           console.warn("[BookingsPage] API error response body was not valid JSON or was empty. Status:", response.status, "StatusText:", response.statusText, "JSON parse error:", jsonError);
         }
@@ -537,7 +540,8 @@ export default function LeadsPage() {
         try {
           const parsedError = await response.json();
           errorData.message = parsedError.message || errorData.message;
-          errorData.details = parsedError.errorDetails || parsedError.error || '';
+          if (parsedError.errorDetails) errorData.details = JSON.stringify(parsedError.errorDetails);
+          else if(parsedError.error) errorData.details = JSON.stringify(parsedError.error);
         } catch (jsonError) {
            console.warn("[BookingsPage] API error response on delete was not valid JSON or was empty.", jsonError);
         }
@@ -886,12 +890,14 @@ export default function LeadsPage() {
         if (newLeadsFromCsv.length > 0) {
           for (const leadToImport of newLeadsFromCsv) {
             try {
-              let payloadToSubmit: Partial<Lead> & { requestingUserId: string; requestingUserRole: string | null } = { ...leadToImport, requestingUserId: currentUserId, requestingUserRole: currentUserRole };
+              let payloadToSubmit: Partial<Lead> & { requestingUserId: string; requestingUserRole: string | null };
               if (leadToImport.id.startsWith('imported-booking-')) {
-                const { id, ...rest } = payloadToSubmit;
-                payloadToSubmit = rest;
+                const { id, ...rest } = leadToImport;
+                payloadToSubmit = { ...rest, requestingUserId: currentUserId, requestingUserRole: currentUserRole };
+              } else {
+                payloadToSubmit = { ...leadToImport, requestingUserId: currentUserId, requestingUserRole: currentUserRole };
               }
-
+              
               const response = await fetch('/api/leads', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },

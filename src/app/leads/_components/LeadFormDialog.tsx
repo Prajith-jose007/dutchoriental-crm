@@ -111,7 +111,7 @@ const getDefaultFormValues = (existingLead?: Lead | null, currentUserId?: string
     month: existingLead?.month && isValid(parseISO(existingLead.month)) ? parseISO(existingLead.month) : new Date(),
     yacht: existingLead?.yacht || '',
     type: existingLead?.type || 'Private Cruise',
-    hoursOfBooking: existingLead?.hoursOfBooking,
+    hoursOfBooking: existingLead?.hoursOfBooking ?? null,
     catering: existingLead?.catering || '',
     paymentConfirmationStatus: existingLead?.paymentConfirmationStatus || 'UNCONFIRMED',
     modeOfPayment: existingLead?.modeOfPayment || 'CARD',
@@ -903,7 +903,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
                           placeholder="0.00"
                           {...field}
                           value={field.value ?? ''} 
-                          onChange={(e) => field.onChange(e.target.value)}
+                          onChange={(e) => field.onChange(e.target.value === '' ? 0 : parseFloat(e.target.value))}
                         />
                       </FormControl>
                       <FormDescription>Amount paid by client</FormDescription>
@@ -938,3 +938,5 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
     </Dialog>
   );
 }
+
+    

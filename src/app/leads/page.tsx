@@ -257,8 +257,7 @@ function generateNewLeadId(existingLeadIds: string[]): string {
       }
     }
   });
-  const nextNum = maxNum + 1;
-  return `${prefix}${String(nextNum).padStart(3, '0')}`;
+  return `${prefix}${String(maxNum + 1).padStart(3, '0')}`;
 }
 
 function generateNewLeadTransactionId(existingLeads: Lead[], forYear: number, currentMaxForYearInBatch: number = 0): string {
@@ -447,7 +446,7 @@ export default function LeadsPage() {
     } else if (editingLead) {
       payload.ownerUserId = editingLead.ownerUserId || currentUserId;
       payload.createdAt = editingLead.createdAt || new Date().toISOString();
-       if (editingLead.status === 'Closed' && !isAdmin) {
+       if (editingLead.status.startsWith('Closed') && !isAdmin) {
         toast({ title: "Action Denied", description: "Closed bookings cannot be modified by non-administrators.", variant: "destructive" });
         setIsLoading(false);
         setIsLeadDialogOpen(false);
@@ -456,7 +455,7 @@ export default function LeadsPage() {
       }
     }
 
-    console.log("[BookingsPage] Submitting booking payload:", payload);
+    console.log("[BookingsPage] Submitting booking payload:", JSON.stringify(payload, null, 2));
 
     try {
       let response;
@@ -481,11 +480,11 @@ export default function LeadsPage() {
           const parsedError = await response.json();
           console.error("[BookingsPage] Parsed API error response from form submit:", parsedError);
           descriptiveMessage = parsedError.message || descriptiveMessage;
-          errorDetailsLog = parsedError.errorDetails || parsedError.error || '';
+          errorDetailsLog = `Details: ${JSON.stringify(parsedError)}`;
         } catch (jsonError) {
           console.warn("[BookingsPage] API error response body was not valid JSON or was empty. Status:", response.status, "StatusText:", response.statusText, "JSON parse error:", jsonError);
         }
-        const finalErrorMessage = descriptiveMessage + (errorDetailsLog ? ` - Details: ${errorDetailsLog}` : '');
+        const finalErrorMessage = descriptiveMessage + (errorDetailsLog ? ` - ${errorDetailsLog}` : '');
         throw new Error(finalErrorMessage);
       }
 
@@ -512,7 +511,7 @@ export default function LeadsPage() {
       return;
     }
     const leadToDelete = allLeads.find(l => l.id === leadId);
-    if (leadToDelete?.status === 'Closed' && !isAdmin) {
+    if (leadToDelete?.status.startsWith('Closed') && !isAdmin) {
       toast({ title: "Action Denied", description: "Closed bookings cannot be deleted by non-administrators.", variant: "destructive" });
       return;
     }
@@ -673,7 +672,7 @@ export default function LeadsPage() {
 
       for (const leadId of selectedLeadIds) {
          const leadToDelete = allLeads.find(l => l.id === leadId);
-          if (leadToDelete?.status === 'Closed' && !isAdmin) { 
+          if (leadToDelete?.status.startsWith('Closed') && !isAdmin) { 
             failedDeletes++;
             continue;
           }
@@ -1351,3 +1350,5 @@ export default function LeadsPage() {
     </div>
   );
 }
+
+    

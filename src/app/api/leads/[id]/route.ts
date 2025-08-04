@@ -85,6 +85,8 @@ function buildLeadUpdateSetClause(data: Partial<Omit<Lead, 'id' | 'createdAt' | 
         valuesToUpdate.push(ensureISOFormat(value as string) || null);
       } else if (value === null && ['perTicketRate', 'hoursOfBooking', 'catering', 'notes', 'transactionId'].includes(key)) {
         valuesToUpdate.push(null);
+      } else if (value === undefined && ['perTicketRate', 'hoursOfBooking'].includes(key)) {
+        valuesToUpdate.push(null);
       } else if (typeof value === 'number' && isNaN(value)) {
         valuesToUpdate.push(key === 'perTicketRate' ? null : 0);
       } else {
@@ -158,6 +160,9 @@ export async function PUT(
     }
     delete (dataToUpdate as any).packageQuantities;
 
+    if (dataToUpdate.hoursOfBooking === undefined) dataToUpdate.hoursOfBooking = null;
+    if (dataToUpdate.perTicketRate === undefined) dataToUpdate.perTicketRate = null;
+
     const { clause, values: updateValues } = buildLeadUpdateSetClause(dataToUpdate);
     if (clause.length === 0) {
        return NextResponse.json({ message: 'No valid fields to update' }, { status: 400 });
@@ -176,7 +181,7 @@ export async function PUT(
 
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : String(err);
-    console.error(`[API PUT /api/leads/${id}] Error:`, errorMessage);
+    console.error(`[API PUT /api/leads/${id}] Error:`, errorMessage, (err as Error).stack);
     return NextResponse.json({ message: `Failed to update booking: ${errorMessage}` }, { status: 500 });
   }
 }
@@ -223,3 +228,5 @@ export async function DELETE(
     return NextResponse.json({ message: `Failed to delete booking: ${errorMessage}` }, { status: 500 });
   }
 }
+
+    

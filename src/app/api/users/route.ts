@@ -9,16 +9,20 @@ export async function GET(request: NextRequest) {
     const usersDataDb: any[] = await query('SELECT id, name, email, designation, avatarUrl, websiteUrl, status FROM users ORDER BY name ASC');
     
     const users: User[] = usersDataDb.map((dbUser: any) => ({
-      id: String(dbUser.id || ''), name: dbUser.name || '', email: dbUser.email || '',
-      designation: dbUser.designation || '', avatarUrl: dbUser.avatarUrl || undefined,
-      websiteUrl: dbUser.websiteUrl || undefined, status: dbUser.status || 'Active',
+      id: String(dbUser.id || ''), 
+      name: dbUser.name || '', 
+      email: dbUser.email || '',
+      designation: dbUser.designation || '', 
+      avatarUrl: dbUser.avatarUrl || undefined,
+      websiteUrl: dbUser.websiteUrl || undefined, 
+      status: dbUser.status || 'Active',
     }));
     
     return NextResponse.json(users, { status: 200 });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
     console.error('[API GET /api/users] Error fetching users:', error);
-    return NextResponse.json({ message: 'Failed to fetch users', error: errorMessage }, { status: 500 });
+    return NextResponse.json({ message: `Failed to fetch users: ${errorMessage}` }, { status: 500 });
   }
 }
 
@@ -39,7 +43,7 @@ export async function POST(request: NextRequest) {
       'INSERT INTO users (id, name, email, designation, avatarUrl, websiteUrl, status, password) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
       [
         newUser.id, newUser.name, newUser.email, newUser.designation, newUser.avatarUrl || null,
-        newUser.websiteUrl || null, newUser.status || 'Active', newUser.password,
+        newUser.websiteUrl || null, newUser.status || 'Active', newUser.password, // In a real app, hash this password
       ]
     );
 
@@ -53,6 +57,6 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
     console.error('[API POST /api/users] Error creating user:', error);
-    return NextResponse.json({ message: 'Failed to create user', error: errorMessage }, { status: 500 });
+    return NextResponse.json({ message: `Failed to create user: ${errorMessage}` }, { status: 500 });
   }
 }

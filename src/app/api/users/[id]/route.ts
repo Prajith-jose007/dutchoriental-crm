@@ -9,6 +9,10 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   const id = params.id;
+  if (!id) {
+    return NextResponse.json({ message: 'User ID is required' }, { status: 400 });
+  }
+
   try {
     const userDataDb: any = await query('SELECT id, name, email, designation, avatarUrl, websiteUrl, status FROM users WHERE id = ?', [id]);
     
@@ -21,7 +25,7 @@ export async function GET(
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
     console.error(`[API GET /api/users/${id}] Error:`, error);
-    return NextResponse.json({ message: 'Failed to fetch user', error: errorMessage }, { status: 500 });
+    return NextResponse.json({ message: `Failed to fetch user: ${errorMessage}` }, { status: 500 });
   }
 }
 
@@ -30,6 +34,10 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   const id = params.id;
+  if (!id) {
+    return NextResponse.json({ message: 'User ID is required for update' }, { status: 400 });
+  }
+
   try {
     const updatedUser = await request.json() as Partial<User>;
 
@@ -55,7 +63,7 @@ export async function PUT(
         if (key === 'password') {
           if (typeof updatedUser.password === 'string' && updatedUser.password.length > 0) {
             fieldsToUpdate.push(`password = ?`);
-            values.push(updatedUser.password);
+            values.push(updatedUser.password); // In a real app, hash this password
           }
         } else {
           fieldsToUpdate.push(`${key} = ?`);
@@ -71,11 +79,7 @@ export async function PUT(
     const setClause = fieldsToUpdate.join(', ');
     values.push(id);
     
-    const result: any = await query(`UPDATE users SET ${setClause} WHERE id = ?`, values);
-    
-    if (result.affectedRows === 0) {
-       console.warn(`[API PUT /api/users/${id}] User not found during update or no changes made.`);
-    }
+    await query(`UPDATE users SET ${setClause} WHERE id = ?`, values);
     
     const finalUpdatedUserQuery: any = await query('SELECT id, name, email, designation, avatarUrl, websiteUrl, status FROM users WHERE id = ?', [id]);
     if (finalUpdatedUserQuery.length > 0) {
@@ -86,7 +90,7 @@ export async function PUT(
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
     console.error(`[API PUT /api/users/${id}] Error:`, error);
-    return NextResponse.json({ message: 'Failed to update user', error: errorMessage }, { status: 500 });
+    return NextResponse.json({ message: `Failed to update user: ${errorMessage}` }, { status: 500 });
   }
 }
 
@@ -95,6 +99,10 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   const id = params.id;
+  if (!id) {
+    return NextResponse.json({ message: 'User ID is required for deletion' }, { status: 400 });
+  }
+
   try {
     const result: any = await query('DELETE FROM users WHERE id = ?', [id]);
     
@@ -105,6 +113,6 @@ export async function DELETE(
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
     console.error(`[API DELETE /api/users/${id}] Error:`, error);
-    return NextResponse.json({ message: 'Failed to delete user', error: errorMessage }, { status: 500 });
+    return NextResponse.json({ message: `Failed to delete user: ${errorMessage}` }, { status: 500 });
   }
 }

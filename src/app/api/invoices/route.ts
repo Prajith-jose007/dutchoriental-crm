@@ -5,24 +5,14 @@ import type { Invoice } from '@/lib/types';
 import { query } from '@/lib/db';
 import { formatISO, parseISO, isValid, format } from 'date-fns';
 
-const ensureISOFormat = (dateSource?: string | Date, fieldName?: string): string | null => {
+const ensureISOFormat = (dateSource?: string | Date): string | null => {
   if (!dateSource) return null;
-
   if (dateSource instanceof Date) {
-    if (isValid(dateSource)) return formatISO(dateSource);
-    return null;
+    return isValid(dateSource) ? formatISO(dateSource) : null;
   }
-
   if (typeof dateSource === 'string') {
-    try {
-      const parsedDate = parseISO(dateSource);
-      if (isValid(parsedDate)) {
-        return formatISO(parsedDate);
-      }
-      return null;
-    } catch (e) {
-      return null;
-    }
+    const parsedDate = parseISO(dateSource);
+    return isValid(parsedDate) ? formatISO(parsedDate) : null;
   }
   return null;
 };
@@ -36,16 +26,16 @@ export async function GET(request: NextRequest) {
       leadId: inv.leadId || '',
       clientName: inv.clientName || '',
       amount: parseFloat(inv.amount || 0),
-      dueDate: ensureISOFormat(inv.dueDate, 'dueDate') || formatISO(new Date()),
+      dueDate: ensureISOFormat(inv.dueDate) || formatISO(new Date()),
       status: (inv.status || 'Pending') as Invoice['status'],
-      createdAt: ensureISOFormat(inv.createdAt, 'createdAt') || formatISO(new Date()),
+      createdAt: ensureISOFormat(inv.createdAt) || formatISO(new Date()),
     }));
 
     return NextResponse.json(invoices, { status: 200 });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
     console.error('[API GET /api/invoices] Failed to fetch invoices:', error);
-    return NextResponse.json({ message: 'Failed to fetch invoices', error: errorMessage }, { status: 500 });
+    return NextResponse.json({ message: `Failed to fetch invoices: ${errorMessage}` }, { status: 500 });
   }
 }
 
@@ -59,24 +49,25 @@ export async function POST(request: NextRequest) {
 
     const existingInvoice: any = await query('SELECT id FROM invoices WHERE id = ?', [newInvoiceData.id]);
     if (existingInvoice.length > 0) {
-      return NextResponse.json({ message: `Invoice with ID ${newInvoiceData.id} already exists.` }, { status: 409 });
+      return NextResponse.json({ message: `An invoice for booking ID ${newInvoiceData.leadId} already exists with ID ${newInvoiceData.id}.` }, { status: 409 });
     }
     
     const now = new Date();
-    let formattedDueDate: string;
-    try {
-        const parsedClientDueDate = parseISO(newInvoiceData.dueDate);
-        if (!isValid(parsedClientDueDate)) throw new Error('Invalid client dueDate format');
-        formattedDueDate = format(parsedClientDueDate, 'yyyy-MM-dd');
-    } catch (e) {
-        formattedDueDate = format(now, 'yyyy-MM-dd');
+    const parsedClientDueDate = parseISO(newInvoiceData.dueDate);
+    if (!isValid(parsedClientDueDate)) {
+      return NextResponse.json({ message: 'Invalid due date format provided.' }, { status: 400 });
     }
+    const formattedDueDate = format(parsedClientDueDate, 'yyyy-MM-dd');
     
-    const formattedCreatedAt = ensureISOFormat(newInvoiceData.createdAt, 'createdAtPOST') || formatISO(now);
+    const formattedCreatedAt = ensureISOFormat(newInvoiceData.createdAt) || formatISO(now);
 
     const invoiceToStore: Invoice = {
-      id: newInvoiceData.id, leadId: newInvoiceData.leadId, clientName: newInvoiceData.clientName,
-      amount: Number(newInvoiceData.amount), dueDate: formattedDueDate, status: newInvoiceData.status,
+      id: newInvoiceData.id, 
+      leadId: newInvoiceData.leadId, 
+      clientName: newInvoiceData.clientName,
+      amount: Number(newInvoiceData.amount), 
+      dueDate: formattedDueDate, 
+      status: newInvoiceData.status,
       createdAt: formattedCreatedAt,
     };
     
@@ -95,9 +86,9 @@ export async function POST(request: NextRequest) {
           const finalInvoice: Invoice = {
               id: String(dbInv.id || ''), leadId: dbInv.leadId || '', clientName: dbInv.clientName || '',
               amount: parseFloat(dbInv.amount || 0),
-              dueDate: ensureISOFormat(dbInv.dueDate, 'dueDatePOSTFetch') || formatISO(new Date()),
+              dueDate: ensureISOFormat(dbInv.dueDate) || formatISO(new Date()),
               status: (dbInv.status || 'Pending') as Invoice['status'],
-              createdAt: ensureISOFormat(dbInv.createdAt, 'createdAtPOSTFetch') || formatISO(new Date()),
+              createdAt: ensureISOFormat(dbInv.createdAt) || formatISO(new Date()),
           };
           return NextResponse.json(finalInvoice, { status: 201 });
       }
@@ -106,6 +97,6 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
     console.error('[API POST /api/invoices] Failed to create invoice:', error);
-    return NextResponse.json({ message: 'Failed to create invoice', error: errorMessage }, { status: 500 });
+    return NextResponse.json({ message: `Failed to create invoice: ${errorMessage}` }, { status: 500 });
   }
 }

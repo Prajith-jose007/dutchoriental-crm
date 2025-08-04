@@ -19,13 +19,11 @@ export async function GET(request: NextRequest) {
         try {
           const parsedPackages = JSON.parse(dbYacht.packages_json);
           if (Array.isArray(parsedPackages)) {
-            packages = parsedPackages.map((pkg: any, index: number) => ({
-              id: String(pkg.id || `pkg-${dbYacht.id}-${index}`),
-              name: String(pkg.name || 'Unnamed Package'),
+            packages = parsedPackages.map((pkg: any) => ({
+              id: String(pkg.id),
+              name: String(pkg.name),
               rate: Number(pkg.rate || 0),
             }));
-          } else {
-            console.warn(`[API GET /api/yachts] Parsed packages_json for yacht ${dbYacht.id} is not an array.`);
           }
         } catch (e) {
           console.warn(`[API GET /api/yachts] Failed to parse packages_json for yacht ${dbYacht.id}.`);
@@ -48,7 +46,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
     console.error('[API GET /api/yachts] Failed to fetch yachts:', error);
-    return NextResponse.json({ message: 'Failed to fetch yachts', error: errorMessage }, { status: 500 });
+    return NextResponse.json({ message: `Failed to fetch yachts: ${errorMessage}` }, { status: 500 });
   }
 }
 
@@ -95,10 +93,14 @@ export async function POST(request: NextRequest) {
           }
         }
         const finalYacht: Yacht = {
-            id: String(dbYacht.id), name: String(dbYacht.name), imageUrl: dbYacht.imageUrl || undefined,
-            capacity: Number(dbYacht.capacity || 0), status: (dbYacht.status || 'Available') as Yacht['status'],
+            id: String(dbYacht.id), 
+            name: String(dbYacht.name), 
+            imageUrl: dbYacht.imageUrl || undefined,
+            capacity: Number(dbYacht.capacity || 0), 
+            status: (dbYacht.status || 'Available') as Yacht['status'],
             category: (dbYacht.category || 'Private Cruise') as Yacht['category'],
-            packages: packages, customPackageInfo: dbYacht.customPackageInfo || undefined,
+            packages: packages, 
+            customPackageInfo: dbYacht.customPackageInfo || undefined,
         };
         return NextResponse.json(finalYacht, { status: 201 });
       }
@@ -107,6 +109,6 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
     console.error('[API POST /api/yachts] Failed to create yacht:', error);
-    return NextResponse.json({ message: 'Failed to create yacht', error: errorMessage }, { status: 500 });
+    return NextResponse.json({ message: `Failed to create yacht: ${errorMessage}` }, { status: 500 });
   }
 }

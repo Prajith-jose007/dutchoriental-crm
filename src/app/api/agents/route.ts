@@ -6,7 +6,6 @@ import { query } from '@/lib/db';
 
 export async function GET(request: NextRequest) {
   try {
-    console.log('[API GET /api/agents] Received request');
     const agentsDataDb: any[] = await query('SELECT * FROM agents ORDER BY name ASC');
     
     const agents: Agent[] = agentsDataDb.map(dbAgent => ({
@@ -27,28 +26,25 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
     console.error('[API GET /api/agents] Error fetching agents:', error);
-    return NextResponse.json({ message: 'Failed to fetch agents', error: errorMessage }, { status: 500 });
+    return NextResponse.json({ message: `Failed to fetch agents: ${errorMessage}` }, { status: 500 });
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const newAgentData = await request.json() as Omit<Agent, 'id'> & { id?: string }; // Allow ID to be optional for creation
-    console.log('[API POST /api/agents] Received newAgentData:', newAgentData);
+    const newAgentData = await request.json() as Omit<Agent, 'id'> & { id?: string };
 
     if (!newAgentData.id || !newAgentData.name || !newAgentData.email || newAgentData.discount === undefined) {
-      console.error('[API POST /api/agents] Validation Error: Missing required fields.');
       return NextResponse.json({ message: 'Missing required agent fields (id, name, email, discount)' }, { status: 400 });
     }
 
     const existingAgentCheck: any = await query('SELECT id FROM agents WHERE id = ? OR email = ?', [newAgentData.id, newAgentData.email]);
     if (existingAgentCheck.length > 0) {
-      console.warn(`[API POST /api/agents] Conflict: Agent with ID ${newAgentData.id} or email ${newAgentData.email} already exists.`);
       return NextResponse.json({ message: 'Agent with this ID or email already exists.' }, { status: 409 });
     }
     
     const agentToStore: Agent = {
-      id: newAgentData.id, // ID must be provided by client as per form logic
+      id: newAgentData.id,
       name: newAgentData.name,
       agency_code: newAgentData.agency_code || null,
       address: newAgentData.address || null,
@@ -57,7 +53,7 @@ export async function POST(request: NextRequest) {
       status: newAgentData.status || 'Active',
       TRN_number: newAgentData.TRN_number || null,
       customer_type_id: newAgentData.customer_type_id || null,
-      discount: Number(newAgentData.discount), // Ensure discount is a number
+      discount: Number(newAgentData.discount),
       websiteUrl: newAgentData.websiteUrl || null,
     };
     
@@ -72,7 +68,6 @@ export async function POST(request: NextRequest) {
     );
 
     if (result.affectedRows === 1) {
-       console.log(`[API POST /api/agents] Successfully created agent: ${agentToStore.id}`);
        const createdAgentDb: any[] = await query('SELECT * FROM agents WHERE id = ?', [agentToStore.id]);
        if (createdAgentDb.length > 0) {
          const createdAgent: Agent = {
@@ -81,44 +76,37 @@ export async function POST(request: NextRequest) {
          };
          return NextResponse.json(createdAgent, { status: 201 });
        }
-       return NextResponse.json(agentToStore, { status: 201 }); // Fallback
-    } else {
-       console.error('[API POST /api/agents] Database insert failed, affectedRows was not 1.');
-       throw new Error('Failed to insert agent into database');
     }
+    throw new Error('Failed to insert agent into database');
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
     console.error('[API POST /api/agents] Error creating agent:', error);
-    return NextResponse.json({ message: 'Failed to create agent', error: errorMessage }, { status: 500 });
+    return NextResponse.json({ message: `Failed to create agent: ${errorMessage}` }, { status: 500 });
   }
 }
 
 export async function DELETE(request: NextRequest) {
   try {
     const { ids } = await request.json() as { ids: string[] };
-    console.log('[API DELETE /api/agents] Received request to delete IDs:', ids);
 
     if (!ids || !Array.isArray(ids) || ids.length === 0) {
-      console.warn('[API DELETE /api/agents] Bad Request: Agent IDs are required.');
       return NextResponse.json({ message: 'Agent IDs are required for bulk delete' }, { status: 400 });
     }
 
     const placeholders = ids.map(() => '?').join(',');
     const sql = `DELETE FROM agents WHERE id IN (${placeholders})`;
     
-    console.log(`[API DELETE /api/agents] Executing SQL: ${sql} with IDs:`, ids);
     const result: any = await query(sql, ids);
     const deletedCount = result.affectedRows;
 
     if (deletedCount > 0) {
       return NextResponse.json({ message: `${deletedCount} agents deleted successfully.` }, { status: 200 });
     } else {
-      console.warn('[API DELETE /api/agents] No matching agents found for deletion with provided IDs:', ids);
       return NextResponse.json({ message: 'No matching agents found for deletion.' }, { status: 404 });
     }
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
     console.error('[API DELETE /api/agents] Failed to bulk delete agents:', error);
-    return NextResponse.json({ message: 'Failed to bulk delete agents', error: errorMessage }, { status: 500 });
+    return NextResponse.json({ message: `Failed to bulk delete agents: ${errorMessage}` }, { status: 500 });
   }
 }

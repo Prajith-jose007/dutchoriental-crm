@@ -31,6 +31,10 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   const id = params.id;
+  if (!id) {
+    return NextResponse.json({ message: 'Yacht ID is required' }, { status: 400 });
+  }
+
   try {
     const sql = `SELECT id, name, imageUrl, capacity, status, category, customPackageInfo, packages_json FROM yachts WHERE id = ?`;
     const yachtDataDb: any[] = await query(sql, [id]);
@@ -40,24 +44,21 @@ export async function GET(
       let packages: YachtPackageItem[] = [];
       if (dbYacht.packages_json && typeof dbYacht.packages_json === 'string') {
         try {
-          const parsedPackages = JSON.parse(dbYacht.packages_json);
-          if (Array.isArray(parsedPackages)) {
-            packages = parsedPackages.map((pkg: any, index: number) => ({
-              id: String(pkg.id || `pkg-${dbYacht.id}-${index}`),
-              name: String(pkg.name || 'Unnamed Package'),
-              rate: Number(pkg.rate || 0),
-            }));
-          }
+          packages = JSON.parse(dbYacht.packages_json);
         } catch (e) {
           console.warn(`[API GET /api/yachts/${id}] Failed to parse packages_json for yacht ${dbYacht.id}.`);
         }
       }
 
       const yacht: Yacht = {
-        id: String(dbYacht.id || ''), name: String(dbYacht.name || ''), imageUrl: dbYacht.imageUrl || undefined,
-        capacity: Number(dbYacht.capacity || 0), status: (dbYacht.status || 'Available') as Yacht['status'],
+        id: String(dbYacht.id || ''), 
+        name: String(dbYacht.name || ''), 
+        imageUrl: dbYacht.imageUrl || undefined,
+        capacity: Number(dbYacht.capacity || 0), 
+        status: (dbYacht.status || 'Available') as Yacht['status'],
         category: (dbYacht.category || 'Private Cruise') as Yacht['category'],
-        packages: packages, customPackageInfo: dbYacht.customPackageInfo || undefined,
+        packages: packages, 
+        customPackageInfo: dbYacht.customPackageInfo || undefined,
       };
       return NextResponse.json(yacht, { status: 200 });
     } else {
@@ -66,7 +67,7 @@ export async function GET(
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
     console.error(`[API GET /api/yachts/${id}] Failed to fetch yacht:`, error);
-    return NextResponse.json({ message: 'Failed to fetch yacht', error: errorMessage }, { status: 500 });
+    return NextResponse.json({ message: `Failed to fetch yacht: ${errorMessage}` }, { status: 500 });
   }
 }
 
@@ -75,6 +76,10 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   const id = params.id;
+  if (!id) {
+    return NextResponse.json({ message: 'Yacht ID is required for update' }, { status: 400 });
+  }
+
   try {
     const updatedYachtDataFromClient = await request.json() as Partial<Yacht>;
 
@@ -92,11 +97,8 @@ export async function PUT(
       dataToUpdate.packages_json = JSON.stringify(
         updatedYachtDataFromClient.packages.map(p => ({ id: p.id, name: p.name, rate: Number(p.rate || 0) }))
       );
-      delete (dataToUpdate as any).packages;
-    } else if (updatedYachtDataFromClient.packages === null || updatedYachtDataFromClient.packages === undefined) {
-      dataToUpdate.packages_json = null;
-      delete (dataToUpdate as any).packages;
     }
+    delete (dataToUpdate as any).packages;
 
     const { clause, values } = buildYachtUpdateSetClause(dataToUpdate);
 
@@ -105,7 +107,7 @@ export async function PUT(
     }
     values.push(id);
 
-    const result: any = await query(`UPDATE yachts SET ${clause} WHERE id = ?`, values);
+    await query(`UPDATE yachts SET ${clause} WHERE id = ?`, values);
     
     const finalUpdatedYachtQuery: any[] = await query('SELECT * FROM yachts WHERE id = ?', [id]);
     if (finalUpdatedYachtQuery.length > 0) {
@@ -119,10 +121,14 @@ export async function PUT(
             }
         }
        const finalYacht: Yacht = {
-        id: String(dbYacht.id || ''), name: String(dbYacht.name || ''), imageUrl: dbYacht.imageUrl || undefined,
-        capacity: Number(dbYacht.capacity || 0), status: (dbYacht.status || 'Available') as Yacht['status'],
+        id: String(dbYacht.id || ''), 
+        name: String(dbYacht.name || ''), 
+        imageUrl: dbYacht.imageUrl || undefined,
+        capacity: Number(dbYacht.capacity || 0), 
+        status: (dbYacht.status || 'Available') as Yacht['status'],
         category: (dbYacht.category || 'Private Cruise') as Yacht['category'],
-        packages: packages, customPackageInfo: dbYacht.customPackageInfo || undefined,
+        packages: packages, 
+        customPackageInfo: dbYacht.customPackageInfo || undefined,
        };
        return NextResponse.json(finalYacht, { status: 200 });
     }
@@ -131,7 +137,7 @@ export async function PUT(
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
     console.error(`[API PUT /api/yachts/${id}] Failed to update yacht:`, error);
-    return NextResponse.json({ message: 'Failed to update yacht', error: errorMessage }, { status: 500 });
+    return NextResponse.json({ message: `Failed to update yacht: ${errorMessage}` }, { status: 500 });
   }
 }
 
@@ -140,6 +146,10 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   const id = params.id;
+  if (!id) {
+    return NextResponse.json({ message: 'Yacht ID is required for deletion' }, { status: 400 });
+  }
+
   try {
     const result: any = await query('DELETE FROM yachts WHERE id = ?', [id]);
     
@@ -151,6 +161,6 @@ export async function DELETE(
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
     console.error(`[API DELETE /api/yachts/${id}] Failed to delete yacht:`, error);
-    return NextResponse.json({ message: 'Failed to delete yacht', error: errorMessage }, { status: 500 });
+    return NextResponse.json({ message: `Failed to delete yacht: ${errorMessage}` }, { status: 500 });
   }
 }

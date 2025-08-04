@@ -8,13 +8,11 @@ import { formatISO, parseISO, isValid } from 'date-fns';
 const ensureISOFormat = (dateSource?: string | Date): string | null => {
   if (!dateSource) return null;
   if (dateSource instanceof Date) {
-    if (isValid(dateSource)) return formatISO(dateSource);
-    return null;
+    return isValid(dateSource) ? formatISO(dateSource) : null;
   }
   try {
     const parsed = parseISO(dateSource);
-    if (isValid(parsed)) return formatISO(parsed);
-    return dateSource;
+    return isValid(parsed) ? formatISO(parsed) : dateSource;
   } catch {
     return dateSource;
   }
@@ -49,6 +47,10 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   const id = params.id;
+  if (!id) {
+    return NextResponse.json({ message: 'Opportunity ID is required' }, { status: 400 });
+  }
+
   try {
     const oppDataDb: any[] = await query('SELECT * FROM opportunities WHERE id = ?', [id]);
     
@@ -56,6 +58,8 @@ export async function GET(
       const dbOpp = oppDataDb[0];
       const opportunity: Opportunity = {
         ...dbOpp,
+        estimatedRevenue: Number(dbOpp.estimatedRevenue || 0),
+        meanExpectedValue: Number(dbOpp.meanExpectedValue || 0),
         estimatedClosingDate: ensureISOFormat(dbOpp.estimatedClosingDate)!,
         createdAt: ensureISOFormat(dbOpp.createdAt)!,
         updatedAt: ensureISOFormat(dbOpp.updatedAt)!,
@@ -67,7 +71,7 @@ export async function GET(
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
     console.error(`[API GET /api/opportunities/${id}] Error:`, error);
-    return NextResponse.json({ message: 'Failed to fetch opportunity', error: errorMessage }, { status: 500 });
+    return NextResponse.json({ message: `Failed to fetch opportunity: ${errorMessage}` }, { status: 500 });
   }
 }
 
@@ -76,6 +80,10 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   const id = params.id;
+  if (!id) {
+    return NextResponse.json({ message: 'Opportunity ID is required for update' }, { status: 400 });
+  }
+
   try {
     const updatedOppData = await request.json() as Partial<Opportunity>;
 
@@ -84,7 +92,7 @@ export async function PUT(
       return NextResponse.json({ message: 'Opportunity not found' }, { status: 404 });
     }
 
-    const dataToUpdate = { ...updatedOppData };
+    const dataToUpdate = { ...updatedOppData, updatedAt: formatISO(new Date()) };
     delete (dataToUpdate as Partial<Opportunity>).closingProbability;
     
     const { clause, values } = buildOpportunityUpdateSetClause(dataToUpdate);
@@ -93,13 +101,15 @@ export async function PUT(
     }
     values.push(id); 
     
-    const result: any = await query(`UPDATE opportunities SET ${clause} WHERE id = ?`, values);
+    await query(`UPDATE opportunities SET ${clause} WHERE id = ?`, values);
     
     const finalUpdatedOppQuery: any = await query('SELECT * FROM opportunities WHERE id = ?', [id]);
     if (finalUpdatedOppQuery.length > 0) {
        const dbOpp = finalUpdatedOppQuery[0];
        const finalOpp: Opportunity = {
           ...dbOpp,
+          estimatedRevenue: Number(dbOpp.estimatedRevenue || 0),
+          meanExpectedValue: Number(dbOpp.meanExpectedValue || 0),
           estimatedClosingDate: ensureISOFormat(dbOpp.estimatedClosingDate)!,
           createdAt: ensureISOFormat(dbOpp.createdAt)!,
           updatedAt: ensureISOFormat(dbOpp.updatedAt)!,
@@ -111,7 +121,7 @@ export async function PUT(
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
     console.error(`[API PUT /api/opportunities/${id}] Error:`, error);
-    return NextResponse.json({ message: 'Failed to update opportunity', error: errorMessage }, { status: 500 });
+    return NextResponse.json({ message: `Failed to update opportunity: ${errorMessage}` }, { status: 500 });
   }
 }
 
@@ -120,6 +130,10 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   const id = params.id;
+  if (!id) {
+    return NextResponse.json({ message: 'Opportunity ID is required for deletion' }, { status: 400 });
+  }
+
   try {
     const result: any = await query('DELETE FROM opportunities WHERE id = ?', [id]);
     
@@ -131,6 +145,6 @@ export async function DELETE(
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
     console.error(`[API DELETE /api/opportunities/${id}] Error:`, error);
-    return NextResponse.json({ message: 'Failed to delete opportunity', error: errorMessage }, { status: 500 });
+    return NextResponse.json({ message: `Failed to delete opportunity: ${errorMessage}` }, { status: 500 });
   }
 }

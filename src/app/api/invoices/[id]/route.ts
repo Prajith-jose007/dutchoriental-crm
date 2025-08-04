@@ -5,24 +5,14 @@ import type { Invoice } from '@/lib/types';
 import { query } from '@/lib/db';
 import { formatISO, parseISO, isValid, format } from 'date-fns';
 
-const ensureISOFormat = (dateSource?: string | Date, fieldName?: string): string | null => {
+const ensureISOFormat = (dateSource?: string | Date): string | null => {
   if (!dateSource) return null;
-
   if (dateSource instanceof Date) {
-    if (isValid(dateSource)) return formatISO(dateSource);
-    return null;
+    return isValid(dateSource) ? formatISO(dateSource) : null;
   }
-
   if (typeof dateSource === 'string') {
-    try {
-      const parsedDate = parseISO(dateSource);
-      if (isValid(parsedDate)) {
-        return formatISO(parsedDate);
-      }
-      return null;
-    } catch (e) {
-      return null;
-    }
+    const parsedDate = parseISO(dateSource);
+    return isValid(parsedDate) ? formatISO(parsedDate) : null;
   }
   return null;
 };
@@ -38,12 +28,9 @@ function buildInvoiceUpdateSetClause(data: Partial<Omit<Invoice, 'id' | 'created
     if (allowedKeys.includes(key as any) && value !== undefined) {
       fieldsToUpdate.push(`${key} = ?`);
       if (key === 'dueDate' && typeof value === 'string') {
-        try {
-          const parsedClientDueDate = parseISO(value);
-          if (!isValid(parsedClientDueDate)) throw new Error('Invalid client dueDate format for update');
+        const parsedClientDueDate = parseISO(value);
+        if (isValid(parsedClientDueDate)) {
           valuesToUpdate.push(format(parsedClientDueDate, 'yyyy-MM-dd'));
-        } catch (e) {
-          fieldsToUpdate.pop(); 
         }
       } else if (key === 'amount') {
         valuesToUpdate.push(Number(value));
@@ -62,17 +49,23 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   const id = params.id;
+  if (!id) {
+    return NextResponse.json({ message: 'Invoice ID is required' }, { status: 400 });
+  }
+
   try {
     const invoiceDataDb: any = await query('SELECT * FROM invoices WHERE id = ?', [id]);
     
     if (invoiceDataDb.length > 0) {
       const dbInvoice = invoiceDataDb[0];
       const invoice: Invoice = {
-        id: String(dbInvoice.id || ''), leadId: dbInvoice.leadId || '', clientName: dbInvoice.clientName || '',
+        id: String(dbInvoice.id || ''), 
+        leadId: dbInvoice.leadId || '', 
+        clientName: dbInvoice.clientName || '',
         amount: parseFloat(dbInvoice.amount || 0),
-        dueDate: ensureISOFormat(dbInvoice.dueDate, 'dueDate') || formatISO(new Date()),
+        dueDate: ensureISOFormat(dbInvoice.dueDate) || formatISO(new Date()),
         status: (dbInvoice.status || 'Pending') as Invoice['status'],
-        createdAt: ensureISOFormat(dbInvoice.createdAt, 'createdAt') || formatISO(new Date()),
+        createdAt: ensureISOFormat(dbInvoice.createdAt) || formatISO(new Date()),
       };
       return NextResponse.json(invoice, { status: 200 });
     } else {
@@ -81,7 +74,7 @@ export async function GET(
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
     console.error(`[API GET /api/invoices/${id}] Failed to fetch invoice:`, error);
-    return NextResponse.json({ message: 'Failed to fetch invoice', error: errorMessage }, { status: 500 });
+    return NextResponse.json({ message: `Failed to fetch invoice: ${errorMessage}` }, { status: 500 });
   }
 }
 
@@ -90,6 +83,10 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   const id = params.id;
+  if (!id) {
+    return NextResponse.json({ message: 'Invoice ID is required for update' }, { status: 400 });
+  }
+  
   try {
     const updatedInvoiceData = await request.json() as Partial<Omit<Invoice, 'id' | 'createdAt'>>;
 
@@ -99,23 +96,24 @@ export async function PUT(
     }
 
     const { clause, values } = buildInvoiceUpdateSetClause(updatedInvoiceData);
-
     if (clause.length === 0) {
        return NextResponse.json({ message: 'No valid fields to update or invalid date format provided.' }, { status: 400 });
     }
     values.push(id); 
     
-    const result: any = await query(`UPDATE invoices SET ${clause} WHERE id = ?`, values);
+    await query(`UPDATE invoices SET ${clause} WHERE id = ?`, values);
     
     const updatedInvoiceFromDbResult: any[] = await query('SELECT * FROM invoices WHERE id = ?', [id]);
     if (updatedInvoiceFromDbResult.length > 0) {
         const dbInv = updatedInvoiceFromDbResult[0];
         const finalUpdatedInvoice: Invoice = {
-            id: String(dbInv.id || ''), leadId: dbInv.leadId || '', clientName: dbInv.clientName || '',
+            id: String(dbInv.id || ''), 
+            leadId: dbInv.leadId || '', 
+            clientName: dbInv.clientName || '',
             amount: parseFloat(dbInv.amount || 0),
-            dueDate: ensureISOFormat(dbInv.dueDate, 'dueDatePUTFetch') || formatISO(new Date()),
+            dueDate: ensureISOFormat(dbInv.dueDate) || formatISO(new Date()),
             status: (dbInv.status || 'Pending') as Invoice['status'],
-            createdAt: ensureISOFormat(dbInv.createdAt, 'createdAtPUTFetch') || formatISO(new Date()),
+            createdAt: ensureISOFormat(dbInv.createdAt) || formatISO(new Date()),
         };
         return NextResponse.json(finalUpdatedInvoice, { status: 200 });
     }
@@ -124,7 +122,7 @@ export async function PUT(
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
     console.error(`[API PUT /api/invoices/${id}] Failed to update invoice:`, error);
-    return NextResponse.json({ message: 'Failed to update invoice', error: errorMessage }, { status: 500 });
+    return NextResponse.json({ message: `Failed to update invoice: ${errorMessage}` }, { status: 500 });
   }
 }
 
@@ -133,6 +131,10 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   const id = params.id;
+  if (!id) {
+    return NextResponse.json({ message: 'Invoice ID is required for deletion' }, { status: 400 });
+  }
+
   try {
     const result: any = await query('DELETE FROM invoices WHERE id = ?', [id]);
     
@@ -144,6 +146,6 @@ export async function DELETE(
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
     console.error(`[API DELETE /api/invoices/${id}] Failed to delete invoice:`, error);
-    return NextResponse.json({ message: 'Failed to delete invoice', error: errorMessage }, { status: 500 });
+    return NextResponse.json({ message: `Failed to delete invoice: ${errorMessage}` }, { status: 500 });
   }
 }

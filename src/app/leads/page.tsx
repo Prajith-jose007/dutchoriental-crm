@@ -6,7 +6,7 @@ import { PageHeader } from '@/components/PageHeader';
 import { LeadsTable, generateLeadColumns, type LeadTableColumn } from './_components/LeadsTable';
 import { ImportExportButtons } from './_components/ImportExportButtons';
 import { LeadFormDialog } from './_components/LeadFormDialog';
-import type { Lead, LeadStatus, User, Agent, Yacht, LeadType, LeadPackageQuantity, PaymentConfirmationStatus, YachtPackageItem, YachtCategory, Invoice } from '@/lib/types';
+import type { Lead, LeadStatus, User, Agent, Yacht, LeadType, LeadPackageQuantity, PaymentConfirmationStatus, YachtPackageItem, YachtCategory, Invoice, ModeOfPayment } from '@/lib/types';
 import { leadStatusOptions, modeOfPaymentOptions, leadTypeOptions, paymentConfirmationStatusOptions } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -49,9 +49,9 @@ const csvHeaderMapping: { [csvHeaderKey: string]: keyof Omit<Lead, 'packageQuant
   'chd_top': 'pkg_child_top_deck', 'child_top_deck': 'pkg_child_top_deck',
   'adt_top': 'pkg_adult_top_deck', 'adult_top_deck': 'pkg_adult_top_deck',
   'ad_alc': 'pkg_adult_alc', 'adult_alc': 'pkg_adult_alc',
-  'vip_ch': 'pkg_vip_child', 'vip_child': 'pkg_vip_child',
-  'vip_ad': 'pkg_vip_adult', 'vip_adult': 'pkg_vip_adult',
-  'vip_alc': 'pkg_vip_alc', 'vip_alc': 'pkg_vip_alc',
+  'vip_ch': 'pkg_vip_child', 
+  'vip_ad': 'pkg_vip_adult', 
+  'vip_alc': 'pkg_vip_alc',
   'ryl_ch': 'pkg_royal_child', 'royal_child': 'pkg_royal_child',
   'ryl_ad': 'pkg_royal_adult', 'royal_adult': 'pkg_royal_adult',
   'ryl_alc': 'pkg_royal_alc', 'royal_alc': 'pkg_royal_alc',
@@ -415,8 +415,7 @@ export default function LeadsPage() {
         finalTransactionId = generateNewLeadTransactionId(allLeads, leadYear);
     }
 
-
-    const payload: Lead & { requestingUserId: string; requestingUserRole: string } = {
+    const payload: Partial<Lead> & { requestingUserId: string; requestingUserRole: string } = {
       ...submittedLeadData,
       transactionId: finalTransactionId,
       lastModifiedByUserId: currentUserId,
@@ -434,18 +433,22 @@ export default function LeadsPage() {
       requestingUserRole: currentUserRole,
       status: submittedLeadData.status,
     };
+    
+    let payloadToSubmit: any = {...payload};
 
     if (isNewLead) {
-      payload.ownerUserId = currentUserId;
-      payload.createdAt = new Date().toISOString();
-      if (payload.id && payload.id.startsWith('temp-')) {
-         delete payload.id;
-      } else if (!payload.id) {
-         delete payload.id;
+      payloadToSubmit.ownerUserId = currentUserId;
+      payloadToSubmit.createdAt = new Date().toISOString();
+      if (payloadToSubmit.id && payloadToSubmit.id.startsWith('temp-')) {
+         const { id, ...rest } = payloadToSubmit;
+         payloadToSubmit = rest;
+      } else if (!payloadToSubmit.id) {
+         const { id, ...rest } = payloadToSubmit;
+         payloadToSubmit = rest;
       }
     } else if (editingLead) {
-      payload.ownerUserId = editingLead.ownerUserId || currentUserId;
-      payload.createdAt = editingLead.createdAt || new Date().toISOString();
+      payloadToSubmit.ownerUserId = editingLead.ownerUserId || currentUserId;
+      payloadToSubmit.createdAt = editingLead.createdAt || new Date().toISOString();
        if (editingLead.status.startsWith('Closed') && !isAdmin) {
         toast({ title: "Action Denied", description: "Closed bookings cannot be modified by non-administrators.", variant: "destructive" });
         setIsLoading(false);
@@ -455,21 +458,21 @@ export default function LeadsPage() {
       }
     }
 
-    console.log("[BookingsPage] Submitting booking payload:", JSON.stringify(payload, null, 2));
+    console.log("[BookingsPage] Submitting booking payload:", JSON.stringify(payloadToSubmit, null, 2));
 
     try {
       let response;
-      if (editingLead && payload.id === editingLead.id) {
+      if (editingLead && payloadToSubmit.id === editingLead.id) {
         response = await fetch(`/api/leads/${editingLead.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
+          body: JSON.stringify(payloadToSubmit),
         });
       } else {
         response = await fetch('/api/leads', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
+          body: JSON.stringify(payloadToSubmit),
         });
       }
 
@@ -480,11 +483,11 @@ export default function LeadsPage() {
           const parsedError = await response.json();
           console.error("[BookingsPage] Parsed API error response from form submit:", parsedError);
           descriptiveMessage = parsedError.message || descriptiveMessage;
-          errorDetailsLog = `Details: ${JSON.stringify(parsedError)}`;
+          errorDetailsLog = (parsedError.errorDetails || parsedError.error) ? JSON.stringify(parsedError.errorDetails || parsedError.error) : '';
         } catch (jsonError) {
           console.warn("[BookingsPage] API error response body was not valid JSON or was empty. Status:", response.status, "StatusText:", response.statusText, "JSON parse error:", jsonError);
         }
-        const finalErrorMessage = descriptiveMessage + (errorDetailsLog ? ` - ${errorDetailsLog}` : '');
+        const finalErrorMessage = descriptiveMessage + (errorDetailsLog ? ` - Details: ${errorDetailsLog}` : '');
         throw new Error(finalErrorMessage);
       }
 
@@ -883,21 +886,22 @@ export default function LeadsPage() {
         if (newLeadsFromCsv.length > 0) {
           for (const leadToImport of newLeadsFromCsv) {
             try {
-              const payload = { ...leadToImport, requestingUserId: currentUserId, requestingUserRole: currentUserRole };
-              if (payload.id.startsWith('imported-booking-')) {
-                delete payload.id;
+              let payloadToSubmit: Partial<Lead> & { requestingUserId: string; requestingUserRole: string | null } = { ...leadToImport, requestingUserId: currentUserId, requestingUserRole: currentUserRole };
+              if (leadToImport.id.startsWith('imported-booking-')) {
+                const { id, ...rest } = payloadToSubmit;
+                payloadToSubmit = rest;
               }
 
               const response = await fetch('/api/leads', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload),
+                body: JSON.stringify(payloadToSubmit),
               });
               if (response.ok) {
                 successCount++;
               } else {
                 const errorData = await response.json().catch(() => ({ message: `API Error: ${response.statusText}` }));
-                console.warn(`[CSV Import Bookings] API Error for booking client ${leadToImport.clientName} (ID: ${leadToImport.id}): ${errorData.message || response.statusText}. Payload:`, payload);
+                console.warn(`[CSV Import Bookings] API Error for booking client ${leadToImport.clientName} (ID: ${leadToImport.id}): ${errorData.message || response.statusText}. Payload:`, payloadToSubmit);
                 skippedCount++;
               }
             } catch (apiError) {
@@ -1350,5 +1354,3 @@ export default function LeadsPage() {
     </div>
   );
 }
-
-    

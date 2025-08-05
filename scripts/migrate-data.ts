@@ -228,7 +228,18 @@ async function createOpportunitiesTable() {
 async function migrateUsers() {
   console.log('Migrating Users...');
   for (const user of placeholderUsers) {
-    const sql = 'INSERT INTO users (id, name, email, designation, avatarUrl, websiteUrl, status, password) VALUES (?, ?, ?, ?, ?, ?, ?, ?)';
+    const sql = `
+      INSERT INTO users (id, name, email, designation, avatarUrl, websiteUrl, status, password) 
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      ON DUPLICATE KEY UPDATE 
+        name = VALUES(name), 
+        email = VALUES(email), 
+        designation = VALUES(designation), 
+        avatarUrl = VALUES(avatarUrl), 
+        websiteUrl = VALUES(websiteUrl), 
+        status = VALUES(status),
+        password = VALUES(password);
+    `;
     try {
       await query(sql, [
         user.id,
@@ -240,14 +251,9 @@ async function migrateUsers() {
         user.status || 'Active',
         user.password || null, 
       ]);
-      console.log(`Inserted user: ${user.name} (ID: ${user.id})`);
+      console.log(`Upserted user: ${user.name} (ID: ${user.id})`);
     } catch (error) {
-      // Check if error is due to duplicate entry (error code ER_DUP_ENTRY for MySQL is 1062)
-      if ((error as any).code === 'ER_DUP_ENTRY' || (error as any).errno === 1062) {
-        console.warn(`User ${user.name} (ID: ${user.id}) already exists. Skipping insertion.`);
-      } else {
-        console.error(`Error inserting user ${user.name} (ID: ${user.id}):`, (error as Error).message);
-      }
+      console.error(`Error upserting user ${user.name} (ID: ${user.id}):`, (error as Error).message);
     }
   }
   console.log('User migration finished.');
@@ -256,7 +262,21 @@ async function migrateUsers() {
 async function migrateAgents() {
   console.log('Migrating Agents...');
   for (const agent of placeholderAgents) {
-    const sql = 'INSERT INTO agents (id, name, agency_code, address, phone_no, email, status, TRN_number, customer_type_id, discount, websiteUrl) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
+    const sql = `
+      INSERT INTO agents (id, name, agency_code, address, phone_no, email, status, TRN_number, customer_type_id, discount, websiteUrl) 
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON DUPLICATE KEY UPDATE
+        name = VALUES(name),
+        agency_code = VALUES(agency_code),
+        address = VALUES(address),
+        phone_no = VALUES(phone_no),
+        email = VALUES(email),
+        status = VALUES(status),
+        TRN_number = VALUES(TRN_number),
+        customer_type_id = VALUES(customer_type_id),
+        discount = VALUES(discount),
+        websiteUrl = VALUES(websiteUrl);
+    `;
     try {
       await query(sql, [
         agent.id,
@@ -271,13 +291,9 @@ async function migrateAgents() {
         agent.discount,
         agent.websiteUrl || null,
       ]);
-      console.log(`Inserted agent: ${agent.name} (ID: ${agent.id})`);
+      console.log(`Upserted agent: ${agent.name} (ID: ${agent.id})`);
     } catch (error) {
-      if ((error as any).code === 'ER_DUP_ENTRY' || (error as any).errno === 1062) {
-        console.warn(`Agent ${agent.name} (ID: ${agent.id}) already exists. Skipping insertion.`);
-      } else {
-        console.error(`Error inserting agent ${agent.name} (ID: ${agent.id}):`, (error as Error).message);
-      }
+      console.error(`Error upserting agent ${agent.name} (ID: ${agent.id}):`, (error as Error).message);
     }
   }
   console.log('Agent migration finished.');
@@ -290,6 +306,14 @@ async function migrateYachts() {
       INSERT INTO ${MYSQL_TABLE_NAMES.yachts} (
         id, name, imageUrl, capacity, status, category, packages_json, customPackageInfo
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      ON DUPLICATE KEY UPDATE
+        name = VALUES(name),
+        imageUrl = VALUES(imageUrl),
+        capacity = VALUES(capacity),
+        status = VALUES(status),
+        category = VALUES(category),
+        packages_json = VALUES(packages_json),
+        customPackageInfo = VALUES(customPackageInfo);
     `; 
     const packagesJson = yacht.packages ? JSON.stringify(yacht.packages) : null;
     try {
@@ -303,13 +327,9 @@ async function migrateYachts() {
         packagesJson,
         yacht.customPackageInfo || null,
       ]);
-      console.log(`Inserted yacht: ${yacht.name} (ID: ${yacht.id})`);
+      console.log(`Upserted yacht: ${yacht.name} (ID: ${yacht.id})`);
     } catch (error) {
-      if ((error as any).code === 'ER_DUP_ENTRY' || (error as any).errno === 1062) {
-        console.warn(`Yacht ${yacht.name} (ID: ${yacht.id}) already exists. Skipping insertion.`);
-      } else {
-        console.error(`Error inserting yacht ${yacht.name} (ID: ${yacht.id}):`, (error as Error).message);
-      }
+      console.error(`Error upserting yacht ${yacht.name} (ID: ${yacht.id}):`, (error as Error).message);
     }
   }
   console.log('Yacht migration finished.');
@@ -327,13 +347,33 @@ async function migrateLeads() {
         totalAmount, commissionPercentage, commissionAmount, netAmount,
         paidAmount, balanceAmount,
         createdAt, updatedAt, lastModifiedByUserId, ownerUserId
-      ) VALUES (
-        ?, ?, ?, ?, ?, ?, ?, ?, 
-        ?, ?,
-        ?, ?, ?, 
-        ?, ?, ?,
-        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
-      )
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON DUPLICATE KEY UPDATE
+        clientName = VALUES(clientName),
+        agent = VALUES(agent),
+        yacht = VALUES(yacht),
+        status = VALUES(status),
+        month = VALUES(month),
+        notes = VALUES(notes),
+        type = VALUES(type),
+        hoursOfBooking = VALUES(hoursOfBooking),
+        catering = VALUES(catering),
+        paymentConfirmationStatus = VALUES(paymentConfirmationStatus),
+        transactionId = VALUES(transactionId),
+        modeOfPayment = VALUES(modeOfPayment),
+        package_quantities_json = VALUES(package_quantities_json),
+        freeGuestCount = VALUES(freeGuestCount),
+        perTicketRate = VALUES(perTicketRate),
+        totalAmount = VALUES(totalAmount),
+        commissionPercentage = VALUES(commissionPercentage),
+        commissionAmount = VALUES(commissionAmount),
+        netAmount = VALUES(netAmount),
+        paidAmount = VALUES(paidAmount),
+        balanceAmount = VALUES(balanceAmount),
+        createdAt = VALUES(createdAt),
+        updatedAt = VALUES(updatedAt),
+        lastModifiedByUserId = VALUES(lastModifiedByUserId),
+        ownerUserId = VALUES(ownerUserId);
     `;
     try {
       let monthDate = formatISO(new Date()); 
@@ -382,13 +422,9 @@ async function migrateLeads() {
         lead.lastModifiedByUserId || null,
         lead.ownerUserId || null,
       ]);
-      console.log(`Inserted booking: ${lead.clientName} (ID: ${lead.id})`);
+      console.log(`Upserted booking: ${lead.clientName} (ID: ${lead.id})`);
     } catch (error) {
-      if ((error as any).code === 'ER_DUP_ENTRY' || (error as any).errno === 1062) {
-        console.warn(`Booking ${lead.clientName} (ID: ${lead.id}) already exists. Skipping insertion.`);
-      } else {
-        console.error(`Error inserting booking ${lead.clientName} (ID: ${lead.id}):`, (error as Error).message);
-      }
+      console.error(`Error upserting booking ${lead.clientName} (ID: ${lead.id}):`, (error as Error).message);
     }
   }
   console.log('Booking migration finished.');
@@ -397,7 +433,17 @@ async function migrateLeads() {
 async function migrateInvoices() {
   console.log('Migrating Invoices...');
   for (const invoice of placeholderInvoices) {
-    const sql = 'INSERT INTO invoices (id, leadId, clientName, amount, dueDate, status, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?)';
+    const sql = `
+      INSERT INTO invoices (id, leadId, clientName, amount, dueDate, status, createdAt) 
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+      ON DUPLICATE KEY UPDATE
+        leadId = VALUES(leadId),
+        clientName = VALUES(clientName),
+        amount = VALUES(amount),
+        dueDate = VALUES(dueDate),
+        status = VALUES(status),
+        createdAt = VALUES(createdAt);
+    `;
     try {
         const dueDateFormatted = invoice.dueDate && isValid(parseISO(invoice.dueDate)) ? format(parseISO(invoice.dueDate), 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd');
         const createdAtFormatted = invoice.createdAt && isValid(parseISO(invoice.createdAt)) ? formatISO(parseISO(invoice.createdAt)) : formatISO(new Date());
@@ -410,13 +456,9 @@ async function migrateInvoices() {
         invoice.status,
         createdAtFormatted,
       ]);
-      console.log(`Inserted invoice: ${invoice.clientName} (ID: ${invoice.id})`);
+      console.log(`Upserted invoice: ${invoice.clientName} (ID: ${invoice.id})`);
     } catch (error) {
-      if ((error as any).code === 'ER_DUP_ENTRY' || (error as any).errno === 1062) {
-        console.warn(`Invoice ${invoice.clientName} (ID: ${invoice.id}) already exists. Skipping insertion.`);
-      } else {
-        console.error(`Error inserting invoice ${invoice.clientName} (ID: ${invoice.id}):`, (error as Error).message);
-      }
+      console.error(`Error upserting invoice ${invoice.clientName} (ID: ${invoice.id}):`, (error as Error).message);
     }
   }
   console.log('Invoice migration finished.');
@@ -431,6 +473,20 @@ async function migrateOpportunities() {
           pipelinePhase, priority, estimatedRevenue, meanExpectedValue, currentStatus, 
           followUpUpdates, createdAt, updatedAt
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON DUPLICATE KEY UPDATE
+          potentialCustomer = VALUES(potentialCustomer),
+          estimatedClosingDate = VALUES(estimatedClosingDate),
+          ownerUserId = VALUES(ownerUserId),
+          yachtId = VALUES(yachtId),
+          productType = VALUES(productType),
+          pipelinePhase = VALUES(pipelinePhase),
+          priority = VALUES(priority),
+          estimatedRevenue = VALUES(estimatedRevenue),
+          meanExpectedValue = VALUES(meanExpectedValue),
+          currentStatus = VALUES(currentStatus),
+          followUpUpdates = VALUES(followUpUpdates),
+          createdAt = VALUES(createdAt),
+          updatedAt = VALUES(updatedAt);
       `;
       try {
         const estimatedClosingDate = opp.estimatedClosingDate && isValid(parseISO(opp.estimatedClosingDate)) ? formatISO(parseISO(opp.estimatedClosingDate)) : formatISO(new Date());
@@ -453,13 +509,9 @@ async function migrateOpportunities() {
           createdAt,
           updatedAt
         ]);
-        console.log(`Inserted opportunity: ${opp.potentialCustomer} (ID: ${opp.id})`);
+        console.log(`Upserted opportunity: ${opp.potentialCustomer} (ID: ${opp.id})`);
       } catch (error) {
-        if ((error as any).code === 'ER_DUP_ENTRY' || (error as any).errno === 1062) {
-          console.warn(`Opportunity ${opp.potentialCustomer} (ID: ${opp.id}) already exists. Skipping insertion.`);
-        } else {
-          console.error(`Error inserting opportunity ${opp.potentialCustomer} (ID: ${opp.id}):`, (error as Error).message);
-        }
+        console.error(`Error upserting opportunity ${opp.potentialCustomer} (ID: ${opp.id}):`, (error as Error).message);
       }
     }
     console.log('Opportunity migration finished.');

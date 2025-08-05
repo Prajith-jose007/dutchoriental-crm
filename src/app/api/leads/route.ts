@@ -148,7 +148,7 @@ export async function POST(request: NextRequest) {
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
-    // Explicitly order the parameters to match the SQL statement. This is the critical fix.
+    // **DEFINITIVE FIX**: Create an ordered array for parameters and ensure JSON is a string.
     const params = [
       leadId!,
       newLeadData.clientName,
@@ -158,7 +158,7 @@ export async function POST(request: NextRequest) {
       formattedMonth,
       newLeadData.notes || null,
       newLeadData.type || 'Private Cruise',
-      newLeadData.hoursOfBooking ?? null,
+      newLeadData.hoursOfBooking !== undefined && newLeadData.hoursOfBooking !== null ? Number(newLeadData.hoursOfBooking) : null,
       newLeadData.catering || null,
       newLeadData.paymentConfirmationStatus || 'UNCONFIRMED',
       finalTransactionId,

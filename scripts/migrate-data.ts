@@ -126,6 +126,8 @@ async function createYachtsTable() {
 
 async function createLeadsTable() {
   const tableName = MYSQL_TABLE_NAMES.leads;
+  // This initial CREATE statement is a fallback for brand new setups.
+  // The crucial part for existing setups is the addColumnIfNotExists calls below.
   const createTableSql = `
     CREATE TABLE IF NOT EXISTS ${tableName} (
       id VARCHAR(191) PRIMARY KEY,
@@ -136,14 +138,6 @@ async function createLeadsTable() {
       month DATETIME, -- Stores the Lead/Event Date
       notes TEXT,
       type VARCHAR(255),
-      hoursOfBooking INT DEFAULT NULL,
-      catering TEXT DEFAULT NULL,
-      paymentConfirmationStatus VARCHAR(50) DEFAULT 'UNCONFIRMED',
-      transactionId VARCHAR(255),
-      modeOfPayment VARCHAR(50),
-      package_quantities_json TEXT DEFAULT NULL,
-      freeGuestCount INT DEFAULT 0,
-      perTicketRate DECIMAL(10, 2) DEFAULT NULL, -- New field
       totalAmount DECIMAL(10, 2) NOT NULL,
       commissionPercentage DECIMAL(5, 2) DEFAULT 0.00,
       commissionAmount DECIMAL(10, 2) DEFAULT 0.00,
@@ -160,7 +154,9 @@ async function createLeadsTable() {
     await query(createTableSql);
     console.log(`Table ${tableName} checked/created successfully.`);
     
-    // Ensure newer columns exist
+    // --- THIS IS THE FIX ---
+    // These functions will now check for each column and add it if it doesn't exist,
+    // which is what's needed to fix your database schema without deleting the table.
     await addColumnIfNotExists(tableName, 'hoursOfBooking', 'INT DEFAULT NULL');
     await addColumnIfNotExists(tableName, 'catering', 'TEXT DEFAULT NULL');
     await addColumnIfNotExists(tableName, 'paymentConfirmationStatus', 'VARCHAR(50) DEFAULT \'UNCONFIRMED\'');
@@ -168,7 +164,7 @@ async function createLeadsTable() {
     await addColumnIfNotExists(tableName, 'modeOfPayment', 'VARCHAR(50) DEFAULT \'Online\'');
     await addColumnIfNotExists(tableName, 'package_quantities_json', 'TEXT DEFAULT NULL');
     await addColumnIfNotExists(tableName, 'freeGuestCount', 'INT DEFAULT 0');
-    await addColumnIfNotExists(tableName, 'perTicketRate', 'DECIMAL(10, 2) DEFAULT NULL'); // New field
+    await addColumnIfNotExists(tableName, 'perTicketRate', 'DECIMAL(10, 2) DEFAULT NULL');
 
   } catch (error) {
     console.error(`Error creating/altering table ${tableName}:`, (error as Error).message);

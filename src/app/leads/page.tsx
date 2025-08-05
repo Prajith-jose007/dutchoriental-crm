@@ -6,7 +6,7 @@ import { PageHeader } from '@/components/PageHeader';
 import { LeadsTable, generateLeadColumns, type LeadTableColumn } from './_components/LeadsTable';
 import { ImportExportButtons } from './_components/ImportExportButtons';
 import { LeadFormDialog } from './_components/LeadFormDialog';
-import type { Lead, LeadStatus, User, Agent, Yacht, LeadType, LeadPackageQuantity, PaymentConfirmationStatus, YachtPackageItem, YachtCategory, Invoice, ModeOfPayment } from '@/lib/types';
+import type { Lead, LeadStatus, User, Agent, Yacht, LeadType, LeadPackageQuantity, PaymentConfirmationStatus, YachtPackageItem, YachtCategory, Invoice } from '@/lib/types';
 import { leadStatusOptions, modeOfPaymentOptions, leadTypeOptions, paymentConfirmationStatusOptions } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -58,7 +58,7 @@ const csvHeaderMapping: { [csvHeaderKey: string]: keyof Omit<Lead, 'packageQuant
   'basic': 'pkg_basic',
   'std': 'pkg_standard', 'standard': 'pkg_standard',
   'prem': 'pkg_premium', 'premium': 'pkg_premium',
-  'vip': 'pkg_vip', // Note: 'vip' is duplicated for different cruise types. Logic will handle based on yacht.
+  'vip': 'pkg_vip',
   'hrchtr': 'pkg_hour_charter', 'hour_charter': 'pkg_hour_charter',
   'package_details_(json)': 'package_quantities_json_string', 'package_details_json': 'package_quantities_json_string',
   'addon_pack': 'perTicketRate', 'addon': 'perTicketRate', 'per_ticket_rate': 'perTicketRate',
@@ -118,8 +118,8 @@ const convertCsvValue = (
       case 'perTicketRate': return null;
       case 'modeOfPayment': return 'CARD';
       case 'status': return 'Balance'; 
-      case 'type': return 'Private Cruise' as LeadType;
-      case 'paymentConfirmationStatus': return 'UNCONFIRMED' as PaymentConfirmationStatus;
+      case 'type': return 'Private Cruise';
+      case 'paymentConfirmationStatus': return 'UNCONFIRMED';
       case 'notes': return '';
       case 'catering': return '';
       case 'hoursOfBooking': return 0;
@@ -800,7 +800,7 @@ export default function LeadsPage() {
             const leadYachtId = parsedRow.yacht || '';
             const yachtForLead = allYachts.find(y => y.id === leadYachtId || y.name.toLowerCase() === String(leadYachtId).toLowerCase());
 
-            if (yachtForLead && yachtForLead.packages) {
+            if (yachtForLead && yachtForLead.packages && Array.isArray(yachtForLead.packages)) {
                 fileHeaders.forEach(csvHeaderKey => {
                     const internalKey = csvHeaderMapping[csvHeaderKey];
                     if (internalKey && internalKey.startsWith('pkg_')) {

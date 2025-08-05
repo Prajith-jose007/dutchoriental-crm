@@ -63,7 +63,8 @@ const csvHeaderMapping: { [csvHeaderKey: string]: keyof Omit<Lead, 'packageQuant
   'package_details_(json)': 'package_quantities_json_string', 'package_details_json': 'package_quantities_json_string',
   'addon_pack': 'perTicketRate', 'addon': 'perTicketRate', 'per_ticket_rate': 'perTicketRate',
   'total_amt': 'totalAmount', 'total_amount': 'totalAmount',
-  'discount_%': 'commissionPercentage', 'discount_rate': 'commissionPercentage', 'discount': 'commissionPercentage',
+  'discount_%': 'commissionPercentage', 'discount_rate': 'commissionPercentage',
+  'discount': 'commissionPercentage', // Added discount as an alternative
   'commission': 'commissionAmount', 'commission_amount': 'commissionAmount',
   'net_amt': 'netAmount', 'net_amount': 'netAmount',
   'paid': 'paidAmount', 'paid_amount': 'paidAmount',
@@ -485,8 +486,7 @@ export default function LeadsPage() {
           const parsedError = await response.json();
           console.error("[BookingsPage] Parsed API error response from form submit:", parsedError);
           descriptiveMessage = parsedError.message || descriptiveMessage;
-          if (parsedError.errorDetails) errorDetailsLog = JSON.stringify(parsedError.errorDetails);
-          else if(parsedError.error) errorDetailsLog = JSON.stringify(parsedError.error);
+          errorDetailsLog = parsedError.errorDetails || parsedError.error || '';
         } catch (jsonError) {
           console.warn("[BookingsPage] API error response body was not valid JSON or was empty. Status:", response.status, "StatusText:", response.statusText, "JSON parse error:", jsonError);
         }

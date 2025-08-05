@@ -94,7 +94,8 @@ function generateNewLeadTransactionId(existingLeads: Lead[], forYear: number, cu
       }
     }
   });
-  return `${prefix}${String(maxNumber + 1).padStart(5, '0')}`;
+  const nextNumber = maxNumber + 1;
+  return `${prefix}${String(nextNumber).padStart(5, '0')}`;
 }
 
 export async function GET(request: NextRequest) {
@@ -134,38 +135,9 @@ export async function POST(request: NextRequest) {
     if (!finalTransactionId || String(finalTransactionId).trim() === "" || finalTransactionId === "Pending Generation") {
       const leadYear = getFullYear(parseISO(formattedMonth));
       const allCurrentLeads: any[] = await query('SELECT transactionId FROM leads WHERE transactionId LIKE ?', [`TRN-${leadYear}-%`]);
-      finalTransactionId = generateNewLeadTransactionId(allCurrentLeads.map(tid => ({transactionId: tid} as Lead)), leadYear);
+      finalTransactionId = generateNewLeadTransactionId(allCurrentLeads.map(tid => ({transactionId: tid.transactionId} as Lead)), leadYear);
     }
-
-    const leadToStore = {
-      id: leadId!,
-      clientName: newLeadData.clientName,
-      agent: newLeadData.agent,
-      yacht: newLeadData.yacht,
-      status: newLeadData.status || 'Balance', 
-      month: formattedMonth,
-      notes: newLeadData.notes || null,
-      type: newLeadData.type || 'Private Cruise',
-      hoursOfBooking: newLeadData.hoursOfBooking ?? null,
-      catering: newLeadData.catering || null,
-      paymentConfirmationStatus: newLeadData.paymentConfirmationStatus || 'UNCONFIRMED',
-      transactionId: finalTransactionId,
-      modeOfPayment: newLeadData.modeOfPayment || 'Online',
-      package_quantities_json: newLeadData.packageQuantities ? JSON.stringify(newLeadData.packageQuantities) : null,
-      freeGuestCount: Number(newLeadData.freeGuestCount || 0),
-      perTicketRate: newLeadData.perTicketRate !== undefined && newLeadData.perTicketRate !== null ? Number(newLeadData.perTicketRate) : null,
-      totalAmount: Number(newLeadData.totalAmount || 0),
-      commissionPercentage: Number(newLeadData.commissionPercentage || 0),
-      commissionAmount: Number(newLeadData.commissionAmount || 0),
-      netAmount: Number(newLeadData.netAmount || 0),
-      paidAmount: Number(newLeadData.paidAmount || 0),
-      balanceAmount: Number(newLeadData.balanceAmount || 0),
-      createdAt: ensureISOFormat(newLeadData.createdAt) || formatISO(now),
-      updatedAt: formatISO(now),
-      lastModifiedByUserId: requestingUserId,
-      ownerUserId: newLeadData.ownerUserId || requestingUserId,
-    };
-
+    
     const sql = `
       INSERT INTO leads (
         id, clientName, agent, yacht, status, month, notes, type, hoursOfBooking, catering, paymentConfirmationStatus, transactionId, modeOfPayment,
@@ -175,11 +147,40 @@ export async function POST(request: NextRequest) {
         createdAt, updatedAt, lastModifiedByUserId, ownerUserId
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
-    const params = Object.values(leadToStore);
+
+    // Explicitly order the parameters to match the SQL statement. This is the critical fix.
+    const params = [
+      leadId!,
+      newLeadData.clientName,
+      newLeadData.agent,
+      newLeadData.yacht,
+      newLeadData.status || 'Balance',
+      formattedMonth,
+      newLeadData.notes || null,
+      newLeadData.type || 'Private Cruise',
+      newLeadData.hoursOfBooking ?? null,
+      newLeadData.catering || null,
+      newLeadData.paymentConfirmationStatus || 'UNCONFIRMED',
+      finalTransactionId,
+      newLeadData.modeOfPayment || 'Online',
+      newLeadData.packageQuantities ? JSON.stringify(newLeadData.packageQuantities) : null,
+      Number(newLeadData.freeGuestCount || 0),
+      newLeadData.perTicketRate !== undefined && newLeadData.perTicketRate !== null ? Number(newLeadData.perTicketRate) : null,
+      Number(newLeadData.totalAmount || 0),
+      Number(newLeadData.commissionPercentage || 0),
+      Number(newLeadData.commissionAmount || 0),
+      Number(newLeadData.netAmount || 0),
+      Number(newLeadData.paidAmount || 0),
+      Number(newLeadData.balanceAmount || 0),
+      ensureISOFormat(newLeadData.createdAt) || formatISO(now),
+      formatISO(now),
+      requestingUserId,
+      newLeadData.ownerUserId || requestingUserId,
+    ];
     
     await query(sql, params);
 
-    const insertedLeadData: any[] = await query('SELECT * FROM leads WHERE id = ?', [leadToStore.id]);
+    const insertedLeadData: any[] = await query('SELECT * FROM leads WHERE id = ?', [leadId]);
     if (insertedLeadData.length > 0) {
       const finalLead = mapDbLeadToLeadObject(insertedLeadData[0]);
       return NextResponse.json(finalLead, { status: 201 });
@@ -258,5 +259,3 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ message: `Failed to bulk update statuses: ${errorMessage}` }, { status: 500 });
   }
 }
-
-    

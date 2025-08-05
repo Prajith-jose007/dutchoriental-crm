@@ -158,6 +158,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
   const watchedAgentId = form.watch('agent');
   const watchedPaidAmount = form.watch('paidAmount');
   const watchedPackageQuantities = form.watch('packageQuantities');
+  const watchedPerTicketRate = form.watch('perTicketRate');
   const watchedStatus = form.watch('status'); 
 
   const isFormDisabled = useMemo(() => {
@@ -265,8 +266,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
     const currentAgentId = watchedAgentId;
     const currentPackageQuantities = watchedPackageQuantities || [];
     const currentPaidAmount = Number(Number(watchedPaidAmount || 0).toFixed(2));
-    const currentPerTicketRate = Number(form.getValues('perTicketRate') || 0);
-
+    
     const selectedYachtForCalc = allYachts.find(y => y.id === currentYachtId);
     const selectedAgentForCalc = allAgents.find(a => a.id === currentAgentId);
     const agentDiscountRate = selectedAgentForCalc ? Number(selectedAgentForCalc.discount || 0) : 0;
@@ -285,8 +285,8 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
         });
     }
 
-    if (currentPerTicketRate > 0) {
-        calculatedTotalAmount += currentPerTicketRate;
+    if (watchedPerTicketRate && watchedPerTicketRate > 0) {
+        calculatedTotalAmount += watchedPerTicketRate;
     }
     calculatedTotalAmount = Number(calculatedTotalAmount.toFixed(2));
 
@@ -309,10 +309,10 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
     watchedYachtId,
     watchedAgentId,
     watchedPaidAmount,
+    watchedPerTicketRate, // Added missing dependency
     allYachts,
     allAgents,
     form,
-    setCalculatedTotalGuests
   ]);
 
 
@@ -939,4 +939,3 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
   );
 }
 
-    

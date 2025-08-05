@@ -159,9 +159,9 @@ async function createLeadsTable() {
     // which is what's needed to fix your database schema without deleting the table.
     await addColumnIfNotExists(tableName, 'hoursOfBooking', 'INT DEFAULT NULL');
     await addColumnIfNotExists(tableName, 'catering', 'TEXT DEFAULT NULL');
-    await addColumnIfNotExists(tableName, 'paymentConfirmationStatus', 'VARCHAR(50) DEFAULT \'UNCONFIRMED\'');
+    await addColumnIfNotExists(tableName, 'paymentConfirmationStatus', "VARCHAR(50) DEFAULT 'UNCONFIRMED'");
     await addColumnIfNotExists(tableName, 'transactionId', 'VARCHAR(255) DEFAULT NULL');
-    await addColumnIfNotExists(tableName, 'modeOfPayment', 'VARCHAR(50) DEFAULT \'Online\'');
+    await addColumnIfNotExists(tableName, 'modeOfPayment', "VARCHAR(50) DEFAULT 'Online'");
     await addColumnIfNotExists(tableName, 'package_quantities_json', 'TEXT DEFAULT NULL');
     await addColumnIfNotExists(tableName, 'freeGuestCount', 'INT DEFAULT 0');
     await addColumnIfNotExists(tableName, 'perTicketRate', 'DECIMAL(10, 2) DEFAULT NULL');

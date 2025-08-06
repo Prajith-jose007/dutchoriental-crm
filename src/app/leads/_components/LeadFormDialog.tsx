@@ -309,7 +309,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
     watchedYachtId,
     watchedAgentId,
     watchedPaidAmount,
-    watchedPerTicketRate, // Added missing dependency
+    watchedPerTicketRate,
     allYachts,
     allAgents,
     form,
@@ -938,4 +938,3 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
     </Dialog>
   );
 }
-

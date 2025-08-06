@@ -7,7 +7,7 @@ import { LeadsTable, generateLeadColumns, type LeadTableColumn } from './_compon
 import { ImportExportButtons } from './_components/ImportExportButtons';
 import { LeadFormDialog } from './_components/LeadFormDialog';
 import type { Lead, LeadStatus, User, Agent, Yacht, LeadType, LeadPackageQuantity, PaymentConfirmationStatus, YachtPackageItem, YachtCategory, Invoice } from '@/lib/types';
-import { leadStatusOptions, modeOfPaymentOptions, leadTypeOptions, paymentConfirmationStatusOptions } from '@/lib/types';
+import { leadStatusOptions, modeOfPaymentOptions, leadTypeOptions, paymentConfirmationStatusOptions, type ModeOfPayment } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
@@ -64,7 +64,7 @@ const csvHeaderMapping: { [csvHeaderKey: string]: keyof Omit<Lead, 'packageQuant
   'addon_pack': 'perTicketRate', 'addon': 'perTicketRate', 'per_ticket_rate': 'perTicketRate',
   'total_amt': 'totalAmount', 'total_amount': 'totalAmount',
   'discount_%': 'commissionPercentage', 'discount_rate': 'commissionPercentage',
-  'discount': 'commissionPercentage', // Added discount as an alternative
+  'discount': 'commissionPercentage', 
   'commission': 'commissionAmount', 'commission_amount': 'commissionAmount',
   'net_amt': 'netAmount', 'net_amount': 'netAmount',
   'paid': 'paidAmount', 'paid_amount': 'paidAmount',
@@ -486,7 +486,7 @@ export default function LeadsPage() {
           const parsedError = await response.json();
           console.error("[BookingsPage] Parsed API error response from form submit:", parsedError);
           descriptiveMessage = parsedError.message || descriptiveMessage;
-          errorDetailsLog = parsedError.errorDetails || parsedError.error || '';
+          errorDetailsLog = JSON.stringify(parsedError.error) || '';
         } catch (jsonError) {
           console.warn("[BookingsPage] API error response body was not valid JSON or was empty. Status:", response.status, "StatusText:", response.statusText, "JSON parse error:", jsonError);
         }
@@ -891,11 +891,11 @@ export default function LeadsPage() {
           for (const leadToImport of newLeadsFromCsv) {
             try {
               let payloadToSubmit: Partial<Lead> & { requestingUserId: string; requestingUserRole: string | null };
+              const { id, ...rest } = leadToImport;
               if (leadToImport.id.startsWith('imported-booking-')) {
-                const { id, ...rest } = leadToImport;
                 payloadToSubmit = { ...rest, requestingUserId: currentUserId, requestingUserRole: currentUserRole };
               } else {
-                payloadToSubmit = { ...leadToImport, requestingUserId: currentUserId, requestingUserRole: currentUserRole };
+                payloadToSubmit = { id, ...rest, requestingUserId: currentUserId, requestingUserRole: currentUserRole };
               }
               
               const response = await fetch('/api/leads', {

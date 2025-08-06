@@ -106,7 +106,7 @@ export async function GET(request: NextRequest) {
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : String(err);
     console.error('[API GET /api/leads] Error:', errorMessage);
-    return NextResponse.json({ message: `Failed to fetch bookings: ${errorMessage}` }, { status: 500 });
+    return NextResponse.json({ message: `Failed to fetch bookings: ${errorMessage}`, error: err }, { status: 500 });
   }
 }
 
@@ -148,7 +148,6 @@ export async function POST(request: NextRequest) {
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
-    // **DEFINITIVE FIX**: Create an ordered array for parameters and ensure JSON is a string.
     const params = [
       leadId!,
       newLeadData.clientName,
@@ -191,7 +190,7 @@ export async function POST(request: NextRequest) {
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : String(err);
     console.error('[API POST /api/leads] Error in POST handler:', errorMessage, (err as Error).stack);
-    return NextResponse.json({ message: `Failed to create booking: ${errorMessage}` }, { status: 500 });
+    return NextResponse.json({ message: `Failed to create booking: ${errorMessage}`, error: err }, { status: 500 });
   }
 }
 
@@ -256,6 +255,6 @@ export async function PATCH(request: NextRequest) {
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     console.error('[API PATCH /api/leads] Failed to bulk update statuses:', errorMessage);
-    return NextResponse.json({ message: `Failed to bulk update statuses: ${errorMessage}` }, { status: 500 });
+    return NextResponse.json({ message: `Failed to bulk update statuses: ${errorMessage}`, error: error }, { status: 500 });
   }
 }

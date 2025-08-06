@@ -119,7 +119,7 @@ export async function GET(
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : String(err);
     console.error(`[API GET /api/leads/${id}] Error:`, errorMessage);
-    return NextResponse.json({ message: `Failed to fetch booking: ${errorMessage}` }, { status: 500 });
+    return NextResponse.json({ message: `Failed to fetch booking: ${errorMessage}`, error: err }, { status: 500 });
   }
 }
 
@@ -182,7 +182,7 @@ export async function PUT(
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : String(err);
     console.error(`[API PUT /api/leads/${id}] Error:`, errorMessage, (err as Error).stack);
-    return NextResponse.json({ message: `Failed to update booking: ${errorMessage}` }, { status: 500 });
+    return NextResponse.json({ message: `Failed to update booking: ${errorMessage}`, error: err }, { status: 500 });
   }
 }
 
@@ -225,8 +225,6 @@ export async function DELETE(
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : String(err);
     console.error(`[API DELETE /api/leads/${id}] Error:`, errorMessage);
-    return NextResponse.json({ message: `Failed to delete booking: ${errorMessage}` }, { status: 500 });
+    return NextResponse.json({ message: `Failed to delete booking: ${errorMessage}`, error: err }, { status: 500 });
   }
 }
-
-    

@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { PageHeader } from '@/components/PageHeader';
 import { RevenueSummary } from './_components/RevenueSummary';
@@ -13,15 +13,16 @@ import { BookingsByAgentBarChart } from './_components/BookingsByAgentBarChart';
 import { BookedAgentsList } from './_components/BookedAgentsList';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { Lead, Invoice, Yacht, Agent, User } from '@/lib/types';
+import { Separator } from '@/components/ui/separator';
 
 const USER_ROLE_STORAGE_KEY = 'currentUserRole';
 
 export default function DashboardPage() {
   const router = useRouter();
-  const [leads, setLeads] = useState<Lead[]>([]);
-  const [invoices, setInvoices] = useState<Invoice[]>([]);
-  const [yachts, setYachts] = useState<Yacht[]>([]);
-  const [agents, setAgents] = useState<Agent[]>([]);
+  const [allLeads, setAllLeads] = useState<Lead[]>([]);
+  const [allInvoices, setAllInvoices] = useState<Invoice[]>([]);
+  const [allYachts, setAllYachts] = useState<Yacht[]>([]);
+  const [allAgents, setAllAgents] = useState<Agent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
@@ -66,26 +67,39 @@ export default function DashboardPage() {
         const yachtsData = await yachtsRes.json();
         const agentsData = await agentsRes.json();
         
-        setLeads(Array.isArray(leadsData) ? leadsData : []);
-        setInvoices(Array.isArray(invoicesData) ? invoicesData : []);
-        setYachts(Array.isArray(yachtsData) ? yachtsData : []);
-        setAgents(Array.isArray(agentsData) ? agentsData : []);
+        setAllLeads(Array.isArray(leadsData) ? leadsData : []);
+        setAllInvoices(Array.isArray(invoicesData) ? invoicesData : []);
+        setAllYachts(Array.isArray(yachtsData) ? yachtsData : []);
+        setAllAgents(Array.isArray(agentsData) ? agentsData : []);
 
       } catch (err) {
         console.error("Error fetching dashboard data:", err);
         setError((err as Error).message);
-        setLeads([]);
-        setInvoices([]);
-        setYachts([]);
-        setAgents([]);
+        setAllLeads([]);
+        setAllInvoices([]);
+        setAllYachts([]);
+        setAllAgents([]);
       } finally {
         setIsLoading(false);
       }
     };
     fetchData();
-  }, [isAuthLoading]); // Re-run fetch when authentication status is resolved
+  }, [isAuthLoading]);
+
+  const { privateLeads, sharedLeads, privateInvoices, sharedInvoices } = useMemo(() => {
+    const privateLeads = allLeads.filter(lead => lead.type === 'Private Cruise');
+    const sharedLeads = allLeads.filter(lead => lead.type !== 'Private Cruise');
+    
+    const privateLeadIds = new Set(privateLeads.map(l => l.id));
+    const sharedLeadIds = new Set(sharedLeads.map(l => l.id));
+
+    const privateInvoices = allInvoices.filter(inv => privateLeadIds.has(inv.leadId));
+    const sharedInvoices = allInvoices.filter(inv => sharedLeadIds.has(inv.leadId));
+
+    return { privateLeads, sharedLeads, privateInvoices, sharedInvoices };
+  }, [allLeads, allInvoices]);
   
-  if (isAuthLoading || (isLoading && leads.length === 0)) {
+  if (isAuthLoading || (isLoading && allLeads.length === 0)) {
     return (
       <div className="container mx-auto py-2">
         <PageHeader title="Dashboard" description="Loading data..." />
@@ -120,32 +134,46 @@ export default function DashboardPage() {
 
   return (
     <div className="container mx-auto py-2">
-      <PageHeader title="Dashboard" description="An overview of your CRM's performance." />
+      <PageHeader title="Overall Dashboard" description="A high-level overview of your CRM's performance across all booking types." />
       
-      <div className="grid gap-6">
-        <RevenueSummary leads={leads} isLoading={isLoading} error={error} />
-        <BookingReportChart leads={leads} isLoading={isLoading} error={error} />
-        
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-7">
-          <div className="lg:col-span-4">
-            <LatestInvoicesTable invoices={invoices} isLoading={isLoading} error={error}/>
-          </div>
-          <div className="lg:col-span-3">
-             <InvoiceStatusPieChart invoices={invoices} isLoading={isLoading} error={error}/>
-          </div>
+      <div className="space-y-8">
+        {/* Private Cruise Section */}
+        <div>
+            <h2 className="text-2xl font-bold tracking-tight text-foreground mb-4">Private Cruise Dashboard</h2>
+            <div className="grid gap-6">
+                <RevenueSummary leads={privateLeads} isLoading={isLoading} error={error} />
+                <BookingReportChart leads={privateLeads} isLoading={isLoading} error={error} />
+                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-7">
+                  <div className="lg:col-span-4"><LatestInvoicesTable invoices={privateInvoices} isLoading={isLoading} error={error}/></div>
+                  <div className="lg:col-span-3"><InvoiceStatusPieChart invoices={privateInvoices} isLoading={isLoading} error={error}/></div>
+                </div>
+                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-7">
+                   <div className="lg:col-span-4"><BookingsByAgentBarChart leads={privateLeads} allAgents={allAgents} isLoading={isLoading} error={error} /></div>
+                   <div className="lg:col-span-3"><SalesByYachtPieChart leads={privateLeads} allYachts={allYachts} isLoading={isLoading} error={error} /></div>
+                </div>
+                <BookedAgentsList leads={privateLeads} allAgents={allAgents} isLoading={isLoading} error={error}/>
+            </div>
         </div>
 
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-7">
-           <div className="lg:col-span-4">
-            <BookingsByAgentBarChart leads={leads} allAgents={agents} isLoading={isLoading} error={error} />
-          </div>
-          <div className="lg:col-span-3">
-            <SalesByYachtPieChart leads={leads} allYachts={yachts} isLoading={isLoading} error={error} />
-          </div>
-        </div>
-        
-        <BookedAgentsList leads={leads} allAgents={agents} isLoading={isLoading} error={error}/>
+        <Separator className="my-8" />
 
+        {/* Shared Cruise Section */}
+        <div>
+            <h2 className="text-2xl font-bold tracking-tight text-foreground mb-4">Shared Cruise Dashboard</h2>
+             <div className="grid gap-6">
+                <RevenueSummary leads={sharedLeads} isLoading={isLoading} error={error} />
+                <BookingReportChart leads={sharedLeads} isLoading={isLoading} error={error} />
+                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-7">
+                  <div className="lg:col-span-4"><LatestInvoicesTable invoices={sharedInvoices} isLoading={isLoading} error={error}/></div>
+                  <div className="lg:col-span-3"><InvoiceStatusPieChart invoices={sharedInvoices} isLoading={isLoading} error={error}/></div>
+                </div>
+                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-7">
+                   <div className="lg:col-span-4"><BookingsByAgentBarChart leads={sharedLeads} allAgents={allAgents} isLoading={isLoading} error={error} /></div>
+                   <div className="lg:col-span-3"><SalesByYachtPieChart leads={sharedLeads} allYachts={allYachts} isLoading={isLoading} error={error} /></div>
+                </div>
+                <BookedAgentsList leads={sharedLeads} allAgents={allAgents} isLoading={isLoading} error={error}/>
+            </div>
+        </div>
       </div>
     </div>
   );

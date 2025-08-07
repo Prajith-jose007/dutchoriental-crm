@@ -100,6 +100,7 @@ export default function CrmDashboardPage() {
         const yachtsData = await yachtsRes.json();
         const agentsData = await agentsRes.json();
         
+        // This dashboard is specifically for Private Cruises.
         const privateLeads = (Array.isArray(leadsData) ? leadsData : []).filter(
           (lead) => lead.type === 'Private Cruise'
         );

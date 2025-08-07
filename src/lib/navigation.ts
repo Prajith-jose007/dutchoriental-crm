@@ -66,6 +66,18 @@ export const mainNavItems: NavItem[] = [
     title: 'Reports',
     href: '/reports',
     icon: BarChart3,
+    items: [
+      {
+        title: 'CRM Report',
+        href: '/reports',
+        icon: BarChart3,
+      },
+      {
+        title: 'Shared Report',
+        href: '/reports/shared',
+        icon: BarChart3,
+      },
+    ]
   },
   {
     title: 'Settings',

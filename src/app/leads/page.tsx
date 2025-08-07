@@ -39,7 +39,6 @@ const csvHeaderMapping: { [csvHeaderKey: string]: keyof Omit<Lead, 'packageQuant
   'client': 'clientName', 'client_name': 'clientName',
   'payment_status': 'paymentConfirmationStatus', 'pay_status': 'paymentConfirmationStatus', 'payment_confirmation_status': 'paymentConfirmationStatus',
   'type': 'type', 'lead_type': 'type',
-  'catering': 'catering', 'catering_details': 'catering',
   'transaction_id': 'transactionId', 'transaction id': 'transactionId',
   'payment_mode': 'modeOfPayment', 'mode_of_payment': 'modeOfPayment',
   'free': 'freeGuestCount', 'free_guests': 'freeGuestCount',
@@ -121,7 +120,6 @@ const convertCsvValue = (
       case 'type': return 'Private Cruise';
       case 'paymentConfirmationStatus': return 'UNCONFIRMED';
       case 'notes': return '';
-      case 'catering': return '';
       case 'month': return formatISO(new Date());
       case 'createdAt': case 'updatedAt': return formatISO(new Date());
       case 'lastModifiedByUserId': return currentUserId || undefined;
@@ -842,7 +840,6 @@ export default function LeadsPage() {
             month: parsedRow.month || formatISO(new Date()),
             notes: parsedRow.notes || '', 
             type: parsedRow.type || 'Private Cruise',
-            catering: parsedRow.catering || undefined,
             paymentConfirmationStatus: parsedRow.paymentConfirmationStatus || 'UNCONFIRMED',
             transactionId: transactionIdForRow,
             modeOfPayment: parsedRow.modeOfPayment || 'CARD',

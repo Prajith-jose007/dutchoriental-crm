@@ -6,7 +6,6 @@ import { useRouter } from 'next/navigation';
 import { PageHeader } from '@/components/PageHeader';
 import { RevenueSummary } from './_components/RevenueSummary';
 import { BookingReportChart } from './_components/BookingReportChart';
-import { LatestInvoicesTable } from './_components/LatestInvoicesTable';
 import { InvoiceStatusPieChart } from './_components/InvoiceStatusPieChart';
 import { SalesByYachtPieChart } from './_components/SalesByYachtPieChart';
 import { BookingsByAgentBarChart } from './_components/BookingsByAgentBarChart';
@@ -143,9 +142,8 @@ export default function DashboardPage() {
             <div className="grid gap-6">
                 <RevenueSummary leads={privateLeads} isLoading={isLoading} error={error} />
                 <BookingReportChart leads={privateLeads} isLoading={isLoading} error={error} />
-                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-7">
-                  <div className="lg:col-span-4"><LatestInvoicesTable invoices={privateInvoices} isLoading={isLoading} error={error}/></div>
-                  <div className="lg:col-span-3"><InvoiceStatusPieChart invoices={privateInvoices} isLoading={isLoading} error={error}/></div>
+                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-1">
+                   <InvoiceStatusPieChart invoices={privateInvoices} isLoading={isLoading} error={error}/>
                 </div>
                 <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-7">
                    <div className="lg:col-span-4"><BookingsByAgentBarChart leads={privateLeads} allAgents={allAgents} isLoading={isLoading} error={error} /></div>
@@ -163,9 +161,8 @@ export default function DashboardPage() {
              <div className="grid gap-6">
                 <RevenueSummary leads={sharedLeads} isLoading={isLoading} error={error} />
                 <BookingReportChart leads={sharedLeads} isLoading={isLoading} error={error} />
-                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-7">
-                  <div className="lg:col-span-4"><LatestInvoicesTable invoices={sharedInvoices} isLoading={isLoading} error={error}/></div>
-                  <div className="lg:col-span-3"><InvoiceStatusPieChart invoices={sharedInvoices} isLoading={isLoading} error={error}/></div>
+                 <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-1">
+                   <InvoiceStatusPieChart invoices={sharedInvoices} isLoading={isLoading} error={error}/>
                 </div>
                 <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-7">
                    <div className="lg:col-span-4"><BookingsByAgentBarChart leads={sharedLeads} allAgents={allAgents} isLoading={isLoading} error={error} /></div>

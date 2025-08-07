@@ -37,7 +37,7 @@ export default function ReportsPage() {
   const [selectedAgentId, setSelectedAgentId] = useState<string>('all');
   const [selectedUserId, setSelectedUserId] = useState<string>('all');
   const [selectedStatusFilter, setSelectedStatusFilter] = useState<LeadStatus | 'all'>('all');
-  const [selectedLeadTypeFilter, setSelectedLeadTypeFilter] = useState<LeadType | 'all'>('all');
+  const [selectedLeadTypeFilter, setSelectedLeadTypeFilter] = useState<LeadType | 'all'>('Private Cruise');
 
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 5 }, (_, i) => currentYear - i);
@@ -74,8 +74,12 @@ export default function ReportsPage() {
         const yachtsData = await yachtsRes.json();
         const agentsData = await agentsRes.json();
         const usersData: User[] = await usersRes.json();
+        
+        const privateLeads = (Array.isArray(leadsData) ? leadsData : []).filter(
+          (lead) => lead.type === 'Private Cruise'
+        );
 
-        setAllLeads(Array.isArray(leadsData) ? leadsData : []);
+        setAllLeads(privateLeads);
         setAllInvoices(Array.isArray(invoicesData) ? invoicesData : []);
         setAllYachts(Array.isArray(yachtsData) ? yachtsData : []);
         setAllAgents(Array.isArray(agentsData) ? agentsData : []);
@@ -188,7 +192,7 @@ export default function ReportsPage() {
     setSelectedAgentId('all');
     setSelectedUserId('all');
     setSelectedStatusFilter('all');
-    setSelectedLeadTypeFilter('all');
+    setSelectedLeadTypeFilter('Private Cruise'); // Reset to default private cruise
   };
 
   if (isLoading) {
@@ -198,8 +202,8 @@ export default function ReportsPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 mb-6 p-4 border rounded-lg shadow-sm">
           {[...Array(9)].map((_,i) => <Skeleton key={i} className="h-10 w-full" />)}
         </div>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 mb-6">
-           {[...Array(6)].map((_,i) => <Skeleton key={`stat-${i}`} className="h-24 w-full" />)}
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 mb-6">
+           {[...Array(5)].map((_,i) => <Skeleton key={`stat-${i}`} className="h-24 w-full" />)}
         </div>
         <div className="grid gap-6">
           <Skeleton className="h-[350px] w-full" />
@@ -227,7 +231,7 @@ export default function ReportsPage() {
     <div className="container mx-auto py-2">
       <PageHeader
         title="CRM Reports"
-        description="Filter and view key metrics for your bookings and invoices."
+        description="Filter and view key metrics for your private cruise bookings and invoices."
       />
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 mb-6 p-4 border rounded-lg shadow-sm">
@@ -275,7 +279,7 @@ export default function ReportsPage() {
         </div>
          <div>
           <Label htmlFor="lead-type-filter-report">Booking Type</Label>
-          <Select value={selectedLeadTypeFilter} onValueChange={(value) => setSelectedLeadTypeFilter(value as LeadType | 'all')}>
+          <Select value={selectedLeadTypeFilter} onValueChange={(value) => setSelectedLeadTypeFilter(value as LeadType | 'all')} disabled>
             <SelectTrigger id="lead-type-filter-report" className="w-full">
               <SelectValue placeholder="All Booking Types" />
             </SelectTrigger>
@@ -293,7 +297,7 @@ export default function ReportsPage() {
             <SelectTrigger id="yacht-filter-report"><SelectValue placeholder="All Yachts" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Yachts</SelectItem>
-              {allYachts.map(yacht => <SelectItem key={yacht.id} value={yacht.id}>{yacht.name}</SelectItem>)}
+              {allYachts.filter(y => y.category === 'Private Cruise').map(yacht => <SelectItem key={yacht.id} value={yacht.id}>{yacht.name}</SelectItem>)}
             </SelectContent>
           </Select>
         </div>

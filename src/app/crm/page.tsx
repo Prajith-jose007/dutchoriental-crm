@@ -100,7 +100,11 @@ export default function CrmDashboardPage() {
         const yachtsData = await yachtsRes.json();
         const agentsData = await agentsRes.json();
         
-        setLeads(Array.isArray(leadsData) ? leadsData : []);
+        const privateLeads = (Array.isArray(leadsData) ? leadsData : []).filter(
+          (lead) => lead.type === 'Private Cruise'
+        );
+
+        setLeads(privateLeads);
         setYachts(Array.isArray(yachtsData) ? yachtsData : []);
         setAgents(Array.isArray(agentsData) ? agentsData : []);
 
@@ -178,7 +182,7 @@ export default function CrmDashboardPage() {
 
   return (
     <div className="container mx-auto py-2">
-      <PageHeader title="CRM Dashboard" description="A focused overview of your sales and leads performance." />
+      <PageHeader title="CRM Dashboard" description="A focused overview of your private cruise sales and leads performance." />
       
       <div className="grid gap-6">
         {/* --- CRM Metrics Buckets --- */}

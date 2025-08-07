@@ -55,7 +55,7 @@ const leadFormSchema = z.object({
   agent: z.string().min(1, 'Agent is required'),
   status: z.enum(leadStatusOptions),
   month: z.date({ required_error: "Booking/Event Date is required." }),
-  notes: z.string().optional(), // Corrected: Notes are optional
+  notes: z.string().optional(),
   yacht: z.string().min(1, 'Yacht selection is required'),
   type: z.enum(leadTypeOptions, { required_error: "Booking type is required."}),
   paymentConfirmationStatus: z.enum(paymentConfirmationStatusOptions, { required_error: "Payment confirmation status is required."}),
@@ -258,10 +258,11 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
 
 
   useEffect(() => {
-    const currentYachtId = watchedYachtId;
-    const currentAgentId = watchedAgentId;
-    const currentPackageQuantities = watchedPackageQuantities || [];
-    const currentPaidAmount = Number(Number(watchedPaidAmount || 0).toFixed(2));
+    const currentYachtId = form.watch('yacht');
+    const currentAgentId = form.watch('agent');
+    const currentPackageQuantities = form.watch('packageQuantities') || [];
+    const currentPaidAmount = form.watch('paidAmount');
+    const currentPerTicketRate = form.watch('perTicketRate');
     
     const selectedYachtForCalc = allYachts.find(y => y.id === currentYachtId);
     const selectedAgentForCalc = allAgents.find(a => a.id === currentAgentId);
@@ -281,8 +282,8 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
         });
     }
 
-    if (watchedPerTicketRate && watchedPerTicketRate > 0) {
-        calculatedTotalAmount += watchedPerTicketRate;
+    if (currentPerTicketRate && Number(currentPerTicketRate) > 0) {
+        calculatedTotalAmount += Number(currentPerTicketRate);
     }
     calculatedTotalAmount = Number(calculatedTotalAmount.toFixed(2));
 
@@ -297,7 +298,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
     const calculatedNetAmount = Number((calculatedTotalAmount - calculatedCommissionAmount).toFixed(2));
     form.setValue('netAmount', calculatedNetAmount);
 
-    const actualSignedBalanceAmount = Number((calculatedNetAmount - currentPaidAmount).toFixed(2));
+    const actualSignedBalanceAmount = Number((calculatedNetAmount - (currentPaidAmount || 0)).toFixed(2));
     form.setValue('balanceAmount', actualSignedBalanceAmount);
 
   }, [
@@ -710,7 +711,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
                             <FormItem>
                               <FormLabel>Quantity</FormLabel>
                               <FormControl>
-                                <Input type="number" min="0" placeholder="0" {...field} onChange={e => field.onChange(parseInt(e.target.value, 10) || 0)} />
+                                <Input type="number" min="0" placeholder="0" {...field} value={field.value ?? 0} onChange={e => field.onChange(parseInt(e.target.value, 10) || 0)} />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -729,6 +730,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
                                   min="0" 
                                   step="0.01" 
                                   {...rateField} 
+                                  value={rateField.value ?? 0}
                                   onChange={e => rateField.onChange(parseFloat(e.target.value) || 0)}
                                   onBlur={e => { // Optionally round on blur
                                     const val = parseFloat(e.target.value);
@@ -843,7 +845,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
                           min="0"
                           placeholder="0.00"
                           {...field}
-                          value={field.value ?? ''} 
+                          value={field.value ?? 0}
                           onChange={(e) => field.onChange(e.target.value === '' ? 0 : parseFloat(e.target.value))}
                         />
                       </FormControl>

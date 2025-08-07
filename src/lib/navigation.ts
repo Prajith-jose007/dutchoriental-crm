@@ -68,12 +68,12 @@ export const mainNavItems: NavItem[] = [
     icon: BarChart3,
     items: [
       {
-        title: 'CRM Report',
+        title: 'Private cruise',
         href: '/reports',
         icon: BarChart3,
       },
       {
-        title: 'Shared Report',
+        title: 'Shared cruise',
         href: '/reports/shared',
         icon: BarChart3,
       },

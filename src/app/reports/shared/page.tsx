@@ -200,7 +200,7 @@ export default function SharedReportsPage() {
   if (isLoading) {
     return (
       <div className="container mx-auto py-2">
-        <PageHeader title="Shared Cruise Reports" description="Loading report data..." />
+        <PageHeader title="Shared cruise Reports" description="Loading report data..." />
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 mb-6 p-4 border rounded-lg shadow-sm">
           {[...Array(9)].map((_,i) => <Skeleton key={i} className="h-10 w-full" />)}
         </div>
@@ -223,7 +223,7 @@ export default function SharedReportsPage() {
   if (error) {
     return (
       <div className="container mx-auto py-2">
-        <PageHeader title="Shared Cruise Reports" description="Error loading data." />
+        <PageHeader title="Shared cruise Reports" description="Error loading data." />
         <p className="text-destructive text-center py-10">Failed to load report data: {error}</p>
       </div>
     );
@@ -232,7 +232,7 @@ export default function SharedReportsPage() {
   return (
     <div className="container mx-auto py-2">
       <PageHeader
-        title="Shared Cruise Reports"
+        title="Shared cruise Reports"
         description="Filter and view key metrics for your shared cruise bookings and invoices."
       />
 

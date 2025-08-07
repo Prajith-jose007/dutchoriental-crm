@@ -6,6 +6,7 @@ import { query } from '@/lib/db';
 
 export async function GET(request: NextRequest) {
   try {
+    // Select all fields except password for security and to match the client-side type.
     const usersDataDb: any[] = await query('SELECT id, name, email, designation, avatarUrl, websiteUrl, status FROM users ORDER BY name ASC');
     
     const users: User[] = usersDataDb.map((dbUser: any) => ({
@@ -16,6 +17,7 @@ export async function GET(request: NextRequest) {
       avatarUrl: dbUser.avatarUrl || undefined,
       websiteUrl: dbUser.websiteUrl || undefined, 
       status: dbUser.status || 'Active',
+      // DO NOT include password in the response to the client
     }));
     
     return NextResponse.json(users, { status: 200 });

@@ -5,13 +5,14 @@ import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { PageHeader } from '@/components/PageHeader';
 import { Skeleton } from '@/components/ui/skeleton';
-import type { Lead, Invoice, Yacht, Agent, User } from '@/lib/types';
+import type { Lead, Invoice, Yacht, Agent, User, Opportunity } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { DollarSign, Target, TrendingUp, PieChart, CheckCircle, Activity } from 'lucide-react';
 import { MonthlyRevenueChart } from '@/app/dashboard/_components/MonthlyRevenueChart';
 import { SalesByYachtPieChart } from '@/app/dashboard/_components/SalesByYachtPieChart';
 import { BookingsByAgentBarChart } from '@/app/dashboard/_components/BookingsByAgentBarChart';
+import { OpportunityFunnelChart } from './_components/OpportunityFunnelChart';
 import { format, startOfMonth, endOfMonth, isWithinInterval, parseISO, isValid } from 'date-fns';
 
 
@@ -56,6 +57,7 @@ export default function CrmDashboardPage() {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [yachts, setYachts] = useState<Yacht[]>([]);
   const [agents, setAgents] = useState<Agent[]>([]);
+  const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
@@ -86,28 +88,35 @@ export default function CrmDashboardPage() {
       setIsLoading(true);
       setError(null);
       try {
-        const [leadsRes, yachtsRes, agentsRes] = await Promise.all([
+        const [leadsRes, yachtsRes, agentsRes, oppsRes] = await Promise.all([
           fetch('/api/leads'),
           fetch('/api/yachts'),
           fetch('/api/agents'),
+          fetch('/api/opportunities'),
         ]);
 
         if (!leadsRes.ok) throw new Error('Failed to fetch leads');
         if (!yachtsRes.ok) throw new Error('Failed to fetch yachts');
         if (!agentsRes.ok) throw new Error('Failed to fetch agents');
+        if (!oppsRes.ok) throw new Error('Failed to fetch opportunities');
         
         const leadsData = await leadsRes.json();
         const yachtsData = await yachtsRes.json();
         const agentsData = await agentsRes.json();
+        const oppsData = await oppsRes.json();
         
         // This dashboard is specifically for Private Cruises.
         const privateLeads = (Array.isArray(leadsData) ? leadsData : []).filter(
           (lead) => lead.type === 'Private Cruise'
         );
+        const privateOpps = (Array.isArray(oppsData) ? oppsData : []).filter(
+          (opp) => opp.productType === 'Private Cruise'
+        );
 
         setLeads(privateLeads);
         setYachts(Array.isArray(yachtsData) ? yachtsData : []);
         setAgents(Array.isArray(agentsData) ? agentsData : []);
+        setOpportunities(privateOpps);
 
       } catch (err) {
         console.error("Error fetching CRM dashboard data:", err);
@@ -116,6 +125,7 @@ export default function CrmDashboardPage() {
         setLeads([]);
         setYachts([]);
         setAgents([]);
+        setOpportunities([]);
       } finally {
         setIsLoading(false);
       }
@@ -151,7 +161,7 @@ export default function CrmDashboardPage() {
     };
   }, [leads]);
   
-  if (isAuthLoading || (isLoading && leads.length === 0)) {
+  if (isAuthLoading || (isLoading && leads.length === 0 && opportunities.length === 0)) {
     return (
       <div className="container mx-auto py-2">
         <PageHeader title="CRM Dashboard" description="Loading data..." />
@@ -231,8 +241,9 @@ export default function CrmDashboardPage() {
             <SalesByYachtPieChart leads={leads} allYachts={yachts} isLoading={isLoading} error={error} />
         </div>
         
-        <div className="grid gap-6 lg:grid-cols-1 mt-4">
+        <div className="grid gap-6 lg:grid-cols-2 mt-4">
            <BookingsByAgentBarChart leads={leads} allAgents={agents} isLoading={isLoading} error={error} />
+           <OpportunityFunnelChart opportunities={opportunities} isLoading={isLoading} error={error}/>
         </div>
 
       </div>

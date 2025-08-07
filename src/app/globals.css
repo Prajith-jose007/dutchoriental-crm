@@ -27,16 +27,21 @@
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
+    
+    --success: 142 76% 36%;
+    --success-foreground: 0 0% 98%;
+
 
     --border: 210 20% 88%;
     --input: 210 20% 96%; /* Slightly off-white input background */
     --ring: 40 80% 55%; /* Accent color for rings */
 
-    --chart-1: 203 64% 45%; /* Shades of primary blue */
-    --chart-2: 203 64% 60%;
-    --chart-3: 40 80% 60%;  /* Shades of accent gold */
-    --chart-4: 40 80% 70%;
-    --chart-5: 210 20% 60%; /* Neutral based on new background/foreground hue */
+    /* New vibrant color palette for charts */
+    --chart-1: 220 70% 50%;  /* Vibrant Blue */
+    --chart-2: 160 60% 45%;  /* Teal/Green */
+    --chart-3: 40 80% 55%;   /* Gold/Yellow (Original Accent) */
+    --chart-4: 0 75% 60%;    /* Vibrant Red/Orange */
+    --chart-5: 280 65% 60%;  /* Purple/Magenta */
     
     --radius: 0.5rem;
 
@@ -76,15 +81,20 @@
     --destructive: 0 70% 50%;
     --destructive-foreground: 0 0% 98%;
 
+    --success: 142 70% 45%;
+    --success-foreground: 0 0% 98%;
+
     --border: 210 20% 30%;
     --input: 210 20% 22%;
     --ring: 40 80% 55%; /* Gold for rings */
 
-    --chart-1: 40 80% 60%; /* Shades of Gold (primary in dark) */
-    --chart-2: 40 80% 70%;
-    --chart-3: 203 64% 50%; /* Shades of Deep Blue (accent in dark) */
-    --chart-4: 203 64% 60%;
-    --chart-5: 210 15% 70%; /* Neutral */
+    /* New vibrant color palette for charts in dark mode */
+    --chart-1: 220 70% 55%;  /* Vibrant Blue */
+    --chart-2: 160 60% 50%;  /* Teal/Green */
+    --chart-3: 40 80% 60%;   /* Gold/Yellow */
+    --chart-4: 0 75% 65%;    /* Vibrant Red/Orange */
+    --chart-5: 280 65% 65%;  /* Purple/Magenta */
+
 
     /* Dark mode Sidebar specific colors */
     --sidebar-background: 210 25% 10%; /* Even darker blue/gray */

@@ -34,7 +34,7 @@ async function addColumnIfNotExists(tableName: string, columnName: string, colum
     `;
     const [rows]: any = await query(checkColumnSql, [tableName, columnName]);
     if (rows[0].count === 0) {
-      const alterTableSql = `ALTER TABLE ${tableName} ADD COLUMN ${columnName} ${columnDefinition}`;
+      const alterTableSql = `ALTER TABLE \`${tableName}\` ADD COLUMN \`${columnName}\` ${columnDefinition}`;
       await query(alterTableSql);
       console.log(`Column ${columnName} added to table ${tableName} successfully.`);
     } else {
@@ -51,15 +51,15 @@ async function addColumnIfNotExists(tableName: string, columnName: string, colum
 async function createUsersTable() {
   const tableName = MYSQL_TABLE_NAMES.users;
   const createTableSql = `
-    CREATE TABLE IF NOT EXISTS ${tableName} (
-      id VARCHAR(191) PRIMARY KEY,
-      name VARCHAR(255) NOT NULL,
-      email VARCHAR(191) NOT NULL UNIQUE,
-      designation VARCHAR(255),
-      avatarUrl VARCHAR(255),
-      websiteUrl VARCHAR(255),
-      status VARCHAR(50),
-      password VARCHAR(255)
+    CREATE TABLE IF NOT EXISTS \`${tableName}\` (
+      \`id\` VARCHAR(191) PRIMARY KEY,
+      \`name\` VARCHAR(255) NOT NULL,
+      \`email\` VARCHAR(191) NOT NULL UNIQUE,
+      \`designation\` VARCHAR(255),
+      \`avatarUrl\` VARCHAR(255),
+      \`websiteUrl\` VARCHAR(255),
+      \`status\` VARCHAR(50),
+      \`password\` VARCHAR(255)
     );
   `;
   try {
@@ -74,18 +74,18 @@ async function createUsersTable() {
 async function createAgentsTable() {
   const tableName = MYSQL_TABLE_NAMES.agents;
   const createTableSql = `
-    CREATE TABLE IF NOT EXISTS ${tableName} (
-      id VARCHAR(191) PRIMARY KEY,
-      name VARCHAR(255) NOT NULL,
-      agency_code VARCHAR(255),
-      address TEXT,
-      phone_no VARCHAR(255),
-      email VARCHAR(191) NOT NULL,
-      status VARCHAR(50),
-      TRN_number VARCHAR(255),
-      customer_type_id VARCHAR(255),
-      discount DECIMAL(5, 2) DEFAULT 0.00,
-      websiteUrl VARCHAR(255)
+    CREATE TABLE IF NOT EXISTS \`${tableName}\` (
+      \`id\` VARCHAR(191) PRIMARY KEY,
+      \`name\` VARCHAR(255) NOT NULL,
+      \`agency_code\` VARCHAR(255),
+      \`address\` TEXT,
+      \`phone_no\` VARCHAR(255),
+      \`email\` VARCHAR(191) NOT NULL,
+      \`status\` VARCHAR(50),
+      \`TRN_number\` VARCHAR(255),
+      \`customer_type_id\` VARCHAR(255),
+      \`discount\` DECIMAL(5, 2) DEFAULT 0.00,
+      \`websiteUrl\` VARCHAR(255)
     );
   `;
    try {
@@ -100,15 +100,13 @@ async function createAgentsTable() {
 async function createYachtsTable() {
   const tableName = MYSQL_TABLE_NAMES.yachts;
   const createTableSql = `
-    CREATE TABLE IF NOT EXISTS ${tableName} (
-      id VARCHAR(191) PRIMARY KEY,
-      name VARCHAR(255) NOT NULL,
-      imageUrl VARCHAR(255),
-      capacity INT,
-      status VARCHAR(50),
-      category VARCHAR(255) DEFAULT 'Private Cruise',
-      packages_json TEXT DEFAULT NULL,
-      customPackageInfo TEXT
+    CREATE TABLE IF NOT EXISTS \`${tableName}\` (
+      \`id\` VARCHAR(191) PRIMARY KEY,
+      \`name\` VARCHAR(255) NOT NULL,
+      \`imageUrl\` VARCHAR(255),
+      \`capacity\` INT,
+      \`status\` VARCHAR(50),
+      \`category\` VARCHAR(255) DEFAULT 'Private Cruise'
     );
   `;
   try {
@@ -116,7 +114,7 @@ async function createYachtsTable() {
     console.log(`Table ${tableName} checked/created successfully.`);
     // Ensure packages_json and customPackageInfo columns exist
     await addColumnIfNotExists(tableName, 'packages_json', 'TEXT DEFAULT NULL');
-    await addColumnIfNotExists(tableName, 'customPackageInfo', 'TEXT DEFAULT NULL');
+    await addColumnIfNotExists(tableName, 'customPackageInfo', 'TEXT');
 
   } catch (error) {
     console.error(`Error creating/altering table ${tableName}:`, (error as Error).message);
@@ -129,25 +127,25 @@ async function createLeadsTable() {
   // This initial CREATE statement is a fallback for brand new setups.
   // The crucial part for existing setups is the addColumnIfNotExists calls below.
   const createTableSql = `
-    CREATE TABLE IF NOT EXISTS ${tableName} (
-      id VARCHAR(191) PRIMARY KEY,
-      clientName VARCHAR(255) NOT NULL,
-      agent VARCHAR(255),
-      yacht VARCHAR(255),
-      status VARCHAR(50),
-      month DATETIME, -- Stores the Lead/Event Date
-      notes TEXT,
-      type VARCHAR(255),
-      totalAmount DECIMAL(10, 2) NOT NULL,
-      commissionPercentage DECIMAL(5, 2) DEFAULT 0.00,
-      commissionAmount DECIMAL(10, 2) DEFAULT 0.00,
-      netAmount DECIMAL(10, 2) NOT NULL,
-      paidAmount DECIMAL(10, 2) DEFAULT 0.00,
-      balanceAmount DECIMAL(10, 2) DEFAULT 0.00,
-      createdAt DATETIME,
-      updatedAt DATETIME,
-      lastModifiedByUserId VARCHAR(255),
-      ownerUserId VARCHAR(255)
+    CREATE TABLE IF NOT EXISTS \`${tableName}\` (
+      \`id\` VARCHAR(191) PRIMARY KEY,
+      \`clientName\` VARCHAR(255) NOT NULL,
+      \`agent\` VARCHAR(255),
+      \`yacht\` VARCHAR(255),
+      \`status\` VARCHAR(50),
+      \`month\` DATETIME, -- Stores the Lead/Event Date
+      \`notes\` TEXT,
+      \`type\` VARCHAR(255),
+      \`totalAmount\` DECIMAL(10, 2) NOT NULL,
+      \`commissionPercentage\` DECIMAL(5, 2) DEFAULT 0.00,
+      \`commissionAmount\` DECIMAL(10, 2) DEFAULT 0.00,
+      \`netAmount\` DECIMAL(10, 2) NOT NULL,
+      \`paidAmount\` DECIMAL(10, 2) DEFAULT 0.00,
+      \`balanceAmount\` DECIMAL(10, 2) DEFAULT 0.00,
+      \`createdAt\` DATETIME,
+      \`updatedAt\` DATETIME,
+      \`lastModifiedByUserId\` VARCHAR(255),
+      \`ownerUserId\` VARCHAR(255)
     );
   `;
   try {
@@ -175,14 +173,14 @@ async function createLeadsTable() {
 async function createInvoicesTable() {
   const tableName = MYSQL_TABLE_NAMES.invoices;
   const createTableSql = `
-    CREATE TABLE IF NOT EXISTS ${tableName} (
-      id VARCHAR(191) PRIMARY KEY,
-      leadId VARCHAR(255),
-      clientName VARCHAR(255),
-      amount DECIMAL(10, 2),
-      dueDate DATE,
-      status VARCHAR(50),
-      createdAt DATETIME
+    CREATE TABLE IF NOT EXISTS \`${tableName}\` (
+      \`id\` VARCHAR(191) PRIMARY KEY,
+      \`leadId\` VARCHAR(255),
+      \`clientName\` VARCHAR(255),
+      \`amount\` DECIMAL(10, 2),
+      \`dueDate\` DATE,
+      \`status\` VARCHAR(50),
+      \`createdAt\` DATETIME
     );
   `;
   try {
@@ -197,21 +195,21 @@ async function createInvoicesTable() {
 async function createOpportunitiesTable() {
     const tableName = MYSQL_TABLE_NAMES.opportunities;
     const createTableSql = `
-      CREATE TABLE IF NOT EXISTS ${tableName} (
-        id VARCHAR(191) PRIMARY KEY,
-        potentialCustomer VARCHAR(255) NOT NULL,
-        estimatedClosingDate DATETIME,
-        ownerUserId VARCHAR(191),
-        yachtId VARCHAR(191),
-        productType VARCHAR(255),
-        pipelinePhase VARCHAR(255),
-        priority VARCHAR(50),
-        estimatedRevenue DECIMAL(12, 2) DEFAULT 0.00,
-        meanExpectedValue DECIMAL(12, 2) DEFAULT 0.00,
-        currentStatus VARCHAR(50),
-        followUpUpdates TEXT,
-        createdAt DATETIME,
-        updatedAt DATETIME
+      CREATE TABLE IF NOT EXISTS \`${tableName}\` (
+        \`id\` VARCHAR(191) PRIMARY KEY,
+        \`potentialCustomer\` VARCHAR(255) NOT NULL,
+        \`estimatedClosingDate\` DATETIME,
+        \`ownerUserId\` VARCHAR(191),
+        \`yachtId\` VARCHAR(191),
+        \`productType\` VARCHAR(255),
+        \`pipelinePhase\` VARCHAR(255),
+        \`priority\` VARCHAR(50),
+        \`estimatedRevenue\` DECIMAL(12, 2) DEFAULT 0.00,
+        \`meanExpectedValue\` DECIMAL(12, 2) DEFAULT 0.00,
+        \`currentStatus\` VARCHAR(50),
+        \`followUpUpdates\` TEXT,
+        \`createdAt\` DATETIME,
+        \`updatedAt\` DATETIME
       );
     `;
     try {
@@ -632,3 +630,5 @@ main().catch(async err => {
   }
   process.exit(1);
 });
+
+    

@@ -13,7 +13,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import type { Opportunity, OpportunityPipelinePhase } from '@/lib/types';
 import { opportunityPipelinePhaseOptions } from '@/lib/types';
-import { ChartTooltipContent } from '@/components/ui/chart';
+import { ChartTooltipContent, ChartContainer } from '@/components/ui/chart';
 
 interface OpportunityFunnelChartProps {
   opportunities: Opportunity[];
@@ -31,7 +31,7 @@ const FUNNEL_COLORS = [
 ];
 
 export function OpportunityFunnelChart({ opportunities, isLoading, error }: OpportunityFunnelChartProps) {
-  const chartData = useMemo(() => {
+  const {chartData, chartConfig} = useMemo(() => {
     const stageOrder = [...opportunityPipelinePhaseOptions].reverse(); // Funnel typically shows wide to narrow
     
     const stageCounts: { [key in OpportunityPipelinePhase]?: number } = {};
@@ -43,11 +43,19 @@ export function OpportunityFunnelChart({ opportunities, isLoading, error }: Oppo
       }
     });
 
-    return stageOrder.map((stage, index) => ({
+    const data = stageOrder.map((stage, index) => ({
       value: stageCounts[stage] || 0,
       name: stage,
       fill: FUNNEL_COLORS[index % FUNNEL_COLORS.length],
     })).filter(item => item.value > 0); // Only show stages with opportunities
+
+    const config = data.reduce((acc, item) => {
+      acc[item.name] = { label: item.name, color: item.fill };
+      return acc;
+    }, {} as any);
+
+
+    return {chartData: data, chartConfig: config};
 
   }, [opportunities]);
 
@@ -99,17 +107,19 @@ export function OpportunityFunnelChart({ opportunities, isLoading, error }: Oppo
         <CardDescription>Opportunity distribution by pipeline phase.</CardDescription>
       </CardHeader>
       <CardContent className="h-[350px]">
-        <ResponsiveContainer width="100%" height="100%">
-          <FunnelChart>
-            <Tooltip 
-                cursor={{ fill: 'hsl(var(--muted))' }}
-                content={<ChartTooltipContent />}
-            />
-            <Funnel dataKey="value" data={chartData} isAnimationActive>
-              <LabelList position="right" fill="#fff" stroke="none" dataKey="name" />
-            </Funnel>
-          </FunnelChart>
-        </ResponsiveContainer>
+        <ChartContainer config={chartConfig} className="w-full h-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <FunnelChart>
+              <Tooltip 
+                  cursor={{ fill: 'hsl(var(--muted))' }}
+                  content={<ChartTooltipContent />}
+              />
+              <Funnel dataKey="value" data={chartData} isAnimationActive>
+                <LabelList position="right" fill="#fff" stroke="none" dataKey="name" />
+              </Funnel>
+            </FunnelChart>
+          </ResponsiveContainer>
+        </ChartContainer>
       </CardContent>
     </Card>
   );

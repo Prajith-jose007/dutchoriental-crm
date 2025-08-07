@@ -264,18 +264,17 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
     const currentPaidAmount = form.watch('paidAmount');
     const currentPerTicketRate = form.watch('perTicketRate');
     
-    const selectedYachtForCalc = allYachts.find(y => y.id === currentYachtId);
     const selectedAgentForCalc = allAgents.find(a => a.id === currentAgentId);
     const agentDiscountRate = selectedAgentForCalc ? Number(selectedAgentForCalc.discount || 0) : 0;
 
     let calculatedTotalAmount = 0;
     let tempTotalGuests = 0;
 
-    if (selectedYachtForCalc && currentPackageQuantities.length > 0) {
+    if (currentPackageQuantities.length > 0) {
         currentPackageQuantities.forEach((pqItem) => {
             const quantity = Number(pqItem.quantity || 0);
             const rate = Number(Number(pqItem.rate || 0).toFixed(2));
-            if (quantity > 0 && rate > 0) {
+            if (quantity > 0 && rate >= 0) { // allow 0 rate packages
                 calculatedTotalAmount += quantity * rate;
             }
             tempTotalGuests += quantity;
@@ -303,11 +302,9 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
 
   }, [
     watchedPackageQuantities,
-    watchedYachtId,
     watchedAgentId,
     watchedPaidAmount,
     watchedPerTicketRate,
-    allYachts,
     allAgents,
     form,
   ]);
@@ -369,7 +366,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
       data.packageQuantities.forEach(pqItem => {
         const quantity = Number(pqItem.quantity || 0);
         const rate = Number(Number(pqItem.rate || 0).toFixed(2));
-        if (quantity > 0 && rate > 0) {
+        if (quantity > 0 && rate >= 0) {
           rawFinalTotalAmount += quantity * rate;
         }
       });

@@ -55,7 +55,7 @@ const leadFormSchema = z.object({
   agent: z.string().min(1, 'Agent is required'),
   status: z.enum(leadStatusOptions),
   month: z.date({ required_error: "Booking/Event Date is required." }),
-  notes: z.string().trim().min(1, { message: "Notes are required and cannot be empty." }),
+  notes: z.string().optional(), // Corrected: Notes are optional
   yacht: z.string().min(1, 'Yacht selection is required'),
   type: z.enum(leadTypeOptions, { required_error: "Booking type is required."}),
   hoursOfBooking: z.coerce.number().min(0, "Hours must be non-negative").optional().nullable(),
@@ -816,10 +816,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
               name="notes"
               render={({ field }) => (
                 <FormItem className="pt-4 border-t mt-6">
-                  <FormLabel>
-                    Notes
-                    <span className="text-destructive">*</span>
-                  </FormLabel>
+                  <FormLabel>Notes</FormLabel>
                   <FormControl>
                     <Textarea
                       placeholder="Add any notes or updates about this booking..."

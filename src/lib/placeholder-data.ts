@@ -133,7 +133,7 @@ export const placeholderLeads: Lead[] = [
     notes: 'Confirmed booking for annual dinner.',
     type: 'Dinner Cruise',
     paymentConfirmationStatus: 'CONFIRMED',
-    transactionId: `TRN-${currentYear}00001`,
+    transactionId: `TRN-${currentYear}-00001`,
     modeOfPayment: 'CARD',
     packageQuantities: [
       { packageId: 'lr-adult', packageName: 'ADULT', quantity: 50, rate: 250 },
@@ -163,7 +163,7 @@ export const placeholderLeads: Lead[] = [
     notes: 'Prospective client for regular sightseeing tours. Payment pending.',
     type: 'Superyacht Sightseeing Cruise',
     paymentConfirmationStatus: 'UNCONFIRMED',
-    transactionId: `TRN-${currentYear}00002`,
+    transactionId: `TRN-${currentYear}-00002`,
     modeOfPayment: 'CREDIT',
     packageQuantities: [
       { packageId: 'ss-premium', packageName: 'PREMIUM', quantity: 20, rate: 299 },
@@ -191,7 +191,7 @@ export const placeholderLeads: Lead[] = [
     notes: 'Birthday party, deposit paid. Awaiting event.',
     type: 'Private Cruise',
     paymentConfirmationStatus: 'CONFIRMED',
-    transactionId: `TRN-${currentYear}00003`,
+    transactionId: `TRN-${currentYear}-00003`,
     modeOfPayment: 'CASH / CARD',
     packageQuantities: [
       { packageId: 'private-hourly', packageName: 'HOUR CHARTER', quantity: 4, rate: 1500 },
@@ -219,7 +219,7 @@ export const placeholderLeads: Lead[] = [
     notes: 'Client cancelled due to budget constraints.',
     type: 'Dinner Cruise',
     paymentConfirmationStatus: 'UNCONFIRMED',
-    transactionId: `TRN-${currentYear}00004`,
+    transactionId: `TRN-${currentYear}-00004`,
     modeOfPayment: 'NOMOD',
     packageQuantities: [],
     freeGuestCount: 0,

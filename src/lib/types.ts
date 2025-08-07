@@ -82,7 +82,6 @@ export interface Lead {
   notes?: string;
   yacht: string;
   type: LeadType;
-  catering?: string;
   paymentConfirmationStatus: PaymentConfirmationStatus;
   transactionId?: string;
   modeOfPayment: ModeOfPayment;

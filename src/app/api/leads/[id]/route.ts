@@ -46,7 +46,6 @@ const mapDbLeadToLeadObject = (dbLead: any): Lead => {
         month: ensureISOFormat(dbLead.month)!,
         notes: dbLead.notes || undefined,
         type: (dbLead.type || 'Private Cruise') as LeadType,
-        catering: dbLead.catering,
         paymentConfirmationStatus: (dbLead.paymentConfirmationStatus || 'UNCONFIRMED') as PaymentConfirmationStatus,
         transactionId: dbLead.transactionId || undefined,
         modeOfPayment: (dbLead.modeOfPayment || 'Online') as ModeOfPayment,
@@ -71,7 +70,7 @@ function buildLeadUpdateSetClause(data: Partial<Omit<Lead, 'id' | 'createdAt' | 
   const valuesToUpdate: any[] = [];
   const allowedKeys: (keyof Lead | 'package_quantities_json')[] = [
     'clientName', 'agent', 'yacht', 'status', 'month', 'notes', 'type', 
-    'catering', 'paymentConfirmationStatus', 'transactionId', 'modeOfPayment',
+    'paymentConfirmationStatus', 'transactionId', 'modeOfPayment',
     'package_quantities_json', 'freeGuestCount', 'perTicketRate',
     'totalAmount', 'commissionPercentage', 'commissionAmount', 'netAmount', 'paidAmount', 'balanceAmount', 
     'updatedAt', 'lastModifiedByUserId', 'ownerUserId'
@@ -82,7 +81,7 @@ function buildLeadUpdateSetClause(data: Partial<Omit<Lead, 'id' | 'createdAt' | 
       fieldsToUpdate.push(`${key} = ?`);
       if (['month', 'updatedAt'].includes(key)) {
         valuesToUpdate.push(ensureISOFormat(value as string) || null);
-      } else if (value === null && ['perTicketRate', 'catering', 'notes', 'transactionId'].includes(key)) {
+      } else if (value === null && ['perTicketRate', 'notes', 'transactionId'].includes(key)) {
         valuesToUpdate.push(null);
       } else if (value === undefined && ['perTicketRate'].includes(key)) {
         valuesToUpdate.push(null);
@@ -161,7 +160,6 @@ export async function PUT(
 
     if (dataToUpdate.perTicketRate === undefined) dataToUpdate.perTicketRate = null;
     if (dataToUpdate.notes === undefined) dataToUpdate.notes = null;
-    if (dataToUpdate.catering === undefined) dataToUpdate.catering = null;
 
     const { clause, values: updateValues } = buildLeadUpdateSetClause(dataToUpdate);
     if (clause.length === 0) {

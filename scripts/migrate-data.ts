@@ -155,7 +155,6 @@ async function createLeadsTable() {
     // --- THIS IS THE FIX ---
     // These functions will now check for each column and add it if it doesn't exist,
     // which is what's needed to fix your database schema without deleting the table.
-    await addColumnIfNotExists(tableName, 'catering', 'TEXT DEFAULT NULL');
     await addColumnIfNotExists(tableName, 'paymentConfirmationStatus', "VARCHAR(50) DEFAULT 'UNCONFIRMED'");
     await addColumnIfNotExists(tableName, 'transactionId', 'VARCHAR(255) DEFAULT NULL');
     await addColumnIfNotExists(tableName, 'modeOfPayment', "VARCHAR(50) DEFAULT 'Online'");
@@ -338,13 +337,12 @@ async function migrateLeads() {
     const sql = `
       INSERT INTO leads (
         id, clientName, agent, yacht, status, month, notes, type, 
-        catering,
         paymentConfirmationStatus, transactionId, modeOfPayment,
         package_quantities_json, freeGuestCount, perTicketRate,
         totalAmount, commissionPercentage, commissionAmount, netAmount,
         paidAmount, balanceAmount,
         createdAt, updatedAt, lastModifiedByUserId, ownerUserId
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON DUPLICATE KEY UPDATE
         clientName = VALUES(clientName),
         agent = VALUES(agent),
@@ -353,7 +351,6 @@ async function migrateLeads() {
         month = VALUES(month),
         notes = VALUES(notes),
         type = VALUES(type),
-        catering = VALUES(catering),
         paymentConfirmationStatus = VALUES(paymentConfirmationStatus),
         transactionId = VALUES(transactionId),
         modeOfPayment = VALUES(modeOfPayment),
@@ -399,7 +396,6 @@ async function migrateLeads() {
         monthDate, // This is the Booking/Event Date
         lead.notes || null,
         lead.type,
-        lead.catering || null,
         lead.paymentConfirmationStatus || 'UNCONFIRMED', 
         lead.transactionId || null,
         lead.modeOfPayment,

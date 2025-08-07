@@ -58,7 +58,6 @@ const leadFormSchema = z.object({
   notes: z.string().optional(), // Corrected: Notes are optional
   yacht: z.string().min(1, 'Yacht selection is required'),
   type: z.enum(leadTypeOptions, { required_error: "Booking type is required."}),
-  catering: z.string().optional(),
   paymentConfirmationStatus: z.enum(paymentConfirmationStatusOptions, { required_error: "Payment confirmation status is required."}),
   transactionId: z.string().optional(),
   modeOfPayment: z.enum(modeOfPaymentOptions),
@@ -110,7 +109,6 @@ const getDefaultFormValues = (existingLead?: Lead | null, currentUserId?: string
     month: existingLead?.month && isValid(parseISO(existingLead.month)) ? parseISO(existingLead.month) : new Date(),
     yacht: existingLead?.yacht || '',
     type: existingLead?.type || 'Private Cruise',
-    catering: existingLead?.catering || '',
     paymentConfirmationStatus: existingLead?.paymentConfirmationStatus || 'UNCONFIRMED',
     modeOfPayment: existingLead?.modeOfPayment || 'CARD',
     clientName: existingLead?.clientName || '',
@@ -405,7 +403,6 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
       id: lead?.id || `temp-${Date.now()}`, 
       transactionId: lead?.id && data.transactionId === "Pending Generation" ? lead.transactionId : data.transactionId, 
       month: data.month ? formatISO(data.month) : formatISO(new Date()),
-      catering: data.type === 'Private Cruise' ? data.catering : undefined,
       paymentConfirmationStatus: data.paymentConfirmationStatus,
       freeGuestCount: Number(data.freeGuestCount || 0),
       perTicketRate: data.perTicketRate !== undefined && data.perTicketRate !== null ? Number(Number(data.perTicketRate).toFixed(2)) : undefined,
@@ -599,28 +596,6 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
                   </FormItem>
                 )}
               />
-              {watchedLeadType === 'Private Cruise' && (
-                <>
-                    <FormField
-                        control={form.control}
-                        name="catering"
-                        render={({ field }) => (
-                            <FormItem className="md:col-span-2">
-                                <FormLabel>Catering Details (Optional)</FormLabel>
-                                <FormControl>
-                                    <Textarea
-                                        placeholder="e.g., BBQ package, soft drinks for 20 guests"
-                                        className="resize-y"
-                                        {...field}
-                                        value={field.value || ''}
-                                    />
-                                </FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
-                </>
-              )}
                <FormField
                 control={form.control}
                 name="modeOfPayment"

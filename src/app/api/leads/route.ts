@@ -46,7 +46,6 @@ const mapDbLeadToLeadObject = (dbLead: any): Lead => {
         month: ensureISOFormat(dbLead.month)!,
         notes: dbLead.notes || undefined,
         type: (dbLead.type || 'Private Cruise'),
-        catering: dbLead.catering,
         paymentConfirmationStatus: (dbLead.paymentConfirmationStatus || 'UNCONFIRMED') as PaymentConfirmationStatus,
         transactionId: dbLead.transactionId || undefined,
         modeOfPayment: (dbLead.modeOfPayment || 'Online'),
@@ -139,12 +138,12 @@ export async function POST(request: NextRequest) {
     
     const sql = `
       INSERT INTO leads (
-        id, clientName, agent, yacht, status, month, notes, type, catering, paymentConfirmationStatus, transactionId, modeOfPayment,
+        id, clientName, agent, yacht, status, month, notes, type, paymentConfirmationStatus, transactionId, modeOfPayment,
         package_quantities_json, freeGuestCount, perTicketRate,
         totalAmount, commissionPercentage, commissionAmount, netAmount,
         paidAmount, balanceAmount,
         createdAt, updatedAt, lastModifiedByUserId, ownerUserId
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     const params = [
@@ -156,7 +155,6 @@ export async function POST(request: NextRequest) {
       formattedMonth,
       newLeadData.notes || null,
       newLeadData.type || 'Private Cruise',
-      newLeadData.catering || null,
       newLeadData.paymentConfirmationStatus || 'UNCONFIRMED',
       finalTransactionId,
       newLeadData.modeOfPayment || 'Online',

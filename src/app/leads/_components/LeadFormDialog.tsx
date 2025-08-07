@@ -258,56 +258,61 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
 
 
   useEffect(() => {
-    const currentYachtId = form.watch('yacht');
-    const currentAgentId = form.watch('agent');
-    const currentPackageQuantities = form.watch('packageQuantities') || [];
-    const currentPaidAmount = form.watch('paidAmount');
-    const currentPerTicketRate = form.watch('perTicketRate');
-    
-    const selectedAgentForCalc = allAgents.find(a => a.id === currentAgentId);
-    const agentDiscountRate = selectedAgentForCalc ? Number(selectedAgentForCalc.discount || 0) : 0;
+    const subscription = form.watch((value, { name }) => {
+      if (
+        name?.startsWith('packageQuantities') ||
+        name === 'perTicketRate' ||
+        name === 'agent' ||
+        name === 'paidAmount'
+      ) {
+        const {
+          packageQuantities = [],
+          perTicketRate,
+          agent: agentId,
+          paidAmount,
+        } = form.getValues();
 
-    let calculatedTotalAmount = 0;
-    let tempTotalGuests = 0;
+        const selectedAgentForCalc = allAgents.find(a => a.id === agentId);
+        const agentDiscountRate = selectedAgentForCalc ? Number(selectedAgentForCalc.discount || 0) : 0;
 
-    if (currentPackageQuantities.length > 0) {
-        currentPackageQuantities.forEach((pqItem) => {
-            const quantity = Number(pqItem.quantity || 0);
-            const rate = Number(Number(pqItem.rate || 0).toFixed(2));
-            if (quantity > 0 && rate >= 0) { // allow 0 rate packages
-                calculatedTotalAmount += quantity * rate;
-            }
-            tempTotalGuests += quantity;
+        let calculatedTotalAmount = 0;
+        let tempTotalGuests = 0;
+
+        packageQuantities.forEach(pqItem => {
+          const quantity = Number(pqItem.quantity || 0);
+          const rate = Number(pqItem.rate || 0);
+          if (quantity > 0 && rate >= 0) {
+            calculatedTotalAmount += quantity * rate;
+          }
+          tempTotalGuests += quantity;
         });
-    }
 
-    if (currentPerTicketRate && Number(currentPerTicketRate) > 0) {
-        calculatedTotalAmount += Number(currentPerTicketRate);
-    }
-    calculatedTotalAmount = Number(calculatedTotalAmount.toFixed(2));
+        if (perTicketRate && Number(perTicketRate) > 0) {
+          calculatedTotalAmount += Number(perTicketRate);
+        }
 
-    setCalculatedTotalGuests(tempTotalGuests);
-    form.setValue('totalAmount', calculatedTotalAmount);
+        calculatedTotalAmount = Number(calculatedTotalAmount.toFixed(2));
+        setCalculatedTotalGuests(tempTotalGuests);
 
-    form.setValue('commissionPercentage', agentDiscountRate);
+        const calculatedCommissionAmount = Number(
+          ((calculatedTotalAmount * agentDiscountRate) / 100).toFixed(2)
+        );
+        const calculatedNetAmount = Number(
+          (calculatedTotalAmount - calculatedCommissionAmount).toFixed(2)
+        );
+        const actualSignedBalanceAmount = Number(
+          (calculatedNetAmount - (paidAmount || 0)).toFixed(2)
+        );
 
-    const calculatedCommissionAmount = Number(((calculatedTotalAmount * agentDiscountRate) / 100).toFixed(2));
-    form.setValue('commissionAmount', calculatedCommissionAmount);
-
-    const calculatedNetAmount = Number((calculatedTotalAmount - calculatedCommissionAmount).toFixed(2));
-    form.setValue('netAmount', calculatedNetAmount);
-
-    const actualSignedBalanceAmount = Number((calculatedNetAmount - (currentPaidAmount || 0)).toFixed(2));
-    form.setValue('balanceAmount', actualSignedBalanceAmount);
-
-  }, [
-    watchedPackageQuantities,
-    watchedAgentId,
-    watchedPaidAmount,
-    watchedPerTicketRate,
-    allAgents,
-    form,
-  ]);
+        form.setValue('totalAmount', calculatedTotalAmount, { shouldValidate: true });
+        form.setValue('commissionPercentage', agentDiscountRate, { shouldValidate: true });
+        form.setValue('commissionAmount', calculatedCommissionAmount, { shouldValidate: true });
+        form.setValue('netAmount', calculatedNetAmount, { shouldValidate: true });
+        form.setValue('balanceAmount', actualSignedBalanceAmount, { shouldValidate: true });
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, [form, allAgents]);
 
 
   useEffect(() => {

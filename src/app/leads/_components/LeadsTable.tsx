@@ -77,7 +77,6 @@ export const generateLeadColumns = (allYachts: Yacht[]): LeadTableColumn[] => {
     { accessorKey: 'clientName', header: 'Client' },
     { accessorKey: 'paymentConfirmationStatus', header: 'Payment/Conf. Status' },
     { accessorKey: 'type', header: 'Type' },
-    { accessorKey: 'hoursOfBooking', header: 'Hours', isNumeric: true },
     { accessorKey: 'catering', header: 'Catering', isNotes: true },
     { accessorKey: 'transactionId', header: 'Transaction ID' },
     { accessorKey: 'modeOfPayment', header: 'Payment Mode' },
@@ -293,9 +292,6 @@ export function LeadsTable({
     }
     if (column.accessorKey === 'freeGuestCount') {
       return formatNumeric(lead.freeGuestCount);
-    }
-    if (column.accessorKey === 'hoursOfBooking') {
-      return formatNumeric(lead.hoursOfBooking);
     }
     if (column.accessorKey === 'catering') {
       return formatNotes(lead.catering);

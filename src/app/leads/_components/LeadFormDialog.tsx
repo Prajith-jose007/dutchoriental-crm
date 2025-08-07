@@ -58,7 +58,6 @@ const leadFormSchema = z.object({
   notes: z.string().optional(), // Corrected: Notes are optional
   yacht: z.string().min(1, 'Yacht selection is required'),
   type: z.enum(leadTypeOptions, { required_error: "Booking type is required."}),
-  hoursOfBooking: z.coerce.number().min(0, "Hours must be non-negative").optional().nullable(),
   catering: z.string().optional(),
   paymentConfirmationStatus: z.enum(paymentConfirmationStatusOptions, { required_error: "Payment confirmation status is required."}),
   transactionId: z.string().optional(),
@@ -111,7 +110,6 @@ const getDefaultFormValues = (existingLead?: Lead | null, currentUserId?: string
     month: existingLead?.month && isValid(parseISO(existingLead.month)) ? parseISO(existingLead.month) : new Date(),
     yacht: existingLead?.yacht || '',
     type: existingLead?.type || 'Private Cruise',
-    hoursOfBooking: existingLead?.hoursOfBooking ?? null,
     catering: existingLead?.catering || '',
     paymentConfirmationStatus: existingLead?.paymentConfirmationStatus || 'UNCONFIRMED',
     modeOfPayment: existingLead?.modeOfPayment || 'CARD',
@@ -407,7 +405,6 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
       id: lead?.id || `temp-${Date.now()}`, 
       transactionId: lead?.id && data.transactionId === "Pending Generation" ? lead.transactionId : data.transactionId, 
       month: data.month ? formatISO(data.month) : formatISO(new Date()),
-      hoursOfBooking: data.type === 'Private Cruise' ? (data.hoursOfBooking ?? undefined) : undefined,
       catering: data.type === 'Private Cruise' ? data.catering : undefined,
       paymentConfirmationStatus: data.paymentConfirmationStatus,
       freeGuestCount: Number(data.freeGuestCount || 0),
@@ -604,34 +601,6 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
               />
               {watchedLeadType === 'Private Cruise' && (
                 <>
-                    <FormField
-                        control={form.control}
-                        name="hoursOfBooking"
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Hours of Booking</FormLabel>
-                                <FormControl>
-                                    <Input
-                                        type="number"
-                                        placeholder="e.g., 4"
-                                        {...field}
-                                        value={field.value ?? ''}
-                                        onChange={e => {
-                                            const val = e.target.value;
-                                            if (val === '') {
-                                                field.onChange(null);
-                                            } else {
-                                                const numVal = parseInt(val, 10);
-                                                field.onChange(isNaN(numVal) ? null : numVal);
-                                            }
-                                        }}
-                                        min="0"
-                                    />
-                                </FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
                     <FormField
                         control={form.control}
                         name="catering"

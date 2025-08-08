@@ -113,22 +113,34 @@ export type OpportunityPriority = typeof opportunityPriorityOptions[number];
 export const opportunityStatusOptions = ['Active', 'On Hold', 'Inactive'] as const;
 export type OpportunityStatus = typeof opportunityStatusOptions[number];
 
+export const opportunityReportTypeOptions = ['Trip', 'Phone Call', 'Email', 'Meeting'] as const;
+export type OpportunityReportType = typeof opportunityReportTypeOptions[number];
+
+export const opportunityTripReportStatusOptions = ['In Process', 'Completed', 'Pending'] as const;
+export type OpportunityTripReportStatus = typeof opportunityTripReportStatusOptions[number];
+
 export interface Opportunity {
     id: string;
-    estimatedClosingDate: string; // ISO Date String
-    potentialCustomer: string;
+    potentialCustomer: string; // This can serve as 'Account'
+    subject: string;
     ownerUserId: string;
     yachtId: string;
     productType: YachtCategory;
     pipelinePhase: OpportunityPipelinePhase;
     priority: OpportunityPriority;
-    estimatedRevenue: number;
-    closingProbability?: number; // New field
-    meanExpectedValue?: number; // Optional, can be calculated
     currentStatus: OpportunityStatus;
-    followUpUpdates?: string; // Text field for notes/updates
-    createdAt: string; // ISO Date String
-    updatedAt: string; // ISO Date String
+    estimatedRevenue: number;
+    closingProbability?: number;
+    meanExpectedValue?: number;
+    followUpUpdates?: string;
+    createdAt: string;
+    updatedAt: string;
+    
+    // New Fields from Trip/Phone Report
+    estimatedClosingDate: string; // Was 'Date of Meeting'
+    location?: string;
+    reportType?: OpportunityReportType;
+    tripReportStatus?: OpportunityTripReportStatus;
 }
 
 

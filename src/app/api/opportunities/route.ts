@@ -43,9 +43,9 @@ export async function POST(request: NextRequest) {
   try {
     const newOppData = await request.json() as Opportunity;
     
-    const { potentialCustomer, estimatedClosingDate, ownerUserId, yachtId, productType, pipelinePhase, priority, estimatedRevenue, currentStatus } = newOppData;
+    const { potentialCustomer, subject, estimatedClosingDate, ownerUserId, yachtId, productType, pipelinePhase, priority, estimatedRevenue, currentStatus } = newOppData;
 
-    if (!potentialCustomer || !estimatedClosingDate || !ownerUserId || !yachtId || !productType || !pipelinePhase || !priority || estimatedRevenue === undefined || !currentStatus) {
+    if (!potentialCustomer || !subject || !estimatedClosingDate || !ownerUserId || !yachtId || !productType || !pipelinePhase || !priority || estimatedRevenue === undefined || !currentStatus) {
         return NextResponse.json({ message: 'Missing required opportunity fields' }, { status: 400 });
     }
     
@@ -64,16 +64,17 @@ export async function POST(request: NextRequest) {
 
     const sql = `
       INSERT INTO opportunities (
-        id, potentialCustomer, estimatedClosingDate, ownerUserId, yachtId, productType, 
+        id, potentialCustomer, subject, estimatedClosingDate, ownerUserId, yachtId, productType, 
         pipelinePhase, priority, estimatedRevenue, meanExpectedValue, currentStatus, 
-        followUpUpdates, createdAt, updatedAt
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        followUpUpdates, createdAt, updatedAt, location, reportType, tripReportStatus
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
     const params = [
-        oppToStore.id, oppToStore.potentialCustomer, oppToStore.estimatedClosingDate, oppToStore.ownerUserId,
+        oppToStore.id, oppToStore.potentialCustomer, oppToStore.subject, oppToStore.estimatedClosingDate, oppToStore.ownerUserId,
         oppToStore.yachtId, oppToStore.productType, oppToStore.pipelinePhase, oppToStore.priority,
         oppToStore.estimatedRevenue, oppToStore.meanExpectedValue, oppToStore.currentStatus,
-        oppToStore.followUpUpdates, oppToStore.createdAt, oppToStore.updatedAt
+        oppToStore.followUpUpdates, oppToStore.createdAt, oppToStore.updatedAt,
+        oppToStore.location, oppToStore.reportType, oppToStore.tripReportStatus
     ];
     
     await query(sql, params);

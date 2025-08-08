@@ -22,17 +22,17 @@ function buildOpportunityUpdateSetClause(data: Partial<Omit<Opportunity, 'id' | 
   const fieldsToUpdate: string[] = [];
   const valuesToUpdate: any[] = [];
   const allowedKeys: (keyof Omit<Opportunity, 'id' | 'closingProbability'>)[] = [
-    'estimatedClosingDate', 'potentialCustomer', 'ownerUserId', 'yachtId', 'productType',
+    'potentialCustomer', 'subject', 'estimatedClosingDate', 'ownerUserId', 'yachtId', 'productType',
     'pipelinePhase', 'priority', 'estimatedRevenue', 'meanExpectedValue', 'currentStatus',
-    'followUpUpdates', 'createdAt', 'updatedAt'
+    'followUpUpdates', 'createdAt', 'updatedAt', 'location', 'reportType', 'tripReportStatus'
   ];
 
   Object.entries(data).forEach(([key, value]) => {
     if (allowedKeys.includes(key as any) && value !== undefined) {
-      fieldsToUpdate.push(`${key} = ?`);
+      fieldsToUpdate.push(`\`${key}\` = ?`);
       if (key === 'estimatedClosingDate' || key === 'createdAt' || key === 'updatedAt') {
         valuesToUpdate.push(ensureISOFormat(value as string) || null);
-      } else if (value === '' && ['followUpUpdates'].includes(key)) {
+      } else if (value === '' && ['followUpUpdates', 'location', 'reportType', 'tripReportStatus'].includes(key)) {
         valuesToUpdate.push(null);
       } else {
         valuesToUpdate.push(value);

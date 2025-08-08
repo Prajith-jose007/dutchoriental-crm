@@ -212,6 +212,11 @@ async function createOpportunitiesTable() {
     `;
     try {
       await query(createTableSql);
+      // Add new columns
+      await addColumnIfNotExists(tableName, 'subject', 'VARCHAR(255) NOT NULL DEFAULT "New Opportunity"');
+      await addColumnIfNotExists(tableName, 'location', 'VARCHAR(255)');
+      await addColumnIfNotExists(tableName, 'reportType', 'VARCHAR(50)');
+      await addColumnIfNotExists(tableName, 'tripReportStatus', 'VARCHAR(50)');
       console.log(`Table ${tableName} checked/created successfully.`);
     } catch (error) {
       console.error(`Error creating table ${tableName}:`, (error as Error).message);
@@ -460,12 +465,13 @@ async function migrateOpportunities() {
     for (const opp of placeholderOpportunities) {
       const sql = `
         INSERT INTO opportunities (
-          id, potentialCustomer, estimatedClosingDate, ownerUserId, yachtId, productType, 
+          id, potentialCustomer, subject, estimatedClosingDate, ownerUserId, yachtId, productType, 
           pipelinePhase, priority, estimatedRevenue, meanExpectedValue, currentStatus, 
-          followUpUpdates, createdAt, updatedAt
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          followUpUpdates, createdAt, updatedAt, location, reportType, tripReportStatus
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON DUPLICATE KEY UPDATE
           potentialCustomer = VALUES(potentialCustomer),
+          subject = VALUES(subject),
           estimatedClosingDate = VALUES(estimatedClosingDate),
           ownerUserId = VALUES(ownerUserId),
           yachtId = VALUES(yachtId),
@@ -477,7 +483,10 @@ async function migrateOpportunities() {
           currentStatus = VALUES(currentStatus),
           followUpUpdates = VALUES(followUpUpdates),
           createdAt = VALUES(createdAt),
-          updatedAt = VALUES(updatedAt);
+          updatedAt = VALUES(updatedAt),
+          location = VALUES(location),
+          reportType = VALUES(reportType),
+          tripReportStatus = VALUES(tripReportStatus);
       `;
       try {
         const estimatedClosingDate = opp.estimatedClosingDate && isValid(parseISO(opp.estimatedClosingDate)) ? formatISO(parseISO(opp.estimatedClosingDate)) : formatISO(new Date());
@@ -487,6 +496,7 @@ async function migrateOpportunities() {
         await query(sql, [
           opp.id,
           opp.potentialCustomer,
+          opp.subject,
           estimatedClosingDate,
           opp.ownerUserId,
           opp.yachtId,
@@ -498,7 +508,10 @@ async function migrateOpportunities() {
           opp.currentStatus,
           opp.followUpUpdates,
           createdAt,
-          updatedAt
+          updatedAt,
+          opp.location,
+          opp.reportType,
+          opp.tripReportStatus
         ]);
         console.log(`Upserted opportunity: ${opp.potentialCustomer} (ID: ${opp.id})`);
       } catch (error) {

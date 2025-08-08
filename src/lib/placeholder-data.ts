@@ -250,8 +250,8 @@ export const placeholderInvoices: Invoice[] = [
 export const placeholderOpportunities: Opportunity[] = [
     {
         id: 'OPP-001',
-        estimatedClosingDate: formatISO(addDays(today, 30)),
         potentialCustomer: 'Global Tech Innovations',
+        subject: 'Annual Corporate Gala',
         ownerUserId: 'DO-user2',
         yachtId: 'DO-yacht-private1',
         productType: 'Private Cruise',
@@ -263,11 +263,15 @@ export const placeholderOpportunities: Opportunity[] = [
         followUpUpdates: 'Proposal sent on ' + format(subDays(today, 2), 'yyyy-MM-dd') + '. Awaiting feedback.',
         createdAt: formatISO(subDays(today, 10)),
         updatedAt: formatISO(subDays(today, 2)),
+        estimatedClosingDate: formatISO(addDays(today, 30)),
+        location: 'Dubai Marina',
+        reportType: 'Meeting',
+        tripReportStatus: 'In Process',
     },
     {
         id: 'OPP-002',
-        estimatedClosingDate: formatISO(addDays(today, 60)),
         potentialCustomer: 'Luxury Travel Co.',
+        subject: 'Partnership for VIP Tours',
         ownerUserId: 'DO-user1',
         yachtId: 'DO-yacht-lotus',
         productType: 'Dinner Cruise',
@@ -279,11 +283,14 @@ export const placeholderOpportunities: Opportunity[] = [
         followUpUpdates: 'Initial call held. Client is interested in a fleet discount for regular corporate events.',
         createdAt: formatISO(subDays(today, 5)),
         updatedAt: formatISO(subDays(today, 1)),
+        estimatedClosingDate: formatISO(addDays(today, 60)),
+        reportType: 'Phone Call',
+        tripReportStatus: 'Completed',
     },
     {
         id: 'OPP-003',
-        estimatedClosingDate: formatISO(subDays(today, 15)),
         potentialCustomer: 'Startup X',
+        subject: 'Team Outing Sightseeing',
         ownerUserId: 'DO-user2',
         yachtId: 'DO-yacht-super',
         productType: 'Superyacht Sightseeing Cruise',
@@ -295,5 +302,8 @@ export const placeholderOpportunities: Opportunity[] = [
         followUpUpdates: 'Lost to competitor due to pricing.',
         createdAt: formatISO(subDays(today, 45)),
         updatedAt: formatISO(subDays(today, 15)),
+        estimatedClosingDate: formatISO(subDays(today, 15)),
+        reportType: 'Email',
+        tripReportStatus: 'Pending',
     }
 ];

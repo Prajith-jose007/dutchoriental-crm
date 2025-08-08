@@ -32,8 +32,9 @@ async function addColumnIfNotExists(tableName: string, columnName: string, colum
       AND TABLE_NAME = ?
       AND COLUMN_NAME = ?;
     `;
-    const [rows]: any = await query(checkColumnSql, [tableName, columnName]);
-    if (rows[0].count === 0) {
+    const results: any[] = await query(checkColumnSql, [tableName, columnName]);
+    // The result from mysql2 is an array of rows. Access the first row.
+    if (results && results.length > 0 && results[0].count === 0) {
       const alterTableSql = `ALTER TABLE \`${tableName}\` ADD COLUMN \`${columnName}\` ${columnDefinition}`;
       await query(alterTableSql);
       console.log(`Column ${columnName} added to table ${tableName} successfully.`);
@@ -509,9 +510,9 @@ async function migrateOpportunities() {
           opp.followUpUpdates,
           createdAt,
           updatedAt,
-          opp.location,
-          opp.reportType,
-          opp.tripReportStatus
+          opp.location || null, // Ensure undefined is converted to null
+          opp.reportType || null,
+          opp.tripReportStatus || null
         ]);
         console.log(`Upserted opportunity: ${opp.potentialCustomer} (ID: ${opp.id})`);
       } catch (error) {
@@ -636,3 +637,5 @@ main().catch(async err => {
   }
   process.exit(1);
 });
+
+    

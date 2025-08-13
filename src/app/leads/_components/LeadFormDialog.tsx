@@ -1,7 +1,3 @@
-<<<<<<< HEAD
-
-=======
->>>>>>> 8dd0489 (only admin should be adding the yacht packages and the cost. in booking)
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -34,7 +30,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-/*<<<<<<< HEAD
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Textarea } from '@/components/ui/textarea';
 import { DatePicker } from '@/components/ui/date-picker';
@@ -45,6 +40,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { format, formatISO, parseISO, isValid, getYear } from 'date-fns';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Terminal } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 
 const leadPackageQuantitySchema = z.object({
@@ -52,32 +48,10 @@ const leadPackageQuantitySchema = z.object({
   packageName: z.string().min(1, "Package name is required"),
   quantity: z.coerce.number().min(0, "Quantity must be non-negative").default(0),
   rate: z.coerce.number().min(0, "Rate must be non-negative").default(0),
-=======*/
-import { Textarea } from '@/components/ui/textarea';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { DatePicker } from '@/components/ui/date-picker';
-import { useToast } from '@/hooks/use-toast';
-import type { Lead, Agent, Yacht, User, LeadStatus, ModeOfPayment, LeadType, PaymentConfirmationStatus, YachtPackageItem } from '@/lib/types';
-import { leadStatusOptions, modeOfPaymentOptions, leadTypeOptions, paymentConfirmationStatusOptions } from '@/lib/types';
-import { useEffect, useState, useMemo } from 'react';
-import { formatISO, parseISO, isValid } from 'date-fns';
-import { cn } from '@/lib/utils';
-import { PlusCircle, Trash2 } from 'lucide-react';
-import { Switch } from '@/components/ui/switch';
-
-const USER_ID_STORAGE_KEY = 'currentUserId';
-
-const leadPackageQuantitySchema = z.object({
-  packageId: z.string(),
-  packageName: z.string(),
-  quantity: z.coerce.number().min(0, "Quantity must be non-negative"),
-  rate: z.coerce.number(),
->>>>>>> 8dd0489 (only admin should be adding the yacht packages and the cost. in booking)
 });
 
 const leadFormSchema = z.object({
   id: z.string().optional(),
-<<<<<<< HEAD
   agent: z.string().min(1, 'Agent is required'),
   status: z.enum(leadStatusOptions),
   month: z.date({ required_error: "Booking/Event Date is required." }),
@@ -104,33 +78,6 @@ const leadFormSchema = z.object({
   updatedAt: z.string().optional(),
   lastModifiedByUserId: z.string().optional(),
   ownerUserId: z.string().optional(),
-=======
-  clientName: z.string().min(1, "Client name is required"),
-  agent: z.string().min(1, "Agent is required"),
-  yacht: z.string().min(1, "Yacht is required"),
-  month: z.date({ required_error: "Event date is required." }),
-  type: z.enum(leadTypeOptions),
-  status: z.enum(leadStatusOptions),
-  notes: z.string().optional(),
-  
-  isPerTicket: z.boolean().default(false),
-  perTicketRate: z.coerce.number().optional(),
-  packageQuantities: z.array(leadPackageQuantitySchema).optional(),
-  freeGuestCount: z.coerce.number().min(0).optional(),
-  
-  paymentConfirmationStatus: z.enum(paymentConfirmationStatusOptions),
-  transactionId: z.string().optional(),
-  modeOfPayment: z.enum(modeOfPaymentOptions),
-  
-  totalAmount: z.coerce.number(),
-  commissionPercentage: z.coerce.number().min(0).max(100),
-  commissionAmount: z.coerce.number(),
-  netAmount: z.coerce.number(),
-  paidAmount: z.coerce.number().min(0, "Paid amount cannot be negative"),
-  balanceAmount: z.coerce.number(),
-  
-  ownerUserId: z.string().min(1, "Booking owner is required"),
->>>>>>> 8dd0489 (only admin should be adding the yacht packages and the cost. in booking)
 });
 
 export type LeadFormData = z.infer<typeof leadFormSchema>;
@@ -140,7 +87,6 @@ interface LeadFormDialogProps {
   onOpenChange: (open: boolean) => void;
   lead?: Lead | null;
   onSubmitSuccess: (data: Lead) => void;
-<<<<<<< HEAD
   currentUserId?: string | null;
   isAdmin?: boolean; // Added for disabling form
 }
@@ -199,67 +145,17 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
   });
 
   const { fields: packageQuantityFields, replace: replacePackageQuantities } = useFieldArray({
-=======
-  allAgents: Agent[];
-  allYachts: Yacht[];
-  allUsers: User[];
-  isAdmin: boolean;
-}
-
-export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, allAgents, allYachts, allUsers, isAdmin }: LeadFormDialogProps) {
-  const { toast } = useToast();
-  const currentUserId = typeof window !== 'undefined' ? localStorage.getItem(USER_ID_STORAGE_KEY) : null;
-
-  const getInitialFormValues = (): LeadFormData => {
-    return {
-      id: lead?.id,
-      clientName: lead?.clientName || '',
-      agent: lead?.agent || '',
-      yacht: lead?.yacht || '',
-      month: lead?.month && isValid(parseISO(lead.month)) ? parseISO(lead.month) : new Date(),
-      type: lead?.type || 'Private Cruise',
-      status: lead?.status || 'Balance',
-      notes: lead?.notes || '',
-      
-      isPerTicket: lead?.perTicketRate !== undefined && lead?.perTicketRate !== null,
-      perTicketRate: lead?.perTicketRate || 0,
-      packageQuantities: lead?.packageQuantities || [],
-      freeGuestCount: lead?.freeGuestCount || 0,
-      
-      paymentConfirmationStatus: lead?.paymentConfirmationStatus || 'UNCONFIRMED',
-      transactionId: lead?.transactionId || '',
-      modeOfPayment: lead?.modeOfPayment || 'Online',
-      
-      totalAmount: lead?.totalAmount || 0,
-      commissionPercentage: lead?.commissionPercentage || 0,
-      commissionAmount: lead?.commissionAmount || 0,
-      netAmount: lead?.netAmount || 0,
-      paidAmount: lead?.paidAmount || 0,
-      balanceAmount: lead?.balanceAmount || 0,
-      
-      ownerUserId: lead?.ownerUserId || currentUserId || '',
-    };
-  };
-
-  const form = useForm<LeadFormData>({
-    resolver: zodResolver(leadFormSchema),
-    defaultValues: getInitialFormValues(),
-  });
-  
-  const { fields: packageFields, append: appendPackage, remove: removePackage, replace: replacePackages } = useFieldArray({
->>>>>>> 8dd0489 (only admin should be adding the yacht packages and the cost. in booking)
     control: form.control,
     name: "packageQuantities",
   });
 
-<<<<<<< HEAD
   const watchedLeadType = form.watch('type');
   const watchedYachtId = form.watch('yacht');
   const watchedAgentId = form.watch('agent');
   const watchedPaidAmount = form.watch('paidAmount');
   const watchedPackageQuantities = form.watch('packageQuantities');
   const watchedPerTicketRate = form.watch('perTicketRate');
-  const watchedStatus = form.watch('status'); 
+  const watchedStatus = form.watch('status');
 
   const isFormDisabled = useMemo(() => {
     // A form should be disabled if the status is 'Closed (Won)' or 'Closed (Lost)' and the user is not an admin.
@@ -325,7 +221,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, al
     }
 
     const selectedYacht = allYachts.find(y => y.id === watchedYachtId);
-    
+
     // Check if the yacht selection has actually changed from the lead's original yacht
     const yachtChanged = lead?.yacht !== watchedYachtId;
 
@@ -349,7 +245,8 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, al
                 packageId: String(yachtPkg.id),
                 packageName: String(yachtPkg.name),
                 quantity: existingPQ?.quantity || 0,
-                rate: existingPQ?.rate !== undefined ? existingPQ.rate : Number(Number(yachtPkg.rate || 0).toFixed(2)),
+                // Always use the official rate from the yacht, not from existing data
+                rate: Number(Number(yachtPkg.rate || 0).toFixed(2)),
             };
         });
         replacePackageQuantities(newPQs);
@@ -441,7 +338,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, al
                     packageId: yachtPkg.id,
                     packageName: yachtPkg.name,
                     quantity: existingPQ?.quantity || 0,
-                    rate: existingPQ?.rate || 0,
+                    rate: Number(Number(yachtPkg.rate || 0).toFixed(2)),
                 };
             });
             replacePackageQuantities(newPQs);
@@ -507,8 +404,8 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, al
 
     const submittedLead: Lead = {
       ...data,
-      id: lead?.id || `temp-${Date.now()}`, 
-      transactionId: lead?.id && data.transactionId === "Pending Generation" ? lead.transactionId : data.transactionId, 
+      id: lead?.id || `temp-${Date.now()}`,
+      transactionId: lead?.id && data.transactionId === "Pending Generation" ? lead.transactionId : data.transactionId,
       month: data.month ? formatISO(data.month) : formatISO(new Date()),
       paymentConfirmationStatus: data.paymentConfirmationStatus,
       freeGuestCount: Number(data.freeGuestCount || 0),
@@ -803,7 +700,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, al
               <div className="pt-4 border-t mt-6">
                 <h3 className="text-lg font-medium mb-1">Package Item Quantities & Rates</h3>
                 <p className="text-sm text-muted-foreground mb-3">
-                  Enter quantities for the new boat. Rates are pre-filled but can be overridden to match an original boat's pricing for upgrades.
+                  Enter quantities for the selected yacht. Rates are fixed and cannot be changed here.
                 </p>
                 <div className="space-y-4">
                   {packageQuantityFields.map((fieldItem, index) => (
@@ -830,20 +727,13 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, al
                             <FormItem>
                               <FormLabel>Rate (AED)</FormLabel>
                               <FormControl>
-                                <Input 
-                                  type="number" 
-                                  placeholder="0.00" 
-                                  min="0" 
-                                  step="0.01" 
-                                  {...rateField} 
+                                <Input
+                                  type="number"
+                                  placeholder="0.00"
+                                  {...rateField}
                                   value={rateField.value ?? 0}
-                                  onChange={e => rateField.onChange(parseFloat(e.target.value) || 0)}
-                                  onBlur={e => { // Optionally round on blur
-                                    const val = parseFloat(e.target.value);
-                                    if (!isNaN(val)) {
-                                      rateField.onChange(Number(val.toFixed(2)));
-                                    }
-                                  }}
+                                  readOnly
+                                  className="bg-muted/50 cursor-not-allowed"
                                 />
                               </FormControl>
                               <FormMessage />
@@ -982,181 +872,6 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, al
             </DialogFooter>
           </form>
         </Form>
-=======
-  const selectedYachtId = form.watch('yacht');
-  const selectedAgentId = form.watch('agent');
-  const isPerTicket = form.watch('isPerTicket');
-  const perTicketRate = form.watch('perTicketRate');
-  const watchedPackageQuantities = form.watch('packageQuantities');
-  const paidAmount = form.watch('paidAmount');
-  const commissionPercentage = form.watch('commissionPercentage');
-  
-  const selectedYacht = useMemo(() => allYachts.find(y => y.id === selectedYachtId), [allYachts, selectedYachtId]);
-  const selectedAgent = useMemo(() => allAgents.find(a => a.id === selectedAgentId), [allAgents, selectedAgentId]);
-
-  useEffect(() => {
-    if (isOpen) {
-      form.reset(getInitialFormValues());
-    }
-  }, [lead, isOpen]);
-
-  useEffect(() => {
-    if (selectedAgent) {
-      form.setValue('commissionPercentage', selectedAgent.discount || 0);
-    }
-  }, [selectedAgent, form.setValue]);
-  
-  useEffect(() => {
-    if (isPerTicket) {
-      replacePackages([]);
-    }
-  }, [isPerTicket, replacePackages]);
-
-  useEffect(() => {
-    let total = 0;
-    if (isPerTicket) {
-      const totalGuests = watchedPackageQuantities?.reduce((sum, pkg) => sum + pkg.quantity, 0) || 0;
-      total = totalGuests * (perTicketRate || 0);
-    } else {
-      total = watchedPackageQuantities?.reduce((sum, pkg) => sum + (pkg.quantity * pkg.rate), 0) || 0;
-    }
-    
-    const commission = total * ((commissionPercentage || 0) / 100);
-    const net = total - commission;
-    const balance = net - (paidAmount || 0);
-
-    form.setValue('totalAmount', parseFloat(total.toFixed(2)));
-    form.setValue('commissionAmount', parseFloat(commission.toFixed(2)));
-    form.setValue('netAmount', parseFloat(net.toFixed(2)));
-    form.setValue('balanceAmount', parseFloat(balance.toFixed(2)));
-  }, [isPerTicket, perTicketRate, watchedPackageQuantities, commissionPercentage, paidAmount, form.setValue]);
-
-
-  const onSubmit = (data: LeadFormData) => {
-    const finalData: Lead = {
-      ...data,
-      id: lead?.id || `temp-${Date.now()}`,
-      month: formatISO(data.month),
-      perTicketRate: data.isPerTicket ? data.perTicketRate : undefined,
-    };
-    onSubmitSuccess(finalData);
-  };
-  
-  const addPackageToBooking = (pkg: YachtPackageItem) => {
-    const existingPackageIndex = packageFields.findIndex(p => p.packageId === pkg.id);
-    if (existingPackageIndex === -1) {
-      appendPackage({
-        packageId: pkg.id,
-        packageName: pkg.name,
-        quantity: 1,
-        rate: pkg.rate,
-      });
-    }
-  };
-
-  return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-4xl">
-        <DialogHeader>
-          <DialogTitle>{lead ? 'Edit Booking' : 'New Booking'}</DialogTitle>
-          <DialogDescription>
-            {lead ? 'Update the details for this booking.' : 'Fill in the details for a new booking.'}
-          </DialogDescription>
-        </DialogHeader>
-        <ScrollArea className="max-h-[70vh] p-1">
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 p-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 border-b pb-6">
-                <FormField control={form.control} name="clientName" render={({ field }) => (<FormItem><FormLabel>Client Name</FormLabel><FormControl><Input placeholder="Client Name" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                <FormField control={form.control} name="yacht" render={({ field }) => (<FormItem><FormLabel>Yacht</FormLabel><Select onValueChange={field.onChange} value={field.value} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select a yacht" /></SelectTrigger></FormControl><SelectContent>{allYachts.map(y => <SelectItem key={y.id} value={y.id}>{y.name}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
-                <FormField control={form.control} name="agent" render={({ field }) => (<FormItem><FormLabel>Agent</FormLabel><Select onValueChange={field.onChange} value={field.value} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select an agent" /></SelectTrigger></FormControl><SelectContent>{allAgents.map(a => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
-                <FormField control={form.control} name="month" render={({ field }) => (<FormItem className="flex flex-col pt-2"><FormLabel>Event Date & Time</FormLabel><DatePicker date={field.value} setDate={field.onChange} /><FormMessage /></FormItem>)} />
-                <FormField control={form.control} name="type" render={({ field }) => (<FormItem><FormLabel>Booking Type</FormLabel><Select onValueChange={field.onChange} value={field.value} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select type" /></SelectTrigger></FormControl><SelectContent>{leadTypeOptions.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
-                <FormField control={form.control} name="ownerUserId" render={({ field }) => (<FormItem><FormLabel>Booking Owner</FormLabel><Select onValueChange={field.onChange} value={field.value} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select owner" /></SelectTrigger></FormControl><SelectContent>{allUsers.map(u => <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 border-b pb-6">
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium">Pricing Details</h3>
-                  <FormField
-                    control={form.control} name="isPerTicket"
-                    render={({ field }) => (
-                      <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
-                        <div className="space-y-0.5"><FormLabel>Per-Ticket Pricing</FormLabel><FormDescription>Enable for individual ticket sales instead of package rates.</FormDescription></div>
-                        <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
-                      </FormItem>
-                    )}
-                  />
-                  {isPerTicket ? (
-                    <FormField control={form.control} name="perTicketRate" render={({ field }) => (<FormItem><FormLabel>Rate Per Ticket (AED)</FormLabel><FormControl><Input type="number" placeholder="0.00" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl><FormMessage /></FormItem>)} />
-                  ) : (
-                    <div>
-                      <Label>Available Yacht Packages</Label>
-                      {selectedYacht ? (
-                        <div className="flex flex-wrap gap-2 mt-2">
-                          {selectedYacht.packages?.map(pkg => (
-                            <Button key={pkg.id} type="button" variant="outline" size="sm" onClick={() => addPackageToBooking(pkg)}>
-                              <PlusCircle className="mr-2 h-4 w-4" /> {pkg.name} ({pkg.rate} AED)
-                            </Button>
-                          ))}
-                        </div>
-                      ) : <p className="text-sm text-muted-foreground mt-2">Select a yacht to see available packages.</p>}
-                    </div>
-                  )}
-
-                  <div className="space-y-2 pt-4">
-                    <Label>Selected Packages & Guests</Label>
-                     {isPerTicket && <FormField control={form.control} name="packageQuantities.0.quantity" render={({ field }) => (<FormItem><FormLabel>Number of Guests</FormLabel><FormControl><Input type="number" placeholder="0" min="0" {...field} onChange={e => field.onChange(parseInt(e.target.value, 10) || 0)} /></FormControl><FormMessage /></FormItem>)} />}
-                    {!isPerTicket && packageFields.map((field, index) => (
-                      <div key={field.id} className="flex items-center gap-2 p-2 border rounded-md">
-                        <Input {...form.register(`packageQuantities.${index}.packageName`)} className="bg-muted/50" readOnly />
-                        <FormField
-                          control={form.control} name={`packageQuantities.${index}.quantity`}
-                          render={({ field: qtyField }) => (
-                            <Input type="number" placeholder="Qty" min="0" className="w-20" {...qtyField} onChange={(e) => qtyField.onChange(parseInt(e.target.value, 10) || 0)} />
-                          )}
-                        />
-                        <div className="relative w-28">
-                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">@</span>
-                          <Input type="number" {...form.register(`packageQuantities.${index}.rate`)} className="bg-muted/50 pl-6" readOnly />
-                        </div>
-                        <Button type="button" variant="ghost" size="icon" onClick={() => removePackage(index)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                      </div>
-                    ))}
-                    <FormField control={form.control} name="freeGuestCount" render={({ field }) => (<FormItem><FormLabel>Free Guests</FormLabel><FormControl><Input type="number" placeholder="0" min="0" {...field} onChange={e => field.onChange(parseInt(e.target.value, 10) || 0)} /></FormControl><FormMessage /></FormItem>)} />
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                    <h3 className="text-lg font-medium">Financial Summary</h3>
-                    <div className="space-y-2 p-3 rounded-md border bg-muted/50">
-                        <div className="flex justify-between text-sm"><span className="text-muted-foreground">Total Amount:</span><span className="font-medium">{form.watch('totalAmount').toLocaleString()} AED</span></div>
-                        <div className="flex justify-between text-sm"><span className="text-muted-foreground">Commission ({commissionPercentage || 0}%):</span><span className="font-medium">{form.watch('commissionAmount').toLocaleString()} AED</span></div>
-                        <div className="flex justify-between text-sm font-semibold"><span >Net Amount:</span><span>{form.watch('netAmount').toLocaleString()} AED</span></div>
-                        <hr className="my-2 border-border" />
-                        <div className="flex justify-between text-sm"><span className="text-muted-foreground">Paid Amount:</span><span className="font-medium text-green-600">{form.watch('paidAmount').toLocaleString()} AED</span></div>
-                        <div className="flex justify-between text-sm font-semibold"><span >Balance:</span><span className={cn(form.watch('balanceAmount') > 0 ? "text-destructive" : "text-foreground")}>{form.watch('balanceAmount').toLocaleString()} AED</span></div>
-                    </div>
-                     <FormField control={form.control} name="paidAmount" render={({ field }) => (<FormItem><FormLabel>Paid Amount</FormLabel><FormControl><Input type="number" placeholder="0.00" min="0" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl><FormMessage /></FormItem>)} />
-                </div>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 border-b pb-6">
-                 <FormField control={form.control} name="status" render={({ field }) => (<FormItem><FormLabel>Booking Status</FormLabel><Select onValueChange={field.onChange} value={field.value} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select status" /></SelectTrigger></FormControl><SelectContent>{leadStatusOptions.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
-                 <FormField control={form.control} name="paymentConfirmationStatus" render={({ field }) => (<FormItem><FormLabel>Payment Confirmed?</FormLabel><Select onValueChange={field.onChange} value={field.value} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select status" /></SelectTrigger></FormControl><SelectContent>{paymentConfirmationStatusOptions.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
-                 <FormField control={form.control} name="modeOfPayment" render={({ field }) => (<FormItem><FormLabel>Mode of Payment</FormLabel><Select onValueChange={field.onChange} value={field.value} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select mode" /></SelectTrigger></FormControl><SelectContent>{modeOfPaymentOptions.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
-                 <FormField control={form.control} name="transactionId" render={({ field }) => (<FormItem><FormLabel>Transaction ID (Optional)</FormLabel><FormControl><Input placeholder="e.g., CH_123..." {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>)} />
-              </div>
-
-              <FormField control={form.control} name="notes" render={({ field }) => (<FormItem><FormLabel>Notes</FormLabel><FormControl><Textarea placeholder="Add any notes about the booking..." className="resize-y" {...field} value={field.value || ''}/></FormControl><FormMessage /></FormItem>)} />
-              
-              <DialogFooter>
-                <DialogClose asChild><Button type="button" variant="outline">Cancel</Button></DialogClose>
-                <Button type="submit">{lead ? 'Save Changes' : 'Create Booking'}</Button>
-              </DialogFooter>
-            </form>
-          </Form>
->>>>>>> 8dd0489 (only admin should be adding the yacht packages and the cost. in booking)
         </ScrollArea>
       </DialogContent>
     </Dialog>

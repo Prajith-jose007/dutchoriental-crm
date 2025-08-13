@@ -84,6 +84,7 @@ export interface Lead {
   type: LeadType;
   paymentConfirmationStatus: PaymentConfirmationStatus;
   transactionId?: string;
+  bookingRefNo?: string; // New field
   modeOfPayment: ModeOfPayment;
   clientName: string;
 

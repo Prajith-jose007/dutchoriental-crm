@@ -48,6 +48,7 @@ const mapDbLeadToLeadObject = (dbLead: any): Lead => {
         type: (dbLead.type || 'Private Cruise'),
         paymentConfirmationStatus: (dbLead.paymentConfirmationStatus || 'UNCONFIRMED') as PaymentConfirmationStatus,
         transactionId: dbLead.transactionId || undefined,
+        bookingRefNo: dbLead.bookingRefNo || undefined,
         modeOfPayment: (dbLead.modeOfPayment || 'Online'),
         packageQuantities,
         freeGuestCount: isNaN(parsedFreeGuestCount) ? 0 : parsedFreeGuestCount,
@@ -138,12 +139,12 @@ export async function POST(request: NextRequest) {
     
     const sql = `
       INSERT INTO leads (
-        id, clientName, agent, yacht, status, month, notes, type, paymentConfirmationStatus, transactionId, modeOfPayment,
+        id, clientName, agent, yacht, status, month, notes, type, paymentConfirmationStatus, transactionId, bookingRefNo, modeOfPayment,
         package_quantities_json, freeGuestCount, perTicketRate,
         totalAmount, commissionPercentage, commissionAmount, netAmount,
         paidAmount, balanceAmount,
         createdAt, updatedAt, lastModifiedByUserId, ownerUserId
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     const params = [
@@ -157,6 +158,7 @@ export async function POST(request: NextRequest) {
       newLeadData.type || 'Private Cruise',
       newLeadData.paymentConfirmationStatus || 'UNCONFIRMED',
       finalTransactionId,
+      newLeadData.bookingRefNo || null,
       newLeadData.modeOfPayment || 'Online',
       newLeadData.packageQuantities ? JSON.stringify(newLeadData.packageQuantities) : null,
       Number(newLeadData.freeGuestCount || 0),

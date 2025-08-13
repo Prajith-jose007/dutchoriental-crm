@@ -40,6 +40,7 @@ const csvHeaderMapping: { [csvHeaderKey: string]: keyof Omit<Lead, 'packageQuant
   'payment_status': 'paymentConfirmationStatus', 'pay_status': 'paymentConfirmationStatus', 'payment_confirmation_status': 'paymentConfirmationStatus',
   'type': 'type', 'lead_type': 'type',
   'transaction_id': 'transactionId', 'transaction id': 'transactionId',
+  'booking_ref_no': 'bookingRefNo', 'booking ref no': 'bookingRefNo', 'bookingrefno': 'bookingRefNo',
   'payment_mode': 'modeOfPayment', 'mode_of_payment': 'modeOfPayment',
   'free': 'freeGuestCount', 'free_guests': 'freeGuestCount',
   'ch': 'pkg_child',
@@ -119,7 +120,7 @@ const convertCsvValue = (
       case 'status': return 'Balance'; 
       case 'type': return 'Private Cruise';
       case 'paymentConfirmationStatus': return 'UNCONFIRMED';
-      case 'notes': return '';
+      case 'notes': case 'bookingRefNo': return '';
       case 'month': return formatISO(new Date());
       case 'createdAt': case 'updatedAt': return formatISO(new Date());
       case 'lastModifiedByUserId': return currentUserId || undefined;
@@ -259,7 +260,7 @@ function generateNewLeadId(existingLeadIds: string[]): string {
 }
 
 function generateNewLeadTransactionId(existingLeads: Lead[], forYear: number, currentMaxForYearInBatch: number = 0): string {
-  const prefix = `TRN-${forYear}`;
+  const prefix = `TRN-${forYear}-`;
   let maxNumber = currentMaxForYearInBatch;
 
   existingLeads.forEach(lead => {
@@ -842,6 +843,7 @@ export default function LeadsPage() {
             type: parsedRow.type || 'Private Cruise',
             paymentConfirmationStatus: parsedRow.paymentConfirmationStatus || 'UNCONFIRMED',
             transactionId: transactionIdForRow,
+            bookingRefNo: parsedRow.bookingRefNo || '',
             modeOfPayment: parsedRow.modeOfPayment || 'CARD',
             packageQuantities: packageQuantities,
             freeGuestCount: parsedRow.freeGuestCount || 0,

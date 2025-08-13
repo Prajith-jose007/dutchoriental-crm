@@ -162,6 +162,8 @@ async function createLeadsTable() {
     await addColumnIfNotExists(tableName, 'package_quantities_json', 'TEXT DEFAULT NULL');
     await addColumnIfNotExists(tableName, 'freeGuestCount', 'INT DEFAULT 0');
     await addColumnIfNotExists(tableName, 'perTicketRate', 'DECIMAL(10, 2) DEFAULT NULL');
+    await addColumnIfNotExists(tableName, 'bookingRefNo', 'VARCHAR(255) DEFAULT NULL');
+
 
   } catch (error) {
     console.error(`Error creating/altering table ${tableName}:`, (error as Error).message);
@@ -343,12 +345,12 @@ async function migrateLeads() {
     const sql = `
       INSERT INTO leads (
         id, clientName, agent, yacht, status, month, notes, type, 
-        paymentConfirmationStatus, transactionId, modeOfPayment,
+        paymentConfirmationStatus, transactionId, bookingRefNo, modeOfPayment,
         package_quantities_json, freeGuestCount, perTicketRate,
         totalAmount, commissionPercentage, commissionAmount, netAmount,
         paidAmount, balanceAmount,
         createdAt, updatedAt, lastModifiedByUserId, ownerUserId
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON DUPLICATE KEY UPDATE
         clientName = VALUES(clientName),
         agent = VALUES(agent),
@@ -359,6 +361,7 @@ async function migrateLeads() {
         type = VALUES(type),
         paymentConfirmationStatus = VALUES(paymentConfirmationStatus),
         transactionId = VALUES(transactionId),
+        bookingRefNo = VALUES(bookingRefNo),
         modeOfPayment = VALUES(modeOfPayment),
         package_quantities_json = VALUES(package_quantities_json),
         freeGuestCount = VALUES(freeGuestCount),
@@ -404,6 +407,7 @@ async function migrateLeads() {
         lead.type,
         lead.paymentConfirmationStatus || 'UNCONFIRMED', 
         lead.transactionId || null,
+        lead.bookingRefNo || null,
         lead.modeOfPayment,
         packageQuantitiesJson,
         lead.freeGuestCount || 0,
@@ -637,5 +641,3 @@ main().catch(async err => {
   }
   process.exit(1);
 });
-
-    

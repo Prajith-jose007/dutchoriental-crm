@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -60,6 +61,7 @@ const leadFormSchema = z.object({
   type: z.enum(leadTypeOptions, { required_error: "Booking type is required."}),
   paymentConfirmationStatus: z.enum(paymentConfirmationStatusOptions, { required_error: "Payment confirmation status is required."}),
   transactionId: z.string().optional(),
+  bookingRefNo: z.string().optional(),
   modeOfPayment: z.enum(modeOfPaymentOptions),
   clientName: z.string().min(1, 'Client name is required'),
 
@@ -114,6 +116,7 @@ const getDefaultFormValues = (existingLead?: Lead | null, currentUserId?: string
     clientName: existingLead?.clientName || '',
     notes: existingLead?.notes || '',
     transactionId: existingLead?.id ? (existingLead?.transactionId || 'Pending Generation') : 'Pending Generation',
+    bookingRefNo: existingLead?.bookingRefNo || '',
     packageQuantities: initialPackageQuantities,
     freeGuestCount: Number(existingLead?.freeGuestCount || 0),
     perTicketRate: existingLead?.perTicketRate !== undefined && existingLead.perTicketRate !== null ? Number(Number(existingLead.perTicketRate).toFixed(2)) : null,
@@ -406,6 +409,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
       ...data,
       id: lead?.id || `temp-${Date.now()}`,
       transactionId: lead?.id && data.transactionId === "Pending Generation" ? lead.transactionId : data.transactionId,
+      bookingRefNo: data.bookingRefNo || undefined,
       month: data.month ? formatISO(data.month) : formatISO(new Date()),
       paymentConfirmationStatus: data.paymentConfirmationStatus,
       freeGuestCount: Number(data.freeGuestCount || 0),
@@ -639,6 +643,19 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
                   <FormItem>
                     <FormLabel>Transaction ID</FormLabel>
                     <FormControl><Input placeholder="Pending Generation" {...field} value={field.value || 'Pending Generation'} readOnly className="bg-muted/50 cursor-not-allowed" /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="bookingRefNo"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Booking REF No: (Optional)</FormLabel>
+                    <FormControl>
+                      <Input placeholder="e.g., REF12345" {...field} value={field.value || ''} />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}

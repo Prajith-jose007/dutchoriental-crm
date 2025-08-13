@@ -78,6 +78,7 @@ export const generateLeadColumns = (allYachts: Yacht[]): LeadTableColumn[] => {
     { accessorKey: 'paymentConfirmationStatus', header: 'Payment/Conf. Status' },
     { accessorKey: 'type', header: 'Type' },
     { accessorKey: 'transactionId', header: 'Transaction ID' },
+    { accessorKey: 'bookingRefNo', header: 'Booking REF No:' },
     { accessorKey: 'modeOfPayment', header: 'Payment Mode' },
     { accessorKey: 'freeGuestCount', header: 'Free', isNumeric: true },
   ];

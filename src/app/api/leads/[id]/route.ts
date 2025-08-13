@@ -48,6 +48,7 @@ const mapDbLeadToLeadObject = (dbLead: any): Lead => {
         type: (dbLead.type || 'Private Cruise') as LeadType,
         paymentConfirmationStatus: (dbLead.paymentConfirmationStatus || 'UNCONFIRMED') as PaymentConfirmationStatus,
         transactionId: dbLead.transactionId || undefined,
+        bookingRefNo: dbLead.bookingRefNo || undefined,
         modeOfPayment: (dbLead.modeOfPayment || 'Online') as ModeOfPayment,
         packageQuantities,
         freeGuestCount: isNaN(parsedFreeGuestCount) ? 0 : parsedFreeGuestCount,
@@ -70,7 +71,7 @@ function buildLeadUpdateSetClause(data: Partial<Omit<Lead, 'id' | 'createdAt' | 
   const valuesToUpdate: any[] = [];
   const allowedKeys: (keyof Lead | 'package_quantities_json')[] = [
     'clientName', 'agent', 'yacht', 'status', 'month', 'notes', 'type', 
-    'paymentConfirmationStatus', 'transactionId', 'modeOfPayment',
+    'paymentConfirmationStatus', 'transactionId', 'bookingRefNo', 'modeOfPayment',
     'package_quantities_json', 'freeGuestCount', 'perTicketRate',
     'totalAmount', 'commissionPercentage', 'commissionAmount', 'netAmount', 'paidAmount', 'balanceAmount', 
     'updatedAt', 'lastModifiedByUserId', 'ownerUserId'
@@ -81,7 +82,7 @@ function buildLeadUpdateSetClause(data: Partial<Omit<Lead, 'id' | 'createdAt' | 
       fieldsToUpdate.push(`${key} = ?`);
       if (['month', 'updatedAt'].includes(key)) {
         valuesToUpdate.push(ensureISOFormat(value as string) || null);
-      } else if (value === null && ['perTicketRate', 'notes', 'transactionId'].includes(key)) {
+      } else if (value === null && ['perTicketRate', 'notes', 'transactionId', 'bookingRefNo'].includes(key)) {
         valuesToUpdate.push(null);
       } else if (value === undefined && ['perTicketRate'].includes(key)) {
         valuesToUpdate.push(null);

@@ -134,6 +134,7 @@ export const placeholderLeads: Lead[] = [
     type: 'Dinner Cruise',
     paymentConfirmationStatus: 'CONFIRMED',
     transactionId: `TRN-${currentYear}-00001`,
+    bookingRefNo: 'REF-TC-2024-A',
     modeOfPayment: 'CARD',
     packageQuantities: [
       { packageId: 'lr-adult', packageName: 'ADULT', quantity: 50, rate: 250 },
@@ -164,6 +165,7 @@ export const placeholderLeads: Lead[] = [
     type: 'Superyacht Sightseeing Cruise',
     paymentConfirmationStatus: 'UNCONFIRMED',
     transactionId: `TRN-${currentYear}-00002`,
+    bookingRefNo: 'REF-ST-2024-B',
     modeOfPayment: 'CREDIT',
     packageQuantities: [
       { packageId: 'ss-premium', packageName: 'PREMIUM', quantity: 20, rate: 299 },

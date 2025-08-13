@@ -34,7 +34,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-<<<<<<< HEAD
+/*<<<<<<< HEAD
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Textarea } from '@/components/ui/textarea';
 import { DatePicker } from '@/components/ui/date-picker';
@@ -52,7 +52,7 @@ const leadPackageQuantitySchema = z.object({
   packageName: z.string().min(1, "Package name is required"),
   quantity: z.coerce.number().min(0, "Quantity must be non-negative").default(0),
   rate: z.coerce.number().min(0, "Rate must be non-negative").default(0),
-=======
+=======*/
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { DatePicker } from '@/components/ui/date-picker';

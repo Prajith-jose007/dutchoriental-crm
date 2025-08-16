@@ -33,11 +33,6 @@ export const mainNavItems: NavItem[] = [
         href: '/crm/opportunity',
         icon: KanbanSquare,
       },
-      {
-        title: 'Leads',
-        href: '/leads/pipeline',
-        icon: KanbanSquare,
-      },
     ]
   },
   {

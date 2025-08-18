@@ -28,10 +28,8 @@ export default function ClientsPage() {
   const fetchClients = async () => {
     setIsLoading(true);
     try {
-      // NOTE: This will now fetch from a dedicated /api/clients endpoint in the future.
-      // For now, we simulate an empty list or a dedicated client list.
-      // We will change this to point to a new API endpoint.
-      const response = await fetch('/api/agents'); // This will be changed to /api/clients
+      // Fetching from agents, but this should be a dedicated client endpoint in the future.
+      const response = await fetch('/api/agents');
       if (!response.ok) {
         throw new Error('Failed to fetch clients');
       }
@@ -79,14 +77,15 @@ export default function ClientsPage() {
   const handleClientFormSubmit = async (submittedClientData: Agent) => {
     try {
       let response;
+      // The API endpoints for client will be different from agent in the future.
       if (editingClient) {
-        response = await fetch(`/api/agents/${editingClient.id}`, { // This will be changed to /api/clients
+        response = await fetch(`/api/agents/${editingClient.id}`, { 
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(submittedClientData),
         });
       } else {
-        response = await fetch('/api/agents', { // This will be changed to /api/clients
+        response = await fetch('/api/agents', { 
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(submittedClientData),
@@ -121,7 +120,7 @@ export default function ClientsPage() {
     if (!confirm(`Are you sure you want to delete client ${clientId}?`)) return;
 
     try {
-      const response = await fetch(`/api/agents/${clientId}`, { // This will be changed to /api/clients
+      const response = await fetch(`/api/agents/${clientId}`, {
         method: 'DELETE',
       });
       if (!response.ok) {

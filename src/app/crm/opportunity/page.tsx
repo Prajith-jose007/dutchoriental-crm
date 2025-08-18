@@ -82,26 +82,32 @@ export default function OpportunityPage() {
   };
 
   const ensureClientExists = async (clientName: string): Promise<string> => {
-    const checkResponse = await fetch(`/api/agents?name=${encodeURIComponent(clientName)}`);
-    if(checkResponse.ok) {
-        const existingClients: Agent[] = await checkResponse.json();
-        const client = existingClients.find(c => c.name.toLowerCase() === clientName.toLowerCase());
-        if(client) {
-            return client.id;
-        }
+    // This function checks if a client exists and creates one if it doesn't.
+    // It uses the /api/agents endpoint for now, but this should be a dedicated client API.
+    const agentsResponse = await fetch('/api/agents');
+    if (!agentsResponse.ok) {
+        throw new Error('Could not fetch existing clients to verify.');
+    }
+    const existingClients: Agent[] = await agentsResponse.json();
+    const client = existingClients.find(c => c.name.toLowerCase() === clientName.toLowerCase());
+
+    if (client) {
+        return client.id;
     }
     
-    // If client does not exist, create it.
-    const newClient: Omit<Agent, 'id' | 'discount'> = {
+    // If client does not exist, create it via the agent API.
+    const newClientPayload = {
+        id: `C-${Date.now()}`, // Temporary unique ID
         name: clientName,
         email: `${clientName.toLowerCase().replace(/\s+/g, '.')}@dutchoriental.placeholder.com`,
         status: 'Active',
+        discount: 0,
     };
 
-    const createResponse = await fetch('/api/agents', { // This will be changed to /api/clients
+    const createResponse = await fetch('/api/agents', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({...newClient, id: `C-${Date.now()}` }), // provide temporary ID
+        body: JSON.stringify(newClientPayload),
     });
 
     if(!createResponse.ok) {
@@ -110,7 +116,7 @@ export default function OpportunityPage() {
     }
     const createdClient: Agent = await createResponse.json();
     return createdClient.id;
-  }
+  };
 
   const handleOpportunityFormSubmit = async (submittedOppData: Opportunity) => {
     const isNew = !editingOpportunity;

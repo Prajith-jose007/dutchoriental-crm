@@ -38,22 +38,22 @@ export const mainNavItems: NavItem[] = [
         href: '/crm/opportunity',
         icon: KanbanSquare,
       },
-       {
-        title: 'Bookings',
-        href: '/leads',
-        icon: Briefcase,
-      },
-      {
-        title: 'Yachts',
-        href: '/yachts',
-        icon: Ship,
-      },
-       {
-        title: 'Private Reports',
-        href: '/reports',
-        icon: BarChart3,
-      },
     ]
+  },
+  {
+    title: 'Bookings',
+    href: '/leads',
+    icon: Briefcase,
+  },
+  {
+    title: 'Yachts',
+    href: '/yachts',
+    icon: Ship,
+  },
+  {
+    title: 'Reports',
+    href: '/reports',
+    icon: BarChart3,
   },
   {
     title: 'Agents',
@@ -66,11 +66,6 @@ export const mainNavItems: NavItem[] = [
     href: '/users',
     icon: Users,
     adminOnly: true, // Mark as admin only
-  },
-  {
-    title: 'Reports',
-    href: '/reports/shared',
-    icon: BarChart3,
   },
   {
     title: 'Settings',

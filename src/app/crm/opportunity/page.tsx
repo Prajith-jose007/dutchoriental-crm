@@ -7,7 +7,7 @@ import { PlusCircle } from 'lucide-react';
 import { PageHeader } from '@/components/PageHeader';
 import { OpportunitiesTable } from './_components/OpportunitiesTable';
 import { OpportunityFormDialog } from './_components/OpportunityFormDialog';
-import type { Opportunity, User, Yacht } from '@/lib/types';
+import type { Opportunity, User, Yacht, Agent } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -81,9 +81,43 @@ export default function OpportunityPage() {
     setIsOpportunityDialogOpen(true);
   };
 
+  const ensureClientExists = async (clientName: string): Promise<string> => {
+    const checkResponse = await fetch(`/api/agents?name=${encodeURIComponent(clientName)}`);
+    if(checkResponse.ok) {
+        const existingClients: Agent[] = await checkResponse.json();
+        const client = existingClients.find(c => c.name.toLowerCase() === clientName.toLowerCase());
+        if(client) {
+            return client.id;
+        }
+    }
+    
+    // If client does not exist, create it.
+    const newClient: Omit<Agent, 'id' | 'discount'> = {
+        name: clientName,
+        email: `${clientName.toLowerCase().replace(/\s+/g, '.')}@dutchoriental.placeholder.com`,
+        status: 'Active',
+    };
+
+    const createResponse = await fetch('/api/agents', { // This will be changed to /api/clients
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({...newClient, id: `C-${Date.now()}` }), // provide temporary ID
+    });
+
+    if(!createResponse.ok) {
+        const errorData = await createResponse.json();
+        throw new Error(errorData.message || 'Failed to create new client');
+    }
+    const createdClient: Agent = await createResponse.json();
+    return createdClient.id;
+  }
+
   const handleOpportunityFormSubmit = async (submittedOppData: Opportunity) => {
     const isNew = !editingOpportunity;
     try {
+      // Before submitting the opportunity, ensure the client exists.
+      await ensureClientExists(submittedOppData.potentialCustomer);
+
       let response;
       const payload = { ...submittedOppData };
       

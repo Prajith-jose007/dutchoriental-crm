@@ -37,9 +37,7 @@ export default function ReportsPage() {
   const [selectedAgentId, setSelectedAgentId] = useState<string>('all');
   const [selectedUserId, setSelectedUserId] = useState<string>('all');
   const [selectedStatusFilter, setSelectedStatusFilter] = useState<LeadStatus | 'all'>('all');
-  
-  // This page is now hardcoded for "Private Cruise", so the filter is disabled.
-  const [selectedLeadTypeFilter, setSelectedLeadTypeFilter] = useState<LeadType | 'all'>('Private Cruise');
+  const [selectedLeadTypeFilter, setSelectedLeadTypeFilter] = useState<LeadType | 'all'>('all');
 
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 5 }, (_, i) => currentYear - i);
@@ -77,12 +75,7 @@ export default function ReportsPage() {
         const agentsData = await agentsRes.json();
         const usersData: User[] = await usersRes.json();
         
-        // Hard-filter for Private Cruises for this report page
-        const privateLeads = (Array.isArray(leadsData) ? leadsData : []).filter(
-          (lead) => lead.type === 'Private Cruise'
-        );
-
-        setAllLeads(privateLeads);
+        setAllLeads(Array.isArray(leadsData) ? leadsData : []);
         setAllInvoices(Array.isArray(invoicesData) ? invoicesData : []);
         setAllYachts(Array.isArray(yachtsData) ? yachtsData : []);
         setAllAgents(Array.isArray(agentsData) ? agentsData : []);
@@ -141,9 +134,6 @@ export default function ReportsPage() {
       if (selectedAgentId !== 'all' && lead.agent !== selectedAgentId) return false;
       if (selectedUserId !== 'all' && (lead.lastModifiedByUserId !== selectedUserId && lead.ownerUserId !== selectedUserId )) return false;
       if (selectedStatusFilter !== 'all' && lead.status !== selectedStatusFilter) return false;
-      
-      // The lead type filter is now fixed to 'Private Cruise' from the initial data fetch
-      // but we keep this line for logical consistency, though it will always be true.
       if (selectedLeadTypeFilter !== 'all' && lead.type !== selectedLeadTypeFilter) return false;
 
       return true;
@@ -198,12 +188,13 @@ export default function ReportsPage() {
     setSelectedAgentId('all');
     setSelectedUserId('all');
     setSelectedStatusFilter('all');
+    setSelectedLeadTypeFilter('all');
   };
 
   if (isLoading) {
     return (
       <div className="container mx-auto py-2">
-        <PageHeader title="Private cruise Reports" description="Loading report data..." />
+        <PageHeader title="Reports" description="Loading report data..." />
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 mb-6 p-4 border rounded-lg shadow-sm">
           {[...Array(9)].map((_,i) => <Skeleton key={i} className="h-10 w-full" />)}
         </div>
@@ -226,7 +217,7 @@ export default function ReportsPage() {
   if (error) {
     return (
       <div className="container mx-auto py-2">
-        <PageHeader title="Private cruise Reports" description="Error loading data." />
+        <PageHeader title="Reports" description="Error loading data." />
         <p className="text-destructive text-center py-10">Failed to load report data: {error}</p>
       </div>
     );
@@ -235,8 +226,8 @@ export default function ReportsPage() {
   return (
     <div className="container mx-auto py-2">
       <PageHeader
-        title="Private cruise Reports"
-        description="Filter and view key metrics for your private cruise bookings and invoices."
+        title="Reports"
+        description="Filter and view key metrics for your bookings and invoices."
       />
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 mb-6 p-4 border rounded-lg shadow-sm">
@@ -284,7 +275,7 @@ export default function ReportsPage() {
         </div>
          <div>
           <Label htmlFor="lead-type-filter-report">Booking Type</Label>
-          <Select value={selectedLeadTypeFilter} onValueChange={(value) => setSelectedLeadTypeFilter(value as LeadType | 'all')} disabled>
+          <Select value={selectedLeadTypeFilter} onValueChange={(value) => setSelectedLeadTypeFilter(value as LeadType | 'all')}>
             <SelectTrigger id="lead-type-filter-report" className="w-full">
               <SelectValue placeholder="All Booking Types" />
             </SelectTrigger>
@@ -302,7 +293,7 @@ export default function ReportsPage() {
             <SelectTrigger id="yacht-filter-report"><SelectValue placeholder="All Yachts" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Yachts</SelectItem>
-              {allYachts.filter(y => y.category === 'Private Cruise').map(yacht => <SelectItem key={yacht.id} value={yacht.id}>{yacht.name}</SelectItem>)}
+              {allYachts.map(yacht => <SelectItem key={yacht.id} value={yacht.id}>{yacht.name}</SelectItem>)}
             </SelectContent>
           </Select>
         </div>

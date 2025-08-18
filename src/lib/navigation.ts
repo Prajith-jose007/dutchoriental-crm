@@ -38,12 +38,22 @@ export const mainNavItems: NavItem[] = [
         href: '/crm/opportunity',
         icon: KanbanSquare,
       },
+       {
+        title: 'Bookings',
+        href: '/leads',
+        icon: Briefcase,
+      },
+      {
+        title: 'Yachts',
+        href: '/yachts',
+        icon: Ship,
+      },
+       {
+        title: 'Private Reports',
+        href: '/reports',
+        icon: BarChart3,
+      },
     ]
-  },
-  {
-    title: 'Bookings',
-    href: '/leads',
-    icon: Briefcase,
   },
   {
     title: 'Agents',
@@ -58,26 +68,9 @@ export const mainNavItems: NavItem[] = [
     adminOnly: true, // Mark as admin only
   },
   {
-    title: 'Yachts',
-    href: '/yachts',
-    icon: Ship,
-  },
-  {
     title: 'Reports',
-    href: '/reports',
+    href: '/reports/shared',
     icon: BarChart3,
-    items: [
-      {
-        title: 'Private cruise',
-        href: '/reports',
-        icon: BarChart3,
-      },
-      {
-        title: 'Shared cruise',
-        href: '/reports/shared',
-        icon: BarChart3,
-      },
-    ]
   },
   {
     title: 'Settings',

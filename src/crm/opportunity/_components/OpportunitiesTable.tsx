@@ -76,9 +76,6 @@ export function OpportunitiesTable({
   const calculateProbability = (opp: Opportunity): string => {
     if (opp.pipelinePhase === 'Closed Won') return '100%';
     if (opp.pipelinePhase === 'Closed Lost') return '0%';
-    if (typeof opp.estimatedRevenue === 'number' && typeof opp.meanExpectedValue === 'number' && opp.estimatedRevenue > 0) {
-      return `${Math.round((opp.meanExpectedValue / opp.estimatedRevenue) * 100)}%`;
-    }
     if (typeof opp.closingProbability === 'number') {
         return `${opp.closingProbability}%`;
     }
@@ -96,6 +93,7 @@ export function OpportunitiesTable({
             <TableHead>Account / Customer</TableHead>
             <TableHead>Meeting Date</TableHead>
             <TableHead>Est. Revenue</TableHead>
+            <TableHead>Probability</TableHead>
             <TableHead>Phase</TableHead>
             <TableHead>Priority</TableHead>
             <TableHead>Status</TableHead>
@@ -108,7 +106,7 @@ export function OpportunitiesTable({
         <TableBody>
           {opportunities.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={14} className="h-24 text-center">
+              <TableCell colSpan={13} className="h-24 text-center">
                 No opportunities found.
               </TableCell>
             </TableRow>
@@ -124,6 +122,7 @@ export function OpportunitiesTable({
                 <TableCell>{opp.potentialCustomer}</TableCell>
                 <TableCell>{formatDate(opp.estimatedClosingDate)}</TableCell>
                 <TableCell>{formatCurrency(opp.estimatedRevenue)}</TableCell>
+                <TableCell>{calculateProbability(opp)}</TableCell>
                 <TableCell>
                   <Badge variant={getPhaseBadgeVariant(opp.pipelinePhase)}>{opp.pipelinePhase}</Badge>
                 </TableCell>

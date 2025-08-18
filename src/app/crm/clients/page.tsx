@@ -1,20 +1,29 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { PlusCircle } from 'lucide-react';
 import { PageHeader } from '@/components/PageHeader';
 import { ClientsTable } from './_components/ClientsTable';
 import { ClientFormDialog } from './_components/ClientFormDialog';
-import type { Agent } from '@/lib/types';
+import type { Agent, Opportunity } from '@/lib/types'; // Using Agent for now, but data is from Opportunity
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 
 const USER_ROLE_STORAGE_KEY = 'currentUserRole';
 
-// This new page is a clone of the Agents page, repurposed for "Clients"
-// It will serve as the foundation for the new Client Management feature
+// Represents a client, derived from opportunities
+export interface Client {
+  id: string;
+  name: string;
+  email: string;
+  phone_no?: string;
+  status: 'Active' | 'Non Active' | 'Dead';
+  parentClientId?: string; // Links to another client's ID
+  // Other client-specific fields can be added here
+}
+
 export default function ClientsPage() {
   const [isClientDialogOpen, setIsClientDialogOpen] = useState(false);
   const [editingClient, setEditingClient] = useState<Agent | null>(null);
@@ -28,7 +37,8 @@ export default function ClientsPage() {
   const fetchClients = async () => {
     setIsLoading(true);
     try {
-      // Fetching from agents, but this should be a dedicated client endpoint in the future.
+      // This is now correct: We fetch from the agents endpoint which serves as our client list for now
+      // as opportunities create new "agents" (clients).
       const response = await fetch('/api/agents');
       if (!response.ok) {
         throw new Error('Failed to fetch clients');
@@ -77,7 +87,6 @@ export default function ClientsPage() {
   const handleClientFormSubmit = async (submittedClientData: Agent) => {
     try {
       let response;
-      // The API endpoints for client will be different from agent in the future.
       if (editingClient) {
         response = await fetch(`/api/agents/${editingClient.id}`, { 
           method: 'PUT',

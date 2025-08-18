@@ -78,16 +78,7 @@ export function OpportunityFormDialog({ isOpen, onOpenChange, opportunity, onSub
   
   const getInitialFormValues = (): OpportunityFormData => {
     const currentUserId = typeof window !== 'undefined' ? localStorage.getItem(USER_ID_STORAGE_KEY) : null;
-    let closingProbability = 50;
-    if (opportunity?.estimatedRevenue && opportunity?.meanExpectedValue) {
-        if (opportunity.estimatedRevenue > 0) {
-            closingProbability = Math.round((opportunity.meanExpectedValue / opportunity.estimatedRevenue) * 100);
-        }
-    } else if (opportunity?.closingProbability) {
-        closingProbability = opportunity.closingProbability;
-    }
-
-
+    
     return {
       id: opportunity?.id,
       potentialCustomer: opportunity?.potentialCustomer || '',
@@ -100,8 +91,8 @@ export function OpportunityFormDialog({ isOpen, onOpenChange, opportunity, onSub
       currentStatus: opportunity?.currentStatus || 'Active',
       estimatedClosingDate: opportunity?.estimatedClosingDate && isValid(parseISO(opportunity.estimatedClosingDate)) ? parseISO(opportunity.estimatedClosingDate) : new Date(),
       estimatedRevenue: opportunity?.estimatedRevenue || 0,
-      closingProbability: closingProbability,
-      meanExpectedValue: opportunity?.meanExpectedValue || (opportunity?.estimatedRevenue || 0) * (closingProbability / 100),
+      closingProbability: opportunity?.closingProbability || 50,
+      meanExpectedValue: opportunity?.meanExpectedValue || 0,
       followUpUpdates: opportunity?.followUpUpdates || '',
       location: opportunity?.location || '',
       reportType: opportunity?.reportType || 'Trip',
@@ -114,22 +105,11 @@ export function OpportunityFormDialog({ isOpen, onOpenChange, opportunity, onSub
     defaultValues: getInitialFormValues(),
   });
 
-  const watchedEstimatedRevenue = form.watch('estimatedRevenue');
-  const watchedClosingProbability = form.watch('closingProbability');
-
   useEffect(() => {
     if (isOpen) {
       form.reset(getInitialFormValues());
     }
   }, [opportunity, isOpen]);
-  
-   useEffect(() => {
-    const revenue = watchedEstimatedRevenue || 0;
-    const probability = (watchedClosingProbability || 0) / 100;
-    const meanValue = revenue * probability;
-    form.setValue('meanExpectedValue', parseFloat(meanValue.toFixed(2)));
-  }, [watchedEstimatedRevenue, watchedClosingProbability, form]);
-
 
   const onSubmit = (data: OpportunityFormData) => {
     const currentUserId = typeof window !== 'undefined' ? localStorage.getItem(USER_ID_STORAGE_KEY) : null;
@@ -397,8 +377,8 @@ export function OpportunityFormDialog({ isOpen, onOpenChange, opportunity, onSub
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Mean Expected Value (AED)</FormLabel>
-                          <FormControl><Input type="number" placeholder="0" {...field} value={field.value || ''} readOnly className="bg-muted/50 cursor-not-allowed" /></FormControl>
-                          <FormDescription>Auto-calculated.</FormDescription>
+                           <FormControl><Input type="number" placeholder="0.00" {...field} value={field.value || 0} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl>
+                          <FormDescription>Enter the expected value manually.</FormDescription>
                           <FormMessage />
                         </FormItem>
                       )}

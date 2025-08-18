@@ -76,6 +76,8 @@ interface OpportunityFormDialogProps {
 
 export function OpportunityFormDialog({ isOpen, onOpenChange, opportunity, onSubmitSuccess, allYachts, userMap }: OpportunityFormDialogProps) {
   
+  const probabilityOptions = Array.from({ length: 11 }, (_, i) => i * 10);
+
   const getInitialFormValues = (): OpportunityFormData => {
     const currentUserId = typeof window !== 'undefined' ? localStorage.getItem(USER_ID_STORAGE_KEY) : null;
     
@@ -354,23 +356,27 @@ export function OpportunityFormDialog({ isOpen, onOpenChange, opportunity, onSub
                       )}
                     />
                     <FormField
-                        control={form.control}
-                        name="closingProbability"
-                        render={({ field }) => (
-                            <FormItem className="md:col-span-2">
-                                <FormLabel>Probability of Closing ({field.value || 0}%)</FormLabel>
-                                <FormControl>
-                                    <Slider
-                                        defaultValue={[field.value || 50]}
-                                        value={[field.value || 50]}
-                                        max={100}
-                                        step={5}
-                                        onValueChange={(value) => field.onChange(value[0])}
-                                    />
-                                </FormControl>
-                            </FormItem>
-                        )}
-                        />
+                      control={form.control}
+                      name="closingProbability"
+                      render={({ field }) => (
+                        <FormItem className="md:col-span-2">
+                          <FormLabel>Probability of Closing</FormLabel>
+                          <Select onValueChange={(value) => field.onChange(Number(value))} value={String(field.value || 50)} defaultValue={String(field.value || 50)}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select probability" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {probabilityOptions.map(p => (
+                                <SelectItem key={p} value={String(p)}>{p}%</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
                      <FormField
                       control={form.control}
                       name="meanExpectedValue"

@@ -6,20 +6,8 @@ import { query } from '@/lib/db';
 
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
-    const name = searchParams.get('name');
-
-    let sql = 'SELECT id, name, email, designation, avatarUrl, websiteUrl, status FROM users';
-    const params: any[] = [];
-
-    if (name) {
-      sql += ' WHERE name LIKE ?';
-      params.push(`%${name}%`);
-    }
-    
-    sql += ' ORDER BY name ASC';
-
-    const usersDataDb: any[] = await query(sql, params);
+    const sql = 'SELECT id, name, email, designation, avatarUrl, websiteUrl, status FROM users ORDER BY name ASC';
+    const usersDataDb: any[] = await query(sql);
     
     const users: User[] = usersDataDb.map((dbUser: any) => ({
       id: String(dbUser.id || ''), 

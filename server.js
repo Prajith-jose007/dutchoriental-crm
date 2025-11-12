@@ -11,7 +11,7 @@ const dev = process.env.NODE_ENV !== 'production';
 // Next.js might need 0.0.0.0 to bind correctly if not proxied via localhost.
 // However, starting with 'localhost' is standard, and cPanel's port mapping usually handles the external access.
 const hostname = 'localhost'; 
-const port = parseInt(process.env.PORT, 10) || 3000; // cPanel usually injects PORT
+const port = parseInt(process.env.PORT, 10) || 3001; // cPanel usually injects PORT
 
 // when using middleware `hostname` and `port` must be provided below
 const app = next({ dev, hostname, port });

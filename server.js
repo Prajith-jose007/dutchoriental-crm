@@ -3,14 +3,14 @@
 console.log('Attempting to start DutchOriental CRM server.js...'); // Added for debugging
 
 const { createServer } = require('node:http');
-const { parse } = require('node:url');
+// const { parse } = require('node:url'); // Removed deprecated import
 const next = require('next');
 
 const dev = process.env.NODE_ENV !== 'production';
 // For cPanel, the hostname is often managed by the proxy/environment.
 // Next.js might need 0.0.0.0 to bind correctly if not proxied via localhost.
 // However, starting with 'localhost' is standard, and cPanel's port mapping usually handles the external access.
-const hostname = 'localhost'; 
+const hostname = 'localhost';
 const port = parseInt(process.env.PORT, 10) || 3001; // cPanel usually injects PORT
 
 // when using middleware `hostname` and `port` must be provided below
@@ -20,9 +20,12 @@ const handle = app.getRequestHandler();
 app.prepare().then(() => {
   createServer(async (req, res) => {
     try {
-      // Be sure to pass `true` as the second argument to `url.parse`.
-      // This tells it to parse the query portion of the URL.
-      const parsedUrl = parse(req.url, true);
+      // Use WHATWG URL API instead of deprecated url.parse
+      const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+      const parsedUrl = {
+        pathname: url.pathname,
+        query: Object.fromEntries(url.searchParams),
+      };
       await handle(req, res, parsedUrl);
     } catch (err) {
       console.error('Error occurred handling', req.url, err);

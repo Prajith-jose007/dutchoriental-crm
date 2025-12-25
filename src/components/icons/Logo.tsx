@@ -6,7 +6,7 @@ import { AppName } from '@/lib/navigation';
 import { cn } from '@/lib/utils';
 
 const LOGO_STORAGE_KEY = 'dutchOrientalCrmCompanyLogo';
-const DEFAULT_LOGO_SRC = '/logo.svg'; // Points to public/logo.svg
+const DEFAULT_LOGO_SRC = '/icon.svg'; // Points to public/icon.svg
 
 interface LogoProps extends HTMLAttributes<HTMLDivElement> {
   textClassName?: string;
@@ -30,7 +30,7 @@ export function Logo({ className, textClassName, hideDefaultText = false, ...res
     if (storedLogo) {
       setUploadedLogoUrl(storedLogo);
       setCurrentSrc(storedLogo);
-      setShowDefaultAppName(false); 
+      setShowDefaultAppName(false);
     } else {
       setCurrentSrc(DEFAULT_LOGO_SRC);
       setShowDefaultAppName(!hideDefaultText);
@@ -44,7 +44,7 @@ export function Logo({ className, textClassName, hideDefaultText = false, ...res
       // If the custom uploaded logo fails, try falling back to the default SVG
       setCurrentSrc(DEFAULT_LOGO_SRC);
       setShowDefaultAppName(!hideDefaultText); // Show app name if default SVG is used and hideDefaultText is false
-      setUploadedLogoUrl(null); 
+      setUploadedLogoUrl(null);
       try {
         localStorage.removeItem(LOGO_STORAGE_KEY);
       } catch (error) {
@@ -52,7 +52,7 @@ export function Logo({ className, textClassName, hideDefaultText = false, ...res
       }
     } else if (currentSrc === DEFAULT_LOGO_SRC) {
       // If the default SVG itself fails (e.g., file not found), hide the image and show text
-      setCurrentSrc(''); 
+      setCurrentSrc('');
       setShowDefaultAppName(!hideDefaultText);
     } else {
       // General fallback if currentSrc was already empty
@@ -72,7 +72,7 @@ export function Logo({ className, textClassName, hideDefaultText = false, ...res
   const showImage = currentSrc && currentSrc !== '';
 
   return (
-    <div 
+    <div
       className={cn("relative flex items-center justify-center w-full", className)}
       {...rest}
     >
@@ -80,8 +80,8 @@ export function Logo({ className, textClassName, hideDefaultText = false, ...res
         <Image
           src={currentSrc}
           alt={`${AppName} Logo`}
-          fill 
-          className="object-contain" 
+          fill
+          className="object-contain"
           onError={handleImageError}
           priority={currentSrc === DEFAULT_LOGO_SRC} // Prioritize if it's the default local SVG
         />

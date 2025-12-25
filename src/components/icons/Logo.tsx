@@ -6,7 +6,7 @@ import { AppName } from '@/lib/navigation';
 import { cn } from '@/lib/utils';
 
 const LOGO_STORAGE_KEY = 'dutchOrientalCrmCompanyLogo';
-const DEFAULT_LOGO_SRC = '/icon.svg'; // Points to public/icon.svg
+const DEFAULT_LOGO_SRC = '/logo.png'; // Points to public/logo.png
 
 interface LogoProps extends HTMLAttributes<HTMLDivElement> {
   textClassName?: string;

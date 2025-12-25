@@ -6,7 +6,7 @@ const { createServer } = require('node:http');
 // const { parse } = require('node:url'); // Removed deprecated import
 const next = require('next');
 
-const dev = process.env.NODE_ENV !== 'production';
+const dev = process.env.NODE_ENV === 'development'; // Only enable dev mode if explicitly set to development
 // For cPanel, the hostname is often managed by the proxy/environment.
 // Next.js might need 0.0.0.0 to bind correctly if not proxied via localhost.
 // However, starting with 'localhost' is standard, and cPanel's port mapping usually handles the external access.

@@ -5,7 +5,7 @@
 
 import mysql from 'mysql2/promise';
 import dotenv from 'dotenv';
-dotenv.config({ path: '.env.local' });
+dotenv.config(); // Load default .env file
 
 let pool: mysql.Pool | null = null;
 
@@ -13,7 +13,7 @@ function getPool() {
   if (pool) {
     return pool;
   }
-  
+
   if (!process.env.DB_HOST || !process.env.DB_USER || !process.env.DB_DATABASE) {
     console.error('CRITICAL: Database environment variables are not set. Please check your .env.local file.');
     throw new Error('Database environment variables are not configured.');
@@ -22,7 +22,7 @@ function getPool() {
   pool = mysql.createPool({
     host: process.env.DB_HOST,
     user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD, 
+    password: process.env.DB_PASSWORD,
     database: process.env.DB_DATABASE,
     port: Number(process.env.DB_PORT) || 3306,
     waitForConnections: true,
@@ -60,9 +60,9 @@ export async function query(sql: string, params?: any[]): Promise<any> {
 
 // Function to safely close the pool, useful for scripts
 export async function closePool() {
-    if (pool) {
-        await pool.end();
-        pool = null;
-        console.log('MySQL pool closed.');
-    }
+  if (pool) {
+    await pool.end();
+    pool = null;
+    console.log('MySQL pool closed.');
+  }
 }

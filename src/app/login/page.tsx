@@ -18,6 +18,7 @@ const ADMIN_PASSWORD = 'Dutch@123#';
 
 const USER_ROLE_STORAGE_KEY = 'currentUserRole';
 const USER_EMAIL_STORAGE_KEY = 'currentUserEmail';
+const USER_NAME_STORAGE_KEY = 'currentUserName';
 const USER_ID_STORAGE_KEY = 'currentUserId';
 
 export default function LoginPage() {
@@ -59,97 +60,68 @@ export default function LoginPage() {
     await new Promise(resolve => setTimeout(resolve, 500));
 
     try {
-      let role = 'user';
-      let loggedInUserId: string | null = null;
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
 
-      // Fetch all users to find the ID and verify role more dynamically if needed
-      // For this specific implementation, we hardcode admin check and find ID for any user
-      const usersResponse = await fetch('/api/users');
-      if (!usersResponse.ok) {
-        console.error("Failed to fetch users during login", usersResponse.statusText);
-        setError('Login failed. Could not verify user details.');
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.message || 'Login failed.');
         setIsLoading(false);
         return;
       }
-      const allUsers: User[] = await usersResponse.json();
-      const matchedUser = allUsers.find(u => u.email.toLowerCase() === email.toLowerCase());
 
-      if (matchedUser) {
-        loggedInUserId = matchedUser.id;
-        // Check for admin credentials specifically
-        if (email.toLowerCase() === ADMIN_EMAIL.toLowerCase() && password === ADMIN_PASSWORD) {
-          role = 'admin';
-        } else if (password === matchedUser.password) { // Simplified password check
-          // This is just a placeholder for real password verification
-          // In a real app, compare hashed passwords
-          role = matchedUser.designation === 'System Administrator' || matchedUser.designation === 'Admin' ? 'admin' : 'user';
-        }
-         else {
-          setError('Invalid email or password.');
-          setIsLoading(false);
-          return;
-        }
-      } else {
-        setError('Invalid email or password.');
-        setIsLoading(false);
-        return;
-      }
-      
+      const { id, role, name } = data;
+
       localStorage.setItem(USER_ROLE_STORAGE_KEY, role);
       localStorage.setItem(USER_EMAIL_STORAGE_KEY, email);
-      if (loggedInUserId) {
-        localStorage.setItem(USER_ID_STORAGE_KEY, loggedInUserId);
-      } else {
-        // Should not happen if matchedUser is found, but as a fallback:
-        localStorage.removeItem(USER_ID_STORAGE_KEY);
-      }
+      localStorage.setItem(USER_ID_STORAGE_KEY, id);
+      localStorage.setItem(USER_NAME_STORAGE_KEY, name || '');
 
       toast({
-        title: `${role.charAt(0).toUpperCase() + role.slice(1)} Login Successful`,
-        description: 'Redirecting to dashboard...',
+        title: `Login Successful`,
+        description: `Welcome back, ${name || 'User'}! Redirecting...`,
       });
+
+      // Keep isLoading(true) to show the redirecting state
       router.push('/dashboard');
-
-    } catch (storageError) {
-      console.error("Error accessing localStorage or fetching users during login:", storageError);
-      setError('Login failed. An unexpected error occurred.');
-      toast({
-        title: 'Login Error',
-        description: 'Failed to complete login process.',
-        variant: 'destructive'
-      });
-    } finally {
+    } catch (err) {
+      console.error("Login error:", err);
+      setError('An unexpected error occurred. Please try again.');
       setIsLoading(false);
     }
   };
 
   if (isCheckingAuth) {
     return (
-        <div className="flex items-center justify-center min-h-screen bg-muted/40">
-            <Card className="w-full max-w-sm">
-                <CardHeader className="space-y-1 text-center">
-                    <div className="flex justify-center items-center mb-4">
-                         <Skeleton className="h-12 w-36" />
-                    </div>
-                    <Skeleton className="h-6 w-24 mx-auto mb-2" />
-                    <Skeleton className="h-4 w-3/4 mx-auto" />
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    <div className="space-y-2">
-                        <Skeleton className="h-4 w-16" />
-                        <Skeleton className="h-10 w-full" />
-                    </div>
-                    <div className="space-y-2">
-                        <Skeleton className="h-4 w-16" />
-                        <Skeleton className="h-10 w-full" />
-                    </div>
-                    <Skeleton className="h-10 w-full" />
-                </CardContent>
-                <CardFooter className="flex flex-col items-center text-xs text-muted-foreground">
-                    <Skeleton className="h-4 w-1/2" />
-                </CardFooter>
-            </Card>
-        </div>
+      <div className="flex items-center justify-center min-h-screen bg-muted/40">
+        <Card className="w-full max-w-sm">
+          <CardHeader className="space-y-1 text-center">
+            <div className="flex justify-center items-center mb-4">
+              <Skeleton className="h-12 w-36" />
+            </div>
+            <Skeleton className="h-6 w-24 mx-auto mb-2" />
+            <Skeleton className="h-4 w-3/4 mx-auto" />
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Skeleton className="h-4 w-16" />
+              <Skeleton className="h-10 w-full" />
+            </div>
+            <div className="space-y-2">
+              <Skeleton className="h-4 w-16" />
+              <Skeleton className="h-10 w-full" />
+            </div>
+            <Skeleton className="h-10 w-full" />
+          </CardContent>
+          <CardFooter className="flex flex-col items-center text-xs text-muted-foreground">
+            <Skeleton className="h-4 w-1/2" />
+          </CardFooter>
+        </Card>
+      </div>
     );
   }
 

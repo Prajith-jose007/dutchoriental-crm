@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { PlusCircle, Upload, Download, Trash2 } from 'lucide-react';
 import { PageHeader } from '@/components/PageHeader';
@@ -30,8 +30,8 @@ const csvHeaderMapping: { [csvHeaderKey: string]: keyof Agent } = {
   'customer_type_id': 'customer_type_id',
   'customer type id': 'customer_type_id',
   'discount': 'discount',
-  'discount_rate': 'discount', 
-  'discount rate': 'discount', 
+  'discount_rate': 'discount',
+  'discount rate': 'discount',
   'websiteurl': 'websiteUrl',
   'website url': 'websiteUrl',
   'website_url': 'websiteUrl',
@@ -39,7 +39,7 @@ const csvHeaderMapping: { [csvHeaderKey: string]: keyof Agent } = {
 
 
 // Helper to convert CSV row values to correct Agent types
-const convertAgentValue = (key: keyof Agent, value: string): any => {
+const convertAgentValue = (key: keyof Agent, value: string): Agent[keyof Agent] => {
   const trimmedValue = value ? String(value).trim() : '';
 
   if (trimmedValue === '' || value === null || value === undefined) {
@@ -64,7 +64,7 @@ const convertAgentValue = (key: keyof Agent, value: string): any => {
     case 'status':
       const validStatuses: Agent['status'][] = ['Active', 'Non Active', 'Dead'];
       return validStatuses.includes(trimmedValue as Agent['status']) ? trimmedValue : 'Active';
-    case 'TRN_number': 
+    case 'TRN_number':
     case 'customer_type_id':
       return trimmedValue;
     default:
@@ -78,13 +78,13 @@ export default function AgentsPage() {
   const [editingAgent, setEditingAgent] = useState<Agent | null>(null);
   const [agents, setAgents] = useState<Agent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isImporting, setIsImporting] = useState(false); 
+  const [isImporting, setIsImporting] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedAgentIds, setSelectedAgentIds] = useState<string[]>([]);
 
-  const fetchAgents = async () => {
+  const fetchAgents = useCallback(async () => {
     setIsLoading(true);
     try {
       const response = await fetch('/api/agents');
@@ -93,18 +93,18 @@ export default function AgentsPage() {
         throw new Error(errorData.message || `Failed to fetch agents: ${response.statusText}`);
       }
       const data: Agent[] = await response.json();
-      
+
       const sortedData = (Array.isArray(data) ? data : []).sort((a, b) => {
         const numA = parseInt(a.id.replace(/[^0-9]/g, ''), 10);
         const numB = parseInt(b.id.replace(/[^0-9]/g, ''), 10);
-        
+
         if (!isNaN(numA) && !isNaN(numB)) {
           return numA - numB;
         }
         // Fallback for non-numeric parts or purely string IDs
         return a.id.localeCompare(b.id);
       });
-      
+
       setAgents(sortedData);
 
     } catch (error) {
@@ -114,7 +114,7 @@ export default function AgentsPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [toast]);
 
   useEffect(() => {
     try {
@@ -125,7 +125,7 @@ export default function AgentsPage() {
       setIsAdmin(false);
     }
     fetchAgents();
-  }, []);
+  }, [fetchAgents]);
 
 
   const handleAddAgentClick = () => {
@@ -157,33 +157,33 @@ export default function AgentsPage() {
           body: JSON.stringify(submittedAgentData),
         });
       } else {
-         // Check if agent with this ID already exists before POSTing
+        // Check if agent with this ID already exists before POSTing
         const checkResponse = await fetch(`/api/agents/${submittedAgentData.id}`);
         if (checkResponse.ok && !editingAgent) { // if status 200, agent exists
-            toast({
-                title: 'Error Adding Agent',
-                description: `Agent with ID ${submittedAgentData.id} already exists.`,
-                variant: 'destructive',
-            });
-            return;
+          toast({
+            title: 'Error Adding Agent',
+            description: `Agent with ID ${submittedAgentData.id} already exists.`,
+            variant: 'destructive',
+          });
+          return;
         }
         // Check for email conflict as well, only if email is provided and different from current editing agent's email
         if (submittedAgentData.email) {
-            const allAgentsResponse = await fetch('/api/agents');
-            if (allAgentsResponse.ok) {
-                const allAgentsData: Agent[] = await allAgentsResponse.json();
-                const conflictingAgent = allAgentsData.find(
-                    (a) => a.email.toLowerCase() === submittedAgentData.email.toLowerCase() && a.id !== submittedAgentData.id
-                );
-                if (conflictingAgent) {
-                    toast({
-                        title: 'Error Saving Agent',
-                        description: `Agent with email ${submittedAgentData.email} already exists.`,
-                        variant: 'destructive',
-                    });
-                    return;
-                }
+          const allAgentsResponse = await fetch('/api/agents');
+          if (allAgentsResponse.ok) {
+            const allAgentsData: Agent[] = await allAgentsResponse.json();
+            const conflictingAgent = allAgentsData.find(
+              (a) => a.email.toLowerCase() === submittedAgentData.email.toLowerCase() && a.id !== submittedAgentData.id
+            );
+            if (conflictingAgent) {
+              toast({
+                title: 'Error Saving Agent',
+                description: `Agent with email ${submittedAgentData.email} already exists.`,
+                variant: 'destructive',
+              });
+              return;
             }
+          }
         }
 
         response = await fetch('/api/agents', {
@@ -285,7 +285,7 @@ export default function AgentsPage() {
       toast({ title: "Access Denied", description: "Only administrators can import agents.", variant: "destructive" });
       return;
     }
-    if (isImporting) return; 
+    if (isImporting) return;
     fileInputRef.current?.click();
   };
 
@@ -309,11 +309,11 @@ export default function AgentsPage() {
 
   const handleCsvImport = async (file: File) => {
     if (!isAdmin) {
-        toast({ title: "Access Denied", description: "Only administrators can import agents.", variant: "destructive" });
-        return;
+      toast({ title: "Access Denied", description: "Only administrators can import agents.", variant: "destructive" });
+      return;
     }
     setIsImporting(true);
-    setSelectedAgentIds([]); 
+    setSelectedAgentIds([]);
     toast({ title: 'Import Started', description: 'Processing CSV file... This may take a few moments.' });
     const startTime = Date.now();
 
@@ -337,14 +337,14 @@ export default function AgentsPage() {
         }
 
         let headerLine = lines[0];
-        if (headerLine.charCodeAt(0) === 0xFEFF) { 
-            headerLine = headerLine.substring(1);
+        if (headerLine.charCodeAt(0) === 0xFEFF) {
+          headerLine = headerLine.substring(1);
         }
         const fileHeaders = headerLine.split(',').map(h => h.trim().toLowerCase().replace(/\s+/g, '_'));
         console.log("[CSV Import Agents] Detected Headers:", fileHeaders);
 
         const newAgentsFromCsv: Agent[] = [];
-        
+
         // Fetch current agents to determine next ID and check for existing IDs/emails
         const currentAgentsResponse = await fetch('/api/agents');
         const currentAgentsData: Agent[] = currentAgentsResponse.ok ? await currentAgentsResponse.json() : [];
@@ -368,7 +368,7 @@ export default function AgentsPage() {
 
 
         for (let i = 1; i < lines.length; i++) {
-          let data = lines[i].split(',');
+          const data = lines[i].split(',');
           if (data.length !== fileHeaders.length) {
             console.warn(`[CSV Import Agents] Skipping malformed CSV line ${i + 1}: Expected ${fileHeaders.length} columns, got ${data.length}. Line: "${lines[i]}"`);
             skippedCount++;
@@ -377,36 +377,36 @@ export default function AgentsPage() {
 
           const parsedRow = {} as Partial<Agent>;
           fileHeaders.forEach((fileHeader, index) => {
-            const agentKey = csvHeaderMapping[fileHeader]; 
+            const agentKey = csvHeaderMapping[fileHeader];
             if (agentKey) {
-                parsedRow[agentKey] = convertAgentValue(agentKey, data[index]);
+              parsedRow[agentKey] = convertAgentValue(agentKey, data[index]) as any;
             } else {
-                console.warn(`[CSV Import Agents] Unknown header "${fileHeader}" in CSV row ${i+1}. Skipping this column.`);
+              console.warn(`[CSV Import Agents] Unknown header "${fileHeader}" in CSV row ${i + 1}. Skipping this column.`);
             }
           });
-           if (i < 3) console.log(`[CSV Import Agents] Processing Row ${i+1} - Parsed (after mapping & convertAgentValue):`, JSON.parse(JSON.stringify(parsedRow)));
+          if (i < 3) console.log(`[CSV Import Agents] Processing Row ${i + 1} - Parsed (after mapping & convertAgentValue):`, JSON.parse(JSON.stringify(parsedRow)));
 
           let agentId = parsedRow.id && String(parsedRow.id).trim() !== '' ? String(parsedRow.id).trim() : '';
-          
+
           if (!agentId) { // Generate ID if not provided
-            let potentialId;
+            let potentialId: string;
             do {
               // Generate IDs like DO-1, DO-2, etc. Padding is not strictly necessary here but can be added if desired.
-              potentialId = `DO-${nextNumericSuffix}`; 
+              potentialId = `DO-${nextNumericSuffix}`;
               nextNumericSuffix++;
             } while (allKnownAgentIds.has(potentialId) || newAgentsFromCsv.some(a => a.id === potentialId));
             agentId = potentialId;
-            console.log(`[CSV Import Agents] Generated new ID for row ${i+1}: ${agentId}`);
+            console.log(`[CSV Import Agents] Generated new ID for row ${i + 1}: ${agentId}`);
           }
 
 
           if (allKnownAgentIds.has(agentId)) {
-            console.warn(`[CSV Import Agents] Skipping agent with duplicate ID: ${agentId} from CSV row ${i+1}.`);
+            console.warn(`[CSV Import Agents] Skipping agent with duplicate ID: ${agentId} from CSV row ${i + 1}.`);
             skippedCount++;
             continue;
           }
           if (parsedRow.email && (existingAgentEmails.has(parsedRow.email.toLowerCase()) || newAgentsFromCsv.some(a => a.email!.toLowerCase() === parsedRow.email!.toLowerCase()))) {
-            console.warn(`[CSV Import Agents] Skipping agent with duplicate email: ${parsedRow.email} from CSV row ${i+1}.`);
+            console.warn(`[CSV Import Agents] Skipping agent with duplicate email: ${parsedRow.email} from CSV row ${i + 1}.`);
             skippedCount++;
             continue;
           }
@@ -424,17 +424,17 @@ export default function AgentsPage() {
             discount: typeof parsedRow.discount === 'number' ? parsedRow.discount : 0,
             websiteUrl: parsedRow.websiteUrl,
           };
-          if (i < 3) console.log(`[CSV Import Agents] Processing Row ${i+1} - Agent to POST:`, JSON.parse(JSON.stringify(fullAgent)));
-          
+          if (i < 3) console.log(`[CSV Import Agents] Processing Row ${i + 1} - Agent to POST:`, JSON.parse(JSON.stringify(fullAgent)));
+
           if (!fullAgent.id || !fullAgent.name || !fullAgent.email || fullAgent.discount === undefined || !fullAgent.status) {
-             console.warn(`[CSV Import Agents] Skipping agent due to missing required fields (id, name, email, discount, status) at CSV row ${i+1}. Agent data:`, fullAgent);
-             skippedCount++;
-             continue;
+            console.warn(`[CSV Import Agents] Skipping agent due to missing required fields (id, name, email, discount, status) at CSV row ${i + 1}. Agent data:`, fullAgent);
+            skippedCount++;
+            continue;
           }
 
           newAgentsFromCsv.push(fullAgent);
           allKnownAgentIds.add(fullAgent.id); // Add to known IDs for current batch
-          if(fullAgent.email) existingAgentEmails.add(fullAgent.email.toLowerCase());
+          if (fullAgent.email) existingAgentEmails.add(fullAgent.email.toLowerCase());
         }
 
         if (newAgentsFromCsv.length > 0) {
@@ -453,8 +453,8 @@ export default function AgentsPage() {
                 skippedCount++;
               }
             } catch (apiError) {
-                console.warn(`[CSV Import Agents] Network/JS Error importing agent ${agentToImport.id}:`, apiError, "Payload:", agentToImport);
-                skippedCount++;
+              console.warn(`[CSV Import Agents] Network/JS Error importing agent ${agentToImport.id}:`, apiError, "Payload:", agentToImport);
+              skippedCount++;
             }
           }
         }
@@ -465,18 +465,18 @@ export default function AgentsPage() {
         const endTime = Date.now();
         const durationInSeconds = ((endTime - startTime) / 1000).toFixed(2);
         if (successCount > 0 || skippedCount > 0) {
-            fetchAgents(); 
+          fetchAgents();
         }
-        toast({ 
-            title: 'Import Processed', 
-            description: `${successCount} agents imported. ${skippedCount} rows skipped. Processed in ${durationInSeconds} seconds. Check console for details.` 
+        toast({
+          title: 'Import Processed',
+          description: `${successCount} agents imported. ${skippedCount} rows skipped. Processed in ${durationInSeconds} seconds. Check console for details.`
         });
         setIsImporting(false);
       }
     };
     reader.onerror = () => {
-        toast({ title: 'File Read Error', description: 'Could not read the selected file.', variant: 'destructive' });
-        setIsImporting(false);
+      toast({ title: 'File Read Error', description: 'Could not read the selected file.', variant: 'destructive' });
+      setIsImporting(false);
     }
     reader.readAsText(file);
   };
@@ -490,15 +490,15 @@ export default function AgentsPage() {
       toast({ title: 'No Data', description: 'There are no agents to export.', variant: 'default' });
       return;
     }
-    
+
     const exportHeaders: (keyof Agent)[] = [
-        'id', 'name', 'agency_code', 'address', 'phone_no', 'email', 
-        'status', 'TRN_number', 'customer_type_id', 'discount', 'websiteUrl'
+      'id', 'name', 'agency_code', 'address', 'phone_no', 'email',
+      'status', 'TRN_number', 'customer_type_id', 'discount', 'websiteUrl'
     ];
 
-    const escapeCsvCell = (cellData: any): string => {
+    const escapeCsvCell = (cellData: string | number | boolean | null | undefined): string => {
       if (cellData === null || cellData === undefined) return '';
-      let stringValue = String(cellData);
+      const stringValue = String(cellData);
       if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n')) {
         return `"${stringValue.replace(/"/g, '""')}"`;
       }
@@ -506,7 +506,7 @@ export default function AgentsPage() {
     };
 
     const csvRows = [
-      exportHeaders.join(','), 
+      exportHeaders.join(','),
       ...agents.map(agent =>
         exportHeaders.map(header => escapeCsvCell(agent[header])).join(',')
       )
@@ -530,7 +530,7 @@ export default function AgentsPage() {
   };
 
 
-  if (!isAdmin && !isLoading) { 
+  if (!isAdmin && !isLoading) {
     return (
       <div className="container mx-auto py-2">
         <PageHeader
@@ -544,7 +544,7 @@ export default function AgentsPage() {
     );
   }
 
-  if (isLoading) { 
+  if (isLoading) {
     return (
       <div className="container mx-auto py-2">
         <PageHeader
@@ -552,11 +552,11 @@ export default function AgentsPage() {
           description="Loading agent data..."
           actions={
             isAdmin && (
-            <div className="flex items-center gap-2">
-              <Skeleton className="h-10 w-32" />
-              <Skeleton className="h-10 w-32" />
-              <Skeleton className="h-10 w-28" />
-            </div>
+              <div className="flex items-center gap-2">
+                <Skeleton className="h-10 w-32" />
+                <Skeleton className="h-10 w-32" />
+                <Skeleton className="h-10 w-28" />
+              </div>
             )
           }
         />
@@ -574,7 +574,7 @@ export default function AgentsPage() {
         actions={
           isAdmin && (
             <div className="flex items-center gap-2">
-               {selectedAgentIds.length > 0 && (
+              {selectedAgentIds.length > 0 && (
                 <Button variant="destructive" onClick={handleDeleteSelectedAgents} disabled={isImporting}>
                   <Trash2 className="mr-2 h-4 w-4" />
                   Delete Selected ({selectedAgentIds.length})
@@ -623,6 +623,5 @@ export default function AgentsPage() {
     </div>
   );
 }
-    
 
-    
+

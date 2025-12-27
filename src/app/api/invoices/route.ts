@@ -17,10 +17,10 @@ const ensureISOFormat = (dateSource?: string | Date): string | null => {
   return null;
 };
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
-    const invoicesDataDb: any[] = await query('SELECT * FROM invoices ORDER BY createdAt DESC');
-    
+    const invoicesDataDb = (await query('SELECT * FROM invoices ORDER BY createdAt DESC')) as Record<string, any>[];
+
     const invoices: Invoice[] = invoicesDataDb.map(inv => ({
       id: String(inv.id || ''),
       leadId: inv.leadId || '',
@@ -47,50 +47,50 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: 'Missing required invoice fields' }, { status: 400 });
     }
 
-    const existingInvoice: any = await query('SELECT id FROM invoices WHERE id = ?', [newInvoiceData.id]);
+    const existingInvoice = (await query('SELECT id FROM invoices WHERE id = ?', [newInvoiceData.id])) as Record<string, any>[];
     if (existingInvoice.length > 0) {
       return NextResponse.json({ message: `An invoice for booking ID ${newInvoiceData.leadId} already exists with ID ${newInvoiceData.id}.` }, { status: 409 });
     }
-    
+
     const now = new Date();
     const parsedClientDueDate = parseISO(newInvoiceData.dueDate);
     if (!isValid(parsedClientDueDate)) {
       return NextResponse.json({ message: 'Invalid due date format provided.' }, { status: 400 });
     }
     const formattedDueDate = format(parsedClientDueDate, 'yyyy-MM-dd');
-    
+
     const formattedCreatedAt = ensureISOFormat(newInvoiceData.createdAt) || formatISO(now);
 
     const invoiceToStore: Invoice = {
-      id: newInvoiceData.id, 
-      leadId: newInvoiceData.leadId, 
+      id: newInvoiceData.id,
+      leadId: newInvoiceData.leadId,
       clientName: newInvoiceData.clientName,
-      amount: Number(newInvoiceData.amount), 
-      dueDate: formattedDueDate, 
+      amount: Number(newInvoiceData.amount),
+      dueDate: formattedDueDate,
       status: newInvoiceData.status,
       createdAt: formattedCreatedAt,
     };
-    
-    const result: any = await query(
+
+    const result = (await query(
       'INSERT INTO invoices (id, leadId, clientName, amount, dueDate, status, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?)',
       [
         invoiceToStore.id, invoiceToStore.leadId, invoiceToStore.clientName, invoiceToStore.amount,
         invoiceToStore.dueDate, invoiceToStore.status, invoiceToStore.createdAt
       ]
-    );
+    )) as { affectedRows: number };
 
     if (result.affectedRows === 1) {
-      const createdInvoiceDb: any[] = await query('SELECT * FROM invoices WHERE id = ?', [invoiceToStore.id]);
+      const createdInvoiceDb = (await query('SELECT * FROM invoices WHERE id = ?', [invoiceToStore.id])) as Record<string, any>[];
       if (createdInvoiceDb.length > 0) {
-          const dbInv = createdInvoiceDb[0];
-          const finalInvoice: Invoice = {
-              id: String(dbInv.id || ''), leadId: dbInv.leadId || '', clientName: dbInv.clientName || '',
-              amount: parseFloat(dbInv.amount || 0),
-              dueDate: ensureISOFormat(dbInv.dueDate) || formatISO(new Date()),
-              status: (dbInv.status || 'Pending') as Invoice['status'],
-              createdAt: ensureISOFormat(dbInv.createdAt) || formatISO(new Date()),
-          };
-          return NextResponse.json(finalInvoice, { status: 201 });
+        const dbInv = createdInvoiceDb[0];
+        const finalInvoice: Invoice = {
+          id: String(dbInv.id || ''), leadId: dbInv.leadId || '', clientName: dbInv.clientName || '',
+          amount: parseFloat(dbInv.amount || 0),
+          dueDate: ensureISOFormat(dbInv.dueDate) || formatISO(new Date()),
+          status: (dbInv.status || 'Pending') as Invoice['status'],
+          createdAt: ensureISOFormat(dbInv.createdAt) || formatISO(new Date()),
+        };
+        return NextResponse.json(finalInvoice, { status: 201 });
       }
     }
     throw new Error('Failed to insert invoice into database');

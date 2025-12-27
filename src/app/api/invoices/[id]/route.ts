@@ -17,9 +17,9 @@ const ensureISOFormat = (dateSource?: string | Date): string | null => {
   return null;
 };
 
-function buildInvoiceUpdateSetClause(data: Partial<Omit<Invoice, 'id' | 'createdAt'>>): { clause: string, values: any[] } {
+function buildInvoiceUpdateSetClause(data: Partial<Omit<Invoice, 'id' | 'createdAt'>>): { clause: string, values: unknown[] } {
   const fieldsToUpdate: string[] = [];
-  const valuesToUpdate: any[] = [];
+  const valuesToUpdate: unknown[] = [];
   const allowedKeys: (keyof Omit<Invoice, 'id' | 'createdAt'>)[] = [
     'leadId', 'clientName', 'amount', 'dueDate', 'status'
   ];
@@ -54,13 +54,13 @@ export async function GET(
   }
 
   try {
-    const invoiceDataDb: any = await query('SELECT * FROM invoices WHERE id = ?', [id]);
-    
+    const invoiceDataDb = (await query('SELECT * FROM invoices WHERE id = ?', [id])) as Record<string, any>[];
+
     if (invoiceDataDb.length > 0) {
       const dbInvoice = invoiceDataDb[0];
       const invoice: Invoice = {
-        id: String(dbInvoice.id || ''), 
-        leadId: dbInvoice.leadId || '', 
+        id: String(dbInvoice.id || ''),
+        leadId: dbInvoice.leadId || '',
         clientName: dbInvoice.clientName || '',
         amount: parseFloat(dbInvoice.amount || 0),
         dueDate: ensureISOFormat(dbInvoice.dueDate) || formatISO(new Date()),
@@ -86,36 +86,36 @@ export async function PUT(
   if (!id) {
     return NextResponse.json({ message: 'Invoice ID is required for update' }, { status: 400 });
   }
-  
+
   try {
     const updatedInvoiceData = await request.json() as Partial<Omit<Invoice, 'id' | 'createdAt'>>;
 
-    const existingInvoiceResult: any = await query('SELECT id FROM invoices WHERE id = ?', [id]);
+    const existingInvoiceResult = (await query('SELECT id FROM invoices WHERE id = ?', [id])) as Record<string, any>[];
     if (existingInvoiceResult.length === 0) {
       return NextResponse.json({ message: 'Invoice not found' }, { status: 404 });
     }
 
     const { clause, values } = buildInvoiceUpdateSetClause(updatedInvoiceData);
     if (clause.length === 0) {
-       return NextResponse.json({ message: 'No valid fields to update or invalid date format provided.' }, { status: 400 });
+      return NextResponse.json({ message: 'No valid fields to update or invalid date format provided.' }, { status: 400 });
     }
-    values.push(id); 
-    
+    values.push(id);
+
     await query(`UPDATE invoices SET ${clause} WHERE id = ?`, values);
-    
-    const updatedInvoiceFromDbResult: any[] = await query('SELECT * FROM invoices WHERE id = ?', [id]);
+
+    const updatedInvoiceFromDbResult = (await query('SELECT * FROM invoices WHERE id = ?', [id])) as Record<string, any>[];
     if (updatedInvoiceFromDbResult.length > 0) {
-        const dbInv = updatedInvoiceFromDbResult[0];
-        const finalUpdatedInvoice: Invoice = {
-            id: String(dbInv.id || ''), 
-            leadId: dbInv.leadId || '', 
-            clientName: dbInv.clientName || '',
-            amount: parseFloat(dbInv.amount || 0),
-            dueDate: ensureISOFormat(dbInv.dueDate) || formatISO(new Date()),
-            status: (dbInv.status || 'Pending') as Invoice['status'],
-            createdAt: ensureISOFormat(dbInv.createdAt) || formatISO(new Date()),
-        };
-        return NextResponse.json(finalUpdatedInvoice, { status: 200 });
+      const dbInv = updatedInvoiceFromDbResult[0];
+      const finalUpdatedInvoice: Invoice = {
+        id: String(dbInv.id || ''),
+        leadId: dbInv.leadId || '',
+        clientName: dbInv.clientName || '',
+        amount: parseFloat(dbInv.amount || 0),
+        dueDate: ensureISOFormat(dbInv.dueDate) || formatISO(new Date()),
+        status: (dbInv.status || 'Pending') as Invoice['status'],
+        createdAt: ensureISOFormat(dbInv.createdAt) || formatISO(new Date()),
+      };
+      return NextResponse.json(finalUpdatedInvoice, { status: 200 });
     }
     return NextResponse.json({ message: 'Invoice updated, but failed to fetch confirmation.' }, { status: 500 });
 
@@ -136,8 +136,8 @@ export async function DELETE(
   }
 
   try {
-    const result: any = await query('DELETE FROM invoices WHERE id = ?', [id]);
-    
+    const result = (await query('DELETE FROM invoices WHERE id = ?', [id])) as { affectedRows: number };
+
     if (result.affectedRows === 0) {
       return NextResponse.json({ message: 'Invoice not found' }, { status: 404 });
     }

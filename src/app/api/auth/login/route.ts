@@ -1,7 +1,6 @@
 
 import { NextResponse, type NextRequest } from 'next/server';
 import { query } from '@/lib/db';
-import type { User } from '@/lib/types';
 
 export async function POST(request: NextRequest) {
     try {
@@ -13,7 +12,7 @@ export async function POST(request: NextRequest) {
 
         // Find the user by email
         const sql = 'SELECT id, name, email, designation, avatarUrl, websiteUrl, status, password FROM users WHERE email = ? LIMIT 1';
-        const usersDataDb: any[] = await query(sql, [email]);
+        const usersDataDb = (await query(sql, [email])) as Record<string, any>[];
 
         if (usersDataDb.length === 0) {
             return NextResponse.json({ message: 'Invalid email or password.' }, { status: 401 });

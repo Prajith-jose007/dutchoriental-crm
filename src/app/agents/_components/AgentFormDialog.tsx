@@ -61,11 +61,10 @@ interface AgentFormDialogProps {
 const statusOptions: Agent['status'][] = ['Active', 'Non Active', 'Dead'];
 
 export function AgentFormDialog({ isOpen, onOpenChange, agent, onSubmitSuccess }: AgentFormDialogProps) {
-  const { toast } = useToast();
   const form = useForm<AgentFormData>({
     resolver: zodResolver(agentFormSchema),
     defaultValues: agent || {
-      id: '', 
+      id: '',
       name: '',
       agency_code: '',
       address: '',
@@ -93,7 +92,7 @@ export function AgentFormDialog({ isOpen, onOpenChange, agent, onSubmitSuccess }
         });
       } else {
         form.reset({
-          id: '', 
+          id: '',
           name: '',
           agency_code: '',
           address: '',
@@ -143,10 +142,10 @@ export function AgentFormDialog({ isOpen, onOpenChange, agent, onSubmitSuccess }
                   <FormItem>
                     <FormLabel>Agent ID</FormLabel>
                     <FormControl>
-                      <Input 
-                        placeholder="e.g., DO-001" 
-                        {...field} 
-                        readOnly={!!agent} 
+                      <Input
+                        placeholder="e.g., DO-001"
+                        {...field}
+                        readOnly={!!agent}
                         className={!!agent ? "bg-muted/50" : ""}
                       />
                     </FormControl>
@@ -174,7 +173,7 @@ export function AgentFormDialog({ isOpen, onOpenChange, agent, onSubmitSuccess }
                   <FormItem>
                     <FormLabel>Agency Code (Optional)</FormLabel>
                     <FormControl>
-                      <Input placeholder="e.g., SC001" {...field} value={field.value || ''}/>
+                      <Input placeholder="e.g., SC001" {...field} value={field.value || ''} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -187,7 +186,7 @@ export function AgentFormDialog({ isOpen, onOpenChange, agent, onSubmitSuccess }
                   <FormItem>
                     <FormLabel>Phone Number (Optional)</FormLabel>
                     <FormControl>
-                      <Input placeholder="e.g., +971501234567" {...field} value={field.value || ''}/>
+                      <Input placeholder="e.g., +971501234567" {...field} value={field.value || ''} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -226,7 +225,7 @@ export function AgentFormDialog({ isOpen, onOpenChange, agent, onSubmitSuccess }
                   <FormItem>
                     <FormLabel>Agent Website URL (Optional)</FormLabel>
                     <FormControl>
-                      <Input placeholder="https://supercharters.com" {...field} value={field.value || ''}/>
+                      <Input placeholder="https://supercharters.com" {...field} value={field.value || ''} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -288,7 +287,7 @@ export function AgentFormDialog({ isOpen, onOpenChange, agent, onSubmitSuccess }
                 <FormItem>
                   <FormLabel>Address (Optional)</FormLabel>
                   <FormControl>
-                    <Textarea placeholder="Enter agent's address" className="resize-y" {...field} value={field.value || ''}/>
+                    <Textarea placeholder="Enter agent's address" className="resize-y" {...field} value={field.value || ''} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

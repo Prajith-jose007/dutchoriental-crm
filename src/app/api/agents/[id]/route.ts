@@ -14,15 +14,15 @@ export async function GET(
       return NextResponse.json({ message: 'Agent ID is required' }, { status: 400 });
     }
 
-    const agentDataDb: any[] = await query('SELECT * FROM agents WHERE id = ?', [id]);
-    
+    const agentDataDb = (await query('SELECT * FROM agents WHERE id = ?', [id])) as Record<string, any>[];
+
     if (agentDataDb.length > 0) {
       const dbAgent = agentDataDb[0];
       // Ensure numeric fields are correctly parsed, even though this model is simpler
       const agent: Agent = {
         ...dbAgent,
         discount: parseFloat(dbAgent.discount || 0),
-      };
+      } as Agent;
       return NextResponse.json(agent, { status: 200 });
     } else {
       return NextResponse.json({ message: 'Agent not found' }, { status: 404 });
@@ -34,11 +34,11 @@ export async function GET(
   }
 }
 
-function buildUpdateSetClause(data: Partial<Omit<Agent, 'id'>>): { clause: string, values: any[] } {
+function buildUpdateSetClause(data: Partial<Omit<Agent, 'id'>>): { clause: string, values: unknown[] } {
   const fieldsToUpdate: string[] = [];
-  const valuesToUpdate: any[] = [];
+  const valuesToUpdate: unknown[] = [];
   const allowedKeys: (keyof Omit<Agent, 'id'>)[] = [
-    'name', 'agency_code', 'address', 'phone_no', 'email', 
+    'name', 'agency_code', 'address', 'phone_no', 'email',
     'status', 'TRN_number', 'customer_type_id', 'discount', 'websiteUrl'
   ];
 
@@ -47,7 +47,7 @@ function buildUpdateSetClause(data: Partial<Omit<Agent, 'id'>>): { clause: strin
       fieldsToUpdate.push(`${key} = ?`);
       if (key === 'discount') {
         valuesToUpdate.push(Number(value));
-      } else if (value === '' && ['agency_code', 'address', 'phone_no', 'TRN_number', 'customer_type_id', 'websiteUrl'].includes(key) ) {
+      } else if (value === '' && ['agency_code', 'address', 'phone_no', 'TRN_number', 'customer_type_id', 'websiteUrl'].includes(key)) {
         valuesToUpdate.push(null); // Store empty optional strings as NULL
       }
       else {
@@ -70,35 +70,35 @@ export async function PUT(
   try {
     const updatedAgentData = await request.json() as Partial<Agent>;
 
-    const existingAgentResult: any = await query('SELECT email FROM agents WHERE id = ?', [id]);
+    const existingAgentResult = (await query('SELECT email FROM agents WHERE id = ?', [id])) as Record<string, any>[];
     if (existingAgentResult.length === 0) {
       return NextResponse.json({ message: 'Agent not found' }, { status: 404 });
     }
     const existingAgentEmail = existingAgentResult[0].email;
 
     if (updatedAgentData.email && updatedAgentData.email.toLowerCase() !== existingAgentEmail.toLowerCase()) {
-      const agentByEmail: any = await query('SELECT id FROM agents WHERE email = ? AND id != ?', [updatedAgentData.email, id]);
+      const agentByEmail = (await query('SELECT id FROM agents WHERE email = ? AND id != ?', [updatedAgentData.email, id])) as Record<string, any>[];
       if (agentByEmail.length > 0) {
         return NextResponse.json({ message: `Agent with email ${updatedAgentData.email} already exists.` }, { status: 409 });
       }
     }
-    
+
     const { clause, values } = buildUpdateSetClause(updatedAgentData);
     if (clause.length === 0) {
       return NextResponse.json({ message: 'No valid fields to update' }, { status: 400 });
     }
     values.push(id); // For the WHERE clause
-    
+
     await query(`UPDATE agents SET ${clause} WHERE id = ?`, values);
-    
-    const finalUpdatedAgentQuery: any = await query('SELECT * FROM agents WHERE id = ?', [id]);
+
+    const finalUpdatedAgentQuery = (await query('SELECT * FROM agents WHERE id = ?', [id])) as Record<string, any>[];
     if (finalUpdatedAgentQuery.length > 0) {
-       const dbAgent = finalUpdatedAgentQuery[0];
-       const finalAgent: Agent = {
-          ...dbAgent,
-          discount: parseFloat(dbAgent.discount || 0)
-       };
-       return NextResponse.json(finalAgent, { status: 200 });
+      const dbAgent = finalUpdatedAgentQuery[0];
+      const finalAgent: Agent = {
+        ...dbAgent,
+        discount: parseFloat(dbAgent.discount || 0)
+      } as Agent;
+      return NextResponse.json(finalAgent, { status: 200 });
     }
     // This case should ideally not be reached if the update was successful
     return NextResponse.json({ message: 'Agent updated, but failed to fetch confirmation.' }, { status: 500 });
@@ -120,8 +120,8 @@ export async function DELETE(
   }
 
   try {
-    const result: any = await query('DELETE FROM agents WHERE id = ?', [id]);
-    
+    const result = (await query('DELETE FROM agents WHERE id = ?', [id])) as { affectedRows: number };
+
     if (result.affectedRows === 0) {
       return NextResponse.json({ message: 'Agent not found' }, { status: 404 });
     }

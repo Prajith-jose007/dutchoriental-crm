@@ -4,10 +4,10 @@ import { NextResponse, type NextRequest } from 'next/server';
 import type { Agent } from '@/lib/types';
 import { query } from '@/lib/db';
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
-    const agentsDataDb: any[] = await query('SELECT * FROM agents ORDER BY name ASC');
-    
+    const agentsDataDb = (await query('SELECT * FROM agents ORDER BY name ASC')) as Record<string, any>[];
+
     const agents: Agent[] = agentsDataDb.map(dbAgent => ({
       id: String(dbAgent.id || ''),
       name: dbAgent.name || '',
@@ -38,12 +38,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: 'Missing required agent fields (id, name, email, discount)' }, { status: 400 });
     }
 
-    const existingAgentCheck: any = await query('SELECT id FROM agents WHERE id = ? OR email = ?', [newAgentData.id, newAgentData.email]);
+    const existingAgentCheck = (await query('SELECT id FROM agents WHERE id = ? OR email = ?', [newAgentData.id, newAgentData.email])) as Record<string, any>[];
     if (existingAgentCheck.length > 0) {
       return NextResponse.json({ message: 'Agent with this ID or email already exists.' }, { status: 409 });
     }
-    
-    const agentToStore: Agent = {
+
+    const agentToStore = {
       id: newAgentData.id,
       name: newAgentData.name,
       agency_code: newAgentData.agency_code || null,
@@ -56,8 +56,8 @@ export async function POST(request: NextRequest) {
       discount: Number(newAgentData.discount),
       websiteUrl: newAgentData.websiteUrl || null,
     };
-    
-    const result: any = await query(
+
+    const result = (await query(
       `INSERT INTO agents (id, name, agency_code, address, phone_no, email, status, TRN_number, customer_type_id, discount, websiteUrl) 
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
@@ -65,17 +65,18 @@ export async function POST(request: NextRequest) {
         agentToStore.phone_no, agentToStore.email, agentToStore.status, agentToStore.TRN_number,
         agentToStore.customer_type_id, agentToStore.discount, agentToStore.websiteUrl
       ]
-    );
+    )) as { affectedRows: number };
 
     if (result.affectedRows === 1) {
-       const createdAgentDb: any[] = await query('SELECT * FROM agents WHERE id = ?', [agentToStore.id]);
-       if (createdAgentDb.length > 0) {
-         const createdAgent: Agent = {
-            ...createdAgentDb[0],
-            discount: parseFloat(createdAgentDb[0].discount || 0)
-         };
-         return NextResponse.json(createdAgent, { status: 201 });
-       }
+      const createdAgentDb = (await query('SELECT * FROM agents WHERE id = ?', [agentToStore.id])) as Record<string, any>[];
+      if (createdAgentDb.length > 0) {
+        const dbAgent = createdAgentDb[0];
+        const createdAgent: Agent = {
+          ...dbAgent,
+          discount: parseFloat(dbAgent.discount || 0)
+        } as Agent;
+        return NextResponse.json(createdAgent, { status: 201 });
+      }
     }
     throw new Error('Failed to insert agent into database');
   } catch (error) {
@@ -95,8 +96,8 @@ export async function DELETE(request: NextRequest) {
 
     const placeholders = ids.map(() => '?').join(',');
     const sql = `DELETE FROM agents WHERE id IN (${placeholders})`;
-    
-    const result: any = await query(sql, ids);
+
+    const result = (await query(sql, ids)) as { affectedRows: number };
     const deletedCount = result.affectedRows;
 
     if (deletedCount > 0) {

@@ -35,13 +35,13 @@ function getPool() {
 }
 
 
-export async function query(sql: string, params?: any[]): Promise<any> {
+export async function query<T = unknown>(sql: string, params?: unknown[]): Promise<T> {
   const connection = await getPool().getConnection();
   try {
     console.log(`Executing SQL: ${sql}`, params || '');
     const [results] = await connection.execute(sql, params);
-    console.log(`SQL executed successfully. Result count: ${(results as any[]).length}`);
-    return results;
+    console.log(`SQL executed successfully. Result count: ${(results as unknown[]).length}`);
+    return results as T;
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'An unknown database error occurred.';
     console.error('DATABASE QUERY FAILED:');

@@ -31,9 +31,9 @@ const FUNNEL_COLORS = [
 ];
 
 export function OpportunityFunnelChart({ opportunities, isLoading, error }: OpportunityFunnelChartProps) {
-  const {chartData, chartConfig} = useMemo(() => {
+  const { chartData, chartConfig } = useMemo(() => {
     const stageOrder = [...opportunityPipelinePhaseOptions].reverse(); // Funnel typically shows wide to narrow
-    
+
     const stageCounts: { [key in OpportunityPipelinePhase]?: number } = {};
     stageOrder.forEach(stage => stageCounts[stage] = 0);
 
@@ -52,10 +52,10 @@ export function OpportunityFunnelChart({ opportunities, isLoading, error }: Oppo
     const config = data.reduce((acc, item) => {
       acc[item.name] = { label: item.name, color: item.fill };
       return acc;
-    }, {} as any);
+    }, {} as Record<string, { label: string; color: string }>);
 
 
-    return {chartData: data, chartConfig: config};
+    return { chartData: data, chartConfig: config };
 
   }, [opportunities]);
 
@@ -85,7 +85,7 @@ export function OpportunityFunnelChart({ opportunities, isLoading, error }: Oppo
       </Card>
     );
   }
-  
+
   if (chartData.length === 0) {
     return (
       <Card>
@@ -110,9 +110,9 @@ export function OpportunityFunnelChart({ opportunities, isLoading, error }: Oppo
         <ChartContainer config={chartConfig} className="w-full h-full">
           <ResponsiveContainer width="100%" height="100%">
             <FunnelChart>
-              <Tooltip 
-                  cursor={{ fill: 'hsl(var(--muted))' }}
-                  content={<ChartTooltipContent />}
+              <Tooltip
+                cursor={{ fill: 'hsl(var(--muted))' }}
+                content={<ChartTooltipContent />}
               />
               <Funnel dataKey="value" data={chartData} isAnimationActive>
                 <LabelList position="right" fill="#fff" stroke="none" dataKey="name" />

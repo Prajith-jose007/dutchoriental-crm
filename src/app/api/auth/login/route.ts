@@ -1,6 +1,7 @@
-
 import { NextResponse, type NextRequest } from 'next/server';
 import { query } from '@/lib/db';
+import type { User } from '@/lib/types';
+import { compare } from 'bcryptjs';
 
 export async function POST(request: NextRequest) {
     try {
@@ -12,7 +13,7 @@ export async function POST(request: NextRequest) {
 
         // Find the user by email
         const sql = 'SELECT id, name, email, designation, avatarUrl, websiteUrl, status, password FROM users WHERE email = ? LIMIT 1';
-        const usersDataDb = (await query(sql, [email])) as Record<string, any>[];
+        const usersDataDb = (await query<User[]>(sql, [email]));
 
         if (usersDataDb.length === 0) {
             return NextResponse.json({ message: 'Invalid email or password.' }, { status: 401 });
@@ -20,8 +21,9 @@ export async function POST(request: NextRequest) {
 
         const dbUser = usersDataDb[0];
 
-        // Verify password (In a real app, use bcrypt.compare)
-        if (dbUser.password !== password) {
+        // Verify password using bcrypt
+        const isPasswordValid = await compare(password, dbUser.password || '');
+        if (!isPasswordValid) {
             return NextResponse.json({ message: 'Invalid email or password.' }, { status: 401 });
         }
 

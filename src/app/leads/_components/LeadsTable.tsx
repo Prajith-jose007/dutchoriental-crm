@@ -65,7 +65,7 @@ export const packageHeaderMap: { [fullPackageName: string]: string } = {
 
 
 export const generateLeadColumns = (allYachts: Yacht[]): LeadTableColumn[] => {
-  let columns: LeadTableColumn[] = [];
+  const columns: LeadTableColumn[] = [];
 
   const baseInfoColumns: LeadTableColumn[] = [
     { accessorKey: 'select', header: '' },
@@ -86,7 +86,7 @@ export const generateLeadColumns = (allYachts: Yacht[]): LeadTableColumn[] => {
 
   const addPackageColumns = (pkgDef: { actualPackageName: string; category: string }) => {
     if (allYachts.some(y => y.category === pkgDef.category && y.packages?.some(p => p.name === pkgDef.actualPackageName))) {
-      const shortHeader = packageHeaderMap[pkgDef.actualPackageName] || pkgDef.actualPackageName.substring(0,6);
+      const shortHeader = packageHeaderMap[pkgDef.actualPackageName] || pkgDef.actualPackageName.substring(0, 6);
       const baseAccessorKey = pkgDef.actualPackageName.replace(/\s+/g, '_').toLowerCase();
 
       columns.push({
@@ -132,13 +132,13 @@ export const generateLeadColumns = (allYachts: Yacht[]): LeadTableColumn[] => {
     yacht.packages?.forEach(pkg => {
       if (pkg.name && !explicitPackageNames.has(pkg.name) && pkg.name !== "Soft Drinks Package pp") {
         if (!otherPackagesFound.has(pkg.name)) {
-            otherPackagesFound.set(pkg.name, { category: yacht.category });
+          otherPackagesFound.set(pkg.name, { category: yacht.category });
         }
       }
     });
   });
   otherPackagesFound.forEach((pkgDetails, pkgName) => {
-     addPackageColumns({ actualPackageName: pkgName, category: pkgDetails.category || 'Unknown' });
+    addPackageColumns({ actualPackageName: pkgName, category: pkgDetails.category || 'Unknown' });
   });
 
 
@@ -271,9 +271,9 @@ export function LeadsTable({
       const quantity = pkgQuantityItem?.quantity;
       return (quantity !== undefined && quantity > 0) ? String(quantity) : '-';
     }
-    
+
     if (column.isJsonDetails) {
-        return lead.packageQuantities ? JSON.stringify(lead.packageQuantities) : '[]';
+      return lead.packageQuantities ? JSON.stringify(lead.packageQuantities) : '[]';
     }
 
     const value = lead[column.accessorKey as keyof Lead];
@@ -282,7 +282,7 @@ export function LeadsTable({
       const totalGuests = calculateTotalGuestsFromPackageQuantities(lead);
       return formatNumeric(totalGuests);
     }
-     if (column.accessorKey === 'averageRateCalculated') {
+    if (column.accessorKey === 'averageRateCalculated') {
       const totalGuests = calculateTotalGuestsFromPackageQuantities(lead);
       if (totalGuests > 0 && lead.totalAmount !== undefined && lead.totalAmount !== null) {
         const averageRate = lead.totalAmount / totalGuests;
@@ -330,7 +330,7 @@ export function LeadsTable({
     if (column.isPercentage) {
       return formatPercentage(value as number | undefined);
     }
-    if (column.isNumeric && column.accessorKey !== 'totalGuestsCalculated' && column.accessorKey !== 'freeGuestCount' && !column.isPackageQuantityColumn ) {
+    if (column.isNumeric && column.accessorKey !== 'totalGuestsCalculated' && column.accessorKey !== 'freeGuestCount' && !column.isPackageQuantityColumn) {
       return (value !== null && value !== undefined && !isNaN(Number(value))) ? String(value) : '-';
     }
     if (column.isNotes) {
@@ -342,7 +342,7 @@ export function LeadsTable({
     }
     return value !== undefined && value !== null && String(value).trim() !== '' ? String(value) : '-';
   };
-  
+
   const isAllSelected = leads.length > 0 && selectedLeadIds.length === leads.length;
   const isSomeSelected = selectedLeadIds.length > 0 && selectedLeadIds.length < leads.length;
 
@@ -352,20 +352,20 @@ export function LeadsTable({
         <TableHeader>
           <TableRow>
             {leadColumns
-              .filter(col => !col.isJsonDetails) 
+              .filter(col => !col.isJsonDetails)
               .map(col => (
-              <TableHead key={col.accessorKey} className={col.accessorKey === 'select' ? "w-[40px]" : ""}>
-                {col.accessorKey === 'select' ? (
-                  <Checkbox 
-                    aria-label="Select all rows" 
-                    checked={isAllSelected}
-                    onCheckedChange={(checked) => onSelectAllLeads(Boolean(checked))}
-                    data-state={isSomeSelected ? 'indeterminate' : (isAllSelected ? 'checked' : 'unchecked')}
-                    disabled={leads.length === 0}
-                  />
-                ) : col.header}
-              </TableHead>
-            ))}
+                <TableHead key={col.accessorKey} className={col.accessorKey === 'select' ? "w-[40px]" : ""}>
+                  {col.accessorKey === 'select' ? (
+                    <Checkbox
+                      aria-label="Select all rows"
+                      checked={isAllSelected}
+                      onCheckedChange={(checked) => onSelectAllLeads(Boolean(checked))}
+                      data-state={isSomeSelected ? 'indeterminate' : (isAllSelected ? 'checked' : 'unchecked')}
+                      disabled={leads.length === 0}
+                    />
+                  ) : col.header}
+                </TableHead>
+              ))}
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -377,54 +377,54 @@ export function LeadsTable({
             </TableRow>
           ) : (
             leads.map((lead) => (
-              <TableRow 
+              <TableRow
                 key={lead.id}
                 data-state={selectedLeadIds.includes(lead.id) ? "selected" : ""}
               >
                 {leadColumns
-                  .filter(col => !col.isJsonDetails) 
+                  .filter(col => !col.isJsonDetails)
                   .map(col => (
-                  <TableCell key={`${lead.id}-${col.accessorKey}`}>
-                    {col.accessorKey === 'select' ? (
-                      <Checkbox 
-                        aria-label={`Select row ${lead.id}`} 
-                        checked={selectedLeadIds.includes(lead.id)}
-                        onCheckedChange={(checked) => onSelectLead(lead.id, Boolean(checked))}
-                      />
-                    ) : col.accessorKey === 'actions' ? (
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" className="h-8 w-8 p-0">
-                            <span className="sr-only">Open menu</span>
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                          <DropdownMenuItem
-                            onClick={() => onEditLead(lead)}
-                            disabled={!isAdmin && lead.status.startsWith('Closed')}
-                          >
-                            {lead.status.startsWith('Closed') && !isAdmin ? 'View Details' : 'Edit Booking'}
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => onGenerateInvoice(lead)}>
-                            Generate Invoice
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            className="text-destructive"
-                            onClick={() => onDeleteLead(lead.id)}
-                            disabled={!isAdmin && lead.status.startsWith('Closed')}
-                          >
-                            Delete Booking
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    ) : (
-                      renderCellContent(lead, col)
-                    )}
-                  </TableCell>
-                ))}
+                    <TableCell key={`${lead.id}-${col.accessorKey}`}>
+                      {col.accessorKey === 'select' ? (
+                        <Checkbox
+                          aria-label={`Select row ${lead.id}`}
+                          checked={selectedLeadIds.includes(lead.id)}
+                          onCheckedChange={(checked) => onSelectLead(lead.id, Boolean(checked))}
+                        />
+                      ) : col.accessorKey === 'actions' ? (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" className="h-8 w-8 p-0">
+                              <span className="sr-only">Open menu</span>
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                            <DropdownMenuItem
+                              onClick={() => onEditLead(lead)}
+                              disabled={!isAdmin && lead.status.startsWith('Closed')}
+                            >
+                              {lead.status.startsWith('Closed') && !isAdmin ? 'View Details' : 'Edit Booking'}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => onGenerateInvoice(lead)}>
+                              Generate Invoice
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              className="text-destructive"
+                              onClick={() => onDeleteLead(lead.id)}
+                              disabled={!isAdmin && lead.status.startsWith('Closed')}
+                            >
+                              Delete Booking
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      ) : (
+                        renderCellContent(lead, col)
+                      )}
+                    </TableCell>
+                  ))}
               </TableRow>
             ))
           )}

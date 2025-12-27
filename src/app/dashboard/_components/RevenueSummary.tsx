@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo } from 'react';
 import { DollarSign, TrendingUp, CalendarDays } from 'lucide-react';
 import {
   Card,
@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/card';
 import type { Lead } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
-import { format, getMonth, getYear, isToday, parseISO, isValid, startOfMonth, endOfMonth, startOfYear, endOfYear, isWithinInterval } from 'date-fns';
+import { isToday, parseISO, isValid, startOfMonth, endOfMonth, startOfYear, endOfYear, isWithinInterval } from 'date-fns';
 
 interface RevenueCardProps {
   title: string;
@@ -54,7 +54,7 @@ interface RevenueSummaryProps {
 export function RevenueSummary({ leads, isLoading, error }: RevenueSummaryProps) {
   const revenueData = useMemo(() => {
     const now = new Date();
-    
+
     const currentMonthStart = startOfMonth(now);
     const currentMonthEnd = endOfMonth(now);
     const currentYearStart = startOfYear(now);
@@ -81,7 +81,7 @@ export function RevenueSummary({ leads, isLoading, error }: RevenueSummaryProps)
               thisMonthsRevenue += lead.netAmount;
             }
           }
-          
+
           if (lead.createdAt) {
             const leadCreationDate = parseISO(lead.createdAt);
             if (isValid(leadCreationDate) && isToday(leadCreationDate)) {
@@ -89,29 +89,29 @@ export function RevenueSummary({ leads, isLoading, error }: RevenueSummaryProps)
             }
           }
         } catch (e) {
-            console.warn(`Error processing date for lead ${lead.id} in revenue calculation: `, e)
+          console.warn(`Error processing date for lead ${lead.id} in revenue calculation: `, e)
         }
       }
     });
 
     return [
-      { period: "Today's Revenue", amount: todaysRevenue, icon: <DollarSign className="h-5 w-5 text-muted-foreground" />, description: "Based on 'Closed (Won)' bookings created today" },
-      { period: "This Month's Revenue", amount: thisMonthsRevenue, icon: <CalendarDays className="h-5 w-5 text-muted-foreground" />, description: "Based on 'Closed (Won)' bookings with event date this month" },
-      { period: "This Year's Revenue", amount: thisYearsRevenue, icon: <TrendingUp className="h-5 w-5 text-muted-foreground" />, description: "Based on 'Closed (Won)' bookings with event date this year" },
+      { period: "Today's Revenue", amount: todaysRevenue, icon: <DollarSign className="h-5 w-5 text-muted-foreground" />, description: "Based on &apos;Closed (Won)&apos; bookings created today" },
+      { period: "This Month's Revenue", amount: thisMonthsRevenue, icon: <CalendarDays className="h-5 w-5 text-muted-foreground" />, description: "Based on &apos;Closed (Won)&apos; bookings with event date this month" },
+      { period: "This Year's Revenue", amount: thisYearsRevenue, icon: <TrendingUp className="h-5 w-5 text-muted-foreground" />, description: "Based on &apos;Closed (Won)&apos; bookings with event date this year" },
     ];
   }, [leads]);
 
-  if (error) { 
+  if (error) {
     return (
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {revenueData.map(item => (
-           <Card key={item.period}>
+          <Card key={item.period}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">{item.period}</CardTitle>
-                {item.icon}
+              <CardTitle className="text-sm font-medium">{item.period}</CardTitle>
+              {item.icon}
             </CardHeader>
             <CardContent><p className="text-destructive pt-2">Error: {error}</p></CardContent>
-           </Card>
+          </Card>
         ))}
       </div>
     );

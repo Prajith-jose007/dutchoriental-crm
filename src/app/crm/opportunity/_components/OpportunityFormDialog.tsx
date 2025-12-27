@@ -37,7 +37,7 @@ import { DatePicker } from '@/components/ui/date-picker';
 import { Slider } from '@/components/ui/slider';
 import type { Opportunity, Yacht, YachtCategory } from '@/lib/types';
 import { opportunityPipelinePhaseOptions, opportunityPriorityOptions, opportunityStatusOptions, yachtCategoryOptions, opportunityReportTypeOptions, opportunityTripReportStatusOptions } from '@/lib/types';
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useCallback } from 'react';
 import { formatISO, parseISO, isValid } from 'date-fns';
 
 const USER_ID_STORAGE_KEY = 'currentUserId';
@@ -75,12 +75,12 @@ interface OpportunityFormDialogProps {
 }
 
 export function OpportunityFormDialog({ isOpen, onOpenChange, opportunity, onSubmitSuccess, allYachts, userMap }: OpportunityFormDialogProps) {
-  
+
   const probabilityOptions = Array.from({ length: 11 }, (_, i) => i * 10);
 
-  const getInitialFormValues = (): OpportunityFormData => {
+  const getInitialFormValues = useCallback((): OpportunityFormData => {
     const currentUserId = typeof window !== 'undefined' ? localStorage.getItem(USER_ID_STORAGE_KEY) : null;
-    
+
     return {
       id: opportunity?.id,
       potentialCustomer: opportunity?.potentialCustomer || '',
@@ -100,7 +100,7 @@ export function OpportunityFormDialog({ isOpen, onOpenChange, opportunity, onSub
       reportType: opportunity?.reportType || 'Trip',
       tripReportStatus: opportunity?.tripReportStatus || 'In Process',
     };
-  };
+  }, [opportunity]);
 
   const form = useForm<OpportunityFormData>({
     resolver: zodResolver(opportunityFormSchema),
@@ -111,7 +111,7 @@ export function OpportunityFormDialog({ isOpen, onOpenChange, opportunity, onSub
     if (isOpen) {
       form.reset(getInitialFormValues());
     }
-  }, [opportunity, isOpen]);
+  }, [isOpen, getInitialFormValues, form]);
 
   const onSubmit = (data: OpportunityFormData) => {
     const currentUserId = typeof window !== 'undefined' ? localStorage.getItem(USER_ID_STORAGE_KEY) : null;
@@ -126,7 +126,7 @@ export function OpportunityFormDialog({ isOpen, onOpenChange, opportunity, onSub
     onSubmitSuccess(submittedOpp);
     onOpenChange(false);
   };
-  
+
   const filteredYachts = useMemo(() => {
     const selectedProductType = form.watch('productType');
     return allYachts.filter(y => y.category === selectedProductType);
@@ -195,7 +195,7 @@ export function OpportunityFormDialog({ isOpen, onOpenChange, opportunity, onSub
                     </FormItem>
                   )}
                 />
-                 <FormField
+                <FormField
                   control={form.control}
                   name="estimatedClosingDate"
                   render={({ field }) => (
@@ -223,7 +223,7 @@ export function OpportunityFormDialog({ isOpen, onOpenChange, opportunity, onSub
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Report Type</FormLabel>
-                       <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value}>
+                      <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value}>
                         <FormControl><SelectTrigger><SelectValue placeholder="Select type" /></SelectTrigger></FormControl>
                         <SelectContent>
                           {opportunityReportTypeOptions.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
@@ -233,7 +233,7 @@ export function OpportunityFormDialog({ isOpen, onOpenChange, opportunity, onSub
                     </FormItem>
                   )}
                 />
-                 <FormField
+                <FormField
                   control={form.control}
                   name="tripReportStatus"
                   render={({ field }) => (
@@ -251,159 +251,159 @@ export function OpportunityFormDialog({ isOpen, onOpenChange, opportunity, onSub
                 />
               </div>
 
-               <div className="pt-4 border-t mt-4">
-                 <h3 className="text-lg font-medium mb-3">Products and Opportunities</h3>
-                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <FormField
-                        control={form.control}
-                        name="productType"
-                        render={({ field }) => (
-                            <FormItem>
-                            <FormLabel>Product Type</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value}>
-                                <FormControl><SelectTrigger><SelectValue placeholder="Select product type" /></SelectTrigger></FormControl>
-                                <SelectContent>
-                                {yachtCategoryOptions.map(type => (
-                                    <SelectItem key={type} value={type}>{type}</SelectItem>
-                                ))}
-                                </SelectContent>
-                            </Select>
-                            <FormMessage />
-                            </FormItem>
-                        )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="yachtId"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Yacht</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value || undefined} defaultValue={field.value} disabled={!form.watch('productType')}>
-                            <FormControl><SelectTrigger><SelectValue placeholder="Select a yacht" /></SelectTrigger></FormControl>
-                            <SelectContent>
-                              {filteredYachts.map((yacht) => (
-                                <SelectItem key={yacht.id} value={yacht.id}>{yacht.name}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="pipelinePhase"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Pipeline Phase</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value}>
-                            <FormControl><SelectTrigger><SelectValue placeholder="Select phase" /></SelectTrigger></FormControl>
-                            <SelectContent>
-                              {opportunityPipelinePhaseOptions.map(phase => (
-                                <SelectItem key={phase} value={phase}>{phase}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="priority"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Priority</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value}>
-                            <FormControl><SelectTrigger><SelectValue placeholder="Select priority" /></SelectTrigger></FormControl>
-                            <SelectContent>
-                              {opportunityPriorityOptions.map(p => (
-                                <SelectItem key={p} value={p}>{p}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                     <FormField
-                      control={form.control}
-                      name="currentStatus"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Status</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value}>
-                            <FormControl><SelectTrigger><SelectValue placeholder="Select status" /></SelectTrigger></FormControl>
-                            <SelectContent>
-                              {opportunityStatusOptions.map(s => (
-                                <SelectItem key={s} value={s}>{s}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="estimatedRevenue"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Estimated Revenue (AED)</FormLabel>
-                          <FormControl><Input type="number" placeholder="0" {...field} /></FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="closingProbability"
-                      render={({ field }) => (
-                        <FormItem className="md:col-span-2">
-                          <FormLabel>Probability of Closing</FormLabel>
-                          <Select onValueChange={(value) => field.onChange(Number(value))} value={String(field.value || 50)} defaultValue={String(field.value || 50)}>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select probability" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {probabilityOptions.map(p => (
-                                <SelectItem key={p} value={String(p)}>{p}%</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                     <FormField
-                      control={form.control}
-                      name="meanExpectedValue"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Mean Expected Value (AED)</FormLabel>
-                           <FormControl><Input type="number" placeholder="0.00" {...field} value={field.value || 0} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl>
-                          <FormDescription>Enter the expected value manually.</FormDescription>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                 </div>
-               </div>
-               <FormField
-                  control={form.control}
-                  name="followUpUpdates"
-                  render={({ field }) => (
-                    <FormItem className="pt-4 border-t mt-4">
-                      <FormLabel>Follow-up Updates & Notes</FormLabel>
-                      <FormControl>
-                        <Textarea placeholder="Add any notes or updates about this opportunity..." {...field} value={field.value || ''} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+              <div className="pt-4 border-t mt-4">
+                <h3 className="text-lg font-medium mb-3">Products and Opportunities</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="productType"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Product Type</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value}>
+                          <FormControl><SelectTrigger><SelectValue placeholder="Select product type" /></SelectTrigger></FormControl>
+                          <SelectContent>
+                            {yachtCategoryOptions.map(type => (
+                              <SelectItem key={type} value={type}>{type}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="yachtId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Yacht</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value || undefined} defaultValue={field.value} disabled={!form.watch('productType')}>
+                          <FormControl><SelectTrigger><SelectValue placeholder="Select a yacht" /></SelectTrigger></FormControl>
+                          <SelectContent>
+                            {filteredYachts.map((yacht) => (
+                              <SelectItem key={yacht.id} value={yacht.id}>{yacht.name}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="pipelinePhase"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Pipeline Phase</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value}>
+                          <FormControl><SelectTrigger><SelectValue placeholder="Select phase" /></SelectTrigger></FormControl>
+                          <SelectContent>
+                            {opportunityPipelinePhaseOptions.map(phase => (
+                              <SelectItem key={phase} value={phase}>{phase}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="priority"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Priority</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value}>
+                          <FormControl><SelectTrigger><SelectValue placeholder="Select priority" /></SelectTrigger></FormControl>
+                          <SelectContent>
+                            {opportunityPriorityOptions.map(p => (
+                              <SelectItem key={p} value={p}>{p}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="currentStatus"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Status</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value}>
+                          <FormControl><SelectTrigger><SelectValue placeholder="Select status" /></SelectTrigger></FormControl>
+                          <SelectContent>
+                            {opportunityStatusOptions.map(s => (
+                              <SelectItem key={s} value={s}>{s}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="estimatedRevenue"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Estimated Revenue (AED)</FormLabel>
+                        <FormControl><Input type="number" placeholder="0" {...field} /></FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="closingProbability"
+                    render={({ field }) => (
+                      <FormItem className="md:col-span-2">
+                        <FormLabel>Probability of Closing</FormLabel>
+                        <Select onValueChange={(value) => field.onChange(Number(value))} value={String(field.value || 50)} defaultValue={String(field.value || 50)}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select probability" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {probabilityOptions.map(p => (
+                              <SelectItem key={p} value={String(p)}>{p}%</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="meanExpectedValue"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Mean Expected Value (AED)</FormLabel>
+                        <FormControl><Input type="number" placeholder="0.00" {...field} value={field.value || 0} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl>
+                        <FormDescription>Enter the expected value manually.</FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </div>
+              <FormField
+                control={form.control}
+                name="followUpUpdates"
+                render={({ field }) => (
+                  <FormItem className="pt-4 border-t mt-4">
+                    <FormLabel>Follow-up Updates & Notes</FormLabel>
+                    <FormControl>
+                      <Textarea placeholder="Add any notes or updates about this opportunity..." {...field} value={field.value || ''} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
               <DialogFooter>
                 <DialogClose asChild><Button type="button" variant="outline">Cancel</Button></DialogClose>
                 <Button type="submit">{opportunity ? 'Save Changes' : 'Create Opportunity'}</Button>

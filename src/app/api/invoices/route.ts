@@ -19,13 +19,13 @@ const ensureISOFormat = (dateSource?: string | Date): string | null => {
 
 export async function GET() {
   try {
-    const invoicesDataDb = (await query('SELECT * FROM invoices ORDER BY createdAt DESC')) as Record<string, any>[];
+    const invoicesDataDb = (await query<Invoice[]>('SELECT * FROM invoices ORDER BY createdAt DESC'));
 
     const invoices: Invoice[] = invoicesDataDb.map(inv => ({
       id: String(inv.id || ''),
       leadId: inv.leadId || '',
       clientName: inv.clientName || '',
-      amount: parseFloat(inv.amount || 0),
+      amount: Number(inv.amount || 0),
       dueDate: ensureISOFormat(inv.dueDate) || formatISO(new Date()),
       status: (inv.status || 'Pending') as Invoice['status'],
       createdAt: ensureISOFormat(inv.createdAt) || formatISO(new Date()),
@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: 'Missing required invoice fields' }, { status: 400 });
     }
 
-    const existingInvoice = (await query('SELECT id FROM invoices WHERE id = ?', [newInvoiceData.id])) as Record<string, any>[];
+    const existingInvoice = (await query<any[]>('SELECT id FROM invoices WHERE id = ?', [newInvoiceData.id]));
     if (existingInvoice.length > 0) {
       return NextResponse.json({ message: `An invoice for booking ID ${newInvoiceData.leadId} already exists with ID ${newInvoiceData.id}.` }, { status: 409 });
     }
@@ -71,16 +71,16 @@ export async function POST(request: NextRequest) {
       createdAt: formattedCreatedAt,
     };
 
-    const result = (await query(
+    const result = (await query<any>(
       'INSERT INTO invoices (id, leadId, clientName, amount, dueDate, status, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?)',
       [
         invoiceToStore.id, invoiceToStore.leadId, invoiceToStore.clientName, invoiceToStore.amount,
         invoiceToStore.dueDate, invoiceToStore.status, invoiceToStore.createdAt
       ]
-    )) as { affectedRows: number };
+    ));
 
     if (result.affectedRows === 1) {
-      const createdInvoiceDb = (await query('SELECT * FROM invoices WHERE id = ?', [invoiceToStore.id])) as Record<string, any>[];
+      const createdInvoiceDb = (await query<any[]>('SELECT * FROM invoices WHERE id = ?', [invoiceToStore.id]));
       if (createdInvoiceDb.length > 0) {
         const dbInv = createdInvoiceDb[0];
         const finalInvoice: Invoice = {

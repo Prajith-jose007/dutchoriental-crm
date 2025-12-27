@@ -74,7 +74,7 @@ export default function ReportsPage() {
         const yachtsData = await yachtsRes.json();
         const agentsData = await agentsRes.json();
         const usersData: User[] = await usersRes.json();
-        
+
         setAllLeads(Array.isArray(leadsData) ? leadsData : []);
         setAllInvoices(Array.isArray(invoicesData) ? invoicesData : []);
         setAllYachts(Array.isArray(yachtsData) ? yachtsData : []);
@@ -105,34 +105,34 @@ export default function ReportsPage() {
     leadsToFilter = leadsToFilter.filter(lead => {
       let leadEventDate: Date | null = null;
       try {
-        if(lead.month && isValid(parseISO(lead.month))) {
+        if (lead.month && isValid(parseISO(lead.month))) {
           leadEventDate = parseISO(lead.month);
         }
-      } catch(e) { console.warn(`Invalid event date for booking ${lead.id} in reports: ${lead.month}`); }
+      } catch (e) { console.warn(`Invalid event date for booking ${lead.id} in reports: ${lead.month}`); }
 
       if (startDate && endDate && leadEventDate) {
-         if (!isWithinInterval(leadEventDate, { start: startDate, end: endDate })) return false;
+        if (!isWithinInterval(leadEventDate, { start: startDate, end: endDate })) return false;
       } else if (startDate && leadEventDate) {
         if (leadEventDate < startDate) return false;
       } else if (endDate && leadEventDate) {
-         if (leadEventDate > endDate) return false;
+        if (leadEventDate > endDate) return false;
       }
       else if (!startDate && !endDate) {
         if (leadEventDate) {
-            const leadYear = String(getFullYear(leadEventDate));
-            const leadMonth = String(getMonthIndex(leadEventDate) + 1).padStart(2, '0');
+          const leadYear = String(getFullYear(leadEventDate));
+          const leadMonth = String(getMonthIndex(leadEventDate) + 1).padStart(2, '0');
 
-            if (selectedReportYear !== 'all' && leadYear !== selectedReportYear) return false;
-            if (selectedReportMonth !== 'all' && selectedReportYear !== 'all' && leadMonth !== selectedReportMonth) return false;
-            if (selectedReportMonth !== 'all' && selectedReportYear === 'all' && leadMonth !== selectedReportMonth) return false;
+          if (selectedReportYear !== 'all' && leadYear !== selectedReportYear) return false;
+          if (selectedReportMonth !== 'all' && selectedReportYear !== 'all' && leadMonth !== selectedReportMonth) return false;
+          if (selectedReportMonth !== 'all' && selectedReportYear === 'all' && leadMonth !== selectedReportMonth) return false;
         } else if (selectedReportMonth !== 'all' || selectedReportYear !== 'all') {
-            return false;
+          return false;
         }
       }
 
       if (selectedYachtId !== 'all' && lead.yacht !== selectedYachtId) return false;
       if (selectedAgentId !== 'all' && lead.agent !== selectedAgentId) return false;
-      if (selectedUserId !== 'all' && (lead.lastModifiedByUserId !== selectedUserId && lead.ownerUserId !== selectedUserId )) return false;
+      if (selectedUserId !== 'all' && (lead.lastModifiedByUserId !== selectedUserId && lead.ownerUserId !== selectedUserId)) return false;
       if (selectedStatusFilter !== 'all' && lead.status !== selectedStatusFilter) return false;
       if (selectedLeadTypeFilter !== 'all' && lead.type !== selectedLeadTypeFilter) return false;
 
@@ -146,31 +146,31 @@ export default function ReportsPage() {
     const relevantLeadIds = new Set(filteredLeads.map(lead => lead.id));
 
     const invoicesToFilter = allInvoices.filter(invoice => {
-       let invoiceCreationDate: Date | null = null;
-       try {
-          if(invoice.createdAt && isValid(parseISO(invoice.createdAt))) {
-            invoiceCreationDate = parseISO(invoice.createdAt);
-          }
-        } catch(e) { console.warn(`Invalid creation date for invoice ${invoice.id}: ${invoice.createdAt}`); }
+      let invoiceCreationDate: Date | null = null;
+      try {
+        if (invoice.createdAt && isValid(parseISO(invoice.createdAt))) {
+          invoiceCreationDate = parseISO(invoice.createdAt);
+        }
+      } catch (e) { console.warn(`Invalid creation date for invoice ${invoice.id}: ${invoice.createdAt}`); }
 
-       if (startDate && endDate && invoiceCreationDate) {
-         if (!isWithinInterval(invoiceCreationDate, { start: startDate, end: endDate })) return false;
-       } else if (startDate && invoiceCreationDate) {
-         if (invoiceCreationDate < startDate) return false;
-       } else if (endDate && invoiceCreationDate) {
-         if (invoiceCreationDate > endDate) return false;
-       }
-       else if (!startDate && !endDate) {
+      if (startDate && endDate && invoiceCreationDate) {
+        if (!isWithinInterval(invoiceCreationDate, { start: startDate, end: endDate })) return false;
+      } else if (startDate && invoiceCreationDate) {
+        if (invoiceCreationDate < startDate) return false;
+      } else if (endDate && invoiceCreationDate) {
+        if (invoiceCreationDate > endDate) return false;
+      }
+      else if (!startDate && !endDate) {
         if (invoiceCreationDate) {
-            const invoiceYear = String(getFullYear(invoiceCreationDate));
-            const invoiceMonth = String(getMonthIndex(invoiceCreationDate) + 1).padStart(2, '0');
+          const invoiceYear = String(getFullYear(invoiceCreationDate));
+          const invoiceMonth = String(getMonthIndex(invoiceCreationDate) + 1).padStart(2, '0');
 
-            if (selectedReportYear !== 'all' && invoiceYear !== selectedReportYear) return false;
-            if (selectedReportMonth !== 'all' && selectedReportYear !== 'all' && invoiceMonth !== selectedReportMonth) return false;
-            if (selectedReportMonth !== 'all' && selectedReportYear === 'all' && invoiceMonth !== selectedReportMonth) return false;
+          if (selectedReportYear !== 'all' && invoiceYear !== selectedReportYear) return false;
+          if (selectedReportMonth !== 'all' && selectedReportYear !== 'all' && invoiceMonth !== selectedReportMonth) return false;
+          if (selectedReportMonth !== 'all' && selectedReportYear === 'all' && invoiceMonth !== selectedReportMonth) return false;
 
         } else if (selectedReportMonth !== 'all' || selectedReportYear !== 'all') {
-            return false;
+          return false;
         }
       }
       return relevantLeadIds.has(invoice.leadId);
@@ -196,10 +196,10 @@ export default function ReportsPage() {
       <div className="container mx-auto py-2">
         <PageHeader title="Reports" description="Loading report data..." />
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 mb-6 p-4 border rounded-lg shadow-sm">
-          {[...Array(9)].map((_,i) => <Skeleton key={i} className="h-10 w-full" />)}
+          {[...Array(9)].map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}
         </div>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 mb-6">
-           {[...Array(5)].map((_,i) => <Skeleton key={`stat-${i}`} className="h-24 w-full" />)}
+          {[...Array(5)].map((_, i) => <Skeleton key={`stat-${i}`} className="h-24 w-full" />)}
         </div>
         <div className="grid gap-6">
           <Skeleton className="h-[350px] w-full" />
@@ -273,7 +273,7 @@ export default function ReportsPage() {
             </SelectContent>
           </Select>
         </div>
-         <div>
+        <div>
           <Label htmlFor="lead-type-filter-report">Booking Type</Label>
           <Select value={selectedLeadTypeFilter} onValueChange={(value) => setSelectedLeadTypeFilter(value as LeadType | 'all')}>
             <SelectTrigger id="lead-type-filter-report" className="w-full">
@@ -318,7 +318,7 @@ export default function ReportsPage() {
           </Select>
         </div>
         <div className="flex items-end">
-            <Button onClick={resetFilters} variant="outline" className="w-full">Reset Filters</Button>
+          <Button onClick={resetFilters} variant="outline" className="w-full">Reset Filters</Button>
         </div>
       </div>
 
@@ -332,11 +332,11 @@ export default function ReportsPage() {
           <InvoiceStatusPieChart invoices={filteredInvoices} isLoading={isLoading} error={error} />
           <SalesByYachtPieChart leads={filteredLeads} allYachts={allYachts} isLoading={isLoading} error={error} />
         </div>
-         <div className="grid gap-6 lg:grid-cols-1">
-           <BookingsByAgentBarChart leads={filteredLeads} allAgents={allAgents} isLoading={isLoading} error={error} />
+        <div className="grid gap-6 lg:grid-cols-1">
+          <BookingsByAgentBarChart leads={filteredLeads} allAgents={allAgents} isLoading={isLoading} error={error} />
         </div>
         <div className="grid gap-6 lg:grid-cols-1">
-            <FilteredBookedAgentsList filteredLeads={filteredLeads} allAgents={allAgents} isLoading={isLoading} error={error} />
+          <FilteredBookedAgentsList filteredLeads={filteredLeads} allAgents={allAgents} isLoading={isLoading} error={error} />
         </div>
       </div>
     </div>

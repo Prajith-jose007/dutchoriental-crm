@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -22,7 +22,7 @@ export default function YachtsPage() {
   const [isAdmin, setIsAdmin] = useState(false);
   const { toast } = useToast();
 
-  const fetchYachts = async () => {
+  const fetchYachts = useCallback(async () => {
     setIsLoading(true);
     try {
       const response = await fetch('/api/yachts');
@@ -35,11 +35,11 @@ export default function YachtsPage() {
     } catch (error) {
       console.error("Error fetching yachts:", error);
       toast({ title: 'Error Fetching Yachts', description: (error as Error).message, variant: 'destructive' });
-      setYachts([]); 
+      setYachts([]);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [toast]);
 
   useEffect(() => {
     try {
@@ -50,7 +50,7 @@ export default function YachtsPage() {
       setIsAdmin(false);
     }
     fetchYachts();
-  }, []);
+  }, [fetchYachts]);
 
   const handleAddYachtClick = () => {
     if (!isAdmin) {
@@ -72,7 +72,7 @@ export default function YachtsPage() {
       toast({ title: "Access Denied", description: "You do not have permission to save yacht data.", variant: "destructive" });
       return;
     }
-     try {
+    try {
       let response;
       if (editingYacht && submittedYachtData.id === editingYacht.id) {
         response = await fetch(`/api/yachts/${editingYacht.id}`, {
@@ -82,17 +82,17 @@ export default function YachtsPage() {
         });
       } else {
         const existingYachtResponse = await fetch('/api/yachts');
-        if(!existingYachtResponse.ok) throw new Error('Could not verify existing yachts.');
+        if (!existingYachtResponse.ok) throw new Error('Could not verify existing yachts.');
         const currentYachts: Yacht[] = await existingYachtResponse.json();
-        
+
         const existingYachtById = currentYachts.find(y => y.id === submittedYachtData.id);
-        if (existingYachtById && !editingYacht) { 
-             toast({
-                title: 'Error Adding Yacht',
-                description: `Yacht with ID ${submittedYachtData.id} already exists.`,
-                variant: 'destructive',
-            });
-            return; 
+        if (existingYachtById && !editingYacht) {
+          toast({
+            title: 'Error Adding Yacht',
+            description: `Yacht with ID ${submittedYachtData.id} already exists.`,
+            variant: 'destructive',
+          });
+          return;
         }
         response = await fetch('/api/yachts', {
           method: 'POST',
@@ -105,13 +105,13 @@ export default function YachtsPage() {
         const errorData = await response.json().catch(() => ({ message: response.statusText }));
         throw new Error(errorData.message || `Failed to save yacht: ${response.statusText}`);
       }
-      
+
       toast({
         title: editingYacht ? 'Yacht Updated' : 'Yacht Added',
         description: `${submittedYachtData.name} has been saved.`,
       });
-      
-      fetchYachts(); 
+
+      fetchYachts();
       setIsYachtDialogOpen(false);
       setEditingYacht(null);
 
@@ -138,7 +138,7 @@ export default function YachtsPage() {
         throw new Error(errorData.message || `Failed to delete yacht: ${response.statusText}`);
       }
       toast({ title: 'Yacht Deleted', description: `Yacht ${yachtId} has been deleted.` });
-      fetchYachts(); 
+      fetchYachts();
     } catch (error) {
       console.error("Error deleting yacht:", error);
       toast({ title: 'Error Deleting Yacht', description: (error as Error).message, variant: 'destructive' });
@@ -176,7 +176,7 @@ export default function YachtsPage() {
     <div className="container mx-auto py-2">
       <PageHeader
         title="Yacht Management"
-        description="View and manage your fleet of yachts. Click 'Edit' to see package rates and custom info."
+        description="View and manage your fleet of yachts. Click &apos;Edit&apos; to see package rates and custom info."
         actions={
           isAdmin && (
             <Button onClick={handleAddYachtClick}>
@@ -187,7 +187,7 @@ export default function YachtsPage() {
         }
       />
       {!isAdmin && !isLoading && (
-         <p className="mb-4 text-sm text-muted-foreground">
+        <p className="mb-4 text-sm text-muted-foreground">
           Viewing yachts. Management actions (add, edit rates, delete) are restricted to administrators.
         </p>
       )}
@@ -203,7 +203,7 @@ export default function YachtsPage() {
                   sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                   className="object-cover"
                   data-ai-hint="yacht boat"
-                  priority={false} 
+                  priority={false}
                 />
               </div>
               <CardTitle className="mt-4">{yacht.name}</CardTitle>
@@ -213,7 +213,7 @@ export default function YachtsPage() {
               <p className="text-sm text-muted-foreground">
                 ID: {yacht.id} <br />
                 Status: {yacht.status} <br />
-                <span className="italic">Click 'Details/Edit' to view rates and custom package info.</span>
+                <span className="italic">Click &apos;Details/Edit&apos; to view rates and custom package info.</span>
               </p>
             </CardContent>
             <CardFooter className="flex justify-end gap-2 mt-auto pt-4 border-t">

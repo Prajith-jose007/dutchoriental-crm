@@ -1,9 +1,21 @@
 
 // src/app/api/leads/route.ts
 import { NextResponse, type NextRequest } from 'next/server';
-import type { Lead, LeadStatus, LeadPackageQuantity, PaymentConfirmationStatus } from '@/lib/types';
+import type { Lead, LeadStatus, LeadPackageQuantity, PaymentConfirmationStatus, LeadType, ModeOfPayment } from '@/lib/types';
 import { query } from '@/lib/db';
 import { formatISO, parseISO, isValid, getYear as getFullYear } from 'date-fns';
+
+interface DbLead extends Omit<Lead, 'packageQuantities' | 'totalAmount' | 'commissionPercentage' | 'commissionAmount' | 'netAmount' | 'paidAmount' | 'balanceAmount' | 'freeGuestCount' | 'perTicketRate'> {
+  package_quantities_json?: string;
+  totalAmount: string | number;
+  commissionPercentage: string | number;
+  commissionAmount: string | number;
+  netAmount: string | number;
+  paidAmount: string | number;
+  balanceAmount: string | number;
+  freeGuestCount: string | number | null;
+  perTicketRate?: string | number | null;
+}
 
 const ensureISOFormat = (dateSource?: string | Date): string | null => {
   if (!dateSource) return null;
@@ -18,52 +30,52 @@ const ensureISOFormat = (dateSource?: string | Date): string | null => {
   }
 };
 
-const mapDbLeadToLeadObject = (dbLead: any): Lead => {
-    let packageQuantities: LeadPackageQuantity[] = [];
-    if (dbLead.package_quantities_json && typeof dbLead.package_quantities_json === 'string') {
-        try {
-            packageQuantities = JSON.parse(dbLead.package_quantities_json);
-        } catch (e) {
-            console.warn(`[API Helper] Failed to parse package_quantities_json for lead ${dbLead.id}`, e);
-        }
+const mapDbLeadToLeadObject = (dbLead: DbLead): Lead => {
+  let packageQuantities: LeadPackageQuantity[] = [];
+  if (dbLead.package_quantities_json && typeof dbLead.package_quantities_json === 'string') {
+    try {
+      packageQuantities = JSON.parse(dbLead.package_quantities_json);
+    } catch (e) {
+      console.warn(`[API Helper] Failed to parse package_quantities_json for lead ${dbLead.id}`, e);
     }
+  }
 
-    const parsedTotalAmount = parseFloat(dbLead.totalAmount);
-    const parsedCommissionPercentage = parseFloat(dbLead.commissionPercentage);
-    const parsedCommissionAmount = parseFloat(dbLead.commissionAmount);
-    const parsedNetAmount = parseFloat(dbLead.netAmount);
-    const parsedPaidAmount = parseFloat(dbLead.paidAmount);
-    const parsedBalanceAmount = parseFloat(dbLead.balanceAmount);
-    const parsedFreeGuestCount = parseInt(dbLead.freeGuestCount, 10);
-    const parsedPerTicketRate = dbLead.perTicketRate !== null && dbLead.perTicketRate !== undefined ? parseFloat(dbLead.perTicketRate) : undefined;
-    
-    return {
-        id: String(dbLead.id || ''),
-        clientName: String(dbLead.clientName || ''),
-        agent: String(dbLead.agent || ''),
-        yacht: String(dbLead.yacht || ''),
-        status: (dbLead.status || 'Balance') as LeadStatus,
-        month: ensureISOFormat(dbLead.month)!,
-        notes: dbLead.notes || undefined,
-        type: (dbLead.type || 'Private Cruise'),
-        paymentConfirmationStatus: (dbLead.paymentConfirmationStatus || 'UNCONFIRMED') as PaymentConfirmationStatus,
-        transactionId: dbLead.transactionId || undefined,
-        bookingRefNo: dbLead.bookingRefNo || undefined,
-        modeOfPayment: (dbLead.modeOfPayment || 'Online'),
-        packageQuantities,
-        freeGuestCount: isNaN(parsedFreeGuestCount) ? 0 : parsedFreeGuestCount,
-        perTicketRate: parsedPerTicketRate,
-        totalAmount: isNaN(parsedTotalAmount) ? 0 : parsedTotalAmount,
-        commissionPercentage: isNaN(parsedCommissionPercentage) ? 0 : parsedCommissionPercentage,
-        commissionAmount: isNaN(parsedCommissionAmount) ? 0 : parsedCommissionAmount,
-        netAmount: isNaN(parsedNetAmount) ? 0 : parsedNetAmount,
-        paidAmount: isNaN(parsedPaidAmount) ? 0 : parsedPaidAmount,
-        balanceAmount: isNaN(parsedBalanceAmount) ? 0 : parsedBalanceAmount,
-        createdAt: ensureISOFormat(dbLead.createdAt)!,
-        updatedAt: ensureISOFormat(dbLead.updatedAt)!,
-        lastModifiedByUserId: dbLead.lastModifiedByUserId || undefined,
-        ownerUserId: dbLead.ownerUserId || undefined,
-    };
+  const parsedTotalAmount = parseFloat(String(dbLead.totalAmount || 0));
+  const parsedCommissionPercentage = parseFloat(String(dbLead.commissionPercentage || 0));
+  const parsedCommissionAmount = parseFloat(String(dbLead.commissionAmount || 0));
+  const parsedNetAmount = parseFloat(String(dbLead.netAmount || 0));
+  const parsedPaidAmount = parseFloat(String(dbLead.paidAmount || 0));
+  const parsedBalanceAmount = parseFloat(String(dbLead.balanceAmount || 0));
+  const parsedFreeGuestCount = parseInt(String(dbLead.freeGuestCount || 0), 10);
+  const parsedPerTicketRate = dbLead.perTicketRate !== null && dbLead.perTicketRate !== undefined ? parseFloat(String(dbLead.perTicketRate)) : undefined;
+
+  return {
+    id: String(dbLead.id || ''),
+    clientName: String(dbLead.clientName || ''),
+    agent: String(dbLead.agent || ''),
+    yacht: String(dbLead.yacht || ''),
+    status: (dbLead.status || 'Balance') as LeadStatus,
+    month: ensureISOFormat(dbLead.month)!,
+    notes: dbLead.notes || undefined,
+    type: (dbLead.type || 'Private Cruise') as LeadType,
+    paymentConfirmationStatus: (dbLead.paymentConfirmationStatus || 'UNCONFIRMED') as PaymentConfirmationStatus,
+    transactionId: dbLead.transactionId || undefined,
+    bookingRefNo: dbLead.bookingRefNo || undefined,
+    modeOfPayment: (dbLead.modeOfPayment || 'CARD') as ModeOfPayment,
+    packageQuantities,
+    freeGuestCount: isNaN(parsedFreeGuestCount) ? 0 : parsedFreeGuestCount,
+    perTicketRate: parsedPerTicketRate,
+    totalAmount: isNaN(parsedTotalAmount) ? 0 : parsedTotalAmount,
+    commissionPercentage: isNaN(parsedCommissionPercentage) ? 0 : parsedCommissionPercentage,
+    commissionAmount: isNaN(parsedCommissionAmount) ? 0 : parsedCommissionAmount,
+    netAmount: isNaN(parsedNetAmount) ? 0 : parsedNetAmount,
+    paidAmount: isNaN(parsedPaidAmount) ? 0 : parsedPaidAmount,
+    balanceAmount: isNaN(parsedBalanceAmount) ? 0 : parsedBalanceAmount,
+    createdAt: ensureISOFormat(dbLead.createdAt)!,
+    updatedAt: ensureISOFormat(dbLead.updatedAt)!,
+    lastModifiedByUserId: dbLead.lastModifiedByUserId || undefined,
+    ownerUserId: dbLead.ownerUserId || undefined,
+  };
 };
 
 function generateNewLeadId(existingLeadIds: string[]): string {
@@ -86,7 +98,7 @@ function generateNewLeadTransactionId(existingLeads: Lead[], forYear: number, cu
 
   existingLeads.forEach(lead => {
     if (lead.transactionId && lead.transactionId.startsWith(prefix)) {
-      const numPartStr = lead.transactionId.substring(prefix.length); 
+      const numPartStr = lead.transactionId.substring(prefix.length);
       const numPart = parseInt(numPartStr, 10);
       if (!isNaN(numPart) && numPart > maxNumber) {
         maxNumber = numPart;
@@ -97,9 +109,9 @@ function generateNewLeadTransactionId(existingLeads: Lead[], forYear: number, cu
   return `${prefix}${String(nextNumber).padStart(5, '0')}`;
 }
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
-    const leadsDataDb: any[] = await query('SELECT * FROM leads ORDER BY createdAt DESC');
+    const leadsDataDb = await query<DbLead[]>('SELECT * FROM leads ORDER BY createdAt DESC');
     const leads: Lead[] = leadsDataDb.map(mapDbLeadToLeadObject);
     return NextResponse.json(leads, { status: 200 });
   } catch (err) {
@@ -112,15 +124,15 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const requestBody = await request.json();
-    const { requestingUserId, requestingUserRole, ...newLeadData } = requestBody as Partial<Lead> & { requestingUserId: string; requestingUserRole: string };
+    const { requestingUserId, ...newLeadData } = requestBody as Partial<Lead> & { requestingUserId: string; requestingUserRole: string };
 
     if (!newLeadData.clientName || !newLeadData.agent || !newLeadData.yacht || !newLeadData.month) {
       return NextResponse.json({ message: 'Missing required fields (clientName, agent, yacht, event date).' }, { status: 400 });
     }
-    
+
     let leadId = newLeadData.id;
     if (!leadId || leadId.startsWith('temp-')) {
-      const currentLeadsFromDB: any[] = await query('SELECT id FROM leads WHERE id LIKE "DO-%"');
+      const currentLeadsFromDB = await query<DbLead[]>('SELECT id FROM leads WHERE id LIKE "DO-%"');
       leadId = generateNewLeadId(currentLeadsFromDB.map(l => l.id as string));
     }
 
@@ -133,10 +145,10 @@ export async function POST(request: NextRequest) {
     let finalTransactionId = newLeadData.transactionId;
     if (!finalTransactionId || String(finalTransactionId).trim() === "" || finalTransactionId === "Pending Generation") {
       const leadYear = getFullYear(parseISO(formattedMonth));
-      const allCurrentLeads: any[] = await query('SELECT transactionId FROM leads WHERE transactionId LIKE ?', [`TRN-${leadYear}-%`]);
-      finalTransactionId = generateNewLeadTransactionId(allCurrentLeads.map(tid => ({transactionId: tid.transactionId} as Lead)), leadYear);
+      const allCurrentLeads = await query<DbLead[]>('SELECT transactionId FROM leads WHERE transactionId LIKE ?', [`TRN-${leadYear}-%`]);
+      finalTransactionId = generateNewLeadTransactionId(allCurrentLeads.map(l => ({ transactionId: l.transactionId } as Lead)), leadYear);
     }
-    
+
     const sql = `
       INSERT INTO leads (
         id, clientName, agent, yacht, status, month, notes, type, paymentConfirmationStatus, transactionId, bookingRefNo, modeOfPayment,
@@ -174,20 +186,20 @@ export async function POST(request: NextRequest) {
       requestingUserId,
       newLeadData.ownerUserId || requestingUserId,
     ];
-    
+
     await query(sql, params);
 
-    const insertedLeadData: any[] = await query('SELECT * FROM leads WHERE id = ?', [leadId]);
+    const insertedLeadData = await query<any[]>('SELECT * FROM leads WHERE id = ?', [leadId]);
     if (insertedLeadData.length > 0) {
       const finalLead = mapDbLeadToLeadObject(insertedLeadData[0]);
       return NextResponse.json(finalLead, { status: 201 });
     }
-    
+
     throw new Error('Failed to insert booking or retrieve it after insertion.');
 
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : String(err);
-    console.error('[API POST /api/leads] Error in POST handler:', errorMessage, (err as Error).stack);
+    console.error('[API POST /api/leads] Error in POST handler:', errorMessage);
     return NextResponse.json({ message: `Failed to create booking: ${errorMessage}`, error: err }, { status: 500 });
   }
 }
@@ -195,7 +207,7 @@ export async function POST(request: NextRequest) {
 export async function PATCH(request: NextRequest) {
   try {
     const { ids, status: newStatus, requestingUserId, requestingUserRole } = await request.json() as { ids: string[]; status: LeadStatus; requestingUserId: string; requestingUserRole: string };
-    
+
     if (!ids || !Array.isArray(ids) || ids.length === 0 || !newStatus || !requestingUserId || !requestingUserRole) {
       return NextResponse.json({ message: 'Missing required fields for bulk status update' }, { status: 400 });
     }
@@ -206,7 +218,7 @@ export async function PATCH(request: NextRequest) {
 
     for (const id of ids) {
       try {
-        const existingLeadResults: any[] = await query('SELECT ownerUserId, status FROM leads WHERE id = ?', [id]);
+        const existingLeadResults = await query<any[]>('SELECT ownerUserId, status FROM leads WHERE id = ?', [id]);
         if (existingLeadResults.length === 0) {
           failedCount++;
           updateErrors.push({ id, reason: "Booking not found." });
@@ -223,7 +235,7 @@ export async function PATCH(request: NextRequest) {
 
         if (canUpdate) {
           const updateSql = 'UPDATE leads SET status = ?, updatedAt = ?, lastModifiedByUserId = ? WHERE id = ?';
-          const result: any = await query(updateSql, [newStatus, formatISO(new Date()), requestingUserId, id]);
+          const result = await query<any>(updateSql, [newStatus, formatISO(new Date()), requestingUserId, id]);
           if (result.affectedRows > 0) updatedCount++;
           else {
             failedCount++;
@@ -239,12 +251,12 @@ export async function PATCH(request: NextRequest) {
     }
 
     if (updatedCount > 0) {
-      return NextResponse.json({ 
+      return NextResponse.json({
         message: `${updatedCount} booking(s) updated. ${failedCount > 0 ? `${failedCount} failed.` : ''}`,
         updatedCount, failedCount, errors: failedCount > 0 ? updateErrors : undefined
       }, { status: 200 });
     } else {
-      return NextResponse.json({ 
+      return NextResponse.json({
         message: `No bookings were updated. ${failedCount} failed due to errors or permissions.`,
         updatedCount, failedCount, errors: updateErrors
       }, { status: 400 });

@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { PlusCircle } from 'lucide-react';
 import { PageHeader } from '@/components/PageHeader';
@@ -26,7 +26,7 @@ export default function OpportunityPage() {
   const [yachtMap, setYachtMap] = useState<{ [id: string]: string }>({});
   const [allYachts, setAllYachts] = useState<Yacht[]>([]);
 
-  const fetchPageData = async () => {
+  const fetchPageData = useCallback(async () => {
     setIsLoading(true);
     try {
       const [oppsRes, usersRes, yachtsRes] = await Promise.all([
@@ -38,17 +38,17 @@ export default function OpportunityPage() {
       if (!oppsRes.ok) throw new Error(`Failed to fetch opportunities: ${oppsRes.statusText}`);
       const oppsData = await oppsRes.json();
       setOpportunities(Array.isArray(oppsData) ? oppsData : []);
-      
+
       if (!usersRes.ok) throw new Error(`Failed to fetch users: ${usersRes.statusText}`);
       const usersData = await usersRes.json();
-      if(Array.isArray(usersData)) {
-          setUserMap(usersData.reduce((acc: any, user: User) => { acc[user.id] = user.name; return acc; }, {}));
+      if (Array.isArray(usersData)) {
+        setUserMap(usersData.reduce((acc: any, user: User) => { acc[user.id] = user.name; return acc; }, {}));
       }
 
       if (!yachtsRes.ok) throw new Error(`Failed to fetch yachts: ${yachtsRes.statusText}`);
       const yachtsData = await yachtsRes.json();
       setAllYachts(Array.isArray(yachtsData) ? yachtsData : []);
-      if(Array.isArray(yachtsData)) {
+      if (Array.isArray(yachtsData)) {
         setYachtMap(yachtsData.reduce((acc: any, yacht: Yacht) => { acc[yacht.id] = yacht.name; return acc; }, {}));
       }
 
@@ -58,7 +58,7 @@ export default function OpportunityPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [toast]);
 
   useEffect(() => {
     try {
@@ -69,7 +69,7 @@ export default function OpportunityPage() {
       setIsAdmin(false);
     }
     fetchPageData();
-  }, []);
+  }, [fetchPageData]);
 
   const handleAddOpportunityClick = () => {
     setEditingOpportunity(null);
@@ -86,33 +86,33 @@ export default function OpportunityPage() {
     // It uses the /api/agents endpoint for now, but this should be a dedicated client API.
     const agentsResponse = await fetch('/api/agents');
     if (!agentsResponse.ok) {
-        throw new Error('Could not fetch existing clients to verify.');
+      throw new Error('Could not fetch existing clients to verify.');
     }
     const existingClients: Agent[] = await agentsResponse.json();
     const client = existingClients.find(c => c.name.toLowerCase() === clientName.toLowerCase());
 
     if (client) {
-        return client.id;
+      return client.id;
     }
-    
+
     // If client does not exist, create it via the agent API.
     const newClientPayload = {
-        id: `C-${Date.now()}`, // Temporary unique ID
-        name: clientName,
-        email: `${clientName.toLowerCase().replace(/\s+/g, '.')}@dutchoriental.placeholder.com`,
-        status: 'Active',
-        discount: 0,
+      id: `C-${Date.now()}`, // Temporary unique ID
+      name: clientName,
+      email: `${clientName.toLowerCase().replace(/\s+/g, '.')}@dutchoriental.placeholder.com`,
+      status: 'Active',
+      discount: 0,
     };
 
     const createResponse = await fetch('/api/agents', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newClientPayload),
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newClientPayload),
     });
 
-    if(!createResponse.ok) {
-        const errorData = await createResponse.json();
-        throw new Error(errorData.message || 'Failed to create new client');
+    if (!createResponse.ok) {
+      const errorData = await createResponse.json();
+      throw new Error(errorData.message || 'Failed to create new client');
     }
     const createdClient: Agent = await createResponse.json();
     return createdClient.id;
@@ -126,7 +126,7 @@ export default function OpportunityPage() {
 
       let response;
       const payload = { ...submittedOppData };
-      
+
       if (isNew) {
         response = await fetch('/api/opportunities', {
           method: 'POST',
@@ -207,7 +207,7 @@ export default function OpportunityPage() {
           </Button>
         }
       />
-      <OpportunitiesTable 
+      <OpportunitiesTable
         opportunities={opportunities}
         onEditOpportunity={handleEditOpportunityClick}
         onDeleteOpportunity={handleDeleteOpportunity}

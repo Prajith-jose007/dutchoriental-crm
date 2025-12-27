@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { PlusCircle } from 'lucide-react';
 import { PageHeader } from '@/components/PageHeader';
@@ -21,7 +21,7 @@ export default function UsersPage() {
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     setIsLoading(true);
     try {
       const response = await fetch('/api/users');
@@ -38,7 +38,7 @@ export default function UsersPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [toast]);
 
   useEffect(() => {
     try {
@@ -49,12 +49,12 @@ export default function UsersPage() {
       setIsAdmin(false);
     }
     fetchUsers();
-  }, []);
+  }, [fetchUsers]);
 
 
   const handleAddUserClick = () => {
     if (!isAdmin) {
-      toast({ title: "Access Denied", description: "Only admins can add new users.", variant: "destructive"});
+      toast({ title: "Access Denied", description: "Only admins can add new users.", variant: "destructive" });
       return;
     }
     setEditingUser(null);
@@ -62,8 +62,8 @@ export default function UsersPage() {
   };
 
   const handleEditUserClick = (user: User) => {
-     if (!isAdmin) {
-      toast({ title: "Access Denied", description: "Only admins can edit users.", variant: "destructive"});
+    if (!isAdmin) {
+      toast({ title: "Access Denied", description: "Only admins can edit users.", variant: "destructive" });
       return;
     }
     setEditingUser(user);
@@ -72,14 +72,14 @@ export default function UsersPage() {
 
   const handleUserFormSubmit = async (submittedUserData: User) => {
     if (!isAdmin) {
-      toast({ title: "Access Denied", description: "You do not have permission to save user data.", variant: "destructive"});
+      toast({ title: "Access Denied", description: "You do not have permission to save user data.", variant: "destructive" });
       return;
     }
-    
+
     // Ensure ID is present for new users, as UserFormDialog schema might make it optional
     if (!editingUser && !submittedUserData.id) {
-        toast({ title: "Error Adding User", description: "User ID is required.", variant: "destructive" });
-        return;
+      toast({ title: "Error Adding User", description: "User ID is required.", variant: "destructive" });
+      return;
     }
 
     try {
@@ -93,15 +93,15 @@ export default function UsersPage() {
 
       if (editingUser) { // Editing existing user
         response = await fetch(`/api/users/${editingUser.id}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
         });
       } else { // Adding new user
         response = await fetch('/api/users', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
         });
       }
 
@@ -109,55 +109,55 @@ export default function UsersPage() {
         const errorData = await response.json().catch(() => ({ message: response.statusText }));
         throw new Error(errorData.message || `Failed to save user: ${response.statusText}`);
       }
-      
+
       toast({ title: editingUser ? "User Updated" : "User Added", description: `${submittedUserData.name} has been saved.` });
       fetchUsers(); // Re-fetch to update the table
       setIsUserDialogOpen(false);
       setEditingUser(null);
 
     } catch (error) {
-        console.error("Error saving user:", error);
-        toast({ title: 'Error Saving User', description: (error as Error).message, variant: 'destructive' });
+      console.error("Error saving user:", error);
+      toast({ title: 'Error Saving User', description: (error as Error).message, variant: 'destructive' });
     }
   };
 
   const handleDeleteUser = async (userId: string) => {
     if (!isAdmin) {
-      toast({ title: "Access Denied", description: "Only admins can delete users.", variant: "destructive"});
+      toast({ title: "Access Denied", description: "Only admins can delete users.", variant: "destructive" });
       return;
     }
     if (!confirm(`Are you sure you want to delete user ${userId}? This action cannot be undone.`)) {
       return;
     }
-    
+
     try {
-        const response = await fetch(`/api/users/${userId}`, { method: 'DELETE' });
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => ({ message: response.statusText }));
-            throw new Error(errorData.message || `Failed to delete user: ${response.statusText}`);
-        }
-        toast({ title: "User Deleted", description: `User ${userId} has been deleted.` });
-        fetchUsers(); // Re-fetch to update table
+      const response = await fetch(`/api/users/${userId}`, { method: 'DELETE' });
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: response.statusText }));
+        throw new Error(errorData.message || `Failed to delete user: ${response.statusText}`);
+      }
+      toast({ title: "User Deleted", description: `User ${userId} has been deleted.` });
+      fetchUsers(); // Re-fetch to update table
     } catch (error) {
-        console.error("Error deleting user:", error);
-        toast({ title: 'Error Deleting User', description: (error as Error).message, variant: 'destructive' });
+      console.error("Error deleting user:", error);
+      toast({ title: 'Error Deleting User', description: (error as Error).message, variant: 'destructive' });
     }
   };
-  
-  if (isLoading && !isAdmin && typeof window !== 'undefined' && !localStorage.getItem(USER_ROLE_STORAGE_KEY) ) {
-     // Special loading state if not admin and initial auth role hasn't been determined yet
-     // This helps prevent flashing the "Access Denied" message too early
-     return (
-        <div className="container mx-auto py-2">
-            <PageHeader title="User Management" description="Loading user data and permissions..." />
-            <Skeleton className="h-10 w-36 mb-4" />
-            <Skeleton className="h-64 w-full" />
-        </div>
-     );
+
+  if (isLoading && !isAdmin && typeof window !== 'undefined' && !localStorage.getItem(USER_ROLE_STORAGE_KEY)) {
+    // Special loading state if not admin and initial auth role hasn't been determined yet
+    // This helps prevent flashing the "Access Denied" message too early
+    return (
+      <div className="container mx-auto py-2">
+        <PageHeader title="User Management" description="Loading user data and permissions..." />
+        <Skeleton className="h-10 w-36 mb-4" />
+        <Skeleton className="h-64 w-full" />
+      </div>
+    );
   }
 
 
-  if (!isAdmin && !isLoading) { 
+  if (!isAdmin && !isLoading) {
     return (
       <div className="container mx-auto py-2">
         <PageHeader
@@ -170,22 +170,22 @@ export default function UsersPage() {
       </div>
     );
   }
-  
-  if (isLoading) { 
+
+  if (isLoading) {
     return (
-        <div className="container mx-auto py-2">
-            <PageHeader
-                title="User Management"
-                description="Manage your team members and their roles."
-                actions={
-                     <Button onClick={handleAddUserClick} disabled={true}>
-                        <PlusCircle className="mr-2 h-4 w-4" />
-                        Add User (Admin Only)
-                    </Button>
-                }
-            />
-            <Skeleton className="h-64 w-full" />
-        </div>
+      <div className="container mx-auto py-2">
+        <PageHeader
+          title="User Management"
+          description="Manage your team members and their roles."
+          actions={
+            <Button onClick={handleAddUserClick} disabled={true}>
+              <PlusCircle className="mr-2 h-4 w-4" />
+              Add User (Admin Only)
+            </Button>
+          }
+        />
+        <Skeleton className="h-64 w-full" />
+      </div>
     );
   }
 
@@ -196,10 +196,10 @@ export default function UsersPage() {
         title="User Management"
         description="Manage your team members and their roles."
         actions={
-            <Button onClick={handleAddUserClick} disabled={!isAdmin}>
-              <PlusCircle className="mr-2 h-4 w-4" />
-              Add User {isAdmin ? "" : "(Admin Only)"}
-            </Button>
+          <Button onClick={handleAddUserClick} disabled={!isAdmin}>
+            <PlusCircle className="mr-2 h-4 w-4" />
+            Add User {isAdmin ? "" : "(Admin Only)"}
+          </Button>
         }
       />
       <UsersTable users={users} onEditUser={handleEditUserClick} onDeleteUser={handleDeleteUser} isAdmin={isAdmin} />

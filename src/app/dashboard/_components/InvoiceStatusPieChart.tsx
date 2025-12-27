@@ -17,7 +17,7 @@ import {
 import type { Invoice, PieChartDataItem } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 
-const chartConfigBase = {
+const chartConfigBase: Record<string, { label: string; color?: string }> = {
   value: { label: 'Invoices' },
   Paid: { label: 'Paid', color: 'hsl(var(--chart-1))' },
   Pending: { label: 'Pending', color: 'hsl(var(--chart-2))' },
@@ -50,14 +50,14 @@ export function InvoiceStatusPieChart({ invoices, isLoading, error }: InvoiceSta
     })).filter(item => item.value > 0);
   }, [invoices]);
 
-  const dynamicChartConfig = useMemo(() => 
+  const dynamicChartConfig = useMemo(() =>
     chartData.reduce((acc, item) => {
       if (!acc[item.name]) {
         acc[item.name] = { label: item.name, color: item.fill };
       }
       return acc;
     }, { ...chartConfigBase })
-  , [chartData]);
+    , [chartData]);
 
   if (isLoading) {
     return (
@@ -67,7 +67,7 @@ export function InvoiceStatusPieChart({ invoices, isLoading, error }: InvoiceSta
           <CardDescription>Breakdown of invoices by status.</CardDescription>
         </CardHeader>
         <CardContent className="flex items-center justify-center h-[300px]">
-           <div className="flex flex-col items-center gap-2">
+          <div className="flex flex-col items-center gap-2">
             <Skeleton className="h-48 w-48 rounded-full" />
             <Skeleton className="h-4 w-3/4" />
           </div>
@@ -114,9 +114,9 @@ export function InvoiceStatusPieChart({ invoices, isLoading, error }: InvoiceSta
         <ChartContainer config={dynamicChartConfig} className="aspect-square h-full">
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
-              <RechartsTooltip 
-                cursor={{ fill: 'hsl(var(--muted))' }} 
-                content={<ChartTooltipContent hideLabel />} 
+              <RechartsTooltip
+                cursor={{ fill: 'hsl(var(--muted))' }}
+                content={<ChartTooltipContent hideLabel />}
               />
               <Pie
                 data={chartData}
@@ -126,7 +126,7 @@ export function InvoiceStatusPieChart({ invoices, isLoading, error }: InvoiceSta
                 cy="50%"
                 outerRadius="80%"
                 labelLine={false}
-                label={({ cx, cy, midAngle, innerRadius, outerRadius, percent, index, name }) => {
+                label={({ cx, cy, midAngle, innerRadius, outerRadius, percent, name }) => {
                   const RADIAN = Math.PI / 180;
                   const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
                   const x = cx + radius * Math.cos(-midAngle * RADIAN);
@@ -143,7 +143,7 @@ export function InvoiceStatusPieChart({ invoices, isLoading, error }: InvoiceSta
                   <Cell key={`cell-${index}`} fill={entry.fill} />
                 ))}
               </Pie>
-              <Legend verticalAlign="bottom" height={36}/>
+              <Legend verticalAlign="bottom" height={36} />
             </PieChart>
           </ResponsiveContainer>
         </ChartContainer>

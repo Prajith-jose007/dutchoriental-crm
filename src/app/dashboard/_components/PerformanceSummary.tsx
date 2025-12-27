@@ -2,7 +2,7 @@
 'use client';
 
 import { useMemo } from 'react';
-import { Users, Banknote, Ticket, BookOpen, Activity, CheckCircle, XCircle } from 'lucide-react';
+import { BookOpen, Activity, CheckCircle } from 'lucide-react';
 import {
   Card,
   CardContent,
@@ -54,8 +54,8 @@ export function PerformanceSummary({ leads, isLoading, error }: CrmSummaryProps)
   const summaryData = useMemo(() => {
     const totalLeads = leads.length;
     const activeLeads = leads.filter(lead => lead.status === 'Balance').length;
-    const closedLeads = leads.filter(lead => lead.status === 'Closed').length;
-    
+    const closedLeads = leads.filter(lead => lead.status.startsWith('Closed')).length;
+
     return {
       totalLeads,
       activeLeads,

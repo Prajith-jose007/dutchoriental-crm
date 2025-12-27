@@ -39,36 +39,27 @@ const csvHeaderMapping: { [csvHeaderKey: string]: keyof Agent } = {
 
 
 // Helper to convert CSV row values to correct Agent types
-const convertAgentValue = (key: keyof Agent, value: string): Agent[keyof Agent] => {
+const convertAgentValue = <K extends keyof Agent>(key: K, value: string): Agent[K] => {
   const trimmedValue = value ? String(value).trim() : '';
 
   if (trimmedValue === '' || value === null || value === undefined) {
-    switch (key) {
-      case 'discount': return 0;
-      case 'status': return 'Active'; // Default status
-      case 'agency_code':
-      case 'address':
-      case 'phone_no':
-      case 'TRN_number':
-      case 'customer_type_id':
-      case 'websiteUrl':
-        return undefined; // Optional fields can be undefined
-      default: return ''; // For required strings like name, email
+    if (key === 'discount') return 0 as Agent[K];
+    if (key === 'status') return 'Active' as Agent[K];
+    if (['agency_code', 'address', 'phone_no', 'TRN_number', 'customer_type_id', 'websiteUrl'].includes(key as string)) {
+      return undefined as Agent[K];
     }
+    return '' as Agent[K];
   }
 
-  switch (key) {
+  switch (key as string) {
     case 'discount':
       const num = parseFloat(trimmedValue);
-      return isNaN(num) || !isFinite(num) ? 0 : num;
+      return (isNaN(num) || !isFinite(num) ? 0 : num) as Agent[K];
     case 'status':
       const validStatuses: Agent['status'][] = ['Active', 'Non Active', 'Dead'];
-      return validStatuses.includes(trimmedValue as Agent['status']) ? trimmedValue : 'Active';
-    case 'TRN_number':
-    case 'customer_type_id':
-      return trimmedValue;
+      return (validStatuses.includes(trimmedValue as Agent['status']) ? trimmedValue : 'Active') as Agent[K];
     default:
-      return trimmedValue;
+      return trimmedValue as Agent[K];
   }
 };
 
@@ -379,7 +370,7 @@ export default function AgentsPage() {
           fileHeaders.forEach((fileHeader, index) => {
             const agentKey = csvHeaderMapping[fileHeader];
             if (agentKey) {
-              parsedRow[agentKey] = convertAgentValue(agentKey, data[index]) as any;
+              (parsedRow as any)[agentKey] = convertAgentValue(agentKey, data[index]);
             } else {
               console.warn(`[CSV Import Agents] Unknown header "${fileHeader}" in CSV row ${i + 1}. Skipping this column.`);
             }

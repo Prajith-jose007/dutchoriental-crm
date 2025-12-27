@@ -39,10 +39,10 @@ export function MonthlyRevenueChart({ leads, isLoading, error }: MonthlyRevenueC
     // Initialize months for the last 7 months
     for (let i = 6; i >= 0; i--) {
       const date = subMonths(today, i);
-      const monthYearKey = format(date, 'yyyy-MM'); 
+      const monthYearKey = format(date, 'yyyy-MM');
       monthlyRevenue[monthYearKey] = 0;
     }
-    
+
     leads.forEach(lead => {
       if (lead.status === 'Closed (Won)' && lead.month && typeof lead.netAmount === 'number') {
         try {
@@ -50,7 +50,7 @@ export function MonthlyRevenueChart({ leads, isLoading, error }: MonthlyRevenueC
           if (isValid(eventDate)) {
             const leadMonthYear = format(eventDate, 'yyyy-MM');
             if (monthlyRevenue.hasOwnProperty(leadMonthYear)) {
-                monthlyRevenue[leadMonthYear] += lead.netAmount;
+              monthlyRevenue[leadMonthYear] += lead.netAmount;
             }
           } else {
             console.warn(`Invalid event date found for lead ${lead.id}: ${lead.month}`);
@@ -75,7 +75,7 @@ export function MonthlyRevenueChart({ leads, isLoading, error }: MonthlyRevenueC
       <Card>
         <CardHeader>
           <CardTitle>Monthly Revenue</CardTitle>
-          <CardDescription>Revenue from 'Closed (Won)' bookings over the last 7 months.</CardDescription>
+          <CardDescription>Revenue from &apos;Closed (Won)&apos; bookings over the last 7 months.</CardDescription>
         </CardHeader>
         <CardContent className="h-[300px] space-y-3 py-2">
           <Skeleton className="h-8 w-full" />
@@ -89,30 +89,30 @@ export function MonthlyRevenueChart({ leads, isLoading, error }: MonthlyRevenueC
   }
 
   if (error) {
-     return (
-        <Card>
-            <CardHeader>
-                <CardTitle>Monthly Revenue</CardTitle>
-                <CardDescription>Revenue from 'Closed (Won)' bookings over the last 7 months.</CardDescription>
-            </CardHeader>
-            <CardContent className="flex items-center justify-center h-[300px]">
-                <p className="text-destructive">Error loading monthly revenue data: {error}</p>
-            </CardContent>
-        </Card>
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Monthly Revenue</CardTitle>
+          <CardDescription>Revenue from &apos;Closed (Won)&apos; bookings over the last 7 months.</CardDescription>
+        </CardHeader>
+        <CardContent className="flex items-center justify-center h-[300px]">
+          <p className="text-destructive">Error loading monthly revenue data: {error}</p>
+        </CardContent>
+      </Card>
     );
   }
-  
+
   if (chartData.every(d => d.revenue === 0) && !isLoading) { // Check if all revenue values are zero
     return (
-        <Card>
-            <CardHeader>
-                <CardTitle>Monthly Revenue</CardTitle>
-                <CardDescription>Revenue from 'Closed (Won)' bookings over the last 7 months.</CardDescription>
-            </CardHeader>
-            <CardContent className="flex items-center justify-center h-[300px]">
-                <p className="text-muted-foreground">No revenue data from 'Closed (Won)' bookings for the selected period.</p>
-            </CardContent>
-        </Card>
+      <Card>
+        <CardHeader>
+          <CardTitle>Monthly Revenue</CardTitle>
+          <CardDescription>Revenue from &apos;Closed (Won)&apos; bookings over the last 7 months.</CardDescription>
+        </CardHeader>
+        <CardContent className="flex items-center justify-center h-[300px]">
+          <p className="text-muted-foreground">No revenue data from &apos;Closed (Won)&apos; bookings for the selected period.</p>
+        </CardContent>
+      </Card>
     );
   }
 
@@ -120,7 +120,7 @@ export function MonthlyRevenueChart({ leads, isLoading, error }: MonthlyRevenueC
     <Card>
       <CardHeader>
         <CardTitle>Monthly Revenue</CardTitle>
-        <CardDescription>Revenue (Net Amount) from 'Closed (Won)' bookings over the last 7 months.</CardDescription>
+        <CardDescription>Revenue (Net Amount) from &apos;Closed (Won)&apos; bookings over the last 7 months.</CardDescription>
       </CardHeader>
       <CardContent>
         <ChartContainer config={chartConfig} className="h-[300px] w-full">
@@ -133,13 +133,13 @@ export function MonthlyRevenueChart({ leads, isLoading, error }: MonthlyRevenueC
               axisLine={false}
               tickFormatter={(value) => value.slice(0, 3)} // "Jan", "Feb", etc.
             />
-            <YAxis 
-                tickFormatter={(value) => `${(value / 1000).toLocaleString()}k`} // Format as 10k, 20k
-                allowDecimals={false}
+            <YAxis
+              tickFormatter={(value) => `${(value / 1000).toLocaleString()}k`} // Format as 10k, 20k
+              allowDecimals={false}
             />
-            <RechartsTooltip 
-                cursor={true} 
-                content={<ChartTooltipContent formatter={(value) => `${Number(value).toLocaleString()} AED`} />} 
+            <RechartsTooltip
+              cursor={true}
+              content={<ChartTooltipContent formatter={(value) => `${Number(value).toLocaleString()} AED`} />}
             />
             <Line
               type="monotone"

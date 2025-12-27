@@ -1,7 +1,6 @@
 
 'use client';
 
-import { useMemo } from 'react';
 import { MoreHorizontal } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -21,7 +20,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import type { Opportunity, OpportunityPipelinePhase, YachtCategory } from '@/lib/types';
+import type { Opportunity, OpportunityPipelinePhase } from '@/lib/types';
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { format, parseISO, isValid } from 'date-fns';
 
@@ -52,7 +51,7 @@ export function OpportunitiesTable({
       default: return 'outline';
     }
   };
-  
+
   const formatCurrency = (amount?: number | null) => {
     if (amount === null || amount === undefined || isNaN(amount)) return '-';
     return `${amount.toLocaleString()} AED`;
@@ -77,7 +76,7 @@ export function OpportunitiesTable({
     if (opp.pipelinePhase === 'Closed Won') return '100%';
     if (opp.pipelinePhase === 'Closed Lost') return '0%';
     if (typeof opp.closingProbability === 'number') {
-        return `${opp.closingProbability}%`;
+      return `${opp.closingProbability}%`;
     }
     return '-';
   };

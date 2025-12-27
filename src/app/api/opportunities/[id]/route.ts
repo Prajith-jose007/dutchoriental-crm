@@ -28,7 +28,7 @@ function buildOpportunityUpdateSetClause(data: Partial<Omit<Opportunity, 'id' | 
   ];
 
   Object.entries(data).forEach(([key, value]) => {
-    if (allowedKeys.includes(key as any) && value !== undefined) {
+    if (allowedKeys.includes(key as keyof Omit<Opportunity, 'id' | 'closingProbability'>) && value !== undefined) {
       fieldsToUpdate.push(`\`${key}\` = ?`);
       if (key === 'estimatedClosingDate' || key === 'createdAt' || key === 'updatedAt') {
         valuesToUpdate.push(ensureISOFormat(value as string) || null);
@@ -52,8 +52,8 @@ export async function GET(
   }
 
   try {
-    const oppDataDb: any[] = await query('SELECT * FROM opportunities WHERE id = ?', [id]);
-    
+    const oppDataDb = await query<Opportunity[]>('SELECT * FROM opportunities WHERE id = ?', [id]);
+
     if (oppDataDb.length > 0) {
       const dbOpp = oppDataDb[0];
       const opportunity: Opportunity = {
@@ -87,34 +87,34 @@ export async function PUT(
   try {
     const updatedOppData = await request.json() as Partial<Opportunity>;
 
-    const existingOppResult: any = await query('SELECT id FROM opportunities WHERE id = ?', [id]);
+    const existingOppResult = await query<any[]>('SELECT id FROM opportunities WHERE id = ?', [id]);
     if (existingOppResult.length === 0) {
       return NextResponse.json({ message: 'Opportunity not found' }, { status: 404 });
     }
 
     const dataToUpdate = { ...updatedOppData, updatedAt: formatISO(new Date()) };
     delete (dataToUpdate as Partial<Opportunity>).closingProbability;
-    
+
     const { clause, values } = buildOpportunityUpdateSetClause(dataToUpdate);
     if (clause.length === 0) {
       return NextResponse.json({ message: 'No valid fields to update' }, { status: 400 });
     }
-    values.push(id); 
-    
+    values.push(id);
+
     await query(`UPDATE opportunities SET ${clause} WHERE id = ?`, values);
-    
-    const finalUpdatedOppQuery: any = await query('SELECT * FROM opportunities WHERE id = ?', [id]);
+
+    const finalUpdatedOppQuery = await query<any[]>('SELECT * FROM opportunities WHERE id = ?', [id]);
     if (finalUpdatedOppQuery.length > 0) {
-       const dbOpp = finalUpdatedOppQuery[0];
-       const finalOpp: Opportunity = {
-          ...dbOpp,
-          estimatedRevenue: Number(dbOpp.estimatedRevenue || 0),
-          meanExpectedValue: Number(dbOpp.meanExpectedValue || 0),
-          estimatedClosingDate: ensureISOFormat(dbOpp.estimatedClosingDate)!,
-          createdAt: ensureISOFormat(dbOpp.createdAt)!,
-          updatedAt: ensureISOFormat(dbOpp.updatedAt)!,
-       };
-       return NextResponse.json(finalOpp, { status: 200 });
+      const dbOpp = finalUpdatedOppQuery[0];
+      const finalOpp: Opportunity = {
+        ...dbOpp,
+        estimatedRevenue: Number(dbOpp.estimatedRevenue || 0),
+        meanExpectedValue: Number(dbOpp.meanExpectedValue || 0),
+        estimatedClosingDate: ensureISOFormat(dbOpp.estimatedClosingDate)!,
+        createdAt: ensureISOFormat(dbOpp.createdAt)!,
+        updatedAt: ensureISOFormat(dbOpp.updatedAt)!,
+      };
+      return NextResponse.json(finalOpp, { status: 200 });
     }
     return NextResponse.json({ message: 'Opportunity updated, but failed to fetch confirmation.' }, { status: 500 });
 
@@ -135,8 +135,8 @@ export async function DELETE(
   }
 
   try {
-    const result: any = await query('DELETE FROM opportunities WHERE id = ?', [id]);
-    
+    const result = await query<any>('DELETE FROM opportunities WHERE id = ?', [id]);
+
     if (result.affectedRows === 0) {
       return NextResponse.json({ message: 'Opportunity not found' }, { status: 404 });
     }

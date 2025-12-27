@@ -5,16 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { AppName } from "@/lib/navigation";
 import { Logo } from "@/components/icons/Logo"; // Import Logo
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
-import type { User } from "@/lib/types";
-
-const ADMIN_EMAIL = 'admin@dutchoriental.com';
-const ADMIN_PASSWORD = 'Dutch@123#';
 
 const USER_ROLE_STORAGE_KEY = 'currentUserRole';
 const USER_EMAIL_STORAGE_KEY = 'currentUserEmail';

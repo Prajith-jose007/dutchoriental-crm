@@ -48,7 +48,7 @@ export function FilteredBookedAgentsList({ filteredLeads, allAgents, isLoading, 
     return Array.from(bookingsByAgent.entries())
       .map(([agentId, count]) => ({
         agentId,
-        agentName: agentMap.get(agentId) || `Unknown (ID: ${agentId.substring(0,6)})`,
+        agentName: agentMap.get(agentId) || `Unknown (ID: ${agentId.substring(0, 6)})`,
         closedBookingsCount: count,
       }))
       .filter(item => item.closedBookingsCount > 0) // Only show agents with closed bookings
@@ -93,10 +93,10 @@ export function FilteredBookedAgentsList({ filteredLeads, allAgents, isLoading, 
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center"><Briefcase className="mr-2 h-5 w-5" /> Agents with Confirmed Bookings (Filtered)</CardTitle>
-          <CardDescription>Agents with 'Confirmed' bookings based on current filters.</CardDescription>
+          <CardDescription>Agents with &apos;Confirmed&apos; bookings based on current filters.</CardDescription>
         </CardHeader>
         <CardContent>
-          <p className="text-muted-foreground">No agents found with 'Confirmed' bookings matching the current filters.</p>
+          <p className="text-muted-foreground">No agents found with &apos;Confirmed&apos; bookings matching the current filters.</p>
         </CardContent>
       </Card>
     );
@@ -106,7 +106,7 @@ export function FilteredBookedAgentsList({ filteredLeads, allAgents, isLoading, 
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center"><Briefcase className="mr-2 h-5 w-5" /> Agents with Confirmed Bookings (Filtered)</CardTitle>
-        <CardDescription>Agents with 'Confirmed' bookings based on current filters.</CardDescription>
+        <CardDescription>Agents with &apos;Confirmed&apos; bookings based on current filters.</CardDescription>
       </CardHeader>
       <CardContent>
         <Table>

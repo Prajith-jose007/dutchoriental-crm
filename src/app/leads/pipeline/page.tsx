@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { PageHeader } from '@/components/PageHeader';
 import type { Lead } from '@/lib/types';
 import { LeadPipelineBoard } from './_components/LeadPipelineBoard';
@@ -18,7 +18,7 @@ export default function LeadPipelinePage() {
   const [isLeadDialogOpen, setIsLeadDialogOpen] = useState(false);
   const [editingLead, setEditingLead] = useState<Lead | null>(null);
 
-  const fetchLeads = async () => {
+  const fetchLeads = useCallback(async () => {
     setIsLoading(true);
     try {
       const response = await fetch('/api/leads');
@@ -34,11 +34,11 @@ export default function LeadPipelinePage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [toast]);
 
   useEffect(() => {
     fetchLeads();
-  }, [toast]); // Added toast to dependency array as it's used in fetchLeads
+  }, [fetchLeads]);
 
   const handleEditLeadClick = (lead: Lead) => {
     setEditingLead(lead);
@@ -49,7 +49,7 @@ export default function LeadPipelinePage() {
     try {
       let response;
       // For pipeline view, we'll assume it's always an update since leads are pre-existing
-      if (submittedLeadData.id) { 
+      if (submittedLeadData.id) {
         response = await fetch(`/api/leads/${submittedLeadData.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
@@ -65,12 +65,12 @@ export default function LeadPipelinePage() {
         const errorData = await response.json();
         throw new Error(errorData.message || `Failed to save booking: ${response.statusText}`);
       }
-      
+
       toast({
         title: 'Booking Updated',
         description: `Booking for ${submittedLeadData.clientName} has been updated.`,
       });
-      
+
       fetchLeads(); // Re-fetch all leads to update the pipeline
       setIsLeadDialogOpen(false);
       setEditingLead(null);
@@ -100,9 +100,9 @@ export default function LeadPipelinePage() {
           ))}
         </div>
       ) : leads.length === 0 ? (
-         <div className="flex-1 flex items-center justify-center">
-            <p className="text-muted-foreground text-xl">No bookings found to display in the pipeline.</p>
-         </div>
+        <div className="flex-1 flex items-center justify-center">
+          <p className="text-muted-foreground text-xl">No bookings found to display in the pipeline.</p>
+        </div>
       ) : (
         <LeadPipelineBoard leads={leads} onEditLead={handleEditLeadClick} />
       )}

@@ -18,10 +18,10 @@ const ensureISOFormat = (dateSource?: string | Date): string | null => {
   }
 };
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
-    const oppsDataDb: any[] = await query('SELECT * FROM opportunities ORDER BY createdAt DESC');
-    
+    const oppsDataDb = await query<Opportunity[]>('SELECT * FROM opportunities ORDER BY createdAt DESC');
+
     const opportunities: Opportunity[] = oppsDataDb.map(dbOpp => ({
       ...dbOpp,
       estimatedRevenue: Number(dbOpp.estimatedRevenue || 0),
@@ -42,23 +42,23 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const newOppData = await request.json() as Opportunity;
-    
+
     const { potentialCustomer, subject, estimatedClosingDate, ownerUserId, yachtId, productType, pipelinePhase, priority, estimatedRevenue, currentStatus } = newOppData;
 
     if (!potentialCustomer || !subject || !estimatedClosingDate || !ownerUserId || !yachtId || !productType || !pipelinePhase || !priority || estimatedRevenue === undefined || !currentStatus) {
-        return NextResponse.json({ message: 'Missing required opportunity fields' }, { status: 400 });
+      return NextResponse.json({ message: 'Missing required opportunity fields' }, { status: 400 });
     }
-    
+
     const now = new Date();
     const finalId = newOppData.id || `OPP-${Date.now()}`;
 
     const oppToStore = {
-        ...newOppData,
-        id: finalId,
-        estimatedClosingDate: ensureISOFormat(estimatedClosingDate)!,
-        createdAt: ensureISOFormat(newOppData.createdAt) || formatISO(now),
-        updatedAt: ensureISOFormat(newOppData.updatedAt) || formatISO(now),
-        meanExpectedValue: newOppData.meanExpectedValue ?? 0,
+      ...newOppData,
+      id: finalId,
+      estimatedClosingDate: ensureISOFormat(estimatedClosingDate)!,
+      createdAt: ensureISOFormat(newOppData.createdAt) || formatISO(now),
+      updatedAt: ensureISOFormat(newOppData.updatedAt) || formatISO(now),
+      meanExpectedValue: newOppData.meanExpectedValue ?? 0,
     };
     delete (oppToStore as Partial<Opportunity>).closingProbability;
 
@@ -70,16 +70,16 @@ export async function POST(request: NextRequest) {
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
     const params = [
-        oppToStore.id, oppToStore.potentialCustomer, oppToStore.subject, oppToStore.estimatedClosingDate, oppToStore.ownerUserId,
-        oppToStore.yachtId, oppToStore.productType, oppToStore.pipelinePhase, oppToStore.priority,
-        oppToStore.estimatedRevenue, oppToStore.meanExpectedValue, oppToStore.currentStatus,
-        oppToStore.followUpUpdates, oppToStore.createdAt, oppToStore.updatedAt,
-        oppToStore.location, oppToStore.reportType, oppToStore.tripReportStatus
+      oppToStore.id, oppToStore.potentialCustomer, oppToStore.subject, oppToStore.estimatedClosingDate, oppToStore.ownerUserId,
+      oppToStore.yachtId, oppToStore.productType, oppToStore.pipelinePhase, oppToStore.priority,
+      oppToStore.estimatedRevenue, oppToStore.meanExpectedValue, oppToStore.currentStatus,
+      oppToStore.followUpUpdates, oppToStore.createdAt, oppToStore.updatedAt,
+      oppToStore.location, oppToStore.reportType, oppToStore.tripReportStatus
     ];
-    
+
     await query(sql, params);
 
-    const createdOppDb: any[] = await query('SELECT * FROM opportunities WHERE id = ?', [finalId]);
+    const createdOppDb = await query<any[]>('SELECT * FROM opportunities WHERE id = ?', [finalId]);
     if (createdOppDb.length > 0) {
       const returnedOpp: Opportunity = {
         ...createdOppDb[0],
@@ -91,7 +91,7 @@ export async function POST(request: NextRequest) {
       }
       return NextResponse.json(returnedOpp, { status: 201 });
     }
-    
+
     throw new Error('Failed to insert opportunity into database or retrieve it after insertion.');
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';

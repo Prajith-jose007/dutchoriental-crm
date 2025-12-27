@@ -1,13 +1,13 @@
 
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { PlusCircle } from 'lucide-react';
 import { PageHeader } from '@/components/PageHeader';
 import { ClientsTable } from './_components/ClientsTable';
 import { ClientFormDialog } from './_components/ClientFormDialog';
-import type { Agent, Opportunity } from '@/lib/types'; // Using Agent for now, but data is from Opportunity
+import type { Agent } from '@/lib/types'; // Using Agent for now, but data is from Opportunity
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -31,10 +31,10 @@ export default function ClientsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const { toast } = useToast();
-  
-  const [clientMap, setClientMap] = useState<{[id: string]: string}>({});
 
-  const fetchClients = async () => {
+  const [clientMap, setClientMap] = useState<{ [id: string]: string }>({});
+
+  const fetchClients = useCallback(async () => {
     setIsLoading(true);
     try {
       // This is now correct: We fetch from the agents endpoint which serves as our client list for now
@@ -45,20 +45,20 @@ export default function ClientsPage() {
       }
       const data: Agent[] = await response.json();
       setClients(data);
-      
-      const newClientMap: {[id: string]: string} = {};
+
+      const newClientMap: { [id: string]: string } = {};
       data.forEach(client => {
-          newClientMap[client.id] = client.name;
+        newClientMap[client.id] = client.name;
       });
       setClientMap(newClientMap);
-      
+
     } catch (error) {
       console.error("Error fetching clients:", error);
       toast({ title: 'Error Fetching Clients', description: (error as Error).message, variant: 'destructive' });
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [toast]);
 
   useEffect(() => {
     try {
@@ -68,7 +68,7 @@ export default function ClientsPage() {
       console.error("Error accessing localStorage:", error);
     }
     fetchClients();
-  }, []);
+  }, [fetchClients]);
 
   const handleAddClientClick = () => {
     if (!isAdmin) {
@@ -88,13 +88,13 @@ export default function ClientsPage() {
     try {
       let response;
       if (editingClient) {
-        response = await fetch(`/api/agents/${editingClient.id}`, { 
+        response = await fetch(`/api/agents/${editingClient.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(submittedClientData),
         });
       } else {
-        response = await fetch('/api/agents', { 
+        response = await fetch('/api/agents', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(submittedClientData),

@@ -1,5 +1,4 @@
-
-import type { Lead, User, Yacht, Invoice, Agent, Opportunity, YachtCategory, YachtPackageItem, LeadPackageQuantity, PaymentConfirmationStatus } from './types';
+import type { Lead, User, Yacht, Invoice, Agent, Opportunity } from './types';
 import { formatISO, subDays, addDays, format, parseISO, getYear } from 'date-fns';
 
 export const placeholderUsers: User[] = [
@@ -36,7 +35,7 @@ export const placeholderAgents: Agent[] = [
     discount: 15,
     websiteUrl: 'https://aquavoyage.ae'
   },
-   {
+  {
     id: 'DO-003',
     name: 'Global Charters Inc.',
     agency_code: 'GC003',
@@ -115,7 +114,7 @@ export const placeholderYachts: Yacht[] = [
     id: 'DO-yacht-private1', name: 'The Serene Yacht', capacity: 20, status: 'Available', imageUrl: 'https://placehold.co/600x400.png?text=Serene+Yacht',
     category: 'Private Cruise',
     packages: [
-        { id: 'private-hourly', name: 'HOUR CHARTER', rate: 1500},
+      { id: 'private-hourly', name: 'HOUR CHARTER', rate: 1500 },
     ],
     customPackageInfo: "Ideal for private, intimate gatherings. Hourly rate applies."
   }
@@ -211,7 +210,7 @@ export const placeholderLeads: Lead[] = [
     lastModifiedByUserId: 'DO-user1',
     ownerUserId: 'DO-user1'
   },
-   {
+  {
     id: 'DO-004',
     clientName: 'Cancelled Booking Inc',
     agent: 'DO-003',
@@ -250,62 +249,62 @@ export const placeholderInvoices: Invoice[] = [
 ];
 
 export const placeholderOpportunities: Opportunity[] = [
-    {
-        id: 'OPP-001',
-        potentialCustomer: 'Global Tech Innovations',
-        subject: 'Annual Corporate Gala',
-        ownerUserId: 'DO-user2',
-        yachtId: 'DO-yacht-private1',
-        productType: 'Private Cruise',
-        pipelinePhase: 'Proposal',
-        priority: 'High',
-        estimatedRevenue: 25000,
-        meanExpectedValue: 18750, // 75% probability
-        currentStatus: 'Active',
-        followUpUpdates: 'Proposal sent on ' + format(subDays(today, 2), 'yyyy-MM-dd') + '. Awaiting feedback.',
-        createdAt: formatISO(subDays(today, 10)),
-        updatedAt: formatISO(subDays(today, 2)),
-        estimatedClosingDate: formatISO(addDays(today, 30)),
-        location: 'Dubai Marina',
-        reportType: 'Meeting',
-        tripReportStatus: 'In Process',
-    },
-    {
-        id: 'OPP-002',
-        potentialCustomer: 'Luxury Travel Co.',
-        subject: 'Partnership for VIP Tours',
-        ownerUserId: 'DO-user1',
-        yachtId: 'DO-yacht-lotus',
-        productType: 'Dinner Cruise',
-        pipelinePhase: 'Qualification',
-        priority: 'Medium',
-        estimatedRevenue: 80000,
-        meanExpectedValue: 40000, // 50% probability
-        currentStatus: 'Active',
-        followUpUpdates: 'Initial call held. Client is interested in a fleet discount for regular corporate events.',
-        createdAt: formatISO(subDays(today, 5)),
-        updatedAt: formatISO(subDays(today, 1)),
-        estimatedClosingDate: formatISO(addDays(today, 60)),
-        reportType: 'Phone Call',
-        tripReportStatus: 'Completed',
-    },
-    {
-        id: 'OPP-003',
-        potentialCustomer: 'Startup X',
-        subject: 'Team Outing Sightseeing',
-        ownerUserId: 'DO-user2',
-        yachtId: 'DO-yacht-super',
-        productType: 'Superyacht Sightseeing Cruise',
-        pipelinePhase: 'Closed Lost',
-        priority: 'Low',
-        estimatedRevenue: 5000,
-        meanExpectedValue: 0,
-        currentStatus: 'Inactive',
-        followUpUpdates: 'Lost to competitor due to pricing.',
-        createdAt: formatISO(subDays(today, 45)),
-        updatedAt: formatISO(subDays(today, 15)),
-        estimatedClosingDate: formatISO(subDays(today, 15)),
-        reportType: 'Email',
-        tripReportStatus: 'Pending',
-    }
+  {
+    id: 'OPP-001',
+    potentialCustomer: 'Global Tech Innovations',
+    subject: 'Annual Corporate Gala',
+    ownerUserId: 'DO-user2',
+    yachtId: 'DO-yacht-private1',
+    productType: 'Private Cruise',
+    pipelinePhase: 'Proposal',
+    priority: 'High',
+    estimatedRevenue: 25000,
+    meanExpectedValue: 18750, // 75% probability
+    currentStatus: 'Active',
+    followUpUpdates: 'Proposal sent on ' + format(subDays(today, 2), 'yyyy-MM-dd') + '. Awaiting feedback.',
+    createdAt: formatISO(subDays(today, 10)),
+    updatedAt: formatISO(subDays(today, 2)),
+    estimatedClosingDate: formatISO(addDays(today, 30)),
+    location: 'Dubai Marina',
+    reportType: 'Meeting',
+    tripReportStatus: 'In Process',
+  },
+  {
+    id: 'OPP-002',
+    potentialCustomer: 'Luxury Travel Co.',
+    subject: 'Partnership for VIP Tours',
+    ownerUserId: 'DO-user1',
+    yachtId: 'DO-yacht-lotus',
+    productType: 'Dinner Cruise',
+    pipelinePhase: 'Qualification',
+    priority: 'Medium',
+    estimatedRevenue: 80000,
+    meanExpectedValue: 40000, // 50% probability
+    currentStatus: 'Active',
+    followUpUpdates: 'Initial call held. Client is interested in a fleet discount for regular corporate events.',
+    createdAt: formatISO(subDays(today, 5)),
+    updatedAt: formatISO(subDays(today, 1)),
+    estimatedClosingDate: formatISO(addDays(today, 60)),
+    reportType: 'Phone Call',
+    tripReportStatus: 'Completed',
+  },
+  {
+    id: 'OPP-003',
+    potentialCustomer: 'Startup X',
+    subject: 'Team Outing Sightseeing',
+    ownerUserId: 'DO-user2',
+    yachtId: 'DO-yacht-super',
+    productType: 'Superyacht Sightseeing Cruise',
+    pipelinePhase: 'Closed Lost',
+    priority: 'Low',
+    estimatedRevenue: 5000,
+    meanExpectedValue: 0,
+    currentStatus: 'Inactive',
+    followUpUpdates: 'Lost to competitor due to pricing.',
+    createdAt: formatISO(subDays(today, 45)),
+    updatedAt: formatISO(subDays(today, 15)),
+    estimatedClosingDate: formatISO(subDays(today, 15)),
+    reportType: 'Email',
+    tripReportStatus: 'Pending',
+  }
 ];

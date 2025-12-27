@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo } from 'react';
 import { PieChart, Pie, Cell, Tooltip as RechartsTooltip, Legend } from 'recharts';
 import {
   Card,
@@ -17,7 +17,7 @@ import {
 import type { Lead, Yacht, PieChartDataItem } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 
-const chartConfigBase = {
+const chartConfigBase: Record<string, { label: string; color?: string }> = {
   value: {
     label: 'Revenue',
   },
@@ -25,7 +25,7 @@ const chartConfigBase = {
 
 interface SalesByYachtPieChartProps {
   leads: Lead[];
-  allYachts: Yacht[]; 
+  allYachts: Yacht[];
   isLoading?: boolean;
   error?: string | null;
 }
@@ -44,29 +44,29 @@ export function SalesByYachtPieChart({ leads, allYachts, isLoading, error }: Sal
     return Array.from(salesByYachtMap.entries()).map(([yachtId, totalRevenue], index) => {
       const yacht = allYachts.find(y => y.id === yachtId);
       return {
-        name: yacht ? yacht.name : `Yacht ID: ${yachtId.substring(0,6)}...`,
+        name: yacht ? yacht.name : `Yacht ID: ${yachtId.substring(0, 6)}...`,
         value: totalRevenue,
-        fill: `hsl(var(--chart-${(index % 5) + 1}))`, 
+        fill: `hsl(var(--chart-${(index % 5) + 1}))`,
       };
     }).filter(item => item.value > 0)
-      .sort((a,b) => b.value - a.value);
+      .sort((a, b) => b.value - a.value);
   }, [leads, allYachts]);
-  
-  const dynamicChartConfig = useMemo(() => 
+
+  const dynamicChartConfig = useMemo(() =>
     chartData.reduce((acc, item) => {
       if (!acc[item.name]) {
         acc[item.name] = { label: item.name, color: item.fill };
       }
       return acc;
     }, { ...chartConfigBase })
-  , [chartData]);
+    , [chartData]);
 
   if (isLoading) {
     return (
       <Card>
         <CardHeader>
           <CardTitle>Sales Revenue by Yacht</CardTitle>
-          <CardDescription>Breakdown of 'Closed (Won)' booking revenue by yacht (Net Amount in AED).</CardDescription>
+          <CardDescription>Breakdown of &apos;Closed (Won)&apos; booking revenue by yacht (Net Amount in AED).</CardDescription>
         </CardHeader>
         <CardContent className="flex items-center justify-center h-[300px]">
           <div className="flex flex-col items-center gap-2">
@@ -81,29 +81,29 @@ export function SalesByYachtPieChart({ leads, allYachts, isLoading, error }: Sal
 
   if (error) {
     return (
-        <Card>
-            <CardHeader>
-                <CardTitle>Sales Revenue by Yacht</CardTitle>
-                <CardDescription>Breakdown of 'Closed (Won)' booking revenue by yacht (Net Amount in AED).</CardDescription>
-            </CardHeader>
-            <CardContent className="flex items-center justify-center h-[300px]">
-                <p className="text-destructive">Error loading sales data: {error}</p>
-            </CardContent>
-        </Card>
+      <Card>
+        <CardHeader>
+          <CardTitle>Sales Revenue by Yacht</CardTitle>
+          <CardDescription>Breakdown of &apos;Closed (Won)&apos; booking revenue by yacht (Net Amount in AED).</CardDescription>
+        </CardHeader>
+        <CardContent className="flex items-center justify-center h-[300px]">
+          <p className="text-destructive">Error loading sales data: {error}</p>
+        </CardContent>
+      </Card>
     );
   }
 
   if (chartData.length === 0) {
     return (
-        <Card>
-            <CardHeader>
-                <CardTitle>Sales Revenue by Yacht</CardTitle>
-                <CardDescription>Breakdown of 'Closed (Won)' booking revenue by yacht (Net Amount in AED).</CardDescription>
-            </CardHeader>
-            <CardContent className="flex items-center justify-center h-[300px]">
-                <p className="text-muted-foreground">No 'Closed (Won)' sales data for selected filters.</p>
-            </CardContent>
-        </Card>
+      <Card>
+        <CardHeader>
+          <CardTitle>Sales Revenue by Yacht</CardTitle>
+          <CardDescription>Breakdown of &apos;Closed (Won)&apos; booking revenue by yacht (Net Amount in AED).</CardDescription>
+        </CardHeader>
+        <CardContent className="flex items-center justify-center h-[300px]">
+          <p className="text-muted-foreground">No &apos;Closed (Won)&apos; sales data for selected filters.</p>
+        </CardContent>
+      </Card>
     );
   }
 
@@ -111,46 +111,46 @@ export function SalesByYachtPieChart({ leads, allYachts, isLoading, error }: Sal
     <Card>
       <CardHeader>
         <CardTitle>Sales Revenue by Yacht</CardTitle>
-        <CardDescription>Breakdown of 'Closed (Won)' booking revenue by yacht (Net Amount in AED).</CardDescription>
+        <CardDescription>Breakdown of &apos;Closed (Won)&apos; booking revenue by yacht (Net Amount in AED).</CardDescription>
       </CardHeader>
       <CardContent className="h-[300px] w-full flex items-center justify-center">
         <ChartContainer config={dynamicChartConfig} className="aspect-square h-full">
-            <PieChart>
-              <RechartsTooltip 
-                cursor={{ fill: 'hsl(var(--muted))' }} 
-                content={<ChartTooltipContent 
-                            hideLabel 
-                            formatter={(value, name, props) => [`${Number(value).toLocaleString()} AED`, props.payload?.name || name]}
-                         />} 
-              />
-              <Pie
-                data={chartData}
-                dataKey="value"
-                nameKey="name"
-                cx="50%"
-                cy="50%"
-                outerRadius="80%"
-                labelLine={false}
-                label={({ cx, cy, midAngle, innerRadius, outerRadius, percent, index, name }) => {
-                  const RADIAN = Math.PI / 180;
-                  const radius = innerRadius + (outerRadius - innerRadius) * 0.6; 
-                  const x = cx + radius * Math.cos(-midAngle * RADIAN);
-                  const y = cy + radius * Math.sin(-midAngle * RADIAN);
-                  const displayName = name.length > 15 ? name.substring(0, 12) + '...' : name;
-                  if (percent < 0.05) return null;
-                  return (
-                    <text x={x} y={y} fill="white" textAnchor="middle" dominantBaseline="central" fontSize="10px">
-                      {`${displayName} (${(percent * 100).toFixed(0)}%)`}
-                    </text>
-                  );
-                }}
-              >
-                {chartData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.fill} />
-                ))}
-              </Pie>
-              <Legend verticalAlign="bottom" height={36}/>
-            </PieChart>
+          <PieChart>
+            <RechartsTooltip
+              cursor={{ fill: 'hsl(var(--muted))' }}
+              content={<ChartTooltipContent
+                hideLabel
+                formatter={(value, name, props) => [`${Number(value).toLocaleString()} AED`, props.payload?.name || name]}
+              />}
+            />
+            <Pie
+              data={chartData}
+              dataKey="value"
+              nameKey="name"
+              cx="50%"
+              cy="50%"
+              outerRadius="80%"
+              labelLine={false}
+              label={({ cx, cy, midAngle, innerRadius, outerRadius, percent, name }) => {
+                const RADIAN = Math.PI / 180;
+                const radius = innerRadius + (outerRadius - innerRadius) * 0.6;
+                const x = cx + radius * Math.cos(-midAngle * RADIAN);
+                const y = cy + radius * Math.sin(-midAngle * RADIAN);
+                const displayName = name.length > 15 ? name.substring(0, 12) + '...' : name;
+                if (percent < 0.05) return null;
+                return (
+                  <text x={x} y={y} fill="white" textAnchor="middle" dominantBaseline="central" fontSize="10px">
+                    {`${displayName} (${(percent * 100).toFixed(0)}%)`}
+                  </text>
+                );
+              }}
+            >
+              {chartData.map((entry, index) => (
+                <Cell key={`cell-${index}`} fill={entry.fill} />
+              ))}
+            </Pie>
+            <Legend verticalAlign="bottom" height={36} />
+          </PieChart>
         </ChartContainer>
       </CardContent>
     </Card>

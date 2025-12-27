@@ -48,7 +48,7 @@ export function BookedAgentsList({ leads, allAgents, isLoading, error }: BookedA
     return Array.from(bookingsByAgent.entries())
       .map(([agentId, count]) => ({
         agentId,
-        agentName: agentMap.get(agentId) || `Unknown Agent (ID: ${agentId.substring(0,6)}...)`,
+        agentName: agentMap.get(agentId) || `Unknown Agent (ID: ${agentId.substring(0, 6)}...)`,
         closedBookingsCount: count,
       }))
       .sort((a, b) => b.closedBookingsCount - a.closedBookingsCount);
@@ -106,7 +106,7 @@ export function BookedAgentsList({ leads, allAgents, isLoading, error }: BookedA
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center"><Briefcase className="mr-2 h-5 w-5" /> Agents with Closed Bookings</CardTitle>
-        <CardDescription>Agents ranked by number of 'Closed' bookings.</CardDescription>
+        <CardDescription>Agents ranked by number of &apos;Closed&apos; bookings.</CardDescription>
       </CardHeader>
       <CardContent>
         <Table>

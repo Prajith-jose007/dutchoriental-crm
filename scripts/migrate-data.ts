@@ -11,6 +11,7 @@ import {
 } from '../src/lib/placeholder-data'; // Adjusted path
 import type { Agent, Lead, Yacht, Invoice, User, YachtPackageItem, LeadPackageQuantity, Opportunity } from '../src/lib/types';
 import { formatISO, parseISO, isValid, format } from 'date-fns';
+import { hash } from 'bcryptjs';
 import 'dotenv/config'; // Ensures .env.local is loaded
 
 const MYSQL_TABLE_NAMES = {
@@ -245,6 +246,9 @@ async function migrateUsers() {
         password = VALUES(password);
     `;
     try {
+      const passwordToHash = user.password || '123456';
+      const hashedPassword = await hash(passwordToHash, 10);
+
       await query(sql, [
         user.id,
         user.name,
@@ -253,7 +257,7 @@ async function migrateUsers() {
         user.avatarUrl || null,
         user.websiteUrl || null,
         user.status || 'Active',
-        user.password || null,
+        hashedPassword,
       ]);
       console.log(`Upserted user: ${user.name} (ID: ${user.id})`);
     } catch (error) {

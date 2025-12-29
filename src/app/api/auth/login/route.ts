@@ -16,16 +16,20 @@ export async function POST(request: NextRequest) {
         const usersDataDb = (await query<User[]>(sql, [email]));
 
         if (usersDataDb.length === 0) {
+            console.log(`[Login] User not found for email: ${email}`);
             return NextResponse.json({ message: 'Invalid email or password.' }, { status: 401 });
         }
 
         const dbUser = usersDataDb[0];
+        console.log(`[Login] User found: ${dbUser.name} (${dbUser.id})`);
 
         // Verify password using bcrypt
         const isPasswordValid = await compare(password, dbUser.password || '');
         if (!isPasswordValid) {
+            console.log(`[Login] Password mismatch for user: ${email}`);
             return NextResponse.json({ message: 'Invalid email or password.' }, { status: 401 });
         }
+        console.log(`[Login] Password verified for user: ${email}`);
 
         // Determine role
         const role = dbUser.designation === 'System Administrator' || dbUser.designation === 'Admin' ? 'admin' : 'user';

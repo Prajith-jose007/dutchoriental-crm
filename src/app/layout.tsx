@@ -19,13 +19,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: AppName,
   description: `Customer Relationship Management for ${AppName}`,
-  icons: {
-    icon: '/logo-fav.png',
-    // You might also want to provide other icon types for broader compatibility
-    // For example:
-    // shortcut: '/favicon.ico', // Traditional .ico
-    // apple: '/apple-touch-icon.png', // For Apple devices
-  },
+
 };
 
 export default function RootLayout({

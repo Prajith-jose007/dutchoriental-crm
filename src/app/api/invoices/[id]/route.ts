@@ -46,9 +46,9 @@ function buildInvoiceUpdateSetClause(data: Partial<Omit<Invoice, 'id' | 'created
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const id = params.id;
+  const { id } = await params;
   if (!id) {
     return NextResponse.json({ message: 'Invoice ID is required' }, { status: 400 });
   }
@@ -73,16 +73,16 @@ export async function GET(
     }
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
-    console.error(`[API GET /api/invoices/${id}] Failed to fetch invoice:`, error);
+    console.error(`[API GET /api/invoices] Failed to fetch invoice:`, error);
     return NextResponse.json({ message: `Failed to fetch invoice: ${errorMessage}` }, { status: 500 });
   }
 }
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const id = params.id;
+  const { id } = await params;
   if (!id) {
     return NextResponse.json({ message: 'Invoice ID is required for update' }, { status: 400 });
   }
@@ -121,16 +121,16 @@ export async function PUT(
 
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
-    console.error(`[API PUT /api/invoices/${id}] Failed to update invoice:`, error);
+    console.error(`[API PUT /api/invoices] Failed to update invoice:`, error);
     return NextResponse.json({ message: `Failed to update invoice: ${errorMessage}` }, { status: 500 });
   }
 }
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const id = params.id;
+  const { id } = await params;
   if (!id) {
     return NextResponse.json({ message: 'Invoice ID is required for deletion' }, { status: 400 });
   }
@@ -145,7 +145,7 @@ export async function DELETE(
     return NextResponse.json({ message: 'Invoice deleted successfully' }, { status: 200 });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
-    console.error(`[API DELETE /api/invoices/${id}] Failed to delete invoice:`, error);
+    console.error(`[API DELETE /api/invoices] Failed to delete invoice:`, error);
     return NextResponse.json({ message: `Failed to delete invoice: ${errorMessage}` }, { status: 500 });
   }
 }

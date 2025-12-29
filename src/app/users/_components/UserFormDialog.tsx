@@ -69,13 +69,13 @@ const editUserFormSchema = userFormSchemaBase.extend({
   message: "Passwords don't match",
   path: ['confirmPassword'],
 }).refine(data => {
-    if (data.password && data.password.length > 0 && data.password.length < 6) {
-        return false;
-    }
-    return true;
+  if (data.password && data.password.length > 0 && data.password.length < 6) {
+    return false;
+  }
+  return true;
 }, {
-    message: "New password must be at least 6 characters if provided",
-    path: ['password'],
+  message: "New password must be at least 6 characters if provided",
+  path: ['password'],
 });
 
 
@@ -88,7 +88,7 @@ interface UserFormDialogProps {
   onSubmitSuccess: (data: User) => void;
 }
 
-const statusOptions: User['status'][] = ['Active', 'Inactive', 'Archived'];
+const statusOptions: Exclude<User['status'], undefined>[] = ['Active', 'Inactive', 'Archived'];
 
 export function UserFormDialog({ isOpen, onOpenChange, user, onSubmitSuccess }: UserFormDialogProps) {
   const { toast } = useToast();
@@ -143,11 +143,11 @@ export function UserFormDialog({ isOpen, onOpenChange, user, onSubmitSuccess }: 
 
   function onSubmit(data: UserFormData) {
     if (!data.id && !user) {
-        toast({ title: "Error", description: "User ID is required for new users.", variant: "destructive" });
-        form.setError("id", { type: "manual", message: "User ID is required." });
-        return;
+      toast({ title: "Error", description: "User ID is required for new users.", variant: "destructive" });
+      form.setError("id", { type: "manual", message: "User ID is required." });
+      return;
     }
-    
+
     const submittedUser: User = {
       id: user?.id || data.id!,
       name: data.name,
@@ -183,11 +183,11 @@ export function UserFormDialog({ isOpen, onOpenChange, user, onSubmitSuccess }: 
                 <FormItem>
                   <FormLabel>User ID</FormLabel>
                   <FormControl>
-                    <Input 
-                      placeholder="e.g., user001" 
-                      {...field} 
+                    <Input
+                      placeholder="e.g., user001"
+                      {...field}
                       value={field.value || ''}
-                      readOnly={!!user} 
+                      readOnly={!!user}
                       className={!!user ? "bg-muted/50" : ""}
                     />
                   </FormControl>
@@ -221,7 +221,7 @@ export function UserFormDialog({ isOpen, onOpenChange, user, onSubmitSuccess }: 
                 </FormItem>
               )}
             />
-             <FormField
+            <FormField
               control={form.control}
               name="password"
               render={({ field }) => (
@@ -281,7 +281,7 @@ export function UserFormDialog({ isOpen, onOpenChange, user, onSubmitSuccess }: 
                 <FormItem>
                   <FormLabel>Website URL (Optional)</FormLabel>
                   <FormControl>
-                    <Input placeholder="https://example.com" {...field} value={field.value || ''}/>
+                    <Input placeholder="https://example.com" {...field} value={field.value || ''} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

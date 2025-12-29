@@ -44,9 +44,9 @@ function buildOpportunityUpdateSetClause(data: Partial<Omit<Opportunity, 'id' | 
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const id = params.id;
+  const { id } = await params;
   if (!id) {
     return NextResponse.json({ message: 'Opportunity ID is required' }, { status: 400 });
   }
@@ -70,16 +70,16 @@ export async function GET(
     }
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
-    console.error(`[API GET /api/opportunities/${id}] Error:`, error);
+    console.error(`[API GET /api/opportunities] Error:`, error);
     return NextResponse.json({ message: `Failed to fetch opportunity: ${errorMessage}` }, { status: 500 });
   }
 }
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const id = params.id;
+  const { id } = await params;
   if (!id) {
     return NextResponse.json({ message: 'Opportunity ID is required for update' }, { status: 400 });
   }
@@ -120,16 +120,16 @@ export async function PUT(
 
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
-    console.error(`[API PUT /api/opportunities/${id}] Error:`, error);
+    console.error(`[API PUT /api/opportunities] Error:`, error);
     return NextResponse.json({ message: `Failed to update opportunity: ${errorMessage}` }, { status: 500 });
   }
 }
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const id = params.id;
+  const { id } = await params;
   if (!id) {
     return NextResponse.json({ message: 'Opportunity ID is required for deletion' }, { status: 400 });
   }
@@ -144,7 +144,7 @@ export async function DELETE(
     return NextResponse.json({ message: 'Opportunity deleted successfully' }, { status: 200 });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
-    console.error(`[API DELETE /api/opportunities/${id}] Error:`, error);
+    console.error(`[API DELETE /api/opportunities] Error:`, error);
     return NextResponse.json({ message: `Failed to delete opportunity: ${errorMessage}` }, { status: 500 });
   }
 }

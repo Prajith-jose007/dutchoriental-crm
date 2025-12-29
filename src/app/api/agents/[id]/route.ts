@@ -6,10 +6,10 @@ import { query } from '@/lib/db';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const id = params.id;
+    const { id } = await params;
     if (!id) {
       return NextResponse.json({ message: 'Agent ID is required' }, { status: 400 });
     }
@@ -29,7 +29,7 @@ export async function GET(
     }
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
-    console.error(`[API GET /api/agents/${params.id}] Error:`, error);
+    console.error(`[API GET /api/agents] Error:`, error);
     return NextResponse.json({ message: `Failed to fetch agent: ${errorMessage}` }, { status: 500 });
   }
 }
@@ -60,9 +60,9 @@ function buildUpdateSetClause(data: Partial<Omit<Agent, 'id'>>): { clause: strin
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const id = params.id;
+  const { id } = await params;
   if (!id) {
     return NextResponse.json({ message: 'Agent ID is required for update' }, { status: 400 });
   }
@@ -112,9 +112,9 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const id = params.id;
+  const { id } = await params;
   if (!id) {
     return NextResponse.json({ message: 'Agent ID is required for deletion' }, { status: 400 });
   }

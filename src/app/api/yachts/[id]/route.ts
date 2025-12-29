@@ -32,9 +32,9 @@ function buildYachtUpdateSetClause(data: Partial<Omit<Yacht, 'id' | 'packages'>>
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const id = params.id;
+  const { id } = await params;
   if (!id) {
     return NextResponse.json({ message: 'Yacht ID is required' }, { status: 400 });
   }
@@ -50,7 +50,7 @@ export async function GET(
         try {
           packages = JSON.parse(dbYacht.packages_json);
         } catch (e) {
-          console.warn(`[API GET /api/yachts/${id}] Failed to parse packages_json.`);
+          console.warn(`[API GET /api/yachts] Failed to parse packages_json.`);
         }
       }
 
@@ -70,16 +70,16 @@ export async function GET(
     }
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
-    console.error(`[API GET /api/yachts/${id}] Failed to fetch yacht:`, error);
+    console.error(`[API GET /api/yachts] Failed to fetch yacht:`, error);
     return NextResponse.json({ message: `Failed to fetch yacht: ${errorMessage}` }, { status: 500 });
   }
 }
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const id = params.id;
+  const { id } = await params;
   if (!id) {
     return NextResponse.json({ message: 'Yacht ID is required for update' }, { status: 400 });
   }
@@ -139,16 +139,16 @@ export async function PUT(
 
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
-    console.error(`[API PUT /api/yachts/${id}] Failed to update yacht:`, error);
+    console.error(`[API PUT /api/yachts] Failed to update yacht:`, error);
     return NextResponse.json({ message: `Failed to update yacht: ${errorMessage}` }, { status: 500 });
   }
 }
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const id = params.id;
+  const { id } = await params;
   if (!id) {
     return NextResponse.json({ message: 'Yacht ID is required for deletion' }, { status: 400 });
   }
@@ -163,7 +163,7 @@ export async function DELETE(
     return NextResponse.json({ message: 'Yacht deleted successfully' }, { status: 200 });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
-    console.error(`[API DELETE /api/yachts/${id}] Failed to delete yacht:`, error);
+    console.error(`[API DELETE /api/yachts] Failed to delete yacht:`, error);
     return NextResponse.json({ message: `Failed to delete yacht: ${errorMessage}` }, { status: 500 });
   }
 }

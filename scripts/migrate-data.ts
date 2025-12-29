@@ -1,6 +1,6 @@
 
 // scripts/migrate-data.ts
-import { query } from '../src/lib/db'; // Adjusted path
+import { query, closePool } from '../src/lib/db'; // Adjusted path
 import {
   placeholderUsers,
   placeholderAgents,
@@ -89,7 +89,7 @@ async function createAgentsTable() {
       \`websiteUrl\` VARCHAR(255)
     );
   `;
-   try {
+  try {
     await query(createTableSql);
     console.log(`Table ${tableName} checked/created successfully.`);
   } catch (error) {
@@ -152,7 +152,7 @@ async function createLeadsTable() {
   try {
     await query(createTableSql);
     console.log(`Table ${tableName} checked/created successfully.`);
-    
+
     // --- THIS IS THE FIX ---
     // These functions will now check for each column and add it if it doesn't exist,
     // which is what's needed to fix your database schema without deleting the table.
@@ -194,8 +194,8 @@ async function createInvoicesTable() {
 }
 
 async function createOpportunitiesTable() {
-    const tableName = MYSQL_TABLE_NAMES.opportunities;
-    const createTableSql = `
+  const tableName = MYSQL_TABLE_NAMES.opportunities;
+  const createTableSql = `
       CREATE TABLE IF NOT EXISTS \`${tableName}\` (
         \`id\` VARCHAR(191) PRIMARY KEY,
         \`potentialCustomer\` VARCHAR(255) NOT NULL,
@@ -213,18 +213,18 @@ async function createOpportunitiesTable() {
         \`updatedAt\` DATETIME
       );
     `;
-    try {
-      await query(createTableSql);
-      // Add new columns
-      await addColumnIfNotExists(tableName, 'subject', 'VARCHAR(255) NOT NULL DEFAULT "New Opportunity"');
-      await addColumnIfNotExists(tableName, 'location', 'VARCHAR(255)');
-      await addColumnIfNotExists(tableName, 'reportType', 'VARCHAR(50)');
-      await addColumnIfNotExists(tableName, 'tripReportStatus', 'VARCHAR(50)');
-      console.log(`Table ${tableName} checked/created successfully.`);
-    } catch (error) {
-      console.error(`Error creating table ${tableName}:`, (error as Error).message);
-      throw error;
-    }
+  try {
+    await query(createTableSql);
+    // Add new columns
+    await addColumnIfNotExists(tableName, 'subject', 'VARCHAR(255) NOT NULL DEFAULT "New Opportunity"');
+    await addColumnIfNotExists(tableName, 'location', 'VARCHAR(255)');
+    await addColumnIfNotExists(tableName, 'reportType', 'VARCHAR(50)');
+    await addColumnIfNotExists(tableName, 'tripReportStatus', 'VARCHAR(50)');
+    console.log(`Table ${tableName} checked/created successfully.`);
+  } catch (error) {
+    console.error(`Error creating table ${tableName}:`, (error as Error).message);
+    throw error;
+  }
 }
 
 
@@ -253,7 +253,7 @@ async function migrateUsers() {
         user.avatarUrl || null,
         user.websiteUrl || null,
         user.status || 'Active',
-        user.password || null, 
+        user.password || null,
       ]);
       console.log(`Upserted user: ${user.name} (ID: ${user.id})`);
     } catch (error) {
@@ -318,7 +318,7 @@ async function migrateYachts() {
         category = VALUES(category),
         packages_json = VALUES(packages_json),
         customPackageInfo = VALUES(customPackageInfo);
-    `; 
+    `;
     const packagesJson = yacht.packages ? JSON.stringify(yacht.packages) : null;
     try {
       await query(sql, [
@@ -378,18 +378,18 @@ async function migrateLeads() {
         ownerUserId = VALUES(ownerUserId);
     `;
     try {
-      let monthDate = formatISO(new Date()); 
+      let monthDate = formatISO(new Date());
       if (lead.month) {
-          try {
-              const parsedMonth = parseISO(lead.month);
-              if (isValid(parsedMonth)) {
-                  monthDate = formatISO(parsedMonth);
-              } else {
-                  console.warn(`Invalid month date string for booking ${lead.id}: ${lead.month}. Using current date as fallback.`);
-              }
-          } catch(e) {
-              console.warn(`Error parsing month date string for booking ${lead.id}: ${lead.month}. Using current date as fallback. Error: ${(e as Error).message}`);
+        try {
+          const parsedMonth = parseISO(lead.month);
+          if (isValid(parsedMonth)) {
+            monthDate = formatISO(parsedMonth);
+          } else {
+            console.warn(`Invalid month date string for booking ${lead.id}: ${lead.month}. Using current date as fallback.`);
           }
+        } catch (e) {
+          console.warn(`Error parsing month date string for booking ${lead.id}: ${lead.month}. Using current date as fallback. Error: ${(e as Error).message}`);
+        }
       }
 
       const createdAtDate = lead.createdAt && isValid(parseISO(lead.createdAt)) ? formatISO(parseISO(lead.createdAt)) : formatISO(new Date());
@@ -405,7 +405,7 @@ async function migrateLeads() {
         monthDate, // This is the Booking/Event Date
         lead.notes || null,
         lead.type,
-        lead.paymentConfirmationStatus || 'UNCONFIRMED', 
+        lead.paymentConfirmationStatus || 'UNCONFIRMED',
         lead.transactionId || null,
         lead.bookingRefNo || null,
         lead.modeOfPayment,
@@ -417,7 +417,7 @@ async function migrateLeads() {
         lead.commissionAmount || 0,
         lead.netAmount,
         lead.paidAmount,
-        lead.balanceAmount || 0, 
+        lead.balanceAmount || 0,
         createdAtDate,
         updatedAtDate,
         lead.lastModifiedByUserId || null,
@@ -446,8 +446,8 @@ async function migrateInvoices() {
         createdAt = VALUES(createdAt);
     `;
     try {
-        const dueDateFormatted = invoice.dueDate && isValid(parseISO(invoice.dueDate)) ? format(parseISO(invoice.dueDate), 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd');
-        const createdAtFormatted = invoice.createdAt && isValid(parseISO(invoice.createdAt)) ? formatISO(parseISO(invoice.createdAt)) : formatISO(new Date());
+      const dueDateFormatted = invoice.dueDate && isValid(parseISO(invoice.dueDate)) ? format(parseISO(invoice.dueDate), 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd');
+      const createdAtFormatted = invoice.createdAt && isValid(parseISO(invoice.createdAt)) ? formatISO(parseISO(invoice.createdAt)) : formatISO(new Date());
       await query(sql, [
         invoice.id,
         invoice.leadId,
@@ -466,9 +466,9 @@ async function migrateInvoices() {
 }
 
 async function migrateOpportunities() {
-    console.log('Migrating Opportunities...');
-    for (const opp of placeholderOpportunities) {
-      const sql = `
+  console.log('Migrating Opportunities...');
+  for (const opp of placeholderOpportunities) {
+    const sql = `
         INSERT INTO opportunities (
           id, potentialCustomer, subject, estimatedClosingDate, ownerUserId, yachtId, productType, 
           pipelinePhase, priority, estimatedRevenue, meanExpectedValue, currentStatus, 
@@ -493,37 +493,37 @@ async function migrateOpportunities() {
           reportType = VALUES(reportType),
           tripReportStatus = VALUES(tripReportStatus);
       `;
-      try {
-        const estimatedClosingDate = opp.estimatedClosingDate && isValid(parseISO(opp.estimatedClosingDate)) ? formatISO(parseISO(opp.estimatedClosingDate)) : formatISO(new Date());
-        const createdAt = opp.createdAt && isValid(parseISO(opp.createdAt)) ? formatISO(parseISO(opp.createdAt)) : formatISO(new Date());
-        const updatedAt = opp.updatedAt && isValid(parseISO(opp.updatedAt)) ? formatISO(parseISO(opp.updatedAt)) : formatISO(new Date());
+    try {
+      const estimatedClosingDate = opp.estimatedClosingDate && isValid(parseISO(opp.estimatedClosingDate)) ? formatISO(parseISO(opp.estimatedClosingDate)) : formatISO(new Date());
+      const createdAt = opp.createdAt && isValid(parseISO(opp.createdAt)) ? formatISO(parseISO(opp.createdAt)) : formatISO(new Date());
+      const updatedAt = opp.updatedAt && isValid(parseISO(opp.updatedAt)) ? formatISO(parseISO(opp.updatedAt)) : formatISO(new Date());
 
-        await query(sql, [
-          opp.id,
-          opp.potentialCustomer,
-          opp.subject,
-          estimatedClosingDate,
-          opp.ownerUserId,
-          opp.yachtId,
-          opp.productType,
-          opp.pipelinePhase,
-          opp.priority,
-          opp.estimatedRevenue,
-          opp.meanExpectedValue,
-          opp.currentStatus,
-          opp.followUpUpdates,
-          createdAt,
-          updatedAt,
-          opp.location || null, // Ensure undefined is converted to null
-          opp.reportType || null,
-          opp.tripReportStatus || null
-        ]);
-        console.log(`Upserted opportunity: ${opp.potentialCustomer} (ID: ${opp.id})`);
-      } catch (error) {
-        console.error(`Error upserting opportunity ${opp.potentialCustomer} (ID: ${opp.id}):`, (error as Error).message);
-      }
+      await query(sql, [
+        opp.id,
+        opp.potentialCustomer,
+        opp.subject,
+        estimatedClosingDate,
+        opp.ownerUserId,
+        opp.yachtId,
+        opp.productType,
+        opp.pipelinePhase,
+        opp.priority,
+        opp.estimatedRevenue,
+        opp.meanExpectedValue,
+        opp.currentStatus,
+        opp.followUpUpdates,
+        createdAt,
+        updatedAt,
+        opp.location || null, // Ensure undefined is converted to null
+        opp.reportType || null,
+        opp.tripReportStatus || null
+      ]);
+      console.log(`Upserted opportunity: ${opp.potentialCustomer} (ID: ${opp.id})`);
+    } catch (error) {
+      console.error(`Error upserting opportunity ${opp.potentialCustomer} (ID: ${opp.id}):`, (error as Error).message);
     }
-    console.log('Opportunity migration finished.');
+  }
+  console.log('Opportunity migration finished.');
 }
 
 async function main() {
@@ -543,7 +543,7 @@ async function main() {
       await createLeadsTable();
       await createInvoicesTable();
       await createOpportunitiesTable();
-      
+
       // Then migrate all data
       await migrateUsers();
       await migrateAgents();
@@ -572,9 +572,9 @@ async function main() {
       await createInvoicesTable();
       await migrateInvoices();
     } else if (entityToMigrate === 'opportunities') {
-        console.log('Running migration for: opportunities');
-        await createOpportunitiesTable();
-        await migrateOpportunities();
+      console.log('Running migration for: opportunities');
+      await createOpportunitiesTable();
+      await migrateOpportunities();
     } else {
       console.warn(`Unknown entity to migrate: "${entityToMigrate}". Running all migrations by default.`);
       // Default to all if entity is not recognized
@@ -591,53 +591,22 @@ async function main() {
       await migrateInvoices();
       await migrateOpportunities();
     }
-    
+
     console.log('Data migration tasks complete! Make sure to close the DB connection if your db.ts doesn\'t do it automatically after a pool query.');
   } catch (error) {
-      console.error("A critical error occurred during table creation or migration process, aborting further steps:", (error as Error).message);
+    console.error("A critical error occurred during table creation or migration process, aborting further steps:", (error as Error).message);
   } finally {
-    const dbModule = await import('../src/lib/db'); 
-    if (dbModule.default && typeof (dbModule.default as any).end === 'function') { 
-        try {
-            await (dbModule.default as any).end();
-            console.log('MySQL pool closed by script in finally block.');
-        } catch (e) {
-            console.error('Error closing pool in finally block:', e);
-        }
-    } else if (dbModule.default && typeof (dbModule.default as any).pool?.end === 'function') { 
-        try {
-            await (dbModule.default as any).pool.end();
-            console.log('MySQL pool (nested) closed by script in finally block.');
-        } catch (e) {
-            console.error('Error closing nested pool in finally block:', e);
-        }
-    } else if (typeof (dbModule as any).end === 'function') { 
-         try {
-            await (dbModule as any).end();
-            console.log('MySQL pool (direct export) closed by script in finally block.');
-        } catch (e) {
-            console.error('Error closing direct export pool in finally block:', e);
-        }
-    }
+    await closePool();
   }
 }
 
 main().catch(async err => {
   console.error('Migration script failed:', err);
   try {
-    const dbModule = await import('../src/lib/db');
-     if (dbModule.default && typeof (dbModule.default as any).end === 'function') {
-        await (dbModule.default as any).end();
-        console.log('MySQL pool closed due to script failure.');
-    } else if (dbModule.default && typeof (dbModule.default as any).pool?.end === 'function') {
-         await (dbModule.default as any).pool.end();
-         console.log('MySQL pool (nested) closed due to script failure.');
-    } else if (typeof (dbModule as any).end === 'function') {
-        await (dbModule as any).end();
-        console.log('MySQL pool (direct export) closed due to script failure.');
-    }
+    await closePool();
   } catch (e) {
     console.error('Error closing pool after script failure:', e);
   }
   process.exit(1);
 });
+

@@ -63,7 +63,7 @@ const csvHeaderMapping: { [csvHeaderKey: string]: keyof Omit<Lead, 'packageQuant
   'addon_pack': 'perTicketRate', 'addon': 'perTicketRate', 'per_ticket_rate': 'perTicketRate',
   'total_amt': 'totalAmount', 'total_amount': 'totalAmount',
   'discount_%': 'commissionPercentage', 'discount_rate': 'commissionPercentage',
-  'discount': 'commissionPercentage', 
+  'discount': 'commissionPercentage',
   'commission': 'commissionAmount', 'commission_amount': 'commissionAmount',
   'net_amt': 'netAmount', 'net_amount': 'netAmount',
   'paid': 'paidAmount', 'paid_amount': 'paidAmount',
@@ -77,13 +77,13 @@ const csvHeaderMapping: { [csvHeaderKey: string]: keyof Omit<Lead, 'packageQuant
 
 
 const convertCsvValue = (
-    key: keyof Omit<Lead, 'packageQuantities'> | 'package_quantities_json_string' | `pkg_${string}`,
-    value: string,
-    allYachts: Yacht[],
-    agentMap: { [id: string]: string },
-    userMap: { [id: string]: string },
-    yachtMap: { [id: string]: string }
-  ): any => {
+  key: keyof Omit<Lead, 'packageQuantities'> | 'package_quantities_json_string' | `pkg_${string}`,
+  value: string,
+  allYachts: Yacht[],
+  agentMap: { [id: string]: string },
+  userMap: { [id: string]: string },
+  yachtMap: { [id: string]: string }
+): any => {
   const trimmedValue = value ? String(value).trim() : '';
   const currentUserId = typeof window !== 'undefined' ? localStorage.getItem(USER_ID_STORAGE_KEY) : null;
 
@@ -97,7 +97,7 @@ const convertCsvValue = (
       const parsedJson = JSON.parse(trimmedValue);
       if (Array.isArray(parsedJson)) {
         return parsedJson.map(pq => ({
-          packageId: String(pq.packageId || pq.packageld || ''), 
+          packageId: String(pq.packageId || pq.packageld || ''),
           packageName: String(pq.packageName || 'Unknown CSV Pkg'),
           quantity: Number(pq.quantity || 0),
           rate: Number(pq.rate || 0),
@@ -117,7 +117,7 @@ const convertCsvValue = (
       case 'freeGuestCount': return 0;
       case 'perTicketRate': return null;
       case 'modeOfPayment': return 'CARD';
-      case 'status': return 'Balance'; 
+      case 'status': return 'Balance';
       case 'type': return 'Private Cruise';
       case 'paymentConfirmationStatus': return 'UNCONFIRMED';
       case 'notes': case 'bookingRefNo': return '';
@@ -144,8 +144,8 @@ const convertCsvValue = (
       const numFinancial = parseFloat(trimmedValue.replace(/,/g, ''));
       return isNaN(numFinancial) ? 0 : numFinancial;
     case 'perTicketRate':
-        const numRate = parseFloat(trimmedValue.replace(/,/g, ''));
-        return isNaN(numRate) ? null : numRate;
+      const numRate = parseFloat(trimmedValue.replace(/,/g, ''));
+      return isNaN(numRate) ? null : numRate;
 
     case 'modeOfPayment':
       const foundMop = modeOfPaymentOptions.find(opt => opt.toLowerCase() === trimmedValue.toLowerCase());
@@ -153,7 +153,7 @@ const convertCsvValue = (
     case 'status':
       const lowerTrimmedStatusValue = trimmedValue.toLowerCase();
       const foundStatus = leadStatusOptions.find(opt => opt.toLowerCase() === lowerTrimmedStatusValue);
-      return foundStatus || 'Balance'; 
+      return foundStatus || 'Balance';
     case 'type':
       const foundType = leadTypeOptions.find(opt => opt.toLowerCase() === trimmedValue.toLowerCase());
       return foundType || 'Private Cruise';
@@ -162,9 +162,9 @@ const convertCsvValue = (
       if (paymentConfirmationStatusOptions.includes(upperTrimmedPaymentStatus as PaymentConfirmationStatus)) {
         return upperTrimmedPaymentStatus as PaymentConfirmationStatus;
       }
-      if (upperTrimmedPaymentStatus === 'PAID') return 'CONFIRMED'; 
-      if (upperTrimmedPaymentStatus === 'UNPAID') return 'UNCONFIRMED'; 
-      return 'UNCONFIRMED'; 
+      if (upperTrimmedPaymentStatus === 'PAID') return 'CONFIRMED';
+      if (upperTrimmedPaymentStatus === 'UNPAID') return 'UNCONFIRMED';
+      return 'UNCONFIRMED';
 
     case 'month':
     case 'createdAt':
@@ -177,37 +177,37 @@ const convertCsvValue = (
       try {
         let dateObj: Date | null = null;
         const dayMonthYearMatch = trimmedValue.match(/(?:(?:Mon|Tues|Wednes|Thurs|Fri|Satur|Sun)day,\s*)?(\d{1,2})\s*(\w+)\s*(\d{4})/i) ||
-                                  trimmedValue.match(/(\w+)\s*(\d{1,2})\s*(\d{4})/i);
+          trimmedValue.match(/(\w+)\s*(\d{1,2})\s*(\d{4})/i);
         if (dayMonthYearMatch) {
-            const dayStr = dayMonthYearMatch[dayMonthYearMatch.length === 4 ? 1 : 2];
-            const monthStr = dayMonthYearMatch[dayMonthYearMatch.length === 4 ? 2 : 1];
-            const yearStr = dayMonthYearMatch[dayMonthYearMatch.length -1];
-            let day = parseInt(dayStr, 10);
-            let year = parseInt(yearStr, 10);
-            const monthNames = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
-            let monthIndex = monthNames.findIndex(m => monthStr.toLowerCase().startsWith(m));
-            if (monthIndex === -1) {
-                const monthNum = parseInt(monthStr, 10);
-                if (monthNum >= 1 && monthNum <= 12) monthIndex = monthNum -1;
-            }
-            if (monthIndex > -1 && day >=1 && day <=31 && year > 1900 && year < 2100) {
-                dateObj = new Date(Date.UTC(year, monthIndex, day));
-            }
+          const dayStr = dayMonthYearMatch[dayMonthYearMatch.length === 4 ? 1 : 2];
+          const monthStr = dayMonthYearMatch[dayMonthYearMatch.length === 4 ? 2 : 1];
+          const yearStr = dayMonthYearMatch[dayMonthYearMatch.length - 1];
+          let day = parseInt(dayStr, 10);
+          let year = parseInt(yearStr, 10);
+          const monthNames = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
+          let monthIndex = monthNames.findIndex(m => monthStr.toLowerCase().startsWith(m));
+          if (monthIndex === -1) {
+            const monthNum = parseInt(monthStr, 10);
+            if (monthNum >= 1 && monthNum <= 12) monthIndex = monthNum - 1;
+          }
+          if (monthIndex > -1 && day >= 1 && day <= 31 && year > 1900 && year < 2100) {
+            dateObj = new Date(Date.UTC(year, monthIndex, day));
+          }
         }
         if (!dateObj || !isValid(dateObj)) {
-            const parts = trimmedValue.match(/(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2,4})/);
-            if (parts && parts.length === 4) {
-                let day = parseInt(parts[1], 10);
-                let month = parseInt(parts[2], 10);
-                let year = parseInt(parts[3], 10);
-                if (String(year).length === 2) year += 2000;
-                if (month >=1 && month <=12 && day >=1 && day <=31) {
-                    dateObj = new Date(Date.UTC(year, month - 1, day));
-                }
-                if ((!dateObj || !isValid(dateObj)) && day >=1 && day <=12 && month >=1 && month <=31) {
-                    dateObj = new Date(Date.UTC(year, day - 1, month));
-                }
+          const parts = trimmedValue.match(/(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2,4})/);
+          if (parts && parts.length === 4) {
+            let day = parseInt(parts[1], 10);
+            let month = parseInt(parts[2], 10);
+            let year = parseInt(parts[3], 10);
+            if (String(year).length === 2) year += 2000;
+            if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+              dateObj = new Date(Date.UTC(year, month - 1, day));
             }
+            if ((!dateObj || !isValid(dateObj)) && day >= 1 && day <= 12 && month >= 1 && month <= 31) {
+              dateObj = new Date(Date.UTC(year, day - 1, month));
+            }
+          }
         }
         if (dateObj && isValid(dateObj)) return formatISO(dateObj);
       } catch (e) {/* ignore */ }
@@ -265,7 +265,7 @@ function generateNewLeadTransactionId(existingLeads: Lead[], forYear: number, cu
 
   existingLeads.forEach(lead => {
     if (lead.transactionId && lead.transactionId.startsWith(prefix)) {
-      const numPartStr = lead.transactionId.substring(prefix.length); 
+      const numPartStr = lead.transactionId.substring(prefix.length);
       const numPart = parseInt(numPartStr, 10);
       if (!isNaN(numPart) && numPart > maxNumber) {
         maxNumber = numPart;
@@ -329,7 +329,7 @@ export default function LeadsPage() {
     setIsLoading(true);
     setFetchError(null);
     try {
-      const [leadsRes, agentsRes, yachtsRes, usersRes ] = await Promise.all([
+      const [leadsRes, agentsRes, yachtsRes, usersRes] = await Promise.all([
         fetch('/api/leads'),
         fetch('/api/agents'),
         fetch('/api/yachts'),
@@ -345,7 +345,7 @@ export default function LeadsPage() {
       setAllAgents(Array.isArray(agentsData) ? agentsData : []);
       const newAgentMap: { [id: string]: string } = {};
       if (Array.isArray(agentsData)) {
-          agentsData.forEach(agent => { newAgentMap[agent.id] = agent.name; });
+        agentsData.forEach(agent => { newAgentMap[agent.id] = agent.name; });
       }
       setAgentMap(newAgentMap);
 
@@ -354,7 +354,7 @@ export default function LeadsPage() {
       setAllYachts(Array.isArray(yachtsData) ? yachtsData : []);
       const newYachtMap: { [id: string]: string } = {};
       if (Array.isArray(yachtsData)) {
-          yachtsData.forEach(yacht => { newYachtMap[yacht.id] = yacht.name; });
+        yachtsData.forEach(yacht => { newYachtMap[yacht.id] = yacht.name; });
       }
       setYachtMap(newYachtMap);
 
@@ -410,8 +410,8 @@ export default function LeadsPage() {
     let finalTransactionId = submittedLeadData.transactionId;
 
     if (isNewLead && (!finalTransactionId || String(finalTransactionId).trim() === "" || finalTransactionId === "Pending Generation")) {
-        const leadYear = submittedLeadData.month ? getFullYear(parseISO(submittedLeadData.month)) : new Date().getFullYear();
-        finalTransactionId = generateNewLeadTransactionId(allLeads, leadYear);
+      const leadYear = submittedLeadData.month ? getFullYear(parseISO(submittedLeadData.month)) : new Date().getFullYear();
+      finalTransactionId = generateNewLeadTransactionId(allLeads, leadYear);
     }
 
     const payload: Partial<Lead> & { requestingUserId: string; requestingUserRole: string } = {
@@ -432,23 +432,23 @@ export default function LeadsPage() {
       requestingUserRole: currentUserRole,
       status: submittedLeadData.status,
     };
-    
-    let payloadToSubmit: any = {...payload};
+
+    let payloadToSubmit: any = { ...payload };
 
     if (isNewLead) {
       payloadToSubmit.ownerUserId = currentUserId;
       payloadToSubmit.createdAt = new Date().toISOString();
       if (payloadToSubmit.id && payloadToSubmit.id.startsWith('temp-')) {
-         const { id, ...rest } = payloadToSubmit;
-         payloadToSubmit = rest;
+        const { id, ...rest } = payloadToSubmit;
+        payloadToSubmit = rest;
       } else if (!payloadToSubmit.id) {
-         const { id, ...rest } = payloadToSubmit;
-         payloadToSubmit = rest;
+        const { id, ...rest } = payloadToSubmit;
+        payloadToSubmit = rest;
       }
     } else if (editingLead) {
       payloadToSubmit.ownerUserId = editingLead.ownerUserId || currentUserId;
       payloadToSubmit.createdAt = editingLead.createdAt || new Date().toISOString();
-       if (editingLead.status.startsWith('Closed') && !isAdmin) {
+      if (editingLead.status.startsWith('Closed') && !isAdmin) {
         toast({ title: "Action Denied", description: "Closed bookings cannot be modified by non-administrators.", variant: "destructive" });
         setIsLoading(false);
         setIsLeadDialogOpen(false);
@@ -537,9 +537,9 @@ export default function LeadsPage() {
           const parsedError = await response.json();
           errorData.message = parsedError.message || errorData.message;
           if (parsedError.errorDetails) errorData.details = JSON.stringify(parsedError.errorDetails);
-          else if(parsedError.error) errorData.details = JSON.stringify(parsedError.error);
+          else if (parsedError.error) errorData.details = JSON.stringify(parsedError.error);
         } catch (jsonError) {
-           console.warn("[BookingsPage] API error response on delete was not valid JSON or was empty.", jsonError);
+          console.warn("[BookingsPage] API error response on delete was not valid JSON or was empty.", jsonError);
         }
         console.error("[BookingsPage] API Delete Error response data (parsed or fallback):", errorData);
         throw new Error(errorData.message + (errorData.details ? ` - Details: ${errorData.details}` : ''));
@@ -642,7 +642,7 @@ export default function LeadsPage() {
         console.warn("Bulk status update failures:", errors);
       }
       toast({ title: 'Status Update Complete', description: toastDescription });
-      
+
       await fetchAllData();
       setSelectedLeadIds([]);
 
@@ -659,7 +659,7 @@ export default function LeadsPage() {
       toast({ title: "No Bookings Selected", description: "Please select bookings to delete.", variant: "destructive" });
       return;
     }
-     if (!isAdmin) {
+    if (!isAdmin) {
       toast({ title: "Access Denied", description: "Only administrators can perform bulk delete.", variant: "destructive" });
       return;
     }
@@ -669,16 +669,16 @@ export default function LeadsPage() {
     }
     setIsLoading(true);
     try {
-      
+
       let successfulDeletes = 0;
       let failedDeletes = 0;
 
       for (const leadId of selectedLeadIds) {
-         const leadToDelete = allLeads.find(l => l.id === leadId);
-          if (leadToDelete?.status.startsWith('Closed') && !isAdmin) { 
-            failedDeletes++;
-            continue;
-          }
+        const leadToDelete = allLeads.find(l => l.id === leadId);
+        if (leadToDelete?.status.startsWith('Closed') && !isAdmin) {
+          failedDeletes++;
+          continue;
+        }
         const response = await fetch(`/api/leads/${leadId}`, {
           method: 'DELETE',
           headers: { 'Content-Type': 'application/json' },
@@ -691,11 +691,11 @@ export default function LeadsPage() {
           successfulDeletes++;
         } else {
           failedDeletes++;
-          const errorData = await response.json().catch(() => ({ message: `Failed to delete booking ${leadId}`}));
+          const errorData = await response.json().catch(() => ({ message: `Failed to delete booking ${leadId}` }));
           console.warn(`Failed to delete booking ${leadId}: ${errorData.message}`);
         }
       }
-      
+
       let toastDescription = `${successfulDeletes} bookings deleted.`;
       if (failedDeletes > 0) {
         toastDescription += ` ${failedDeletes} bookings could not be deleted.`;
@@ -744,7 +744,7 @@ export default function LeadsPage() {
 
         let headerLine = lines[0];
         if (headerLine.charCodeAt(0) === 0xFEFF) {
-            headerLine = headerLine.substring(1);
+          headerLine = headerLine.substring(1);
         }
         const fileHeaders = parseCsvLine(headerLine).map(h => h.trim().toLowerCase().replace(/\s+/g, '_'));
         console.log("[CSV Import Bookings] Detected Normalized Headers:", fileHeaders);
@@ -754,10 +754,10 @@ export default function LeadsPage() {
 
         const packageReverseHeaderMap: { [shortHeader: string]: string } = {};
         Object.entries(csvHeaderMapping).forEach(([csvKey, internalKey]) => {
-            if (internalKey && internalKey.startsWith('pkg_')) {
-                const actualPackageName = internalKey.substring('pkg_'.length).replace(/_/g, ' ').toUpperCase();
-                packageReverseHeaderMap[csvKey] = actualPackageName;
-            }
+          if (internalKey && internalKey.startsWith('pkg_')) {
+            const actualPackageName = internalKey.substring('pkg_'.length).replace(/_/g, ' ').toUpperCase();
+            packageReverseHeaderMap[csvKey] = actualPackageName;
+          }
         });
 
         const batchMaxTransactionNumbersByYear: { [year: number]: number } = {};
@@ -783,9 +783,9 @@ export default function LeadsPage() {
           fileHeaders.forEach((fileHeader, index) => {
             const leadKey = csvHeaderMapping[fileHeader];
             if (leadKey) {
-                (parsedRow as any)[leadKey] = convertCsvValue(leadKey, data[index], allYachts, agentMap, userMap, yachtMap);
+              (parsedRow as any)[leadKey] = convertCsvValue(leadKey, data[index], allYachts, agentMap, userMap, yachtMap);
             } else {
-                console.warn(`[CSV Import Bookings] Unknown header "${fileHeader}" (normalized: ${fileHeader}) in CSV row ${i+1}. Skipping this column.`);
+              console.warn(`[CSV Import Bookings] Unknown header "${fileHeader}" (normalized: ${fileHeader}) in CSV row ${i + 1}. Skipping this column.`);
             }
           });
 
@@ -797,27 +797,27 @@ export default function LeadsPage() {
             const yachtForLead = allYachts.find(y => y.id === leadYachtId || y.name.toLowerCase() === String(leadYachtId).toLowerCase());
 
             if (yachtForLead && yachtForLead.packages && Array.isArray(yachtForLead.packages)) {
-                fileHeaders.forEach(csvHeaderKey => {
-                    const internalKey = csvHeaderMapping[csvHeaderKey];
-                    if (internalKey && internalKey.startsWith('pkg_')) {
-                        const actualPackageName = packageReverseHeaderMap[csvHeaderKey];
-                        const quantity = (parsedRow as any)[internalKey] as number | undefined;
+              fileHeaders.forEach(csvHeaderKey => {
+                const internalKey = csvHeaderMapping[csvHeaderKey];
+                if (internalKey && internalKey.startsWith('pkg_')) {
+                  const actualPackageName = packageReverseHeaderMap[csvHeaderKey];
+                  const quantity = (parsedRow as any)[internalKey] as number | undefined;
 
-                        if (actualPackageName && quantity !== undefined && quantity > 0) {
-                            const yachtPackage = yachtForLead.packages.find(p => p.name.toUpperCase() === actualPackageName.toUpperCase());
-                            if (yachtPackage) {
-                                packageQuantities.push({
-                                    packageId: yachtPackage.id,
-                                    packageName: yachtPackage.name,
-                                    quantity: quantity,
-                                    rate: yachtPackage.rate,
-                                });
-                            } else {
-                               console.warn(`[CSV Import] Package "${actualPackageName}" from CSV not found on yacht "${yachtForLead.name}". Skipping package for this booking.`);
-                            }
-                        }
+                  if (actualPackageName && quantity !== undefined && quantity > 0) {
+                    const yachtPackage = yachtForLead.packages?.find(p => p.name.toUpperCase() === actualPackageName.toUpperCase());
+                    if (yachtPackage) {
+                      packageQuantities.push({
+                        packageId: yachtPackage.id,
+                        packageName: yachtPackage.name,
+                        quantity: quantity,
+                        rate: yachtPackage.rate,
+                      });
+                    } else {
+                      console.warn(`[CSV Import] Package "${actualPackageName}" from CSV not found on yacht "${yachtForLead.name}". Skipping package for this booking.`);
                     }
-                });
+                  }
+                }
+              });
             }
           }
 
@@ -828,7 +828,7 @@ export default function LeadsPage() {
             transactionIdForRow = generateNewLeadTransactionId(allLeads, leadYear, currentMaxForYearInBatch);
             const numPart = parseInt(transactionIdForRow.substring(transactionIdForRow.indexOf('-') + 1 + 4), 10);
             if (!isNaN(numPart)) {
-                batchMaxTransactionNumbersByYear[leadYear] = numPart;
+              batchMaxTransactionNumbersByYear[leadYear] = numPart;
             }
           }
 
@@ -837,9 +837,9 @@ export default function LeadsPage() {
             clientName: parsedRow.clientName || 'N/A from CSV',
             agent: parsedRow.agent || '',
             yacht: parsedRow.yacht || '',
-            status: parsedRow.status || 'Balance', 
+            status: parsedRow.status || 'Balance',
             month: parsedRow.month || formatISO(new Date()),
-            notes: parsedRow.notes || '', 
+            notes: parsedRow.notes || '',
             type: parsedRow.type || 'Private Cruise',
             paymentConfirmationStatus: parsedRow.paymentConfirmationStatus || 'UNCONFIRMED',
             transactionId: transactionIdForRow,
@@ -869,14 +869,14 @@ export default function LeadsPage() {
 
 
           if (missingFields.length > 0) {
-             console.warn(`[CSV Import Bookings] Skipping booking at CSV row ${i+1} due to missing required fields: ${missingFields.join(', ')}. Booking data:`, JSON.parse(JSON.stringify(fullLead)));
-             skippedCount++;
-             continue;
+            console.warn(`[CSV Import Bookings] Skipping booking at CSV row ${i + 1} due to missing required fields: ${missingFields.join(', ')}. Booking data:`, JSON.parse(JSON.stringify(fullLead)));
+            skippedCount++;
+            continue;
           }
           if (currentLeadIds.has(fullLead.id) || newLeadsFromCsv.some(l => l.id === fullLead.id)) {
-             console.warn(`[CSV Import Bookings] Skipping booking with duplicate ID "${fullLead.id}" from CSV row ${i+1}.`);
-             skippedCount++;
-             continue;
+            console.warn(`[CSV Import Bookings] Skipping booking with duplicate ID "${fullLead.id}" from CSV row ${i + 1}.`);
+            skippedCount++;
+            continue;
           }
 
           newLeadsFromCsv.push(fullLead);
@@ -892,7 +892,7 @@ export default function LeadsPage() {
               } else {
                 payloadToSubmit = { id, ...rest, requestingUserId: currentUserId, requestingUserRole: currentUserRole };
               }
-              
+
               const response = await fetch('/api/leads', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -906,8 +906,8 @@ export default function LeadsPage() {
                 skippedCount++;
               }
             } catch (apiError) {
-                console.warn(`[CSV Import Bookings] Network/JS Error importing booking client ${leadToImport.clientName} (ID: ${leadToImport.id}):`, apiError, "Payload:", leadToImport);
-                skippedCount++;
+              console.warn(`[CSV Import Bookings] Network/JS Error importing booking client ${leadToImport.clientName} (ID: ${leadToImport.id}):`, apiError, "Payload:", leadToImport);
+              skippedCount++;
             }
           }
         }
@@ -918,18 +918,18 @@ export default function LeadsPage() {
         const endTime = Date.now();
         const durationInSeconds = ((endTime - startTime) / 1000).toFixed(2);
         if (successCount > 0 || skippedCount > 0) {
-            await fetchAllData();
+          await fetchAllData();
         }
         toast({
-            title: 'Import Processed',
-            description: `${successCount} bookings imported. ${skippedCount} rows skipped. Processed in ${durationInSeconds} seconds. Check console for details on skipped rows.`
+          title: 'Import Processed',
+          description: `${successCount} bookings imported. ${skippedCount} rows skipped. Processed in ${durationInSeconds} seconds. Check console for details on skipped rows.`
         });
         setIsImporting(false);
       }
     };
     reader.onerror = () => {
-        toast({ title: 'File Read Error', description: 'Could not read the selected file.', variant: 'destructive' });
-        setIsImporting(false);
+      toast({ title: 'File Read Error', description: 'Could not read the selected file.', variant: 'destructive' });
+      setIsImporting(false);
     }
     reader.readAsText(file);
   };
@@ -955,7 +955,7 @@ export default function LeadsPage() {
 
       if (selectedYachtId !== 'all' && lead.yacht !== selectedYachtId) return false;
       if (selectedAgentId !== 'all' && lead.agent !== selectedAgentId) return false;
-      if (selectedUserIdFilter !== 'all' && (lead.lastModifiedByUserId !== selectedUserIdFilter && lead.ownerUserId !== selectedUserIdFilter) ) return false;
+      if (selectedUserIdFilter !== 'all' && (lead.lastModifiedByUserId !== selectedUserIdFilter && lead.ownerUserId !== selectedUserIdFilter)) return false;
       if (statusFilter !== 'all' && lead.status !== statusFilter) return false;
       if (paymentConfirmationStatusFilter !== 'all' && lead.paymentConfirmationStatus !== paymentConfirmationStatusFilter) return false;
       return true;
@@ -1006,7 +1006,7 @@ export default function LeadsPage() {
         });
       }
       if (lead.perTicketRate && lead.perTicketRate > 0) {
-        counts.others += 1; 
+        counts.others += 1;
       }
     });
     return counts;
@@ -1021,11 +1021,11 @@ export default function LeadsPage() {
     setSelectedUserIdFilter('all');
     setStatusFilter('all');
     setPaymentConfirmationStatusFilter('all');
-    toast({title: "Filters Reset", description: "Showing all bookings."});
+    toast({ title: "Filters Reset", description: "Showing all bookings." });
   };
 
   const handleApplyFilters = () => {
-    toast({title: "Filters Applied", description: `Displaying ${filteredLeads.length} bookings based on current selections.`});
+    toast({ title: "Filters Applied", description: `Displaying ${filteredLeads.length} bookings based on current selections.` });
   };
 
   const calculateTotalGuestsFromPackageQuantitiesForExport = (lead: Lead): number => {
@@ -1057,19 +1057,19 @@ export default function LeadsPage() {
     };
 
     const formatCurrencyForCsv = (amount?: number | null) => {
-        if (amount === null || amount === undefined || isNaN(amount)) return '';
-        return amount.toFixed(2);
+      if (amount === null || amount === undefined || isNaN(amount)) return '';
+      return amount.toFixed(2);
     };
 
     const formatPercentageForCsv = (value?: number | null) => {
-        if (typeof value !== 'number' || isNaN(value)) return '';
-        return value.toFixed(1);
+      if (typeof value !== 'number' || isNaN(value)) return '';
+      return value.toFixed(1);
     };
     const formatNumericForCsv = (num?: number | null): string => {
-        if (num === null || num === undefined || isNaN(num) || num === 0) {
+      if (num === null || num === undefined || isNaN(num) || num === 0) {
         return '';
-        }
-        return String(num);
+      }
+      return String(num);
     };
 
 
@@ -1084,17 +1084,17 @@ export default function LeadsPage() {
               const pkgQuantityItem = lead.packageQuantities?.find(pq => pq.packageName === col.actualPackageName);
               const quantity = pkgQuantityItem?.quantity;
               cellValue = (quantity !== undefined && quantity > 0) ? String(quantity) : '';
-            } 
+            }
             else if (col.accessorKey === 'totalGuestsCalculated') {
               cellValue = calculateTotalGuestsFromPackageQuantitiesForExport(lead);
             } else if (col.accessorKey === 'averageRateCalculated') {
-                const totalGuests = calculateTotalGuestsFromPackageQuantitiesForExport(lead);
-                if (totalGuests > 0 && lead.totalAmount !== undefined && lead.totalAmount !== null) {
-                    const averageRate = lead.totalAmount / totalGuests;
-                    cellValue = formatCurrencyForCsv(averageRate);
-                } else {
-                    cellValue = '';
-                }
+              const totalGuests = calculateTotalGuestsFromPackageQuantitiesForExport(lead);
+              if (totalGuests > 0 && lead.totalAmount !== undefined && lead.totalAmount !== null) {
+                const averageRate = lead.totalAmount / totalGuests;
+                cellValue = formatCurrencyForCsv(averageRate);
+              } else {
+                cellValue = '';
+              }
             } else if (col.isAgentLookup) {
               cellValue = agentMap[lead.agent as string] || lead.agent;
             } else if (col.isYachtLookup) {
@@ -1106,22 +1106,22 @@ export default function LeadsPage() {
               const dateVal = lead[col.accessorKey as keyof Lead] as string | undefined;
               cellValue = dateVal && isValid(parseISO(dateVal)) ? format(parseISO(dateVal), 'dd/MM/yyyy HH:mm') : '';
             } else if (col.isShortDate) {
-               const dateVal = lead[col.accessorKey as keyof Lead] as string | undefined;
-               cellValue = dateVal && isValid(parseISO(dateVal)) ? format(parseISO(dateVal), 'dd/MM/yyyy') : '';
+              const dateVal = lead[col.accessorKey as keyof Lead] as string | undefined;
+              cellValue = dateVal && isValid(parseISO(dateVal)) ? format(parseISO(dateVal), 'dd/MM/yyyy') : '';
             } else if (col.isCurrency) {
-                cellValue = formatCurrencyForCsv(lead[col.accessorKey as keyof Lead] as number | null | undefined);
+              cellValue = formatCurrencyForCsv(lead[col.accessorKey as keyof Lead] as number | null | undefined);
             } else if (col.isPercentage) {
-                cellValue = formatPercentageForCsv(lead[col.accessorKey as keyof Lead] as number | null | undefined);
+              cellValue = formatPercentageForCsv(lead[col.accessorKey as keyof Lead] as number | null | undefined);
             } else if (col.accessorKey === 'freeGuestCount') {
-                cellValue = formatNumericForCsv(lead.freeGuestCount);
+              cellValue = formatNumericForCsv(lead.freeGuestCount);
             }
             else {
               cellValue = lead[col.accessorKey as keyof Lead];
             }
 
-            if ( (col.isPackageQuantityColumn || col.accessorKey === 'totalGuestsCalculated' || col.accessorKey === 'freeGuestCount') &&
-                 (cellValue === 0 || cellValue === undefined || cellValue === null || cellValue === '') ) {
-                return '';
+            if ((col.isPackageQuantityColumn || col.accessorKey === 'totalGuestsCalculated' || col.accessorKey === 'freeGuestCount') &&
+              (cellValue === 0 || cellValue === undefined || cellValue === null || cellValue === '')) {
+              return '';
             }
             if (col.accessorKey === 'perTicketRate' && (cellValue === null || cellValue === undefined)) {
               return '';
@@ -1172,10 +1172,10 @@ export default function LeadsPage() {
             </DropdownMenuContent>
           </DropdownMenu>
           {isAdmin && (
-             <Button variant="destructive" onClick={handleDeleteSelectedLeads} disabled={isImporting}>
-                <Trash2 className="mr-2 h-4 w-4" />
-                Delete Selected ({selectedLeadIds.length})
-              </Button>
+            <Button variant="destructive" onClick={handleDeleteSelectedLeads} disabled={isImporting}>
+              <Trash2 className="mr-2 h-4 w-4" />
+              Delete Selected ({selectedLeadIds.length})
+            </Button>
           )}
         </>
       )}
@@ -1204,10 +1204,10 @@ export default function LeadsPage() {
         />
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-6 p-4 border rounded-lg shadow-sm">
           {[...Array(7)].map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}
-          <Skeleton className="h-10 w-full" /> 
-          <Skeleton className="h-10 w-full" /> 
+          <Skeleton className="h-10 w-full" />
+          <Skeleton className="h-10 w-full" />
         </div>
-        <Skeleton className="h-24 w-full mb-4" /> 
+        <Skeleton className="h-24 w-full mb-4" />
         <div className="space-y-2">
           {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}
         </div>
@@ -1234,93 +1234,93 @@ export default function LeadsPage() {
       />
       <div className="mb-6 p-4 border rounded-lg shadow-sm">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            <div>
+          <div>
             <Label htmlFor="start-date-leads">Start Date (Event)</Label>
             <DatePicker date={startDate} setDate={setStartDate} placeholder="Start Date" />
-            </div>
-            <div>
+          </div>
+          <div>
             <Label htmlFor="end-date-leads">End Date (Event)</Label>
             <DatePicker date={endDate} setDate={setEndDate} placeholder="End Date" disabled={(date) => startDate ? date < startDate : false} />
-            </div>
-            <div>
+          </div>
+          <div>
             <Label htmlFor="status-filter-leads">Booking Status</Label>
             <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as LeadStatus | 'all')}>
-                <SelectTrigger id="status-filter-leads" className="w-full">
+              <SelectTrigger id="status-filter-leads" className="w-full">
                 <SelectValue placeholder="All Statuses" />
-                </SelectTrigger>
-                <SelectContent>
+              </SelectTrigger>
+              <SelectContent>
                 <SelectItem value="all">All Statuses</SelectItem>
                 {leadStatusOptions.map(status => (
-                    <SelectItem key={status} value={status}>{status}</SelectItem>
+                  <SelectItem key={status} value={status}>{status}</SelectItem>
                 ))}
-                </SelectContent>
+              </SelectContent>
             </Select>
-            </div>
-            <div>
+          </div>
+          <div>
             <Label htmlFor="payment-confirmation-status-filter-leads">Payment/Conf. Status</Label>
             <Select value={paymentConfirmationStatusFilter} onValueChange={(value) => setPaymentConfirmationStatusFilter(value as PaymentConfirmationStatus | 'all')}>
-                <SelectTrigger id="payment-confirmation-status-filter-leads" className="w-full">
+              <SelectTrigger id="payment-confirmation-status-filter-leads" className="w-full">
                 <SelectValue placeholder="All Payment/Conf. Statuses" />
-                </SelectTrigger>
-                <SelectContent>
+              </SelectTrigger>
+              <SelectContent>
                 <SelectItem value="all">All Payment/Conf. Statuses</SelectItem>
                 {paymentConfirmationStatusOptions.map(status => (
-                    <SelectItem key={status} value={status}>{status}</SelectItem>
+                  <SelectItem key={status} value={status}>{status}</SelectItem>
                 ))}
-                </SelectContent>
+              </SelectContent>
             </Select>
-            </div>
-            <div>
+          </div>
+          <div>
             <Label htmlFor="yacht-filter-leads">Yacht</Label>
             <Select value={selectedYachtId} onValueChange={setSelectedYachtId}>
-                <SelectTrigger id="yacht-filter-leads"><SelectValue placeholder="All Yachts" /></SelectTrigger>
-                <SelectContent>
+              <SelectTrigger id="yacht-filter-leads"><SelectValue placeholder="All Yachts" /></SelectTrigger>
+              <SelectContent>
                 <SelectItem value="all">All Yachts</SelectItem>
                 {allYachts.map(yacht => <SelectItem key={yacht.id} value={yacht.id}>{yacht.name}</SelectItem>)}
-                </SelectContent>
+              </SelectContent>
             </Select>
-            </div>
-            <div>
+          </div>
+          <div>
             <Label htmlFor="agent-filter-leads">Agent</Label>
             <Select value={selectedAgentId} onValueChange={setSelectedAgentId}>
-                <SelectTrigger id="agent-filter-leads"><SelectValue placeholder="All Agents" /></SelectTrigger>
-                <SelectContent>
+              <SelectTrigger id="agent-filter-leads"><SelectValue placeholder="All Agents" /></SelectTrigger>
+              <SelectContent>
                 <SelectItem value="all">All Agents</SelectItem>
                 {allAgents.map(agent => <SelectItem key={agent.id} value={agent.id}>{agent.name}</SelectItem>)}
-                </SelectContent>
+              </SelectContent>
             </Select>
-            </div>
-            <div>
+          </div>
+          <div>
             <Label htmlFor="user-filter-leads">User (Modified/Owner)</Label>
             <Select value={selectedUserIdFilter} onValueChange={setSelectedUserIdFilter}>
-                <SelectTrigger id="user-filter-leads"><SelectValue placeholder="All Users" /></SelectTrigger>
-                <SelectContent>
+              <SelectTrigger id="user-filter-leads"><SelectValue placeholder="All Users" /></SelectTrigger>
+              <SelectContent>
                 <SelectItem value="all">All Users</SelectItem>
                 {Object.entries(userMap).map(([id, name]) => <SelectItem key={id} value={id}>{name}</SelectItem>)}
-                </SelectContent>
+              </SelectContent>
             </Select>
-            </div>
+          </div>
         </div>
         <div className="flex items-center gap-2 mt-4 pt-4 border-t">
-            <Button onClick={resetFilters} variant="outline" className="w-full sm:w-auto">Reset Filters</Button>
-            <Button onClick={handleApplyFilters} variant="default" className="w-full sm:w-auto">Apply Filters</Button>
+          <Button onClick={resetFilters} variant="outline" className="w-full sm:w-auto">Reset Filters</Button>
+          <Button onClick={handleApplyFilters} variant="default" className="w-full sm:w-auto">Apply Filters</Button>
         </div>
-        
+
         <div className="mt-6 pt-4 border-t">
-            <h3 className="text-md font-semibold mb-3 text-foreground">Filtered Bookings Package Summary:</h3>
-            <div className="flex flex-wrap gap-3">
-                {(Object.keys(calculatedPackageCounts) as Array<keyof CalculatedPackageCounts>)
-                  .filter(key => calculatedPackageCounts[key] > 0 || (key === 'others' && calculatedPackageCounts[key] >= 0) ) 
-                  .map(key => {
-                    const label = packageCountLabels[key] || key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
-                    return (
-                        <div key={key} className="p-3 border rounded-lg bg-card shadow-sm text-center min-w-[120px]">
-                            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{label}</p>
-                            <p className="text-xl font-bold text-primary">{calculatedPackageCounts[key]}</p>
-                        </div>
-                    );
-                })}
-            </div>
+          <h3 className="text-md font-semibold mb-3 text-foreground">Filtered Bookings Package Summary:</h3>
+          <div className="flex flex-wrap gap-3">
+            {(Object.keys(calculatedPackageCounts) as Array<keyof CalculatedPackageCounts>)
+              .filter(key => calculatedPackageCounts[key] > 0 || (key === 'others' && calculatedPackageCounts[key] >= 0))
+              .map(key => {
+                const label = packageCountLabels[key] || key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+                return (
+                  <div key={key} className="p-3 border rounded-lg bg-card shadow-sm text-center min-w-[120px]">
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{label}</p>
+                    <p className="text-xl font-bold text-primary">{calculatedPackageCounts[key]}</p>
+                  </div>
+                );
+              })}
+          </div>
         </div>
       </div>
 

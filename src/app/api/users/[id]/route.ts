@@ -7,9 +7,9 @@ import { hash } from 'bcryptjs';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const id = params.id;
+  const { id } = await params;
   if (!id) {
     return NextResponse.json({ message: 'User ID is required' }, { status: 400 });
   }
@@ -25,16 +25,16 @@ export async function GET(
     }
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
-    console.error(`[API GET /api/users/${id}] Error:`, error);
+    console.error(`[API GET /api/users] Error:`, error);
     return NextResponse.json({ message: `Failed to fetch user: ${errorMessage}` }, { status: 500 });
   }
 }
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const id = params.id;
+  const { id } = await params;
   if (!id) {
     return NextResponse.json({ message: 'User ID is required for update' }, { status: 400 });
   }
@@ -92,16 +92,16 @@ export async function PUT(
 
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
-    console.error(`[API PUT /api/users/${id}] Error:`, error);
+    console.error(`[API PUT /api/users] Error:`, error);
     return NextResponse.json({ message: `Failed to update user: ${errorMessage}` }, { status: 500 });
   }
 }
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const id = params.id;
+  const { id } = await params;
   if (!id) {
     return NextResponse.json({ message: 'User ID is required for deletion' }, { status: 400 });
   }
@@ -115,7 +115,7 @@ export async function DELETE(
     return NextResponse.json({ message: 'User deleted successfully' }, { status: 200 });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
-    console.error(`[API DELETE /api/users/${id}] Error:`, error);
+    console.error(`[API DELETE /api/users] Error:`, error);
     return NextResponse.json({ message: `Failed to delete user: ${errorMessage}` }, { status: 500 });
   }
 }

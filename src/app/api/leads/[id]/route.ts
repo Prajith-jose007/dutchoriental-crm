@@ -111,9 +111,9 @@ function buildLeadUpdateSetClause(data: Partial<Omit<Lead, 'id' | 'createdAt' | 
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const id = params.id;
+  const { id } = await params;
   if (!id) {
     return NextResponse.json({ message: 'Booking ID is required' }, { status: 400 });
   }
@@ -129,16 +129,16 @@ export async function GET(
     }
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : String(err);
-    console.error(`[API GET /api/leads/${id}] Error:`, errorMessage);
+    console.error(`[API GET /api/leads] Error:`, errorMessage);
     return NextResponse.json({ message: `Failed to fetch booking: ${errorMessage}` }, { status: 500 });
   }
 }
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const id = params.id;
+  const { id } = await params;
   if (!id) {
     return NextResponse.json({ message: 'Booking ID is required for update' }, { status: 400 });
   }
@@ -192,16 +192,16 @@ export async function PUT(
 
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : String(err);
-    console.error(`[API PUT /api/leads/${id}] Error:`, errorMessage);
+    console.error(`[API PUT /api/leads] Error:`, errorMessage);
     return NextResponse.json({ message: `Failed to update booking: ${errorMessage}` }, { status: 500 });
   }
 }
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const id = params.id;
+  const { id } = await params;
   if (!id) {
     return NextResponse.json({ message: 'Booking ID is required for deletion' }, { status: 400 });
   }
@@ -235,7 +235,7 @@ export async function DELETE(
     return NextResponse.json({ message: 'Booking deleted successfully' }, { status: 200 });
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : String(err);
-    console.error(`[API DELETE /api/leads/${id}] Error:`, errorMessage);
+    console.error(`[API DELETE /api/leads] Error:`, errorMessage);
     return NextResponse.json({ message: `Failed to delete booking: ${errorMessage}` }, { status: 500 });
   }
 }

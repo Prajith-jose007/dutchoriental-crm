@@ -20,7 +20,7 @@ export const metadata: Metadata = {
   title: AppName,
   description: `Customer Relationship Management for ${AppName}`,
   icons: {
-    icon: '/favicon.ico', // Updated to favicon.ico
+    icon: '/logo-fav.png',
     // You might also want to provide other icon types for broader compatibility
     // For example:
     // shortcut: '/favicon.ico', // Traditional .ico

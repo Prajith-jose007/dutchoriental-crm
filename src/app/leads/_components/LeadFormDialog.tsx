@@ -58,8 +58,8 @@ const leadFormSchema = z.object({
   month: z.date({ required_error: "Booking/Event Date is required." }),
   notes: z.string().optional(),
   yacht: z.string().min(1, 'Yacht selection is required'),
-  type: z.enum(leadTypeOptions, { required_error: "Booking type is required."}),
-  paymentConfirmationStatus: z.enum(paymentConfirmationStatusOptions, { required_error: "Payment confirmation status is required."}),
+  type: z.enum(leadTypeOptions, { required_error: "Booking type is required." }),
+  paymentConfirmationStatus: z.enum(paymentConfirmationStatusOptions, { required_error: "Payment confirmation status is required." }),
   transactionId: z.string().optional(),
   bookingRefNo: z.string().optional(),
   modeOfPayment: z.enum(modeOfPaymentOptions),
@@ -198,7 +198,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
 
   const filteredYachts = useMemo(() => {
     if (!watchedLeadType || allYachts.length === 0) {
-       return allYachts;
+      return allYachts;
     }
     const filtered = allYachts.filter(yacht => yacht.category === watchedLeadType);
     return filtered;
@@ -217,10 +217,10 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
 
   useEffect(() => {
     if (!isOpen || isLoadingDropdowns || !watchedYachtId) {
-        if (!watchedYachtId && form.getValues('packageQuantities')?.length > 0) {
-            replacePackageQuantities([]);
-        }
-        return;
+      if (!watchedYachtId && form.getValues('packageQuantities')?.length > 0) {
+        replacePackageQuantities([]);
+      }
+      return;
     }
 
     const selectedYacht = allYachts.find(y => y.id === watchedYachtId);
@@ -243,14 +243,14 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
         // Preserve existing quantities and rates from the lead data
         const currentPQs = form.getValues('packageQuantities') || [];
         const newPQs = selectedYacht.packages.map(yachtPkg => {
-            const existingPQ = currentPQs.find(lpq => lpq.packageId === yachtPkg.id);
-            return {
-                packageId: String(yachtPkg.id),
-                packageName: String(yachtPkg.name),
-                quantity: existingPQ?.quantity || 0,
-                // Always use the official rate from the yacht, not from existing data
-                rate: Number(Number(yachtPkg.rate || 0).toFixed(2)),
-            };
+          const existingPQ = currentPQs.find(lpq => lpq.packageId === yachtPkg.id);
+          return {
+            packageId: String(yachtPkg.id),
+            packageName: String(yachtPkg.name),
+            quantity: existingPQ?.quantity || 0,
+            // Always use the official rate from the yacht, not from existing data
+            rate: Number(Number(yachtPkg.rate || 0).toFixed(2)),
+          };
         });
         replacePackageQuantities(newPQs);
       }
@@ -258,7 +258,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
       replacePackageQuantities([]);
     }
     form.trigger(['packageQuantities']);
-}, [isOpen, watchedYachtId, allYachts, replacePackageQuantities, lead, isLoadingDropdowns, form]);
+  }, [isOpen, watchedYachtId, allYachts, replacePackageQuantities, lead, isLoadingDropdowns, form]);
 
 
   useEffect(() => {
@@ -282,18 +282,27 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
         let calculatedTotalAmount = 0;
         let tempTotalGuests = 0;
 
+        const calculationDetails: any[] = [];
         packageQuantities.forEach(pqItem => {
           const quantity = Number(pqItem.quantity || 0);
           const rate = Number(pqItem.rate || 0);
           if (quantity > 0 && rate >= 0) {
             calculatedTotalAmount += quantity * rate;
+            calculationDetails.push({ pkg: pqItem.packageName, qty: quantity, rate, subtotal: quantity * rate });
           }
           tempTotalGuests += quantity;
         });
 
         if (perTicketRate && Number(perTicketRate) > 0) {
-          calculatedTotalAmount += Number(perTicketRate);
+          // User requested that 'Other Charges' should NOT be included in the Total Amount calculation.
+          // calculatedTotalAmount += Number(perTicketRate); 
+          calculationDetails.push({ pkg: 'Other Charges (Excluded)', qty: 1, rate: Number(perTicketRate) });
         }
+
+        console.log("[BookingForm] Calculation Update:", {
+          total: calculatedTotalAmount,
+          details: calculationDetails
+        });
 
         calculatedTotalAmount = Number(calculatedTotalAmount.toFixed(2));
         setCalculatedTotalGuests(tempTotalGuests);
@@ -335,18 +344,18 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
       if (initialValues.yacht && allYachts.length > 0) {
         const selectedYachtOnReset = allYachts.find(y => y.id === initialValues.yacht);
         if (selectedYachtOnReset?.packages) {
-            const newPQs = selectedYachtOnReset.packages.map(yachtPkg => {
-                const existingPQ = initialValues.packageQuantities?.find(lpq => lpq.packageId === yachtPkg.id);
-                return {
-                    packageId: yachtPkg.id,
-                    packageName: yachtPkg.name,
-                    quantity: existingPQ?.quantity || 0,
-                    rate: Number(Number(yachtPkg.rate || 0).toFixed(2)),
-                };
-            });
-            replacePackageQuantities(newPQs);
+          const newPQs = selectedYachtOnReset.packages.map(yachtPkg => {
+            const existingPQ = initialValues.packageQuantities?.find(lpq => lpq.packageId === yachtPkg.id);
+            return {
+              packageId: yachtPkg.id,
+              packageName: yachtPkg.name,
+              quantity: existingPQ?.quantity || 0,
+              rate: Number(Number(yachtPkg.rate || 0).toFixed(2)),
+            };
+          });
+          replacePackageQuantities(newPQs);
         } else {
-            replacePackageQuantities([]);
+          replacePackageQuantities([]);
         }
       } else {
         replacePackageQuantities([]);
@@ -357,7 +366,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
         const selectedAgentOnReset = allAgents.find(a => a.id === agentIdForCommission);
         form.setValue('commissionPercentage', Number(selectedAgentOnReset?.discount || 0));
       } else if (!agentIdForCommission) {
-         form.setValue('commissionPercentage', 0);
+        form.setValue('commissionPercentage', 0);
       }
     }
   }, [lead, form, isOpen, allAgents, allYachts, currentUserId, replacePackageQuantities]);
@@ -365,9 +374,9 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
 
   function onSubmit(data: LeadFormData) {
     if (isFormDisabled) {
-        toast({ title: "Action Denied", description: "This booking is closed and cannot be modified by non-administrators.", variant: "destructive" });
-        onOpenChange(false);
-        return;
+      toast({ title: "Action Denied", description: "This booking is closed and cannot be modified by non-administrators.", variant: "destructive" });
+      onOpenChange(false);
+      return;
     }
     let rawFinalTotalAmount = 0;
 
@@ -381,9 +390,9 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
       });
     }
 
-    if (data.perTicketRate && Number(data.perTicketRate) > 0) {
-        rawFinalTotalAmount += Number(data.perTicketRate);
-    }
+    // if (data.perTicketRate && Number(data.perTicketRate) > 0) {
+    //   rawFinalTotalAmount += Number(data.perTicketRate);
+    // }
 
     const finalTotalAmount = Number(rawFinalTotalAmount.toFixed(2));
 
@@ -396,13 +405,13 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
 
     const finalPackageQuantities = (data.packageQuantities && Array.isArray(data.packageQuantities))
       ? data.packageQuantities.map(pq => {
-          return {
-            packageId: String(pq.packageId),
-            packageName: String(pq.packageName),
-            quantity: Number(pq.quantity || 0),
-            rate: Number(Number(pq.rate || 0).toFixed(2)),
-          };
-        })
+        return {
+          packageId: String(pq.packageId),
+          packageName: String(pq.packageName),
+          quantity: Number(pq.quantity || 0),
+          rate: Number(Number(pq.rate || 0).toFixed(2)),
+        };
+      })
       : [];
 
     const submittedLead: Lead = {
@@ -458,437 +467,445 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
           </DialogDescription>
         </DialogHeader>
         <ScrollArea className="max-h-[70vh] p-1">
-        {isFormDisabled && (
-             <Alert variant="destructive" className="mb-4">
-                <Terminal className="h-4 w-4" />
-                <AlertTitle>Booking Closed</AlertTitle>
-                <AlertDescription>
-                    This booking is closed and cannot be edited by non-administrators.
-                </AlertDescription>
+          {isFormDisabled && (
+            <Alert variant="destructive" className="mb-4">
+              <Terminal className="h-4 w-4" />
+              <AlertTitle>Booking Closed</AlertTitle>
+              <AlertDescription>
+                This booking is closed and cannot be edited by non-administrators.
+              </AlertDescription>
             </Alert>
-        )}
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 p-4">
-           <fieldset disabled={isFormDisabled}>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              <FormField
-                control={form.control}
-                name="clientName"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Client Name</FormLabel>
-                    <FormControl><Input placeholder="e.g., Acme Corp" {...field} /></FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="agent"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Agent</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value || undefined} defaultValue={field.value}>
-                      <FormControl><SelectTrigger><SelectValue placeholder="Select an agent" /></SelectTrigger></FormControl>
-                      <SelectContent>
-                        {allAgents.map((agent) => (<SelectItem key={agent.id} value={agent.id}>{agent.name}</SelectItem>))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="status"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Status</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value || undefined} defaultValue={field.value} disabled={isFormDisabled && !isAdmin}>
-                      <FormControl><SelectTrigger><SelectValue placeholder="Select status" /></SelectTrigger></FormControl>
-                      <SelectContent>
-                        {leadStatusOptions.map(status => (<SelectItem key={status} value={status}>{status}</SelectItem>))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-               <FormField
-                control={form.control}
-                name="month"
-                render={({ field }) => (
-                  <FormItem className="flex flex-col">
-                    <FormLabel>Booking/Event Date</FormLabel>
-                     <DatePicker
-                        date={field.value ? (isValid(field.value) ? field.value : new Date()) : new Date()}
-                        setDate={(date) => {
+          )}
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 p-4">
+              <fieldset disabled={isFormDisabled}>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="clientName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Client Name</FormLabel>
+                        <FormControl><Input placeholder="e.g., Acme Corp" {...field} /></FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="agent"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Agent</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value || undefined} defaultValue={field.value}>
+                          <FormControl><SelectTrigger><SelectValue placeholder="Select an agent" /></SelectTrigger></FormControl>
+                          <SelectContent>
+                            {allAgents.map((agent) => (<SelectItem key={agent.id} value={agent.id}>{agent.name}</SelectItem>))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="status"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Status</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value || undefined} defaultValue={field.value} disabled={isFormDisabled && !isAdmin}>
+                          <FormControl><SelectTrigger><SelectValue placeholder="Select status" /></SelectTrigger></FormControl>
+                          <SelectContent>
+                            {leadStatusOptions.map(status => (<SelectItem key={status} value={status}>{status}</SelectItem>))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="month"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-col">
+                        <FormLabel>Booking/Event Date</FormLabel>
+                        <DatePicker
+                          date={field.value ? (isValid(field.value) ? field.value : new Date()) : new Date()}
+                          setDate={(date) => {
                             if (date) {
-                                field.onChange(date);
+                              field.onChange(date);
                             }
-                        }}
-                        placeholder="Pick booking date"
-                    />
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormItem>
-                <FormLabel>Cruise Scope</FormLabel>
-                <Select
-                    value={cruiseScope}
-                    onValueChange={(value: 'private' | 'shared') => {
+                          }}
+                          placeholder="Pick booking date"
+                        />
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormItem>
+                    <FormLabel>Cruise Scope</FormLabel>
+                    <Select
+                      value={cruiseScope}
+                      onValueChange={(value: 'private' | 'shared') => {
                         setCruiseScope(value);
                         form.setValue('type', '' as any);
                         form.setValue('yacht', '');
                         replacePackageQuantities([]);
-                    }}
-                    disabled={isFormDisabled}
-                >
-                    <FormControl>
+                      }}
+                      disabled={isFormDisabled}
+                    >
+                      <FormControl>
                         <SelectTrigger>
-                            <SelectValue placeholder="Select cruise scope" />
+                          <SelectValue placeholder="Select cruise scope" />
                         </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
+                      </FormControl>
+                      <SelectContent>
                         <SelectItem value="shared">Shared Cruise</SelectItem>
                         <SelectItem value="private">Private Cruise</SelectItem>
-                    </SelectContent>
-                </Select>
-              </FormItem>
-              <FormField
-                control={form.control}
-                name="type"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Booking Type</FormLabel>
-                     <Select
-                        onValueChange={(value) => {
+                      </SelectContent>
+                    </Select>
+                  </FormItem>
+                  <FormField
+                    control={form.control}
+                    name="type"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Booking Type</FormLabel>
+                        <Select
+                          onValueChange={(value) => {
                             field.onChange(value);
                             form.setValue('yacht', '');
                             replacePackageQuantities([]);
-                        }}
-                        value={field.value || undefined}
-                        defaultValue={field.value}
-                        disabled={isFormDisabled || !cruiseScope}
-                     >
-                      <FormControl><SelectTrigger><SelectValue placeholder={!cruiseScope ? "Select Scope first" : "Select booking type"} /></SelectTrigger></FormControl>
-                      <SelectContent>
-                        {filteredLeadTypeOptions.map(typeOpt => (<SelectItem key={typeOpt} value={typeOpt}>{typeOpt}</SelectItem>))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="yacht"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Yacht</FormLabel>
-                    <Select
-                        onValueChange={(value) => {
+                          }}
+                          value={field.value || undefined}
+                          defaultValue={field.value}
+                          disabled={isFormDisabled || !cruiseScope}
+                        >
+                          <FormControl><SelectTrigger><SelectValue placeholder={!cruiseScope ? "Select Scope first" : "Select booking type"} /></SelectTrigger></FormControl>
+                          <SelectContent>
+                            {filteredLeadTypeOptions.map(typeOpt => (<SelectItem key={typeOpt} value={typeOpt}>{typeOpt}</SelectItem>))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="yacht"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Yacht</FormLabel>
+                        <Select
+                          onValueChange={(value) => {
                             field.onChange(value);
-                        }}
-                        value={field.value || undefined}
-                        defaultValue={field.value}
-                        disabled={!watchedLeadType || isLoadingDropdowns || filteredYachts.length === 0}
-                    >
-                      <FormControl><SelectTrigger><SelectValue placeholder={!watchedLeadType ? "Select Booking Type first" : (filteredYachts.length === 0 && !isLoadingDropdowns ? "No yachts for this type" : "Select a yacht")} /></SelectTrigger></FormControl>
-                      <SelectContent>
-                        {filteredYachts.map((yacht) => (<SelectItem key={yacht.id} value={yacht.id}>{yacht.name}</SelectItem>))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-               <FormField
-                control={form.control}
-                name="modeOfPayment"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Mode of Payment</FormLabel>
-                     <Select onValueChange={field.onChange} value={field.value || undefined} defaultValue={field.value}>
-                      <FormControl><SelectTrigger><SelectValue placeholder="Select payment mode" /></SelectTrigger></FormControl>
-                      <SelectContent>
-                        {modeOfPaymentOptions.map(mop => (<SelectItem key={mop} value={mop}>{mop}</SelectItem>))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="paymentConfirmationStatus"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Payment/Conf. Status</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value || undefined} defaultValue={field.value}>
-                      <FormControl><SelectTrigger><SelectValue placeholder="Select payment status" /></SelectTrigger></FormControl>
-                      <SelectContent>
-                        {paymentConfirmationStatusOptions.map(status => (<SelectItem key={status} value={status}>{status}</SelectItem>))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-               <FormField
-                control={form.control}
-                name="transactionId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Transaction ID</FormLabel>
-                    <FormControl><Input placeholder="Pending Generation" {...field} value={field.value || 'Pending Generation'} readOnly className="bg-muted/50 cursor-not-allowed" /></FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="bookingRefNo"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Booking REF No: (Optional)</FormLabel>
-                    <FormControl>
-                      <Input placeholder="e.g., REF12345" {...field} value={field.value || ''} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="freeGuestCount"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Free Guests/Items Count (Optional)</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        placeholder="0"
-                        {...field}
-                        value={field.value || 0}
-                        onChange={e => field.onChange(parseInt(e.target.value,10) || 0)}
-                        min="0"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-               <FormField
-                control={form.control}
-                name="perTicketRate"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Other Charges (Optional)</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        placeholder="0.00"
-                        {...field}
-                        value={field.value === null || field.value === undefined ? '' : String(field.value)}
-                        onChange={e => {
-                            const val = e.target.value;
-                            if (val === '') {
+                          }}
+                          value={field.value || undefined}
+                          defaultValue={field.value}
+                          disabled={!watchedLeadType || isLoadingDropdowns || filteredYachts.length === 0}
+                        >
+                          <FormControl><SelectTrigger><SelectValue placeholder={!watchedLeadType ? "Select Booking Type first" : (filteredYachts.length === 0 && !isLoadingDropdowns ? "No yachts for this type" : "Select a yacht")} /></SelectTrigger></FormControl>
+                          <SelectContent>
+                            {filteredYachts.map((yacht) => (<SelectItem key={yacht.id} value={yacht.id}>{yacht.name}</SelectItem>))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="modeOfPayment"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Mode of Payment</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value || undefined} defaultValue={field.value}>
+                          <FormControl><SelectTrigger><SelectValue placeholder="Select payment mode" /></SelectTrigger></FormControl>
+                          <SelectContent>
+                            {modeOfPaymentOptions.map(mop => (<SelectItem key={mop} value={mop}>{mop}</SelectItem>))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="paymentConfirmationStatus"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Payment/Conf. Status</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value || undefined} defaultValue={field.value}>
+                          <FormControl><SelectTrigger><SelectValue placeholder="Select payment status" /></SelectTrigger></FormControl>
+                          <SelectContent>
+                            {paymentConfirmationStatusOptions.map(status => (<SelectItem key={status} value={status}>{status}</SelectItem>))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="transactionId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Transaction ID</FormLabel>
+                        <FormControl><Input placeholder="Pending Generation" {...field} value={field.value || 'Pending Generation'} readOnly className="bg-muted/50 cursor-not-allowed" /></FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="bookingRefNo"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Booking REF No: (Optional)</FormLabel>
+                        <FormControl>
+                          <Input placeholder="e.g., REF12345" {...field} value={field.value || ''} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="freeGuestCount"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Free Guests/Items Count (Optional)</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            placeholder="0"
+                            {...field}
+                            value={field.value || 0}
+                            onChange={e => field.onChange(parseInt(e.target.value, 10) || 0)}
+                            min="0"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="perTicketRate"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Other Charges (Optional)</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            placeholder="0.00"
+                            {...field}
+                            value={field.value === null || field.value === undefined ? '' : String(field.value)}
+                            onChange={e => {
+                              const val = e.target.value;
+                              if (val === '') {
                                 field.onChange(null);
-                            } else {
+                              } else {
                                 const numVal = parseFloat(val);
                                 field.onChange(isNaN(numVal) ? null : numVal);
-                            }
-                        }}
-                        step="0.01"
-                        min="0"
-                      />
-                    </FormControl>
-                     <FormDescription>Specify any other charges for this booking.</FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
+                              }
+                            }}
+                            step="0.01"
+                            min="0"
+                          />
+                        </FormControl>
+                        <FormDescription>Specify any other charges for this booking.</FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
 
 
-            {watchedYachtId && packageQuantityFields.length > 0 && (
-              <div className="pt-4 border-t mt-6">
-                <h3 className="text-lg font-medium mb-1">Package Item Quantities & Rates</h3>
-                <p className="text-sm text-muted-foreground mb-3">
-                  Enter quantities for the selected yacht. Rates are fixed and cannot be changed here.
-                </p>
-                <div className="space-y-4">
-                  {packageQuantityFields.map((fieldItem, index) => (
-                    <div key={fieldItem.id} className="p-3 border rounded-md">
-                      <p className="font-medium mb-2">{fieldItem.packageName}</p>
-                      <div className="grid grid-cols-2 gap-4">
-                        <FormField
-                          control={form.control}
-                          name={`packageQuantities.${index}.quantity`}
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Quantity</FormLabel>
-                              <FormControl>
-                                <Input type="number" min="0" placeholder="0" {...field} value={field.value ?? 0} onChange={e => field.onChange(parseInt(e.target.value, 10) || 0)} />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name={`packageQuantities.${index}.rate`}
-                          render={({ field: rateField }) => (
-                            <FormItem>
-                              <FormLabel>Rate (AED)</FormLabel>
-                              <FormControl>
-                                <Input
-                                  type="number"
-                                  placeholder="0.00"
-                                  {...rateField}
-                                  value={rateField.value ?? 0}
-                                  readOnly
-                                  className="bg-muted/50 cursor-not-allowed"
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
+                {watchedYachtId && packageQuantityFields.length > 0 && (
+                  <div className="pt-4 border-t mt-6">
+                    <h3 className="text-lg font-medium mb-1">Package Item Quantities & Rates</h3>
+                    <p className="text-sm text-muted-foreground mb-3">
+                      Enter quantities for the selected yacht. Rates are fixed and cannot be changed here.
+                    </p>
+                    <div className="space-y-4">
+                      {packageQuantityFields.map((fieldItem, index) => (
+                        <div key={fieldItem.id} className="p-3 border rounded-md">
+                          <p className="font-medium mb-2">{fieldItem.packageName}</p>
+                          <div className="grid grid-cols-2 gap-4">
+                            <FormField
+                              control={form.control}
+                              name={`packageQuantities.${index}.quantity`}
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Quantity</FormLabel>
+                                  <FormControl>
+                                    <Input type="number" min="0" placeholder="0" {...field} value={field.value ?? 0} onChange={e => field.onChange(parseInt(e.target.value, 10) || 0)} />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                            <FormField
+                              control={form.control}
+                              name={`packageQuantities.${index}.rate`}
+                              render={({ field: rateField }) => (
+                                <FormItem>
+                                  <FormLabel>Rate (AED)</FormLabel>
+                                  <FormControl>
+                                    <Input
+                                      type="number"
+                                      placeholder="0.00"
+                                      {...rateField}
+                                      value={rateField.value ?? 0}
+                                      readOnly
+                                      className="bg-muted/50 cursor-not-allowed"
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
-              </div>
-            )}
-             {watchedYachtId && (!selectedYachtForRateDisplay || !selectedYachtForRateDisplay.packages || selectedYachtForRateDisplay.packages.length === 0) && !isLoadingDropdowns && (
-                <div className="pt-4 border-t mt-6">
+                  </div>
+                )}
+                {watchedYachtId && (!selectedYachtForRateDisplay || !selectedYachtForRateDisplay.packages || selectedYachtForRateDisplay.packages.length === 0) && !isLoadingDropdowns && (
+                  <div className="pt-4 border-t mt-6">
                     <p className="text-muted-foreground">The selected yacht currently has no packages defined. Please add packages in the Yacht Management section.</p>
-                </div>
-            )}
+                  </div>
+                )}
 
 
-             <FormField
-              control={form.control}
-              name="notes"
-              render={({ field }) => (
-                <FormItem className="pt-4 border-t mt-6">
-                  <FormLabel>Notes</FormLabel>
-                  <FormControl>
-                    <Textarea
-                      placeholder="Add any notes or updates about this booking..."
-                      className="resize-y min-h-[100px]"
-                      {...field}
-                      value={field.value || ''}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-
-            <h3 className="text-lg font-medium pt-4 border-t mt-6">Financials</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <FormItem>
-                  <FormLabel>Total Guests</FormLabel>
-                  <Input type="number" value={calculatedTotalGuests} readOnly className="bg-muted/50" />
-                  <FormDescription>Calculated from package quantities</FormDescription>
-                </FormItem>
                 <FormField
                   control={form.control}
-                  name="totalAmount"
+                  name="notes"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Total Amount (AED)</FormLabel>
-                      <FormControl><Input type="number" placeholder="0.00" {...field} value={Number(field.value).toFixed(2)} readOnly className="bg-muted/50" /></FormControl>
-                       <FormDescription>Calculated from packages & other charges</FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                 <FormField
-                  control={form.control}
-                  name="commissionPercentage"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Agent Discount (%)</FormLabel>
-                      <FormControl><Input type="number" placeholder="0" {...field} value={Number(field.value || 0)} readOnly className="bg-muted/50" /></FormControl>
-                      <FormDescription>From selected agent</FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="commissionAmount"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Commission Amount (AED)</FormLabel>
-                      <FormControl><Input type="number" placeholder="0.00" {...field} value={Number(field.value).toFixed(2)} readOnly className="bg-muted/50" /></FormControl>
-                      <FormDescription>Calculated value</FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="netAmount"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Net Amount (AED)</FormLabel>
-                      <FormControl><Input type="number" placeholder="0.00" {...field} value={Number(field.value).toFixed(2)} readOnly className="bg-muted/50" /></FormControl>
-                      <FormDescription>Total - Commission</FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="paidAmount"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Paid Amount (AED)</FormLabel>
+                    <FormItem className="pt-4 border-t mt-6">
+                      <FormLabel>Notes</FormLabel>
                       <FormControl>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          placeholder="0.00"
+                        <Textarea
+                          placeholder="Add any notes or updates about this booking..."
+                          className="resize-y min-h-[100px]"
                           {...field}
-                          value={field.value ?? 0}
-                          onChange={(e) => field.onChange(e.target.value === '' ? 0 : parseFloat(e.target.value))}
+                          value={field.value || ''}
                         />
                       </FormControl>
-                      <FormDescription>Amount paid by client</FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-                <FormField
-                  control={form.control}
-                  name="balanceAmount"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Balance Amount (AED)</FormLabel>
-                      <FormControl><Input type="number" placeholder="0.00" {...field} value={Number(field.value).toFixed(2)} readOnly className="bg-muted/50" /></FormControl>
-                      <FormDescription>Net Amount - Paid</FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-            </div>
-            </fieldset>
-            <DialogFooter className="pt-6">
-              <DialogClose asChild><Button type="button" variant="outline">Cancel</Button></DialogClose>
-              <Button type="submit" disabled={form.formState.isSubmitting || isLoadingDropdowns || isFormDisabled}>
-                {isLoadingDropdowns ? 'Loading...' : (lead ? (isFormDisabled ? 'Close' : 'Save Changes') : 'Add Booking')}
-              </Button>
-            </DialogFooter>
-          </form>
-        </Form>
+
+
+                <h3 className="text-lg font-medium pt-4 border-t mt-6">Financials</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <FormItem>
+                    <FormLabel>Total Guests</FormLabel>
+                    <Input type="number" value={calculatedTotalGuests} readOnly className="bg-muted/50" />
+                    <FormDescription>Calculated from package quantities</FormDescription>
+                  </FormItem>
+                  <FormField
+                    control={form.control}
+                    name="totalAmount"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Total Amount (Gross)</FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            value={field.value || 0}
+                            readOnly
+                            className="bg-muted/50 font-semibold"
+                          />
+                        </FormControl>
+                        <FormDescription>Sum of packages + other charges</FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="commissionPercentage"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Agent Discount (%)</FormLabel>
+                        <FormControl><Input type="number" placeholder="0" {...field} value={Number(field.value || 0)} readOnly className="bg-muted/50" /></FormControl>
+                        <FormDescription>From selected agent</FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="commissionAmount"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Commission Amount (AED)</FormLabel>
+                        <FormControl><Input type="number" placeholder="0.00" {...field} value={Number(field.value).toFixed(2)} readOnly className="bg-muted/50" /></FormControl>
+                        <FormDescription>Calculated value</FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="netAmount"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Net Amount (AED)</FormLabel>
+                        <FormControl><Input type="number" placeholder="0.00" {...field} value={Number(field.value).toFixed(2)} readOnly className="bg-muted/50" /></FormControl>
+                        <FormDescription>Total - Commission</FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="paidAmount"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Paid Amount (AED)</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            placeholder="0.00"
+                            {...field}
+                            value={field.value ?? 0}
+                            onChange={(e) => field.onChange(e.target.value === '' ? 0 : parseFloat(e.target.value))}
+                          />
+                        </FormControl>
+                        <FormDescription>Amount paid by client</FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="balanceAmount"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Balance Amount (AED)</FormLabel>
+                        <FormControl><Input type="number" placeholder="0.00" {...field} value={Number(field.value).toFixed(2)} readOnly className="bg-muted/50" /></FormControl>
+                        <FormDescription>Net Amount - Paid</FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </fieldset>
+              <DialogFooter className="pt-6">
+                <DialogClose asChild><Button type="button" variant="outline">Cancel</Button></DialogClose>
+                <Button type="submit" disabled={form.formState.isSubmitting || isLoadingDropdowns || isFormDisabled}>
+                  {isLoadingDropdowns ? 'Loading...' : (lead ? (isFormDisabled ? 'Close' : 'Save Changes') : 'Add Booking')}
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
         </ScrollArea>
       </DialogContent>
     </Dialog>

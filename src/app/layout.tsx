@@ -19,6 +19,11 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: AppName,
   description: `Customer Relationship Management for ${AppName}`,
+  icons: {
+    icon: '/logo-fav.png',
+    shortcut: '/logo-fav.png',
+    apple: '/logo-fav.png',
+  },
 
 };
 

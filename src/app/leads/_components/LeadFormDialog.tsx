@@ -40,7 +40,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useEffect, useState, useMemo } from 'react';
 import { format, formatISO, parseISO, isValid, getYear } from 'date-fns';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Terminal } from 'lucide-react';
+import { Terminal, XCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 
@@ -57,6 +57,10 @@ const leadFormSchema = z.object({
   status: z.enum(leadStatusOptions),
   month: z.date({ required_error: "Booking/Event Date is required." }),
   notes: z.string().optional(),
+  freeGuestDetails: z.array(z.object({
+    type: z.string(),
+    quantity: z.number().min(0)
+  })).optional(),
   yacht: z.string().min(1, 'Yacht selection is required'),
   type: z.enum(leadTypeOptions, { required_error: "Booking type is required." }),
   paymentConfirmationStatus: z.enum(paymentConfirmationStatusOptions, { required_error: "Payment confirmation status is required." }),
@@ -130,6 +134,7 @@ const getDefaultFormValues = (existingLead?: Lead | null, currentUserId?: string
     ownerUserId: existingLead?.ownerUserId || currentUserId || undefined,
     createdAt: existingLead?.createdAt || undefined,
     updatedAt: existingLead?.updatedAt || undefined,
+    freeGuestDetails: existingLead?.freeGuestDetails || [],
   };
 };
 
@@ -150,6 +155,11 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
   const { fields: packageQuantityFields, replace: replacePackageQuantities } = useFieldArray({
     control: form.control,
     name: "packageQuantities",
+  });
+
+  const { fields: freeGuestFields, append: appendFreeGuest, remove: removeFreeGuest } = useFieldArray({
+    control: form.control,
+    name: "freeGuestDetails" as any, // Cast to any if necessary due to schema timing
   });
 
   const watchedLeadType = form.watch('type');
@@ -436,6 +446,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
       paidAmount: finalPaidAmount,
       balanceAmount: actualSignedBalanceAmount,
       status: data.status,
+      freeGuestDetails: data.freeGuestDetails || [],
     };
     onSubmitSuccess(submittedLead);
     onOpenChange(false);
@@ -669,26 +680,116 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
                       </FormItem>
                     )}
                   />
-                  <FormField
-                    control={form.control}
-                    name="freeGuestCount"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Free Guests/Items Count (Optional)</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="number"
-                            placeholder="0"
-                            {...field}
-                            value={field.value || 0}
-                            onChange={e => field.onChange(parseInt(e.target.value, 10) || 0)}
-                            min="0"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
+                  <div className="col-span-1 md:col-span-2 lg:col-span-3 border p-4 rounded-md mt-4">
+                    <div className="flex justify-between items-center mb-4">
+                      <label className="text-sm font-medium">Free Guests / Complimentary Items</label>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          appendFreeGuest({ type: 'Child (0-3 years)', quantity: 0 });
+                        }}
+                        disabled={isFormDisabled}
+                      >
+                        + Add Free Guest
+                      </Button>
+                    </div>
+
+                    {freeGuestFields.map((item, index) => (
+                      <div key={item.id} className="flex gap-4 items-end mb-3">
+                        <FormField
+                          control={form.control}
+                          name={`freeGuestDetails.${index}.type` as any}
+                          render={({ field }) => (
+                            <FormItem className="flex-1">
+                              <FormLabel className="text-xs">Type</FormLabel>
+                              <Select
+                                onValueChange={field.onChange}
+                                value={field.value}
+                                disabled={isFormDisabled}
+                              >
+                                <FormControl>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Select Type" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  <SelectItem value="Child (0-3 years)">Child (0-3 years)</SelectItem>
+                                  <SelectItem value="Guide">Guide</SelectItem>
+                                  <SelectItem value="Staff">Staff</SelectItem>
+                                  <SelectItem value="Other">Other</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name={`freeGuestDetails.${index}.quantity` as any}
+                          render={({ field }) => (
+                            <FormItem className="w-24">
+                              <FormLabel className="text-xs">Qty</FormLabel>
+                              <FormControl>
+                                <Input
+                                  type="number"
+                                  min="0"
+                                  disabled={isFormDisabled}
+                                  {...field}
+                                  onChange={(e) => {
+                                    const val = parseInt(e.target.value) || 0;
+                                    field.onChange(val);
+
+                                    // Manually sync total count
+                                    setTimeout(() => {
+                                      const details = form.getValues('freeGuestDetails' as any) as any[];
+                                      const total = details?.reduce((sum, d) => sum + (d.quantity || 0), 0) || 0;
+                                      form.setValue('freeGuestCount', total);
+                                    }, 0);
+                                  }}
+                                />
+                              </FormControl>
+                            </FormItem>
+                          )}
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="text-destructive mb-2"
+                          disabled={isFormDisabled}
+                          onClick={() => {
+                            removeFreeGuest(index);
+                            // Manually sync total count after removal
+                            setTimeout(() => {
+                              const details = form.getValues('freeGuestDetails' as any) as any[];
+                              const total = details?.reduce((sum, d) => sum + (d.quantity || 0), 0) || 0;
+                              form.setValue('freeGuestCount', total);
+                            }, 0);
+                          }}
+                        >
+                          <XCircle className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                    {freeGuestFields.length === 0 && (
+                      <p className="text-sm text-muted-foreground italic">No free guests added.</p>
                     )}
-                  />
+
+                    {/* Hidden field for backward compatibility/total count */}
+                    <FormField
+                      control={form.control}
+                      name="freeGuestCount"
+                      render={({ field }) => (
+                        <FormItem className="hidden">
+                          <FormControl>
+                            <Input type="hidden" {...field} />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
                   <FormField
                     control={form.control}
                     name="perTicketRate"
@@ -907,7 +1008,7 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
             </form>
           </Form>
         </ScrollArea>
-      </DialogContent>
-    </Dialog>
+      </DialogContent >
+    </Dialog >
   );
 }

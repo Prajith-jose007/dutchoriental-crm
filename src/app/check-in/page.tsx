@@ -103,17 +103,27 @@ export default function CheckInPage() {
             .reduce((sum, p) => sum + p.quantity, 0);
 
         // Detail 3: Type of Booking (Breakdown)
-        const breakdown = quantities.filter(q => q.quantity > 0).map(q => `${q.quantity}x ${q.packageName}`);
+        const breakdown = [
+            // Paid Packages
+            ...quantities.filter(q => q.quantity > 0).map(q => `${q.quantity}x ${q.packageName}`),
+            // Free Guests Breakdown
+            ...(lead.freeGuestDetails?.map(fg => `${fg.quantity}x Free ${fg.type}`) || [])
+        ];
+
+        // Fallback for simple count if detailed breakdown missing but count exists
+        if ((!lead.freeGuestDetails || lead.freeGuestDetails.length === 0) && lead.freeGuestCount && lead.freeGuestCount > 0) {
+            breakdown.push(`${lead.freeGuestCount}x Free Guest(s)`);
+        }
 
         // Detail 4: Additional Packages
-        // Using perTicketRate as indication of "Other Charges/Addons" if separate from named packages, 
-        // OR just checking if there are non-standard packages. 
-        // User request: "does hve addtional pac"
-        // Let's assume calculated 'Other Charges' > 0 OR if there are packages that are considered 'additional'.
-        // For simplicity, let's list the breakdown and explicitly show 'Other Charges' if present.
         const hasAdditionalCharges = (lead.perTicketRate && lead.perTicketRate > 0);
+        let additionalChargesAmount = 0;
+        if (hasAdditionalCharges) {
+            additionalChargesAmount = lead.perTicketRate!;
+            breakdown.push(`Other Charges: AED ${additionalChargesAmount}`);
+        }
 
-        return { totalGuests, totalChildren, breakdown, hasAdditionalCharges };
+        return { totalGuests, totalChildren, breakdown, hasAdditionalCharges, additionalChargesAmount };
     };
 
     const details = searchResult ? calculateDetails(searchResult) : null;

@@ -106,6 +106,12 @@ export interface Lead {
 
   checkInStatus?: 'Checked In' | 'Not Checked In';
   checkInTime?: string;
+  freeGuestDetails?: FreeGuestDetail[];
+}
+
+export interface FreeGuestDetail {
+  type: string;
+  quantity: number;
 }
 
 export const opportunityPipelinePhaseOptions = ['New', 'Qualification', 'Proposal', 'Negotiation', 'Closed Won', 'Closed Lost'] as const;

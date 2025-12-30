@@ -17,6 +17,7 @@ interface DbLead extends Omit<Lead, 'packageQuantities' | 'totalAmount' | 'commi
   perTicketRate?: string | number | null;
   checkInStatus?: string;
   checkInTime?: string;
+  free_guest_details_json?: string;
 }
 
 const ensureISOFormat = (dateSource?: string | Date): string | null => {
@@ -39,6 +40,15 @@ const mapDbLeadToLeadObject = (dbLead: DbLead): Lead => {
       packageQuantities = JSON.parse(dbLead.package_quantities_json);
     } catch (e) {
       console.warn(`[API Helper] Failed to parse package_quantities_json for lead ${dbLead.id}`, e);
+    }
+  }
+
+  let freeGuestDetails: any[] = [];
+  if (dbLead.free_guest_details_json && typeof dbLead.free_guest_details_json === 'string') {
+    try {
+      freeGuestDetails = JSON.parse(dbLead.free_guest_details_json);
+    } catch (e) {
+      console.warn(`[API Helper] Failed to parse free_guest_details_json for lead ${dbLead.id}`, e);
     }
   }
 
@@ -79,6 +89,7 @@ const mapDbLeadToLeadObject = (dbLead: DbLead): Lead => {
     ownerUserId: dbLead.ownerUserId || undefined,
     checkInStatus: (dbLead.checkInStatus as 'Checked In' | 'Not Checked In') || 'Not Checked In',
     checkInTime: ensureISOFormat(dbLead.checkInTime) || undefined,
+    freeGuestDetails,
   };
 };
 
@@ -159,8 +170,8 @@ export async function POST(request: NextRequest) {
         package_quantities_json, freeGuestCount, perTicketRate,
         totalAmount, commissionPercentage, commissionAmount, netAmount,
         paidAmount, balanceAmount,
-        createdAt, updatedAt, lastModifiedByUserId, ownerUserId
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        createdAt, updatedAt, lastModifiedByUserId, ownerUserId, free_guest_details_json
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     const params = [
@@ -189,6 +200,7 @@ export async function POST(request: NextRequest) {
       formatISO(now),
       requestingUserId,
       newLeadData.ownerUserId || requestingUserId,
+      newLeadData.freeGuestDetails ? JSON.stringify(newLeadData.freeGuestDetails) : null,
     ];
 
     await query(sql, params);

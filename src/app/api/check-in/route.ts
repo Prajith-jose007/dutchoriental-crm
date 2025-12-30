@@ -33,6 +33,7 @@ interface DbLead {
     ownerUserId?: string;
     checkInStatus?: string;
     checkInTime?: string;
+    free_guest_details_json?: string;
 }
 
 const ensureISOFormat = (dateSource?: string | Date): string | null => {
@@ -53,6 +54,15 @@ const mapDbLeadToLeadObject = (dbLead: DbLead): Lead => {
             packageQuantities = JSON.parse(dbLead.package_quantities_json);
         } catch (e) {
             console.warn(`[Check-In API] Failed to parse package_quantities_json for lead ${dbLead.id}`, e);
+        }
+    }
+
+    let freeGuestDetails: any[] = [];
+    if (dbLead.free_guest_details_json && typeof dbLead.free_guest_details_json === 'string') {
+        try {
+            freeGuestDetails = JSON.parse(dbLead.free_guest_details_json);
+        } catch (e) {
+            console.warn(`[Check-In API] Failed to parse free_guest_details_json for lead ${dbLead.id}`, e);
         }
     }
 
@@ -84,6 +94,7 @@ const mapDbLeadToLeadObject = (dbLead: DbLead): Lead => {
         ownerUserId: dbLead.ownerUserId || undefined,
         checkInStatus: (dbLead.checkInStatus as 'Checked In' | 'Not Checked In') || 'Not Checked In',
         checkInTime: ensureISOFormat(dbLead.checkInTime) || undefined,
+        freeGuestDetails,
     };
 };
 

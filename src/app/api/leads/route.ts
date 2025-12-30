@@ -5,7 +5,7 @@ import type { Lead, LeadStatus, LeadPackageQuantity, PaymentConfirmationStatus, 
 import { query } from '@/lib/db';
 import { formatISO, parseISO, isValid, getYear as getFullYear } from 'date-fns';
 
-interface DbLead extends Omit<Lead, 'packageQuantities' | 'totalAmount' | 'commissionPercentage' | 'commissionAmount' | 'netAmount' | 'paidAmount' | 'balanceAmount' | 'freeGuestCount' | 'perTicketRate'> {
+interface DbLead extends Omit<Lead, 'packageQuantities' | 'totalAmount' | 'commissionPercentage' | 'commissionAmount' | 'netAmount' | 'paidAmount' | 'balanceAmount' | 'freeGuestCount' | 'perTicketRate' | 'checkInStatus'> {
   package_quantities_json?: string;
   totalAmount: string | number;
   commissionPercentage: string | number;
@@ -15,6 +15,8 @@ interface DbLead extends Omit<Lead, 'packageQuantities' | 'totalAmount' | 'commi
   balanceAmount: string | number;
   freeGuestCount: string | number | null;
   perTicketRate?: string | number | null;
+  checkInStatus?: string;
+  checkInTime?: string;
 }
 
 const ensureISOFormat = (dateSource?: string | Date): string | null => {
@@ -75,6 +77,8 @@ const mapDbLeadToLeadObject = (dbLead: DbLead): Lead => {
     updatedAt: ensureISOFormat(dbLead.updatedAt)!,
     lastModifiedByUserId: dbLead.lastModifiedByUserId || undefined,
     ownerUserId: dbLead.ownerUserId || undefined,
+    checkInStatus: (dbLead.checkInStatus as 'Checked In' | 'Not Checked In') || 'Not Checked In',
+    checkInTime: ensureISOFormat(dbLead.checkInTime) || undefined,
   };
 };
 

@@ -164,6 +164,8 @@ async function createLeadsTable() {
     await addColumnIfNotExists(tableName, 'freeGuestCount', 'INT DEFAULT 0');
     await addColumnIfNotExists(tableName, 'perTicketRate', 'DECIMAL(10, 2) DEFAULT NULL');
     await addColumnIfNotExists(tableName, 'bookingRefNo', 'VARCHAR(255) DEFAULT NULL');
+    await addColumnIfNotExists(tableName, 'checkInStatus', "VARCHAR(50) DEFAULT 'Not Checked In'");
+    await addColumnIfNotExists(tableName, 'checkInTime', 'DATETIME DEFAULT NULL');
 
 
   } catch (error) {

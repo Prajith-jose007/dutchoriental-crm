@@ -103,6 +103,9 @@ export interface Lead {
   updatedAt: string;
   lastModifiedByUserId?: string;
   ownerUserId?: string;
+
+  checkInStatus?: 'Checked In' | 'Not Checked In';
+  checkInTime?: string;
 }
 
 export const opportunityPipelinePhaseOptions = ['New', 'Qualification', 'Proposal', 'Negotiation', 'Closed Won', 'Closed Lost'] as const;
@@ -121,27 +124,27 @@ export const opportunityTripReportStatusOptions = ['In Process', 'Completed', 'P
 export type OpportunityTripReportStatus = typeof opportunityTripReportStatusOptions[number];
 
 export interface Opportunity {
-    id: string;
-    potentialCustomer: string; // This can serve as 'Account'
-    subject: string;
-    ownerUserId: string;
-    yachtId: string;
-    productType: YachtCategory;
-    pipelinePhase: OpportunityPipelinePhase;
-    priority: OpportunityPriority;
-    currentStatus: OpportunityStatus;
-    estimatedRevenue: number;
-    closingProbability?: number;
-    meanExpectedValue?: number;
-    followUpUpdates?: string;
-    createdAt: string;
-    updatedAt: string;
-    
-    // New Fields from Trip/Phone Report
-    estimatedClosingDate: string; // Was 'Date of Meeting'
-    location?: string;
-    reportType?: OpportunityReportType;
-    tripReportStatus?: OpportunityTripReportStatus;
+  id: string;
+  potentialCustomer: string; // This can serve as 'Account'
+  subject: string;
+  ownerUserId: string;
+  yachtId: string;
+  productType: YachtCategory;
+  pipelinePhase: OpportunityPipelinePhase;
+  priority: OpportunityPriority;
+  currentStatus: OpportunityStatus;
+  estimatedRevenue: number;
+  closingProbability?: number;
+  meanExpectedValue?: number;
+  followUpUpdates?: string;
+  createdAt: string;
+  updatedAt: string;
+
+  // New Fields from Trip/Phone Report
+  estimatedClosingDate: string; // Was 'Date of Meeting'
+  location?: string;
+  reportType?: OpportunityReportType;
+  tripReportStatus?: OpportunityTripReportStatus;
 }
 
 

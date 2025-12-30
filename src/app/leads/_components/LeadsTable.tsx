@@ -71,6 +71,7 @@ export const generateLeadColumns = (allYachts: Yacht[]): LeadTableColumn[] => {
     { accessorKey: 'select', header: '' },
     { accessorKey: 'id', header: 'ID' },
     { accessorKey: 'status', header: 'Status' },
+    { accessorKey: 'checkInStatus', header: 'Check-In' },
     { accessorKey: 'month', header: 'Date', isShortDate: true },
     { accessorKey: 'yacht', header: 'Yacht', isYachtLookup: true },
     { accessorKey: 'agent', header: 'Agent', isAgentLookup: true },
@@ -306,6 +307,15 @@ export function LeadsTable({
     }
     if (column.accessorKey === 'paymentConfirmationStatus') {
       return <Badge variant={getPaymentConfirmationStatusVariant(lead.paymentConfirmationStatus)}>{lead.paymentConfirmationStatus}</Badge>;
+    }
+    if (column.accessorKey === 'checkInStatus') {
+      const status = lead.checkInStatus || 'Not Checked In';
+      const isCheckedIn = status === 'Checked In';
+      return (
+        <Badge variant={isCheckedIn ? 'default' : 'outline'} className={isCheckedIn ? 'bg-green-600 hover:bg-green-700' : 'text-muted-foreground'}>
+          {status}
+        </Badge>
+      );
     }
     if (column.isAgentLookup) {
       const agentId = value as string | undefined;

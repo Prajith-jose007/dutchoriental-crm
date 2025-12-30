@@ -292,7 +292,12 @@ export function LeadsTable({
       return '-';
     }
     if (column.accessorKey === 'freeGuestCount') {
-      return formatNumeric(lead.freeGuestCount);
+      const breakdown = lead.freeGuestDetails?.filter(f => f.quantity > 0).map(f => `${f.type}: ${f.quantity}`).join(', ');
+      return (
+        <span title={breakdown || undefined}>
+          {formatNumeric(lead.freeGuestCount)}
+        </span>
+      );
     }
     if (column.accessorKey === 'id') {
       const canEdit = isAdmin || (!lead.status.startsWith('Closed'));

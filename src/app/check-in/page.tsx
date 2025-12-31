@@ -140,7 +140,10 @@ export default function CheckInPage() {
         const totalBooked = (searchResult.packageQuantities || []).reduce((sum, p) => sum + p.quantity, 0);
         const totalCheckedIn = (searchResult.checkedInQuantities || []).reduce((sum, p) => sum + p.quantity, 0);
 
-        if (totalCheckedIn === 0) {
+        // Force Checked In status if finalizing, or calculate based on totals
+        if (finalLock) {
+            newCheckInStatus = 'Checked In';
+        } else if (totalCheckedIn === 0) {
             newCheckInStatus = 'Not Checked In';
         } else if (totalCheckedIn >= totalBooked) {
             newCheckInStatus = 'Checked In';
@@ -148,10 +151,27 @@ export default function CheckInPage() {
             newCheckInStatus = 'Partially Checked In';
         }
 
+        // Determine new main status
+        let nextStatus = searchResult.status;
+        if (finalLock) {
+            nextStatus = 'Checked In';
+        } else if (totalCheckedIn > 0) {
+            // If we are saving partially and someone arrived, it's "In Progress"
+            if (searchResult.status === 'Confirmed' || searchResult.status === 'Closed (Won)') {
+                nextStatus = 'In Progress';
+            }
+        }
+
+        // If final lock, ensure checked-in quantities match booked quantities
+        const finalCheckedInQuantities = finalLock
+            ? (searchResult.packageQuantities || []).map(p => ({ packageId: p.packageId, quantity: p.quantity }))
+            : searchResult.checkedInQuantities;
+
         const dataToSync = {
             ...searchResult,
+            checkedInQuantities: finalCheckedInQuantities,
             checkInStatus: newCheckInStatus,
-            status: finalLock ? 'Completed' : searchResult.status,
+            status: nextStatus,
             notes: (searchResult.notes || '') + autoNotes
         };
 
@@ -173,8 +193,8 @@ export default function CheckInPage() {
             setManualComment('');
 
             toast({
-                title: finalLock ? "Booking Completed" : "Check-in Updated",
-                description: finalLock ? "Booking has been finalized as Completed and locked." : "Check-in progress saved successfully.",
+                title: finalLock ? "Guest Checked In" : "Progress Saved",
+                description: finalLock ? "Booking has been updated to Checked In and locked." : "Check-in progress (In Progress) saved successfully.",
                 className: "bg-green-600 text-white"
             });
 
@@ -215,8 +235,8 @@ export default function CheckInPage() {
 
         // Recalculate totals
         const totalAmount = packages.reduce((sum, p) => sum + (p.quantity * p.rate), 0) + (searchResult.perTicketRate || 0);
-        const commissionPercentage = Number(searchResult.commissionPercentage || 0);
-        const commissionAmount = Number(((totalAmount * commissionPercentage) / 100).toFixed(2));
+        // KEEP original commission amount - do not recalculate based on percentage for counter changes
+        const commissionAmount = Number(searchResult.commissionAmount || 0);
         const netAmount = Number((totalAmount - commissionAmount).toFixed(2));
         const balanceAmount = Number((netAmount - (searchResult.paidAmount || 0)).toFixed(2));
 
@@ -250,8 +270,7 @@ export default function CheckInPage() {
         });
 
         const totalAmount = packages.reduce((sum, p) => sum + (p.quantity * p.rate), 0) + (searchResult.perTicketRate || 0);
-        const commissionPercentage = Number(searchResult.commissionPercentage || 0);
-        const commissionAmount = Number(((totalAmount * commissionPercentage) / 100).toFixed(2));
+        const commissionAmount = Number(searchResult.commissionAmount || 0);
         const netAmount = Number((totalAmount - commissionAmount).toFixed(2));
 
         setSearchResult({
@@ -264,7 +283,7 @@ export default function CheckInPage() {
         });
     };
 
-    const isLocked = searchResult?.status === 'Completed' || searchResult?.status === 'Closed (Won)';
+    const isLocked = searchResult?.status === 'Checked In' || searchResult?.status === 'Completed';
 
     const netAdjustment = searchResult ? (searchResult.netAmount - (originalData?.netAmount || searchResult.netAmount)) : 0;
     const balanceDue = searchResult?.balanceAmount || 0;
@@ -306,18 +325,25 @@ export default function CheckInPage() {
                                 </div>
                                 <p className="text-[11px] text-muted-foreground font-mono">ID: {searchResult.transactionId || searchResult.id}</p>
                             </div>
-                            <div className="flex items-center gap-2">
-                                <div className="text-right mr-2 hidden md:block">
-                                    <p className="text-[10px] text-muted-foreground uppercase">Event Date</p>
+                            <div className="flex items-center gap-2 text-right">
+                                <div className="mr-3">
+                                    <p className="text-[10px] text-muted-foreground uppercase leading-none mb-1">Main Status</p>
+                                    <Badge variant="outline" className="font-bold border-slate-300">{searchResult.status}</Badge>
+                                </div>
+                                <div className="hidden md:block border-l pl-3 mr-2">
+                                    <p className="text-[10px] text-muted-foreground uppercase leading-none mb-1">Event Date</p>
                                     <p className="text-xs font-semibold">{isValid(parseISO(searchResult.month)) ? format(parseISO(searchResult.month), 'dd MMM yyyy') : 'N/A'}</p>
                                 </div>
-                                <Badge variant={searchResult.checkInStatus === 'Checked In' ? "default" : "outline"} className={
-                                    searchResult.checkInStatus === 'Checked In' ? "bg-green-600 text-white h-7" :
-                                        searchResult.checkInStatus === 'Partially Checked In' ? "bg-orange-100 text-orange-800 border-orange-200 h-7" :
-                                            "bg-yellow-100 text-yellow-800 border-yellow-200 h-7"
-                                }>
-                                    {searchResult.checkInStatus}
-                                </Badge>
+                                <div className="border-l pl-3">
+                                    <p className="text-[10px] text-muted-foreground uppercase leading-none mb-1">Arrival Status</p>
+                                    <Badge variant={searchResult.checkInStatus === 'Checked In' ? "default" : "outline"} className={
+                                        searchResult.checkInStatus === 'Checked In' ? "bg-green-600 text-white h-6" :
+                                            searchResult.checkInStatus === 'Partially Checked In' ? "bg-orange-100 text-orange-800 border-orange-200 h-6" :
+                                                "bg-yellow-100 text-yellow-800 border-yellow-200 h-6"
+                                    }>
+                                        {searchResult.checkInStatus}
+                                    </Badge>
+                                </div>
                             </div>
                         </CardHeader>
                         <CardContent className="p-4 space-y-4">
@@ -375,12 +401,7 @@ export default function CheckInPage() {
                                             <div key={pkg.packageId} className="px-3 py-2 bg-white dark:bg-slate-900 rounded-md border shadow-sm flex items-center justify-between group">
                                                 <div className="flex-1 min-w-0">
                                                     <p className="text-sm font-semibold truncate">{pkg.packageName}</p>
-                                                    <div className="flex items-center gap-2 overflow-hidden">
-                                                        <p className="text-[10px] text-muted-foreground whitespace-nowrap">AED {pkg.rate}/ea</p>
-                                                        <Badge variant="outline" className="h-4 text-[9px] px-1 py-0 border-slate-200 text-slate-500 font-mono">
-                                                            Line: AED {(pkg.quantity * pkg.rate).toFixed(2)}
-                                                        </Badge>
-                                                    </div>
+                                                    <p className="text-[10px] text-muted-foreground whitespace-nowrap">AED {pkg.rate}/ea</p>
                                                 </div>
 
                                                 <div className="flex items-center gap-4">
@@ -418,25 +439,7 @@ export default function CheckInPage() {
                             )}
 
                             {/* Summary Footer */}
-                            <div className="flex flex-col md:flex-row items-center justify-between gap-4 pt-4 border-t">
-                                <div className="flex gap-8 w-full md:w-auto">
-                                    <div className="flex flex-col">
-                                        <span className="text-[10px] text-muted-foreground uppercase">New Total (Net)</span>
-                                        <span className="text-base font-bold text-slate-800">AED {searchResult.netAmount?.toFixed(2)}</span>
-                                    </div>
-                                    <div className="flex flex-col">
-                                        <span className="text-[10px] text-muted-foreground uppercase">Today's Adjustment</span>
-                                        <span className={`text-base font-bold ${netAdjustment > 0 ? 'text-blue-600' : netAdjustment < 0 ? 'text-red-500' : 'text-slate-400'}`}>
-                                            {netAdjustment > 0 ? '+' : ''}AED {netAdjustment?.toFixed(2)}
-                                        </span>
-                                    </div>
-                                    <div className="flex flex-col border-l pl-8 border-slate-200">
-                                        <span className="text-[10px] text-muted-foreground uppercase">Final Balance</span>
-                                        <span className={`text-base font-bold ${balanceDue > 0 ? 'text-orange-600' : 'text-green-600'}`}>
-                                            AED {balanceDue?.toFixed(2)}
-                                        </span>
-                                    </div>
-                                </div>
+                            <div className="flex flex-col md:flex-row items-center justify-end gap-4 pt-4 border-t">
                                 <div className="flex gap-2 w-full md:w-auto">
                                     {!isLocked ? (
                                         <>
@@ -447,7 +450,7 @@ export default function CheckInPage() {
                                                 className="flex-1 md:flex-none h-11 border-slate-300"
                                             >
                                                 {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
-                                                Save Partial
+                                                Save Progress
                                             </Button>
                                             <Button
                                                 onClick={() => handleSyncCheckIn(true)}
@@ -455,12 +458,12 @@ export default function CheckInPage() {
                                                 className="flex-1 md:flex-none h-11 bg-green-600 hover:bg-green-700 font-bold px-6"
                                             >
                                                 {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4 mr-2" />}
-                                                FINISH & LOCK
+                                                CHECK IN & LOCK
                                             </Button>
                                         </>
                                     ) : (
                                         <div className="w-full flex items-center justify-center gap-2 p-2 bg-muted/50 rounded-md text-xs italic text-muted-foreground border">
-                                            <Lock className="h-3 w-3" /> Booking is finalized and locked. (Status: {searchResult.status})
+                                            <Lock className="h-3 w-3" /> Booking is finalized as {searchResult.status}.
                                         </div>
                                     )}
                                 </div>

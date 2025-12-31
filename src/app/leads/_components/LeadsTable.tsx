@@ -212,7 +212,9 @@ export function LeadsTable({
       case 'Unconfirmed': return 'destructive';
       case 'Confirmed': return 'secondary';
       case 'Closed (Won)':
+      case 'Checked In':
       case 'Completed': return 'success';
+      case 'In Progress': return 'secondary';
       case 'Closed (Lost)': return 'outline';
       default: return 'outline';
     }

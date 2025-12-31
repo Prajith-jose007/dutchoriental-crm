@@ -171,8 +171,8 @@ export function LeadFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, cu
   const watchedStatus = form.watch('status');
 
   const isFormDisabled = useMemo(() => {
-    // A form should be disabled if the status is 'Closed (Won)' or 'Closed (Lost)' and the user is not an admin.
-    return (watchedStatus.startsWith('Closed') && !isAdmin);
+    // A form should be disabled if the status is 'Closed (Won)', 'Closed (Lost)', or 'Completed' and the user is not an admin.
+    return ((watchedStatus.startsWith('Closed') || watchedStatus === 'Completed') && !isAdmin);
   }, [watchedStatus, isAdmin]);
 
 

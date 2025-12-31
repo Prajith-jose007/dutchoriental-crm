@@ -55,7 +55,7 @@ export interface Invoice {
   createdAt: string;
 }
 
-export const leadStatusOptions = ['Unconfirmed', 'Confirmed', 'Closed (Won)', 'Closed (Lost)', 'Balance'] as const;
+export const leadStatusOptions = ['Unconfirmed', 'Confirmed', 'Closed (Won)', 'Closed (Lost)', 'Balance', 'Completed'] as const;
 export type LeadStatus = typeof leadStatusOptions[number];
 
 export const modeOfPaymentOptions = ['CARD', 'CASH', 'CASH / CARD', 'NOMOD', 'PAYMOD', 'RUZINN', 'CREDIT', 'OTHER'] as const;
@@ -104,9 +104,15 @@ export interface Lead {
   lastModifiedByUserId?: string;
   ownerUserId?: string;
 
-  checkInStatus?: 'Checked In' | 'Not Checked In';
+  checkInStatus?: 'Checked In' | 'Not Checked In' | 'Partially Checked In';
   checkInTime?: string;
   freeGuestDetails?: FreeGuestDetail[];
+  checkedInQuantities?: CheckedInQuantity[];
+}
+
+export interface CheckedInQuantity {
+  packageId: string;
+  quantity: number;
 }
 
 export interface FreeGuestDetail {

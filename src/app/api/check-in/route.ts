@@ -34,6 +34,7 @@ interface DbLead {
     checkInStatus?: string;
     checkInTime?: string;
     free_guest_details_json?: string;
+    checked_in_quantities_json?: string;
 }
 
 const ensureISOFormat = (dateSource?: string | Date): string | null => {
@@ -66,6 +67,15 @@ const mapDbLeadToLeadObject = (dbLead: DbLead): Lead => {
         }
     }
 
+    let checkedInQuantities: any[] = [];
+    if (dbLead.checked_in_quantities_json && typeof dbLead.checked_in_quantities_json === 'string') {
+        try {
+            checkedInQuantities = JSON.parse(dbLead.checked_in_quantities_json);
+        } catch (e) {
+            console.warn(`[Check-In API] Failed to parse checked_in_quantities_json for lead ${dbLead.id}`, e);
+        }
+    }
+
     return {
         id: String(dbLead.id || ''),
         clientName: String(dbLead.clientName || ''),
@@ -92,9 +102,10 @@ const mapDbLeadToLeadObject = (dbLead: DbLead): Lead => {
         updatedAt: ensureISOFormat(dbLead.updatedAt)!,
         lastModifiedByUserId: dbLead.lastModifiedByUserId || undefined,
         ownerUserId: dbLead.ownerUserId || undefined,
-        checkInStatus: (dbLead.checkInStatus as 'Checked In' | 'Not Checked In') || 'Not Checked In',
+        checkInStatus: (dbLead.checkInStatus as 'Checked In' | 'Not Checked In' | 'Partially Checked In') || 'Not Checked In',
         checkInTime: ensureISOFormat(dbLead.checkInTime) || undefined,
         freeGuestDetails,
+        checkedInQuantities,
     };
 };
 
@@ -131,10 +142,66 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
     try {
-        const { leadId, action } = await request.json();
+        const body = await request.json();
+        const { leadId, action, leadData } = body;
 
         if (!leadId || !action) {
             return NextResponse.json({ message: 'Lead ID and action are required.' }, { status: 400 });
+        }
+
+        if (action === 'sync-check-in' && leadData) {
+            // Full sync of check-in data including partial quantities and potential package updates
+            const {
+                checkedInQuantities,
+                checkInStatus,
+                packageQuantities,
+                totalAmount,
+                commissionAmount,
+                netAmount,
+                balanceAmount,
+                status,
+                yacht,
+                clientName,
+                notes
+            } = leadData;
+
+            const now = formatISO(new Date());
+            const sql = `
+                UPDATE leads SET 
+                    checked_in_quantities_json = ?, 
+                    checkInStatus = ?, 
+                    checkInTime = COALESCE(checkInTime, ?),
+                    package_quantities_json = ?,
+                    totalAmount = ?,
+                    commissionAmount = ?,
+                    netAmount = ?,
+                    balanceAmount = ?,
+                    status = ?,
+                    yacht = ?,
+                    clientName = ?,
+                    notes = ?,
+                    updatedAt = ?
+                WHERE id = ?
+            `;
+
+            await query(sql, [
+                JSON.stringify(checkedInQuantities || []),
+                checkInStatus,
+                checkInStatus !== 'Not Checked In' ? now : null,
+                JSON.stringify(packageQuantities || []),
+                totalAmount,
+                commissionAmount,
+                netAmount,
+                balanceAmount,
+                status,
+                yacht,
+                clientName,
+                notes || null,
+                now,
+                leadId
+            ]);
+
+            return NextResponse.json({ message: 'Sync successful', checkInStatus, checkInTime: now });
         }
 
         if (action === 'check-in') {
@@ -143,7 +210,7 @@ export async function POST(request: NextRequest) {
             await query(sql, ['Checked In', now, leadId]);
             return NextResponse.json({ message: 'Check-in successful', checkInStatus: 'Checked In', checkInTime: now });
         } else if (action === 'undo-check-in') {
-            const sql = 'UPDATE leads SET checkInStatus = ?, checkInTime = NULL WHERE id = ?';
+            const sql = 'UPDATE leads SET checkInStatus = ?, checkInTime = NULL, checked_in_quantities_json = NULL WHERE id = ?';
             await query(sql, ['Not Checked In', leadId]);
             return NextResponse.json({ message: 'Check-in undone', checkInStatus: 'Not Checked In' });
         } else {

@@ -76,11 +76,11 @@ export const generateLeadColumns = (allYachts: Yacht[]): LeadTableColumn[] => {
     { accessorKey: 'yacht', header: 'Yacht', isYachtLookup: true },
     { accessorKey: 'agent', header: 'Agent', isAgentLookup: true },
     { accessorKey: 'clientName', header: 'Client' },
-    { accessorKey: 'paymentConfirmationStatus', header: 'Payment/Conf. Status' },
+    { accessorKey: 'paymentConfirmationStatus', header: 'Conf.' },
     { accessorKey: 'type', header: 'Type' },
-    { accessorKey: 'transactionId', header: 'Transaction ID' },
-    { accessorKey: 'bookingRefNo', header: 'Booking REF No:' },
-    { accessorKey: 'modeOfPayment', header: 'Payment Mode' },
+    { accessorKey: 'transactionId', header: 'Trans ID' },
+    { accessorKey: 'bookingRefNo', header: 'REF' },
+    { accessorKey: 'modeOfPayment', header: 'Mode' },
     { accessorKey: 'freeGuestCount', header: 'Free', isNumeric: true },
   ];
   columns.push(...baseInfoColumns);
@@ -144,15 +144,16 @@ export const generateLeadColumns = (allYachts: Yacht[]): LeadTableColumn[] => {
 
 
   const accountsColumns: LeadTableColumn[] = [
-    { accessorKey: 'totalGuestsCalculated', header: 'Total Count', isNumeric: true },
-    { accessorKey: 'perTicketRate', header: 'Addon Pack', isCurrency: true },
+    { accessorKey: 'totalGuestsCalculated', header: 'Booked', isNumeric: true },
+    { accessorKey: 'arrivedGuestsCalculated', header: 'Arrived', isNumeric: true },
+    { accessorKey: 'perTicketRate', header: 'Addon', isCurrency: true },
     { accessorKey: 'totalAmount', header: 'Total Amt', isCurrency: true },
     { accessorKey: 'averageRateCalculated', header: 'Rate', isCurrency: true },
-    { accessorKey: 'commissionPercentage', header: 'Discount %', isPercentage: true },
-    { accessorKey: 'commissionAmount', header: 'Commission', isCurrency: true },
-    { accessorKey: 'netAmount', header: 'Net Amt', isCurrency: true },
+    { accessorKey: 'commissionPercentage', header: 'Disc %', isPercentage: true },
+    { accessorKey: 'commissionAmount', header: 'Comm.', isCurrency: true },
+    { accessorKey: 'netAmount', header: 'Net', isCurrency: true },
     { accessorKey: 'paidAmount', header: 'Paid', isCurrency: true },
-    { accessorKey: 'balanceAmount', header: 'Balance', isCurrency: true },
+    { accessorKey: 'balanceAmount', header: 'Bal', isCurrency: true },
   ];
   columns.push(...accountsColumns);
 
@@ -210,7 +211,8 @@ export function LeadsTable({
     switch (status) {
       case 'Unconfirmed': return 'destructive';
       case 'Confirmed': return 'secondary';
-      case 'Closed (Won)': return 'success';
+      case 'Closed (Won)':
+      case 'Completed': return 'success';
       case 'Closed (Lost)': return 'outline';
       default: return 'outline';
     }
@@ -266,6 +268,11 @@ export function LeadsTable({
     return lead.packageQuantities.reduce((sum, pq) => sum + (Number(pq.quantity) || 0), 0);
   };
 
+  const calculateArrivedGuests = (lead: Lead): number => {
+    if (!lead.checkedInQuantities || lead.checkedInQuantities.length === 0) return 0;
+    return lead.checkedInQuantities.reduce((sum, cq) => sum + (Number(cq.quantity) || 0), 0);
+  };
+
   const renderCellContent = (lead: Lead, column: LeadTableColumn) => {
     if (column.isPackageQuantityColumn && column.actualPackageName) {
       const pkgQuantityItem = lead.packageQuantities?.find(pq => pq.packageName === column.actualPackageName);
@@ -282,6 +289,11 @@ export function LeadsTable({
     if (column.accessorKey === 'totalGuestsCalculated') {
       const totalGuests = calculateTotalGuestsFromPackageQuantities(lead);
       return formatNumeric(totalGuests);
+    }
+    if (column.accessorKey === 'arrivedGuestsCalculated') {
+      const arrived = calculateArrivedGuests(lead);
+      if (arrived === 0) return '-';
+      return formatNumeric(arrived);
     }
     if (column.accessorKey === 'averageRateCalculated') {
       const totalGuests = calculateTotalGuestsFromPackageQuantities(lead);
@@ -300,7 +312,7 @@ export function LeadsTable({
       );
     }
     if (column.accessorKey === 'id') {
-      const canEdit = isAdmin || (!lead.status.startsWith('Closed'));
+      const canEdit = isAdmin || (!lead.status.startsWith('Closed') && lead.status !== 'Completed');
       return (
         <Button variant="link" className="p-0 h-auto font-medium" onClick={() => onEditLead(lead)} disabled={!canEdit}>
           {String(lead.id).length > 10 ? String(lead.id).substring(0, 4) + '...' + String(lead.id).substring(String(lead.id).length - 4) : lead.id}
@@ -316,8 +328,17 @@ export function LeadsTable({
     if (column.accessorKey === 'checkInStatus') {
       const status = lead.checkInStatus || 'Not Checked In';
       const isCheckedIn = status === 'Checked In';
+      const isPartial = status === 'Partially Checked In';
+
       return (
-        <Badge variant={isCheckedIn ? 'default' : 'outline'} className={isCheckedIn ? 'bg-green-600 hover:bg-green-700' : 'text-muted-foreground'}>
+        <Badge
+          variant={isCheckedIn ? 'default' : isPartial ? 'secondary' : 'outline'}
+          className={
+            isCheckedIn ? 'bg-green-600 hover:bg-green-700 text-white' :
+              isPartial ? 'bg-orange-500 hover:bg-orange-600 text-white' :
+                'text-muted-foreground'
+          }
+        >
           {status}
         </Badge>
       );

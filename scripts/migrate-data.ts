@@ -167,6 +167,7 @@ async function createLeadsTable() {
     await addColumnIfNotExists(tableName, 'checkInStatus', "VARCHAR(50) DEFAULT 'Not Checked In'");
     await addColumnIfNotExists(tableName, 'checkInTime', 'DATETIME DEFAULT NULL');
     await addColumnIfNotExists(tableName, 'free_guest_details_json', 'TEXT DEFAULT NULL');
+    await addColumnIfNotExists(tableName, 'checked_in_quantities_json', 'TEXT DEFAULT NULL');
 
 
   } catch (error) {

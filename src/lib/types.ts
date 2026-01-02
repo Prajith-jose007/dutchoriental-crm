@@ -43,6 +43,8 @@ export interface Yacht {
   category: YachtCategory;
   packages?: YachtPackageItem[];
   customPackageInfo?: string;
+  pricePerHour?: number;
+  minHours?: number;
 }
 
 export interface Invoice {
@@ -55,8 +57,35 @@ export interface Invoice {
   createdAt: string;
 }
 
-export const leadStatusOptions = ['Unconfirmed', 'Confirmed', 'Closed (Won)', 'Closed (Lost)', 'Balance', 'In Progress', 'Checked In', 'Completed'] as const;
+export const leadStatusOptions = [
+  'New',
+  'Contacted',
+  'Follow-up',
+  'Quoted',
+  'Negotiation',
+  'Confirmed',
+  'Closed (Won)',
+  'Unconfirmed',
+  'Balance',
+  'In Progress',
+  'Checked In',
+  'Completed',
+  'Lost',
+  'Closed (Lost)'
+] as const;
 export type LeadStatus = typeof leadStatusOptions[number];
+
+export const leadSourceOptions = ['Website', 'WhatsApp', 'Instagram', 'Walk-in', 'Partner', 'Agent'] as const;
+export type LeadSource = typeof leadSourceOptions[number];
+
+export const yachtTypeOptions = ['Luxury', 'Mega Yacht', 'Catamaran', 'Speedboat'] as const;
+export type YachtType = typeof yachtTypeOptions[number];
+
+export const leadOccasionOptions = ['Birthday', 'Anniversary', 'Corporate', 'Proposal', 'Party', 'Other'] as const;
+export type LeadOccasion = typeof leadOccasionOptions[number];
+
+export const leadPriorityOptions = ['Low', 'Medium', 'High'] as const;
+export type LeadPriority = typeof leadPriorityOptions[number];
 
 export const modeOfPaymentOptions = ['CARD', 'CASH', 'CASH / CARD', 'NOMOD', 'PAYMOD', 'RUZINN', 'CREDIT', 'OTHER'] as const;
 export type ModeOfPayment = typeof modeOfPaymentOptions[number];
@@ -74,19 +103,55 @@ export interface LeadPackageQuantity {
   rate: number;
 }
 
+export interface Customer {
+  id: string;
+  fullName: string;
+  phone: string;
+  email: string;
+  nationality?: string;
+  language?: string;
+  totalBookings: number;
+  totalRevenue: number;
+  lastBookingDate?: string;
+  customerType: 'New' | 'Repeat' | 'VIP' | 'Corporate';
+  preferences?: string;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Lead {
   id: string;
-  agent: string;
+  agent: string; // Linked Agent ID
   status: LeadStatus;
-  month: string;
+  month: string; // Event Date/Time
   notes?: string;
-  yacht: string;
+  yacht: string; // Yacht ID
   type: LeadType;
   paymentConfirmationStatus: PaymentConfirmationStatus;
   transactionId?: string;
-  bookingRefNo?: string; // New field
+  bookingRefNo?: string;
   modeOfPayment: ModeOfPayment;
-  clientName: string;
+  clientName: string; // Often linked to first/last name
+
+  // New Lead fields
+  customerPhone?: string;
+  customerEmail?: string;
+  nationality?: string;
+  language?: string;
+  source?: LeadSource;
+  customAgentName?: string;
+  customAgentPhone?: string;
+  inquiryDate?: string;
+  yachtType?: YachtType;
+  adultsCount?: number;
+  kidsCount?: number;
+  durationHours?: number;
+  budgetRange?: string;
+  occasion?: LeadOccasion;
+  priority?: LeadPriority;
+  nextFollowUpDate?: string;
+  closingProbability?: number; // %
 
   packageQuantities?: LeadPackageQuantity[];
   freeGuestCount?: number;
@@ -108,6 +173,50 @@ export interface Lead {
   checkInTime?: string;
   freeGuestDetails?: FreeGuestDetail[];
   checkedInQuantities?: CheckedInQuantity[];
+
+  // Operation details
+  captainName?: string;
+  crewDetails?: string;
+  idVerified?: boolean;
+  extraHoursUsed?: number;
+  extraCharges?: number;
+  customerSignatureUrl?: string;
+}
+
+export interface Quotation {
+  id: string;
+  leadId: string;
+  yachtId: string;
+  basePricePerHour: number;
+  durationHours: number;
+  subtotal: number;
+  addonDetails?: {
+    bbqSetup?: number;
+    dj?: number;
+    decorations?: number;
+    waterSports?: number;
+    foodBeverage?: number;
+    alcoholPackage?: number;
+  };
+  discountAmount: number;
+  vatAmount: number;
+  totalAmount: number;
+  status: 'Draft' | 'Sent' | 'Accepted' | 'Rejected';
+  validUntil: string;
+  createdAt: string;
+}
+
+export interface Task {
+  id: string;
+  leadId?: string;
+  bookingId?: string;
+  opportunityId?: string;
+  type: 'Call' | 'WhatsApp' | 'Email';
+  dueDate: string;
+  assignedTo: string; // User ID
+  status: 'Pending' | 'Completed';
+  notes?: string;
+  createdAt: string;
 }
 
 export interface CheckedInQuantity {
@@ -137,7 +246,7 @@ export type OpportunityTripReportStatus = typeof opportunityTripReportStatusOpti
 
 export interface Opportunity {
   id: string;
-  potentialCustomer: string; // This can serve as 'Account'
+  potentialCustomer: string;
   subject: string;
   ownerUserId: string;
   yachtId: string;
@@ -151,9 +260,7 @@ export interface Opportunity {
   followUpUpdates?: string;
   createdAt: string;
   updatedAt: string;
-
-  // New Fields from Trip/Phone Report
-  estimatedClosingDate: string; // Was 'Date of Meeting'
+  estimatedClosingDate: string;
   location?: string;
   reportType?: OpportunityReportType;
   tripReportStatus?: OpportunityTripReportStatus;

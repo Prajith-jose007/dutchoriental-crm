@@ -18,17 +18,17 @@ const ensureISOFormat = (dateSource?: string | Date): string | null => {
   }
 };
 
-function buildOpportunityUpdateSetClause(data: Partial<Omit<Opportunity, 'id' | 'closingProbability'>>): { clause: string, values: any[] } {
+function buildOpportunityUpdateSetClause(data: Partial<Omit<Opportunity, 'id'>>): { clause: string, values: any[] } {
   const fieldsToUpdate: string[] = [];
   const valuesToUpdate: any[] = [];
-  const allowedKeys: (keyof Omit<Opportunity, 'id' | 'closingProbability'>)[] = [
+  const allowedKeys: (keyof Omit<Opportunity, 'id'>)[] = [
     'potentialCustomer', 'subject', 'estimatedClosingDate', 'ownerUserId', 'yachtId', 'productType',
-    'pipelinePhase', 'priority', 'estimatedRevenue', 'meanExpectedValue', 'currentStatus',
+    'pipelinePhase', 'priority', 'estimatedRevenue', 'closingProbability', 'meanExpectedValue', 'currentStatus',
     'followUpUpdates', 'createdAt', 'updatedAt', 'location', 'reportType', 'tripReportStatus'
   ];
 
   Object.entries(data).forEach(([key, value]) => {
-    if (allowedKeys.includes(key as keyof Omit<Opportunity, 'id' | 'closingProbability'>) && value !== undefined) {
+    if (allowedKeys.includes(key as any) && value !== undefined) {
       fieldsToUpdate.push(`\`${key}\` = ?`);
       if (key === 'estimatedClosingDate' || key === 'createdAt' || key === 'updatedAt') {
         valuesToUpdate.push(ensureISOFormat(value as string) || null);
@@ -59,6 +59,7 @@ export async function GET(
       const opportunity: Opportunity = {
         ...dbOpp,
         estimatedRevenue: Number(dbOpp.estimatedRevenue || 0),
+        closingProbability: Number(dbOpp.closingProbability || 0),
         meanExpectedValue: Number(dbOpp.meanExpectedValue || 0),
         estimatedClosingDate: ensureISOFormat(dbOpp.estimatedClosingDate)!,
         createdAt: ensureISOFormat(dbOpp.createdAt)!,
@@ -93,7 +94,6 @@ export async function PUT(
     }
 
     const dataToUpdate = { ...updatedOppData, updatedAt: formatISO(new Date()) };
-    delete (dataToUpdate as Partial<Opportunity>).closingProbability;
 
     const { clause, values } = buildOpportunityUpdateSetClause(dataToUpdate);
     if (clause.length === 0) {
@@ -109,6 +109,7 @@ export async function PUT(
       const finalOpp: Opportunity = {
         ...dbOpp,
         estimatedRevenue: Number(dbOpp.estimatedRevenue || 0),
+        closingProbability: Number(dbOpp.closingProbability || 0),
         meanExpectedValue: Number(dbOpp.meanExpectedValue || 0),
         estimatedClosingDate: ensureISOFormat(dbOpp.estimatedClosingDate)!,
         createdAt: ensureISOFormat(dbOpp.createdAt)!,

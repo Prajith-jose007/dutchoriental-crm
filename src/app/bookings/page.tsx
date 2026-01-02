@@ -3,9 +3,9 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { PageHeader } from '@/components/PageHeader';
-import { LeadsTable, generateLeadColumns, type LeadTableColumn } from './_components/LeadsTable';
+import { BookingsTable, generateBookingColumns, type BookingTableColumn } from './_components/BookingsTable';
 import { ImportExportButtons } from './_components/ImportExportButtons';
-import { LeadFormDialog } from './_components/LeadFormDialog';
+import { BookingFormDialog } from './_components/BookingFormDialog';
 import type { Lead, LeadStatus, User, Agent, Yacht, LeadType, LeadPackageQuantity, PaymentConfirmationStatus, YachtPackageItem, YachtCategory, Invoice } from '@/lib/types';
 import { leadStatusOptions, modeOfPaymentOptions, leadTypeOptions, paymentConfirmationStatusOptions, type ModeOfPayment } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
@@ -295,7 +295,7 @@ const packageCountLabels: Record<keyof CalculatedPackageCounts, string> = {
 };
 
 
-export default function LeadsPage() {
+export default function BookingsPage() {
   const [isLeadDialogOpen, setIsLeadDialogOpen] = useState(false);
   const [editingLead, setEditingLead] = useState<Lead | null>(null);
   const [allLeads, setAllLeads] = useState<Lead[]>([]);
@@ -303,6 +303,7 @@ export default function LeadsPage() {
   const { toast } = useToast();
 
   const [userMap, setUserMap] = useState<{ [id: string]: string }>({});
+  const [allUsers, setAllUsers] = useState<User[]>([]);
   const [allAgents, setAllAgents] = useState<Agent[]>([]);
   const [allYachts, setAllYachts] = useState<Yacht[]>([]);
   const [agentMap, setAgentMap] = useState<{ [id: string]: string }>({});
@@ -360,6 +361,7 @@ export default function LeadsPage() {
 
       if (!usersRes.ok) throw new Error(`Failed to fetch users: ${usersRes.statusText}`);
       const usersData: User[] = await usersRes.json();
+      setAllUsers(Array.isArray(usersData) ? usersData : []);
       const map: { [id: string]: string } = {};
       if (Array.isArray(usersData)) {
         usersData.forEach(user => { map[user.id] = user.name; });
@@ -956,6 +958,9 @@ export default function LeadsPage() {
       if (selectedYachtId !== 'all' && lead.yacht !== selectedYachtId) return false;
       if (selectedAgentId !== 'all' && lead.agent !== selectedAgentId) return false;
       if (selectedUserIdFilter !== 'all' && (lead.lastModifiedByUserId !== selectedUserIdFilter && lead.ownerUserId !== selectedUserIdFilter)) return false;
+      const bookingStatuses = ['Balance', 'Deposit Paid', 'Full Payment', 'Check-in', 'Closed (Won)', 'Closed (Lost)', 'Cancelled'];
+      if (!bookingStatuses.includes(lead.status)) return false;
+
       if (statusFilter !== 'all' && lead.status !== statusFilter) return false;
       if (paymentConfirmationStatusFilter !== 'all' && lead.paymentConfirmationStatus !== paymentConfirmationStatusFilter) return false;
       return true;
@@ -1039,11 +1044,11 @@ export default function LeadsPage() {
       return;
     }
 
-    const dynamicColumns = generateLeadColumns(allYachts);
+    const dynamicColumns = generateBookingColumns(allYachts);
 
     const finalCsvHeaders = dynamicColumns
-      .filter(col => col.accessorKey !== 'select' && col.accessorKey !== 'actions' && !col.isJsonDetails)
-      .map(col => col.header);
+      .filter((col: BookingTableColumn) => col.accessorKey !== 'select' && col.accessorKey !== 'actions' && !col.isJsonDetails)
+      .map((col: BookingTableColumn) => col.header);
 
 
     const escapeCsvCell = (cellData: any): string => {
@@ -1077,8 +1082,8 @@ export default function LeadsPage() {
       finalCsvHeaders.join(','),
       ...filteredLeads.map(lead => {
         return dynamicColumns
-          .filter(col => col.accessorKey !== 'select' && col.accessorKey !== 'actions' && !col.isJsonDetails)
-          .map(col => {
+          .filter((col: BookingTableColumn) => col.accessorKey !== 'select' && col.accessorKey !== 'actions' && !col.isJsonDetails)
+          .map((col: BookingTableColumn) => {
             let cellValue: any;
             if (col.isPackageQuantityColumn && col.actualPackageName) {
               const pkgQuantityItem = lead.packageQuantities?.find(pq => pq.packageName === col.actualPackageName);
@@ -1192,8 +1197,8 @@ export default function LeadsPage() {
     return (
       <div className="container mx-auto py-2">
         <PageHeader
-          title="Bookings Management"
-          description="Track and manage all your sales bookings."
+          title="Booking Management"
+          description="Track and manage all your confirmed and active bookings."
           actions={
             <div className="flex items-center gap-2">
               <Skeleton className="h-10 w-32" />
@@ -1218,7 +1223,7 @@ export default function LeadsPage() {
   if (fetchError) {
     return (
       <div className="container mx-auto py-2">
-        <PageHeader title="Bookings Management" description="Error loading data." />
+        <PageHeader title="Booking Management" description="Error loading data." />
         <p className="text-destructive text-center py-10">Failed to load essential data for this page: {fetchError}</p>
       </div>
     );
@@ -1228,8 +1233,8 @@ export default function LeadsPage() {
   return (
     <div className="container mx-auto py-2">
       <PageHeader
-        title="Bookings Management"
-        description="Track and manage all your sales bookings."
+        title="Booking Management"
+        description="Track and manage all your confirmed and active bookings."
         actions={pageHeaderActions}
       />
       <div className="mb-6 p-4 border rounded-lg shadow-sm">
@@ -1324,7 +1329,7 @@ export default function LeadsPage() {
         </div>
       </div>
 
-      <LeadsTable
+      <BookingsTable
         leads={filteredLeads}
         onEditLead={handleEditLeadClick}
         onDeleteLead={handleDeleteLead}
@@ -1339,17 +1344,15 @@ export default function LeadsPage() {
         onSelectLead={handleSelectLead}
         onSelectAllLeads={handleSelectAllLeads}
       />
-
-      {isLeadDialogOpen && (
-        <LeadFormDialog
-          isOpen={isLeadDialogOpen}
-          onOpenChange={setIsLeadDialogOpen}
-          lead={editingLead}
-          onSubmitSuccess={handleLeadFormSubmit}
-          currentUserId={currentUserId}
-          isAdmin={isAdmin}
-        />
-      )}
+      <BookingFormDialog
+        isOpen={isLeadDialogOpen}
+        onOpenChange={setIsLeadDialogOpen}
+        lead={editingLead}
+        onSubmitSuccess={handleLeadFormSubmit}
+        currentUserId={currentUserId}
+        isAdmin={isAdmin}
+        allUsers={allUsers}
+      />
     </div>
   );
 }

@@ -60,19 +60,17 @@ export async function POST(request: NextRequest) {
       updatedAt: ensureISOFormat(newOppData.updatedAt) || formatISO(now),
       meanExpectedValue: newOppData.meanExpectedValue ?? 0,
     };
-    delete (oppToStore as Partial<Opportunity>).closingProbability;
-
     const sql = `
       INSERT INTO opportunities (
         id, potentialCustomer, subject, estimatedClosingDate, ownerUserId, yachtId, productType, 
-        pipelinePhase, priority, estimatedRevenue, meanExpectedValue, currentStatus, 
+        pipelinePhase, priority, estimatedRevenue, closingProbability, meanExpectedValue, currentStatus, 
         followUpUpdates, createdAt, updatedAt, location, reportType, tripReportStatus
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
     const params = [
       oppToStore.id, oppToStore.potentialCustomer, oppToStore.subject, oppToStore.estimatedClosingDate, oppToStore.ownerUserId,
       oppToStore.yachtId, oppToStore.productType, oppToStore.pipelinePhase, oppToStore.priority,
-      oppToStore.estimatedRevenue, oppToStore.meanExpectedValue, oppToStore.currentStatus,
+      oppToStore.estimatedRevenue, newOppData.closingProbability ?? 50, oppToStore.meanExpectedValue, oppToStore.currentStatus,
       oppToStore.followUpUpdates, oppToStore.createdAt, oppToStore.updatedAt,
       oppToStore.location, oppToStore.reportType, oppToStore.tripReportStatus
     ];
@@ -84,6 +82,7 @@ export async function POST(request: NextRequest) {
       const returnedOpp: Opportunity = {
         ...createdOppDb[0],
         estimatedRevenue: Number(createdOppDb[0].estimatedRevenue || 0),
+        closingProbability: Number(createdOppDb[0].closingProbability || 50),
         meanExpectedValue: Number(createdOppDb[0].meanExpectedValue || 0),
         estimatedClosingDate: ensureISOFormat(createdOppDb[0].estimatedClosingDate)!,
         createdAt: ensureISOFormat(createdOppDb[0].createdAt)!,

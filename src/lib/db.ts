@@ -38,8 +38,9 @@ function getPool() {
 export async function query<T = unknown>(sql: string, params?: unknown[]): Promise<T> {
   const connection = await getPool().getConnection();
   try {
-    console.log(`Executing SQL: ${sql}`, params || '');
-    const [results] = await connection.execute(sql, params);
+    const safeParams = params ? params.map(p => p === undefined ? null : p) : undefined;
+    console.log(`Executing SQL: ${sql}`, safeParams || '');
+    const [results] = await connection.execute(sql, safeParams);
     console.log(`SQL executed successfully. Result count: ${(results as unknown[]).length}`);
     return results as T;
   } catch (error) {

@@ -26,7 +26,7 @@ import type { Lead, LeadStatus, Yacht, YachtPackageItem, PaymentConfirmationStat
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { format, parseISO, isValid } from 'date-fns';
 
-export type LeadTableColumn = {
+export type BookingTableColumn = {
   accessorKey: string;
   header: string;
   isCurrency?: boolean;
@@ -64,10 +64,10 @@ export const packageHeaderMap: { [fullPackageName: string]: string } = {
 };
 
 
-export const generateLeadColumns = (allYachts: Yacht[]): LeadTableColumn[] => {
-  const columns: LeadTableColumn[] = [];
+export const generateBookingColumns = (allYachts: Yacht[]): BookingTableColumn[] => {
+  const columns: BookingTableColumn[] = [];
 
-  const baseInfoColumns: LeadTableColumn[] = [
+  const baseInfoColumns: BookingTableColumn[] = [
     { accessorKey: 'select', header: '' },
     { accessorKey: 'id', header: 'ID' },
     { accessorKey: 'status', header: 'Status' },
@@ -143,7 +143,7 @@ export const generateLeadColumns = (allYachts: Yacht[]): LeadTableColumn[] => {
   });
 
 
-  const accountsColumns: LeadTableColumn[] = [
+  const accountsColumns: BookingTableColumn[] = [
     { accessorKey: 'totalGuestsCalculated', header: 'Booked', isNumeric: true },
     { accessorKey: 'arrivedGuestsCalculated', header: 'Arrived', isNumeric: true },
     { accessorKey: 'perTicketRate', header: 'Addon', isCurrency: true },
@@ -157,9 +157,9 @@ export const generateLeadColumns = (allYachts: Yacht[]): LeadTableColumn[] => {
   ];
   columns.push(...accountsColumns);
 
-  const referencesAndCommentsColumns: LeadTableColumn[] = [
+  const referencesAndCommentsColumns: BookingTableColumn[] = [
     { accessorKey: 'notes', header: 'Note', isNotes: true },
-    { accessorKey: 'ownerUserId', header: 'Created By', isUserLookup: true },
+    { accessorKey: 'ownerUserId', header: 'Lead Owner', isUserLookup: true },
     { accessorKey: 'lastModifiedByUserId', header: 'Modified By', isUserLookup: true },
     { accessorKey: 'createdAt', header: 'Date of Creation', isDate: true },
     { accessorKey: 'updatedAt', header: 'Date of Modification', isDate: true },
@@ -172,7 +172,7 @@ export const generateLeadColumns = (allYachts: Yacht[]): LeadTableColumn[] => {
 };
 
 
-interface LeadsTableProps {
+interface BookingsTableProps {
   leads: Lead[];
   onEditLead: (lead: Lead) => void;
   onDeleteLead: (leadId: string) => void;
@@ -188,7 +188,7 @@ interface LeadsTableProps {
   onSelectAllLeads: (isSelected: boolean) => void;
 }
 
-export function LeadsTable({
+export function BookingsTable({
   leads,
   onEditLead,
   onDeleteLead,
@@ -202,20 +202,26 @@ export function LeadsTable({
   selectedLeadIds,
   onSelectLead,
   onSelectAllLeads,
-}: LeadsTableProps) {
+}: BookingsTableProps) {
 
-  const leadColumns = useMemo(() => generateLeadColumns(allYachts), [allYachts]);
+  const leadColumns = useMemo(() => generateBookingColumns(allYachts), [allYachts]);
 
   const getStatusVariant = (status?: LeadStatus) => {
     if (!status) return 'outline';
     switch (status) {
-      case 'Unconfirmed': return 'destructive';
+      case 'New': return 'default';
+      case 'Contacted':
+      case 'Follow-up':
+      case 'Quoted':
+      case 'Negotiation':
+      case 'In Progress':
       case 'Confirmed': return 'secondary';
+      case 'Unconfirmed': return 'destructive';
       case 'Closed (Won)':
       case 'Checked In':
       case 'Completed': return 'success';
-      case 'In Progress': return 'secondary';
-      case 'Closed (Lost)': return 'outline';
+      case 'Closed (Lost)':
+      case 'Lost': return 'outline';
       default: return 'outline';
     }
   };
@@ -275,7 +281,7 @@ export function LeadsTable({
     return lead.checkedInQuantities.reduce((sum, cq) => sum + (Number(cq.quantity) || 0), 0);
   };
 
-  const renderCellContent = (lead: Lead, column: LeadTableColumn) => {
+  const renderCellContent = (lead: Lead, column: BookingTableColumn) => {
     if (column.isPackageQuantityColumn && column.actualPackageName) {
       const pkgQuantityItem = lead.packageQuantities?.find(pq => pq.packageName === column.actualPackageName);
       const quantity = pkgQuantityItem?.quantity;
@@ -390,8 +396,8 @@ export function LeadsTable({
         <TableHeader>
           <TableRow>
             {leadColumns
-              .filter(col => !col.isJsonDetails)
-              .map(col => (
+              .filter((col: BookingTableColumn) => !col.isJsonDetails)
+              .map((col: BookingTableColumn) => (
                 <TableHead key={col.accessorKey} className={col.accessorKey === 'select' ? "w-[40px]" : ""}>
                   {col.accessorKey === 'select' ? (
                     <Checkbox
@@ -409,7 +415,7 @@ export function LeadsTable({
         <TableBody>
           {leads.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={leadColumns.filter(col => !col.isJsonDetails).length} className="h-24 text-center">
+              <TableCell colSpan={leadColumns.filter((col: BookingTableColumn) => !col.isJsonDetails).length} className="h-24 text-center">
                 No bookings found.
               </TableCell>
             </TableRow>
@@ -420,8 +426,8 @@ export function LeadsTable({
                 data-state={selectedLeadIds.includes(lead.id) ? "selected" : ""}
               >
                 {leadColumns
-                  .filter(col => !col.isJsonDetails)
-                  .map(col => (
+                  .filter((col: BookingTableColumn) => !col.isJsonDetails)
+                  .map((col: BookingTableColumn) => (
                     <TableCell key={`${lead.id}-${col.accessorKey}`}>
                       {col.accessorKey === 'select' ? (
                         <Checkbox

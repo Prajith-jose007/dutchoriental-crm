@@ -1024,7 +1024,7 @@ export default function BookingsPage() {
 
           // VALIDATION
           const csvRowData: CSVRowData = {
-            rowNumber: primaryRow._originalRowIndex,
+            rowNumber: primaryRow._originalRowIndex || 0,
             agentName: fullLead.agent,
             yachtId: fullLead.yacht,
             packageQuantities: fullLead.packageQuantities,
@@ -1033,7 +1033,7 @@ export default function BookingsPage() {
             clientName: fullLead.clientName
           };
           const validationResult = validateCSVRow(csvRowData, allAgents, allYachts);
-          console.log(formatValidationResult(primaryRow._originalRowIndex, validationResult, fullLead.clientName));
+          console.log(formatValidationResult(primaryRow._originalRowIndex || 0, validationResult, fullLead.clientName));
 
           if (!validationResult.isValid) {
             const w = validationResult.errors.join('; ');

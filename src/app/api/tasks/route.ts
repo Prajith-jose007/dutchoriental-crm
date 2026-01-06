@@ -4,6 +4,7 @@ import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import type { Task } from '@/lib/types';
 import { randomUUID } from 'crypto';
+import { formatToMySQLDateTime } from '@/lib/utils';
 
 export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
@@ -57,9 +58,9 @@ export async function POST(request: Request) {
             type: type || 'Call',
             notes: notes || '',
             assignedTo: assignedTo || null,
-            dueDate: dueDate || new Date().toISOString(),
+            dueDate: formatToMySQLDateTime(dueDate || new Date())!,
             status: status || 'Pending',
-            createdAt: new Date().toISOString(),
+            createdAt: formatToMySQLDateTime(new Date())!,
         };
 
         const sql = `

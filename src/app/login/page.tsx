@@ -23,9 +23,11 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+  const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
+    setIsMounted(true);
+
     let isAuthenticated = false;
     try {
       isAuthenticated = !!localStorage.getItem(USER_ROLE_STORAGE_KEY);
@@ -35,8 +37,6 @@ export default function LoginPage() {
 
     if (isAuthenticated) {
       router.replace('/dashboard');
-    } else {
-      setIsCheckingAuth(false);
     }
   }, [router]);
 
@@ -90,7 +90,7 @@ export default function LoginPage() {
     }
   };
 
-  if (isCheckingAuth) {
+  if (!isMounted) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-muted/40">
         <Card className="w-full max-w-sm">

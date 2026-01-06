@@ -4,6 +4,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import type { Lead, LeadStatus, LeadPackageQuantity, PaymentConfirmationStatus, LeadType, ModeOfPayment } from '@/lib/types';
 import { query } from '@/lib/db';
 import { formatISO, parseISO, isValid, getYear as getFullYear } from 'date-fns';
+import { formatToMySQLDateTime } from '@/lib/utils';
 
 interface DbLead extends Omit<Lead, 'packageQuantities' | 'totalAmount' | 'commissionPercentage' | 'commissionAmount' | 'netAmount' | 'paidAmount' | 'balanceAmount' | 'freeGuestCount' | 'perTicketRate' | 'checkInStatus'> {
   package_quantities_json?: string;
@@ -180,7 +181,7 @@ export async function POST(request: NextRequest) {
       newLeadData.agent,
       newLeadData.yacht,
       newLeadData.status || 'Balance',
-      formattedMonth,
+      formatToMySQLDateTime(formattedMonth),
       newLeadData.notes || null,
       newLeadData.type || 'Private Cruise',
       newLeadData.paymentConfirmationStatus || 'UNCONFIRMED',
@@ -196,8 +197,8 @@ export async function POST(request: NextRequest) {
       Number(newLeadData.netAmount || 0),
       Number(newLeadData.paidAmount || 0),
       Number(newLeadData.balanceAmount || 0),
-      ensureISOFormat(newLeadData.createdAt) || formatISO(now),
-      formatISO(now),
+      formatToMySQLDateTime(newLeadData.createdAt) || formatToMySQLDateTime(now),
+      formatToMySQLDateTime(now),
       requestingUserId,
       newLeadData.ownerUserId || requestingUserId,
       newLeadData.freeGuestDetails ? JSON.stringify(newLeadData.freeGuestDetails) : null,
@@ -251,7 +252,7 @@ export async function PATCH(request: NextRequest) {
 
         if (canUpdate) {
           const updateSql = 'UPDATE leads SET status = ?, updatedAt = ?, lastModifiedByUserId = ? WHERE id = ?';
-          const result = await query<any>(updateSql, [newStatus, formatISO(new Date()), requestingUserId, id]);
+          const result = await query<any>(updateSql, [newStatus, formatToMySQLDateTime(new Date()), requestingUserId, id]);
           if (result.affectedRows > 0) updatedCount++;
           else {
             failedCount++;

@@ -42,13 +42,8 @@ import { useToast } from '@/hooks/use-toast';
 import { useEffect, useState, useMemo } from 'react';
 import { format, formatISO, parseISO, isValid, getYear } from 'date-fns';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Terminal, XCircle } from 'lucide-react';
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
+import { Terminal, XCircle, Wallet, Percent } from 'lucide-react';
+
 import { cn } from '@/lib/utils';
 
 
@@ -151,7 +146,7 @@ const getDefaultFormValues = (existingLead?: Lead | null, currentUserId?: string
     status: existingLead?.status || 'Balance', // Default to Balance for new leads
     month: existingLead?.month && isValid(parseISO(existingLead.month)) ? parseISO(existingLead.month) : new Date(),
     yacht: existingLead?.yacht || '',
-    type: existingLead?.type || 'Private Cruise',
+    type: existingLead?.type || (undefined as any), // Force selection
     paymentConfirmationStatus: existingLead?.paymentConfirmationStatus || 'UNCONFIRMED',
     modeOfPayment: existingLead?.modeOfPayment || 'CARD',
     clientName: existingLead?.clientName || '',
@@ -347,7 +342,9 @@ export function BookingFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess,
         name === 'paidAmount' ||
         name === 'durationHours' ||
         name === 'yacht' ||
-        name === 'type'
+        name === 'type' ||
+        name === 'commissionPercentage' ||
+        name === 'freeGuestCount'
       ) {
         const {
           packageQuantities = [],
@@ -356,12 +353,19 @@ export function BookingFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess,
           paidAmount,
           durationHours,
           yacht: yachtId,
-          type: leadType
+          type: leadType,
+          freeGuestCount
         } = form.getValues();
 
         const selectedYacht = allYachts.find(y => y.id === yachtId);
-        const selectedAgentForCalc = allAgents.find(a => a.id === agentId);
-        const agentDiscountRate = selectedAgentForCalc ? Number(selectedAgentForCalc.discount || 0) : 0;
+
+        // Logic: Use current form value for discount, unless Agent just changed
+        let agentDiscountRate = Number(form.getValues('commissionPercentage') || 0);
+        if (name === 'agent') {
+          const selectedAgentForCalc = allAgents.find(a => a.id === agentId);
+          agentDiscountRate = selectedAgentForCalc ? Number(selectedAgentForCalc.discount || 0) : 0;
+          form.setValue('commissionPercentage', agentDiscountRate, { shouldValidate: true });
+        }
 
         let calculatedTotalAmount = 0;
         let tempTotalGuests = 0;
@@ -389,6 +393,10 @@ export function BookingFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess,
           tempTotalGuests += quantity;
         });
 
+        // Add Free Guests to Total Guest Count
+        tempTotalGuests += Number(freeGuestCount || 0);
+
+
         if (perTicketRate && Number(perTicketRate) > 0) {
           // User requested that 'Other Charges' should NOT be included in the Total Amount calculation.
           // calculatedTotalAmount += Number(perTicketRate); 
@@ -414,7 +422,7 @@ export function BookingFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess,
         );
 
         form.setValue('totalAmount', calculatedTotalAmount, { shouldValidate: true });
-        form.setValue('commissionPercentage', agentDiscountRate, { shouldValidate: true });
+        // Discount % is manually editable, so we don't overwrite it here unless agent changed (handled above)
         form.setValue('commissionAmount', calculatedCommissionAmount, { shouldValidate: true });
         form.setValue('netAmount', calculatedNetAmount, { shouldValidate: true });
         form.setValue('balanceAmount', actualSignedBalanceAmount, { shouldValidate: true });
@@ -492,8 +500,8 @@ export function BookingFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess,
 
     const finalTotalAmount = Number(rawFinalTotalAmount.toFixed(2));
 
-    const selectedAgentForSubmit = allAgents.find(a => a.id === data.agent);
-    const finalCommissionPercentage = selectedAgentForSubmit ? Number(selectedAgentForSubmit.discount || 0) : 0;
+    // Use the form's commission percentage (which allows manual override), fallback to agent default only if missing
+    const finalCommissionPercentage = Number(data.commissionPercentage);
     const finalCommissionAmount = Number(((finalTotalAmount * finalCommissionPercentage) / 100).toFixed(2));
     const finalNetAmount = Number((finalTotalAmount - finalCommissionAmount).toFixed(2));
     const finalPaidAmount = Number(Number(data.paidAmount || 0).toFixed(2));
@@ -588,693 +596,336 @@ export function BookingFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess,
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               <fieldset disabled={isFormDisabled}>
-                <Tabs defaultValue="basic" className="w-full">
-                  <TabsList className="grid w-full grid-cols-6 bg-muted/50 p-1">
-                    <TabsTrigger value="basic">Basic Info</TabsTrigger>
-                    <TabsTrigger value="client">Client Details</TabsTrigger>
-                    <TabsTrigger value="sales">Sales Info</TabsTrigger>
-                    <TabsTrigger value="packages">Packages/Costs</TabsTrigger>
-                    <TabsTrigger value="ops">Operations</TabsTrigger>
-                    <TabsTrigger value="activities">Interactions</TabsTrigger>
-                  </TabsList>
+                <div className="space-y-6 pr-2">
 
-                  <ScrollArea className="h-[60vh] mt-4 pr-4">
-                    {/* --- BASIC INFO TAB --- */}
-                    <TabsContent value="basic" className="space-y-4">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <FormField
-                          control={form.control}
-                          name="month"
-                          render={({ field }) => (
-                            <FormItem className="flex flex-col">
-                              <FormLabel>Booking/Event Date</FormLabel>
-                              <DatePicker
-                                date={field.value ? (isValid(field.value) ? field.value : new Date()) : new Date()}
-                                setDate={(date) => { if (date) field.onChange(date); }}
-                                placeholder="Pick booking date"
-                              />
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="status"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Status</FormLabel>
-                              <Select onValueChange={field.onChange} value={field.value || undefined}>
-                                <FormControl><SelectTrigger><SelectValue placeholder="Select status" /></SelectTrigger></FormControl>
-                                <SelectContent>
-                                  {leadStatusOptions.map(status => (<SelectItem key={status} value={status}>{status}</SelectItem>))}
-                                </SelectContent>
-                              </Select>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
+                  {/* --- ROW 1: BASICS --- */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {/* Client Name */}
+                    <FormField
+                      control={form.control}
+                      name="clientName"
+                      render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Cruise Scope</FormLabel>
+                          <FormLabel>Client Name</FormLabel>
+                          <FormControl><Input placeholder="Client Name" {...field} /></FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    {/* Agent */}
+                    <FormField
+                      control={form.control}
+                      name="agent"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Agent</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value || undefined}>
+                            <FormControl><SelectTrigger><SelectValue placeholder="Select Agent" /></SelectTrigger></FormControl>
+                            <SelectContent>
+                              {allAgents.map((agent) => (<SelectItem key={agent.id} value={agent.id}>{agent.name}</SelectItem>))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    {/* Status */}
+                    <FormField
+                      control={form.control}
+                      name="status"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Status</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value || undefined}>
+                            <FormControl><SelectTrigger><SelectValue placeholder="Status" /></SelectTrigger></FormControl>
+                            <SelectContent>
+                              {leadStatusOptions.map(status => (<SelectItem key={status} value={status}>{status}</SelectItem>))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    {/* Booking Type (Merging Scope & Type) */}
+                    <FormField
+                      control={form.control}
+                      name="type"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Booking Type</FormLabel>
                           <Select
-                            value={cruiseScope}
-                            onValueChange={(value: 'private' | 'shared') => {
-                              setCruiseScope(value);
-                              form.setValue('type', '' as any);
+                            onValueChange={(val) => {
+                              field.onChange(val);
+                              if (val === 'Private Cruise') setCruiseScope('private');
+                              else setCruiseScope('shared');
                               form.setValue('yacht', '');
                               replacePackageQuantities([]);
                             }}
+                            value={field.value || undefined}
                           >
-                            <FormControl><SelectTrigger><SelectValue placeholder="Select scope" /></SelectTrigger></FormControl>
+                            <FormControl><SelectTrigger><SelectValue placeholder="Select Type" /></SelectTrigger></FormControl>
                             <SelectContent>
-                              <SelectItem value="shared">Shared Cruise</SelectItem>
-                              <SelectItem value="private">Private Cruise</SelectItem>
+                              {leadTypeOptions.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
                             </SelectContent>
                           </Select>
+                          <FormMessage />
                         </FormItem>
-                        <FormField
-                          control={form.control}
-                          name="type"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Booking Type</FormLabel>
-                              <Select
-                                onValueChange={(value) => { field.onChange(value); form.setValue('yacht', ''); replacePackageQuantities([]); }}
-                                value={field.value || undefined}
-                                disabled={!cruiseScope}
-                              >
-                                <FormControl><SelectTrigger><SelectValue placeholder={!cruiseScope ? "Select Cruise Scope first" : "Select type"} /></SelectTrigger></FormControl>
-                                <SelectContent>
-                                  {filteredLeadTypeOptions.map(typeOpt => (<SelectItem key={typeOpt} value={typeOpt}>{typeOpt}</SelectItem>))}
-                                </SelectContent>
-                              </Select>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="yacht"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Yacht</FormLabel>
-                              <Select
-                                onValueChange={field.onChange}
-                                value={field.value || undefined}
-                                disabled={!watchedLeadType || isLoadingDropdowns || filteredYachts.length === 0}
-                              >
-                                <FormControl><SelectTrigger><SelectValue placeholder={!watchedLeadType ? "Select Booking Type first" : (filteredYachts.length === 0 && !isLoadingDropdowns ? "No yachts for this type" : "Select a yacht")} /></SelectTrigger></FormControl>
-                                <SelectContent>
-                                  {filteredYachts.map((yacht) => (<SelectItem key={yacht.id} value={yacht.id}>{yacht.name}</SelectItem>))}
-                                </SelectContent>
-                              </Select>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        {cruiseScope === 'shared' ? (
-                          <FormField
-                            control={form.control}
-                            name="agent"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Partner/Agent</FormLabel>
-                                <Select onValueChange={field.onChange} value={field.value || undefined}>
-                                  <FormControl><SelectTrigger><SelectValue placeholder="Select an agent" /></SelectTrigger></FormControl>
-                                  <SelectContent>
-                                    {allAgents.map((agent) => (<SelectItem key={agent.id} value={agent.id}>{agent.name}</SelectItem>))}
-                                  </SelectContent>
-                                </Select>
-                                <FormMessage />
-                              </FormItem>
-                            )}
+                      )}
+                    />
+
+                    {/* Booking Date */}
+                    <FormField
+                      control={form.control}
+                      name="month"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-col">
+                          <FormLabel>Booking Date</FormLabel>
+                          <DatePicker
+                            date={field.value ? (isValid(field.value) ? field.value : new Date()) : new Date()}
+                            setDate={(date) => { if (date) field.onChange(date); }}
                           />
-                        ) : (
-                          <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <FormField
-                              control={form.control}
-                              name="customAgentName"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>External Agent Name</FormLabel>
-                                  <FormControl><Input placeholder="e.g. Luxury Travels" {...field} /></FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                            <FormField
-                              control={form.control}
-                              name="customAgentPhone"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>External Agent Phone</FormLabel>
-                                  <FormControl><Input placeholder="+971..." {...field} /></FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                          </div>
-                        )}
-                      </div>
-                      <FormField
-                        control={form.control}
-                        name="notes"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Booking Remarks / Internal Notes</FormLabel>
-                            <FormControl><Textarea placeholder="Add any specific details or special requests..." className="h-20" {...field} value={field.value || ''} /></FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </TabsContent>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
 
-                    {/* --- CLIENT DETAILS TAB --- */}
-                    <TabsContent value="client" className="space-y-4">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <FormField
-                          control={form.control}
-                          name="clientName"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Full Name / Company Name</FormLabel>
-                              <FormControl><Input placeholder="e.g., John Doe / Acme Corp" {...field} /></FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="customerPhone"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Contact Number (WhatsApp)</FormLabel>
-                              <FormControl><Input placeholder="+971..." {...field} /></FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="customerEmail"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Email Address</FormLabel>
-                              <FormControl><Input type="email" placeholder="client@example.com" {...field} /></FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="nationality"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Nationality</FormLabel>
-                              <FormControl><Input placeholder="e.g., British" {...field} /></FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="language"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Preferred Language</FormLabel>
-                              <FormControl><Input placeholder="e.g., English / Arabic" {...field} /></FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-                    </TabsContent>
-
-                    {/* --- SALES INFO TAB --- */}
-                    <TabsContent value="sales" className="space-y-4">
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        <FormField
-                          control={form.control}
-                          name="source"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Lead Source</FormLabel>
-                              <Select onValueChange={field.onChange} value={field.value || undefined}>
-                                <FormControl><SelectTrigger><SelectValue placeholder="Select Source" /></SelectTrigger></FormControl>
-                                <SelectContent>
-                                  {['Website', 'WhatsApp', 'Instagram', 'Walk-in', 'Partner', 'Agent'].map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                                </SelectContent>
-                              </Select>
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="priority"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Priority</FormLabel>
-                              <Select onValueChange={field.onChange} value={field.value || undefined}>
-                                <FormControl><SelectTrigger><SelectValue placeholder="Priority" /></SelectTrigger></FormControl>
-                                <SelectContent>
-                                  {['Low', 'Medium', 'High'].map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
-                                </SelectContent>
-                              </Select>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="yachtType"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Preferred Yacht Type</FormLabel>
-                              <Select onValueChange={field.onChange} value={field.value || undefined}>
-                                <FormControl><SelectTrigger><SelectValue placeholder="Select Yacht Type" /></SelectTrigger></FormControl>
-                                <SelectContent>
-                                  {['Luxury', 'Mega Yacht', 'Catamaran', 'Speedboat'].map(yt => <SelectItem key={yt} value={yt}>{yt}</SelectItem>)}
-                                </SelectContent>
-                              </Select>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="closingProbability"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Closing Probability (%)</FormLabel>
-                              <FormControl><Input type="number" {...field} value={field.value ?? ''} onChange={e => field.onChange(e.target.value === '' ? null : parseFloat(e.target.value))} /></FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="inquiryDate"
-                          render={({ field }) => (
-                            <FormItem className="flex flex-col">
-                              <FormLabel>Inquiry Date</FormLabel>
-                              <DatePicker
-                                date={field.value || undefined}
-                                setDate={(date) => field.onChange(date)}
-                                placeholder="Pick inquiry date"
-                              />
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="ownerUserId"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Assigned To (Owner)</FormLabel>
-                              <Select
-                                onValueChange={field.onChange}
-                                value={field.value || undefined}
-                                disabled={!isAdmin} // Only Admins/Heads can assign to others
-                              >
-                                <FormControl><SelectTrigger><SelectValue placeholder="Select Owner" /></SelectTrigger></FormControl>
-                                <SelectContent>
-                                  {allUsers.map(u => (
-                                    <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                              <FormDescription className="text-[10px]">
-                                {isAdmin ? "Re-assign this lead to a team member." : "Lead ownership can only be changed by admins."}
-                              </FormDescription>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="nextFollowUpDate"
-                          render={({ field }) => (
-                            <FormItem className="flex flex-col">
-                              <FormLabel>Next Follow-up</FormLabel>
-                              <DatePicker
-                                date={field.value || undefined}
-                                setDate={(date) => field.onChange(date)}
-                                placeholder="Pick follow-up date"
-                              />
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-                      <Separator className="my-2" />
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <FormField
-                          control={form.control}
-                          name="adultsCount"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Adults</FormLabel>
-                              <FormControl><Input type="number" {...field} value={field.value ?? ''} onChange={e => field.onChange(e.target.value === '' ? null : parseInt(e.target.value))} /></FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="kidsCount"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Kids / Children</FormLabel>
-                              <FormControl><Input type="number" {...field} value={field.value ?? ''} onChange={e => field.onChange(e.target.value === '' ? null : parseInt(e.target.value))} /></FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="durationHours"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Duration (Hours)</FormLabel>
-                              <FormControl><Input type="number" step="0.5" {...field} value={field.value ?? ''} onChange={e => field.onChange(e.target.value === '' ? null : parseFloat(e.target.value))} /></FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="occasion"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Occasion</FormLabel>
-                              <Select onValueChange={field.onChange} value={field.value || undefined}>
-                                <FormControl><SelectTrigger><SelectValue placeholder="Select occasion" /></SelectTrigger></FormControl>
-                                <SelectContent>
-                                  {['Birthday', 'Anniversary', 'Corporate', 'Proposal', 'Party', 'Other'].map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                                </SelectContent>
-                              </Select>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="budgetRange"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Budget Range (AED)</FormLabel>
-                              <FormControl><Input placeholder="e.g. 5,000 - 10,000" {...field} value={field.value || ''} /></FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-                    </TabsContent>
-
-                    {/* --- PACKAGES TAB --- */}
-                    <TabsContent value="packages" className="space-y-4">
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <FormField
-                          control={form.control}
-                          name="modeOfPayment"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Mode of Payment</FormLabel>
-                              <Select onValueChange={field.onChange} value={field.value || undefined}>
-                                <FormControl><SelectTrigger><SelectValue placeholder="Mode" /></SelectTrigger></FormControl>
-                                <SelectContent>
-                                  {modeOfPaymentOptions.map(mop => (<SelectItem key={mop} value={mop}>{mop}</SelectItem>))}
-                                </SelectContent>
-                              </Select>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="paymentConfirmationStatus"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Payment Status</FormLabel>
-                              <Select onValueChange={field.onChange} value={field.value || undefined}>
-                                <FormControl><SelectTrigger><SelectValue placeholder="Status" /></SelectTrigger></FormControl>
-                                <SelectContent>
-                                  {paymentConfirmationStatusOptions.map(status => (<SelectItem key={status} value={status}>{status}</SelectItem>))}
-                                </SelectContent>
-                              </Select>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="bookingRefNo"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Internal REF No.</FormLabel>
-                              <FormControl><Input placeholder="REF..." {...field} value={field.value || ''} /></FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="transactionId"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Transaction ID</FormLabel>
-                              <FormControl><Input placeholder="Pending Generation" {...field} value={field.value || 'Pending Generation'} readOnly className="bg-muted/50 cursor-not-allowed" /></FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-
-                      <div className="border p-4 rounded-md mt-4 space-y-4">
-                        <div className="flex justify-between items-center mb-4">
-                          <label className="text-sm font-medium">Free Guests / Complimentary Items</label>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              appendFreeGuest({ type: 'Child (0-3 years)', quantity: 0 });
-                            }}
+                  {/* --- ROW 2: CRUISE DETAILS (Conditional) --- */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 border-t pt-4">
+                    {/* Yacht Name */}
+                    <FormField
+                      control={form.control}
+                      name="yacht"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Yacht Name</FormLabel>
+                          <Select
+                            onValueChange={field.onChange}
+                            value={field.value || undefined}
+                            disabled={!cruiseScope}
                           >
-                            + Add Free Guest
-                          </Button>
-                        </div>
-                        {freeGuestFields.map((item, index) => (
-                          <div key={item.id} className="flex gap-4 items-end mb-3">
+                            <FormControl><SelectTrigger><SelectValue placeholder="Select Yacht" /></SelectTrigger></FormControl>
+                            <SelectContent>
+                              {filteredYachts.map((yacht) => (<SelectItem key={yacht.id} value={yacht.id}>{yacht.name}</SelectItem>))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    {/* Ticket No / Ref */}
+                    <FormField
+                      control={form.control}
+                      name="bookingRefNo"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Ticket Number / Ref</FormLabel>
+                          <FormControl><Input placeholder="Ticket No" {...field} value={field.value || ''} /></FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    {/* Free Guest Count */}
+                    <FormField
+                      control={form.control}
+                      name="freeGuestCount"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Free Guest (Child 0-3 yrs)</FormLabel>
+                          <FormControl><Input type="number" min="0" {...field} value={field.value ?? ''} onChange={e => field.onChange(e.target.value === '' ? null : parseInt(e.target.value))} /></FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  {/* --- PACKAGES GRID --- */}
+                  <div className="border-t pt-4">
+                    <div className="flex justify-between items-center mb-4">
+                      <label className="text-sm font-bold uppercase text-muted-foreground tracking-wider">Packages (As per Boat)</label>
+                      <span className="text-xs font-medium bg-primary/10 text-primary px-2 py-1 rounded">Total Guests: {calculatedTotalGuests}</span>
+                    </div>
+
+                    {packageQuantityFields.length === 0 ? (
+                      <div className="text-center py-4 text-muted-foreground border border-dashed rounded-md text-sm">Select a Yacht to view packages</div>
+                    ) : (
+                      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                        {packageQuantityFields.map((fieldItem, index) => (
+                          <div key={fieldItem.id} className="bg-muted/20 p-3 rounded-lg border hover:border-primary/50 transition-colors">
+                            <label className="text-[11px] font-bold text-muted-foreground uppercase mb-1 block truncate" title={fieldItem.packageName}>
+                              {fieldItem.packageName}
+                            </label>
+                            <div className="flex gap-2 items-center mb-1">
+                              <span className="text-[10px] text-muted-foreground">AED {form.watch(`packageQuantities.${index}.rate`)}</span>
+                            </div>
                             <FormField
                               control={form.control}
-                              name={`freeGuestDetails.${index}.type` as any}
+                              name={`packageQuantities.${index}.quantity`}
                               render={({ field }) => (
-                                <FormItem className="flex-1">
-                                  <FormLabel className="text-xs">Type</FormLabel>
-                                  <Select onValueChange={field.onChange} value={field.value}>
-                                    <FormControl><SelectTrigger><SelectValue placeholder="Select Type" /></SelectTrigger></FormControl>
-                                    <SelectContent>
-                                      <SelectItem value="Child (0-3 years)">Child (0-3 years)</SelectItem>
-                                      <SelectItem value="Guide">Guide</SelectItem>
-                                      <SelectItem value="Staff">Staff</SelectItem>
-                                      <SelectItem value="Other">Other</SelectItem>
-                                    </SelectContent>
-                                  </Select>
-                                  <FormMessage />
-                                </FormItem>
+                                <FormControl>
+                                  <div className="relative">
+                                    <Input type="number" min="0" className="h-9 text-center font-bold bg-white" placeholder="0" {...field} />
+                                    <span className="absolute right-2 top-2.5 text-[10px] text-muted-foreground">Qty</span>
+                                  </div>
+                                </FormControl>
                               )}
                             />
-                            <FormField
-                              control={form.control}
-                              name={`freeGuestDetails.${index}.quantity` as any}
-                              render={({ field }) => (
-                                <FormItem className="w-24">
-                                  <FormLabel className="text-xs">Qty</FormLabel>
-                                  <FormControl><Input type="number" min="0" {...field} onChange={(e) => {
-                                    const val = parseInt(e.target.value) || 0;
-                                    field.onChange(val);
-                                    setTimeout(() => {
-                                      const details = form.getValues('freeGuestDetails' as any) as any[];
-                                      const total = details?.reduce((sum, d) => sum + (d.quantity || 0), 0) || 0;
-                                      form.setValue('freeGuestCount', total);
-                                    }, 0);
-                                  }} />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              className="text-destructive"
-                              onClick={() => {
-                                removeFreeGuest(index);
-                                setTimeout(() => {
-                                  const details = form.getValues('freeGuestDetails' as any) as any[];
-                                  const total = details?.reduce((sum, d) => sum + (d.quantity || 0), 0) || 0;
-                                  form.setValue('freeGuestCount', total);
-                                }, 0);
-                              }}
-                            >
-                              <XCircle className="h-4 w-4" />
-                            </Button>
+                            {/* Hidden Rate Field */}
+                            <div className="hidden">
+                              <FormField
+                                control={form.control}
+                                name={`packageQuantities.${index}.rate`}
+                                render={({ field }) => <Input {...field} />}
+                              />
+                            </div>
                           </div>
                         ))}
                       </div>
+                    )}
+                  </div>
 
-                      <div className="border p-4 rounded-md mt-4 space-y-4">
-                        <div className="flex justify-between items-center">
-                          <label className="text-sm font-bold uppercase text-muted-foreground tracking-wider">Package Selections</label>
-                          <span className="text-xs font-medium bg-primary/10 text-primary px-2 py-1 rounded">Total Guests: {calculatedTotalGuests}</span>
-                        </div>
+                  {/* --- OTHER PACKAGE / ADJUSTMENT --- */}
+                  <FormField
+                    control={form.control}
+                    name="perTicketRate"
+                    render={({ field }) => (
+                      <FormItem className="md:w-1/3">
+                        <FormLabel className="text-xs font-bold uppercase text-muted-foreground">Other Package Amount (Excluded from Total)</FormLabel>
+                        <FormControl><Input type="number" step="0.01" placeholder="0.00" {...field} value={field.value === null ? '' : field.value} /></FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
-                        {packageQuantityFields.length === 0 ? (
-                          <div className="text-center py-6 text-muted-foreground border-2 border-dashed rounded-md italic text-sm">Select a Yacht to view available packages</div>
-                        ) : (
-                          <div className="space-y-3">
-                            {packageQuantityFields.map((fieldItem, index) => (
-                              <div key={fieldItem.id} className="grid grid-cols-12 gap-3 items-end bg-muted/30 p-2 rounded-lg border border-transparent hover:border-slate-300 transition-all">
-                                <div className="col-span-6">
-                                  <label className="text-[10px] font-bold text-muted-foreground uppercase px-1">Package Name</label>
-                                  <Input value={fieldItem.packageName} readOnly className="h-8 text-xs bg-white font-semibold" />
-                                </div>
-                                <div className="col-span-3">
-                                  <label className="text-[10px] font-bold text-muted-foreground uppercase px-1">Rate (AED)</label>
-                                  <FormField
-                                    control={form.control}
-                                    name={`packageQuantities.${index}.rate`}
-                                    render={({ field }) => (
-                                      <FormControl><Input type="number" step="0.01" className="h-8 text-xs bg-white" {...field} /></FormControl>
-                                    )}
-                                  />
-                                </div>
-                                <div className="col-span-3">
-                                  <label className="text-[10px] font-bold text-muted-foreground uppercase px-1">Quantity</label>
-                                  <FormField
-                                    control={form.control}
-                                    name={`packageQuantities.${index}.quantity`}
-                                    render={({ field }) => (
-                                      <FormControl><Input type="number" min="0" className="h-8 text-xs bg-primary/5 focus:bg-white text-center font-bold" {...field} /></FormControl>
-                                    )}
-                                  />
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                        <FormField
-                          control={form.control}
-                          name="perTicketRate"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="text-xs font-bold uppercase text-muted-foreground">Other / Adjustment Charges (AED)</FormLabel>
-                              <FormControl><Input type="number" step="0.01" placeholder="0.00" {...field} value={field.value === null ? '' : field.value} /></FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
+                  {/* --- FINANCIALS --- */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 border p-6 rounded-xl mt-6 bg-slate-50/80">
+                    {/* Total Amount */}
+                    <FormField
+                      control={form.control}
+                      name="totalAmount"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="flex items-center gap-2">
+                            <Wallet className="h-4 w-4 text-muted-foreground" /> Total Amount (AED)
+                          </FormLabel>
+                          <FormControl><Input readOnly className="bg-slate-100 font-bold" {...field} value={field.value?.toLocaleString() || '0'} /></FormControl>
+                        </FormItem>
+                      )}
+                    />
 
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border p-4 rounded-md mt-6 bg-slate-50">
-                        <FormField
-                          control={form.control}
-                          name="paidAmount"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="text-green-700 font-bold">Total Paid Amount (AED)</FormLabel>
-                              <FormControl><Input type="number" step="0.01" {...field} className="border-green-200 bg-green-50/30" /></FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <div className="bg-slate-900 text-white p-4 rounded-lg flex flex-col justify-center items-end">
-                          <span className="text-[10px] uppercase font-bold opacity-70">Remaining Balance</span>
-                          <span className="text-2xl font-black">AED {form.watch('balanceAmount')?.toLocaleString() || '0.00'}</span>
-                        </div>
-                      </div>
-                    </TabsContent>
+                    {/* Net Amount */}
+                    <FormField
+                      control={form.control}
+                      name="netAmount"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="flex items-center gap-2">
+                            <Wallet className="h-4 w-4 text-muted-foreground" /> Net Amount
+                          </FormLabel>
+                          <FormControl><Input readOnly className="bg-slate-100 font-bold" {...field} value={field.value?.toLocaleString() || '0'} /></FormControl>
+                        </FormItem>
+                      )}
+                    />
 
-                    {/* --- OPERATIONS TAB --- */}
-                    <TabsContent value="ops" className="space-y-4">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <FormField
-                          control={form.control}
-                          name="captainName"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Captain Name</FormLabel>
-                              <FormControl><Input placeholder="Captain's Name" {...field} /></FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="idVerified"
-                          render={({ field }) => (
-                            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4 shadow-sm">
-                              <div className="space-y-0.5">
-                                <FormLabel>ID Verified</FormLabel>
-                                <FormDescription>Confirm guest IDs have been verified.</FormDescription>
-                              </div>
-                              <FormControl>
-                                <Switch checked={field.value} onCheckedChange={field.onChange} />
-                              </FormControl>
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="crewDetails"
-                          render={({ field }) => (
-                            <FormItem className="col-span-2">
-                              <FormLabel>Crew Assignment Details</FormLabel>
-                              <FormControl><Textarea placeholder="List assigned crew members and roles..." {...field} value={field.value || ''} /></FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <FormField
-                          control={form.control}
-                          name="extraHoursUsed"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Extra Hours Used</FormLabel>
-                              <FormControl><Input type="number" step="0.5" {...field} /></FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="extraCharges"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Extra Charges (AED)</FormLabel>
-                              <FormControl><Input type="number" step="0.01" {...field} /></FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-                    </TabsContent>
+                    {/* Other Amount (Display Only or redundant? User asked for d. Other Amount. 
+                             If it's excluding from calculation, maybe just showing input above is enough.
+                             But let's show it here if needed, or simply skip since it is above.)
+                             User: "c. other amount". Let's assume input above satisfies this.
+                         */}
 
-                    <TabsContent value="activities" className="mt-0">
-                      <div className="pt-2">
-                        <ActivityLog
-                          leadId={lead?.id}
-                          currentUserId={currentUserId || null}
-                          users={allUsers}
-                        />
+                    {/* Discount % */}
+                    <FormField
+                      control={form.control}
+                      name="commissionPercentage"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="flex items-center gap-2">
+                            <Percent className="h-4 w-4 text-muted-foreground" /> Discount (%) (Agent)
+                          </FormLabel>
+                          <FormControl><Input type="number" step="0.5" className="bg-white" {...field} /></FormControl>
+                        </FormItem>
+                      )}
+                    />
+
+                    {/* Commission Amount (Hidden req? User said "d. discount as per agent". Maybe amount?) */}
+                    <FormField
+                      control={form.control}
+                      name="commissionAmount"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="flex items-center gap-2">
+                            <Wallet className="h-4 w-4 text-muted-foreground" /> Discount Amt
+                          </FormLabel>
+                          <FormControl><Input readOnly className="bg-slate-100/50 text-xs" {...field} value={field.value?.toLocaleString() || '0'} /></FormControl>
+                        </FormItem>
+                      )}
+                    />
+
+                    {/* Paid Amount */}
+                    <FormField
+                      control={form.control}
+                      name="paidAmount"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-green-700 font-bold flex items-center gap-2">
+                            <Wallet className="h-4 w-4" /> Paid Amount
+                          </FormLabel>
+                          <FormControl><Input type="number" step="0.01" {...field} className="border-green-200 bg-green-50 text-green-800 font-bold" /></FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    {/* Mode of Payment */}
+                    <FormField
+                      control={form.control}
+                      name="modeOfPayment"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="flex items-center gap-2">
+                            <Wallet className="h-4 w-4 text-muted-foreground" /> Payment Mode
+                          </FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value || undefined}>
+                            <FormControl><SelectTrigger><SelectValue placeholder="Select Mode" /></SelectTrigger></FormControl>
+                            <SelectContent>
+                              {modeOfPaymentOptions.map(mop => (<SelectItem key={mop} value={mop}>{mop}</SelectItem>))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    {/* Balance Amount */}
+                    <div className="flex flex-col space-y-2">
+                      <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex items-center gap-2">
+                        <Wallet className="h-4 w-4 text-muted-foreground" /> Balance Due
+                      </label>
+                      <div className="flex h-10 w-full rounded-md border border-input bg-slate-900 px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 text-white font-black">
+                        AED {form.watch('balanceAmount')?.toLocaleString() || '0.00'}
                       </div>
-                    </TabsContent>
-                  </ScrollArea>
-                </Tabs>
+                    </div>
+                  </div>
+
+                  {/* --- NOTES --- */}
+                  <FormField
+                    control={form.control}
+                    name="notes"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Booking Notes</FormLabel>
+                        <FormControl><Textarea placeholder="Add any notes..." className="h-20" {...field} value={field.value || ''} /></FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                </div>
 
                 <DialogFooter className="pt-4 border-t gap-2 mt-4">
                   <DialogClose asChild><Button type="button" variant="ghost">Cancel</Button></DialogClose>
@@ -1287,6 +938,6 @@ export function BookingFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess,
           </Form>
         </ScrollArea>
       </DialogContent>
-    </Dialog>
+    </Dialog >
   );
 }

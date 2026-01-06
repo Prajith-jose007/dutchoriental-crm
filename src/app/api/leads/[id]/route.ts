@@ -4,6 +4,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import type { Lead, LeadStatus, ModeOfPayment, LeadType, LeadPackageQuantity, PaymentConfirmationStatus } from '@/lib/types';
 import { query } from '@/lib/db';
 import { formatISO, parseISO, isValid } from 'date-fns';
+import { formatToMySQLDateTime } from '@/lib/utils';
 
 interface DbLead extends Omit<Lead, 'packageQuantities' | 'totalAmount' | 'commissionPercentage' | 'commissionAmount' | 'netAmount' | 'paidAmount' | 'balanceAmount' | 'freeGuestCount' | 'perTicketRate'> {
   package_quantities_json?: string;
@@ -93,7 +94,7 @@ function buildLeadUpdateSetClause(data: Partial<Omit<Lead, 'id' | 'createdAt' | 
     if (allowedKeys.includes(key as keyof Lead | 'package_quantities_json') && value !== undefined) {
       fieldsToUpdate.push(`${key} = ?`);
       if (['month', 'updatedAt'].includes(key)) {
-        valuesToUpdate.push(ensureISOFormat(value as string) || null);
+        valuesToUpdate.push(formatToMySQLDateTime(value as string) || null);
       } else if (value === null && ['perTicketRate', 'notes', 'transactionId', 'bookingRefNo'].includes(key)) {
         valuesToUpdate.push(null);
       } else if (value === undefined && ['perTicketRate'].includes(key)) {

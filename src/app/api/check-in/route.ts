@@ -3,6 +3,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import type { Lead, LeadPackageQuantity, LeadStatus, LeadType, PaymentConfirmationStatus, ModeOfPayment } from '@/lib/types';
 import { query } from '@/lib/db';
 import { formatISO, isValid, parseISO } from 'date-fns';
+import { formatToMySQLDateTime } from '@/lib/utils';
 
 // Minimal DbLead interface for this endpoint
 interface DbLead {
@@ -165,7 +166,7 @@ export async function POST(request: NextRequest) {
                 notes
             } = leadData;
 
-            const now = formatISO(new Date());
+            const now = formatToMySQLDateTime(new Date());
             const sql = `
                 UPDATE leads SET 
                     checked_in_quantities_json = ?, 
@@ -205,7 +206,7 @@ export async function POST(request: NextRequest) {
         }
 
         if (action === 'check-in') {
-            const now = formatISO(new Date());
+            const now = formatToMySQLDateTime(new Date());
             const sql = 'UPDATE leads SET checkInStatus = ?, checkInTime = ? WHERE id = ?';
             await query(sql, ['Checked In', now, leadId]);
             return NextResponse.json({ message: 'Check-in successful', checkInStatus: 'Checked In', checkInTime: now });

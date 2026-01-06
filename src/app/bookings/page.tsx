@@ -14,7 +14,7 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { DatePicker } from '@/components/ui/date-picker';
 import { Skeleton } from '@/components/ui/skeleton';
-import { format, parseISO, isWithinInterval, isValid, formatISO, getYear as getFullYear, getMonth as getMonthIndex, addDays } from 'date-fns';
+import { format, parseISO, isWithinInterval, isValid, formatISO, getYear as getFullYear, getMonth as getMonthIndex, addDays, parse } from 'date-fns';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -24,23 +24,24 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { ChevronDown, Trash2 } from 'lucide-react';
+import { validateCSVRow, formatValidationResult, type CSVRowData, type CSVValidationResult } from '@/lib/csvValidation';
 
 
 const USER_ID_STORAGE_KEY = 'currentUserId';
 const USER_ROLE_STORAGE_KEY = 'currentUserRole';
 
 
-const csvHeaderMapping: { [csvHeaderKey: string]: keyof Omit<Lead, 'packageQuantities'> | 'package_quantities_json_string' | `pkg_${string}` } = {
+const csvHeaderMapping: { [csvHeaderKey: string]: keyof Omit<Lead, 'packageQuantities'> | 'package_quantities_json_string' | `pkg_${string}` | undefined } = {
   'id': 'id',
   'status': 'status',
-  'date': 'month', 'event_date': 'month', 'lead/event_date': 'month',
-  'yacht': 'yacht', 'yacht_name': 'yacht',
+  'date': 'month', 'eventdate': 'month', 'event_date': 'month', 'lead/event_date': 'month',
+  'yacht': 'yacht',
   'agent': 'agent', 'agent_name': 'agent',
   'client': 'clientName', 'client_name': 'clientName',
   'payment_status': 'paymentConfirmationStatus', 'pay_status': 'paymentConfirmationStatus', 'payment_confirmation_status': 'paymentConfirmationStatus',
   'type': 'type', 'lead_type': 'type',
   'transaction_id': 'transactionId', 'transaction id': 'transactionId',
-  'booking_ref_no': 'bookingRefNo', 'booking ref no': 'bookingRefNo', 'bookingrefno': 'bookingRefNo',
+  'booking_ref_no': 'bookingRefNo', 'booking ref no': 'bookingRefNo',
   'payment_mode': 'modeOfPayment', 'mode_of_payment': 'modeOfPayment',
   'free': 'freeGuestCount', 'free_guests': 'freeGuestCount',
   'ch': 'pkg_child',
@@ -50,7 +51,7 @@ const csvHeaderMapping: { [csvHeaderKey: string]: keyof Omit<Lead, 'packageQuant
   'ad_alc': 'pkg_adult_alc', 'adult_alc': 'pkg_adult_alc',
   'vip_ch': 'pkg_vip_child',
   'vip_ad': 'pkg_vip_adult',
-  'vip_alc': 'pkg_vip_alc',
+  'vip_alc_pkg': 'pkg_vip_alc',
   'ryl_ch': 'pkg_royal_child', 'royal_child': 'pkg_royal_child',
   'ryl_ad': 'pkg_royal_adult', 'royal_adult': 'pkg_royal_adult',
   'ryl_alc': 'pkg_royal_alc', 'royal_alc': 'pkg_royal_alc',
@@ -73,6 +74,64 @@ const csvHeaderMapping: { [csvHeaderKey: string]: keyof Omit<Lead, 'packageQuant
   'modified_by': 'lastModifiedByUserId', 'modified by': 'lastModifiedByUserId',
   'date_of_creation': 'createdAt', 'creation_date': 'createdAt',
   'date_of_modification': 'updatedAt', 'modification_date': 'updatedAt',
+
+  // ========== NEW: Ticketing System CSV Format Mappings ==========
+  // Map ticketing system export fields to booking fields
+  'company_name': 'agent',           // Company Name → Agent
+  'companyname': 'agent',             // Alternative format
+  'user': undefined,                  // Ignore - internal system field
+  'ticketnumber': 'transactionId',    // TicketNumber → Transaction ID
+  'ticket_number': 'transactionId',
+  'booking_refno': 'bookingRefNo',    // Booking RefNO → Booking Reference Number
+  'transaction': 'modeOfPayment',     // Transaction → Mode of Payment (was incorrectly transactionId)
+  'yachtname': 'yacht',               // YachtName → Yacht
+  'yacht_name': 'yacht',
+  'pax_name': 'clientName',           // Pax Name → Client Name
+  'paxname': 'clientName',
+  'contactno': 'customerPhone',       // ContactNo → Customer Phone
+  'contact_no': 'customerPhone',
+  'travel_date': 'month',             // Travel Date → Event Date
+  'traveldate': 'month',
+  'time': undefined,                  // Time → Will be merged with Travel Date
+  'sales_amount(aed)': 'paidAmount',  // Sales Amount(AED) → Paid Amount (VALIDATED!)
+  'sales_amount': 'paidAmount',
+  'salesamount(aed)': 'paidAmount',
+  'salesamount': 'paidAmount',
+  'order_id': undefined,              // Ignore - internal order system
+  'orderid': undefined,
+  'sales_date': 'createdAt',          // Sales Date → Created At
+  'salesdate': 'createdAt',
+  'adult': 'pkg_adult',               // Adult → Adult Package Quantity
+  'child': 'pkg_child',               // Child → Child Package Quantity
+  'scanned_on': 'checkInTime',        // Scanned On → Check-in Time
+  'scannedon': 'checkInTime',
+  'remarks': 'notes',                 // Remarks → Notes
+
+  // ========== PACKAGE TYPE MAPPINGS (Ticketing System Package Names) ==========
+  // Standard packages - FOOD & SOFT DRINKS
+  'food_&_soft_drinks': 'pkg_adult',           // FOOD & SOFT DRINKS (Adult) → AD
+  'food_and_soft_drinks': 'pkg_adult',
+  'food_&_soft_drinks_(adult)': 'pkg_adult',
+  'food_&_soft_drinks_(child)': 'pkg_child',   // FOOD & SOFT DRINKS (Child) → CH
+  'food_and_soft_drinks_(child)': 'pkg_child',
+
+  // Alcoholic packages - FOOD AND UNLIMITED ALCOHOLIC DRINKS
+  'food_and_unlimited_alcoholic_drinks': 'pkg_adult_alc',  // → AD ALC
+  'food_&_unlimited_alcoholic_drinks': 'pkg_adult_alc',
+  'unlimited_alcoholic_drinks': 'pkg_adult_alc',
+
+  // VIP SOFT packages
+  'vip_soft': 'pkg_vip_adult',                 // VIP SOFT (Adult) → VIP AD
+  'vip_soft_(adult)': 'pkg_vip_adult',
+  'vip_soft_(child)': 'pkg_vip_child',         // VIP SOFT (Child) → VIP CH
+
+  // VIP PREMIUM/UNLIMITED ALCOHOLIC packages
+  'vip_premium_alcoholic_drinks': 'pkg_vip_alc',    // VIP PREMIUM ALCOHOLIC → VIP ALC
+  'vip_unlimited_alcoholic_drinks': 'pkg_vip_alc',  // VIP UNLIMITED ALCOHOLIC → VIP ALC
+  'vip_alcoholic': 'pkg_vip_alc',
+  'vip_alc': 'pkg_vip_alc',
+  // ========== END PACKAGE TYPE MAPPINGS ==========
+  // ========== END TICKETING SYSTEM MAPPINGS ==========
 };
 
 
@@ -131,12 +190,28 @@ const convertCsvValue = (
 
   switch (key) {
     case 'agent':
-    case 'yacht':
     case 'ownerUserId':
     case 'lastModifiedByUserId':
-      const mapToUse = key === 'agent' ? agentMap : (key === 'yacht' ? yachtMap : userMap);
+      const mapToUse = key === 'agent' ? agentMap : userMap;
       const idByName = Object.keys(mapToUse).find(id => mapToUse[id]?.toLowerCase() === trimmedValue.toLowerCase());
       return idByName || trimmedValue;
+
+    case 'yacht':
+      // Special handling for ticketing system format: "YACHT NAME - PACKAGE TYPE"
+      // Example: "LOTUS ROYALE - FOOD AND SOFT DRINKS"
+      let yachtNameOnly = trimmedValue;
+
+      // Check if the value contains " - " (yacht name with package type)
+      if (trimmedValue.includes(' - ')) {
+        const parts = trimmedValue.split(' - ');
+        yachtNameOnly = parts[0].trim();
+        // Package type will be in parts[1], but we handle that separately
+        console.log(`[CSV Import] Parsed yacht from ticketing format: "${trimmedValue}" → Yacht: "${yachtNameOnly}"`);
+      }
+
+      // Try to find yacht by ID or name
+      const yachtIdByName = Object.keys(yachtMap).find(id => yachtMap[id]?.toLowerCase() === yachtNameOnly.toLowerCase());
+      return yachtIdByName || yachtNameOnly;
 
     case 'totalAmount': case 'commissionPercentage': case 'commissionAmount':
     case 'netAmount': case 'paidAmount': case 'balanceAmount':
@@ -148,7 +223,11 @@ const convertCsvValue = (
       return isNaN(numRate) ? null : numRate;
 
     case 'modeOfPayment':
-      const foundMop = modeOfPaymentOptions.find(opt => opt.toLowerCase() === trimmedValue.toLowerCase());
+      // Map 'Credit' and 'Online' to 'CARD' if they don't match exactly
+      const lowerVal = trimmedValue.toLowerCase();
+      if (lowerVal === 'credit' || lowerVal === 'online') return 'CARD';
+
+      const foundMop = modeOfPaymentOptions.find(opt => opt.toLowerCase() === lowerVal);
       return foundMop || 'CARD';
     case 'status':
       const lowerTrimmedStatusValue = trimmedValue.toLowerCase();
@@ -169,49 +248,33 @@ const convertCsvValue = (
     case 'month':
     case 'createdAt':
     case 'updatedAt':
+    case 'checkInTime':
       try {
+        // 1. Try ISO parsing first
         const parsedISODate = parseISO(trimmedValue);
         if (isValid(parsedISODate)) return formatISO(parsedISODate);
-      } catch (e) { /* ignore */ }
+      } catch (e) { /* fall through */ }
 
       try {
-        let dateObj: Date | null = null;
-        const dayMonthYearMatch = trimmedValue.match(/(?:(?:Mon|Tues|Wednes|Thurs|Fri|Satur|Sun)day,\s*)?(\d{1,2})\s*(\w+)\s*(\d{4})/i) ||
-          trimmedValue.match(/(\w+)\s*(\d{1,2})\s*(\d{4})/i);
-        if (dayMonthYearMatch) {
-          const dayStr = dayMonthYearMatch[dayMonthYearMatch.length === 4 ? 1 : 2];
-          const monthStr = dayMonthYearMatch[dayMonthYearMatch.length === 4 ? 2 : 1];
-          const yearStr = dayMonthYearMatch[dayMonthYearMatch.length - 1];
-          let day = parseInt(dayStr, 10);
-          let year = parseInt(yearStr, 10);
-          const monthNames = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
-          let monthIndex = monthNames.findIndex(m => monthStr.toLowerCase().startsWith(m));
-          if (monthIndex === -1) {
-            const monthNum = parseInt(monthStr, 10);
-            if (monthNum >= 1 && monthNum <= 12) monthIndex = monthNum - 1;
-          }
-          if (monthIndex > -1 && day >= 1 && day <= 31 && year > 1900 && year < 2100) {
-            dateObj = new Date(Date.UTC(year, monthIndex, day));
-          }
-        }
-        if (!dateObj || !isValid(dateObj)) {
-          const parts = trimmedValue.match(/(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2,4})/);
-          if (parts && parts.length === 4) {
-            let day = parseInt(parts[1], 10);
-            let month = parseInt(parts[2], 10);
-            let year = parseInt(parts[3], 10);
-            if (String(year).length === 2) year += 2000;
-            if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
-              dateObj = new Date(Date.UTC(year, month - 1, day));
-            }
-            if ((!dateObj || !isValid(dateObj)) && day >= 1 && day <= 12 && month >= 1 && month <= 31) {
-              dateObj = new Date(Date.UTC(year, day - 1, month));
-            }
-          }
-        }
-        if (dateObj && isValid(dateObj)) return formatISO(dateObj);
-      } catch (e) {/* ignore */ }
-      console.warn(`[CSV Import] Could not parse date "${trimmedValue}" for key "${String(key)}". Defaulting to current date.`);
+        // 2. Try parsing 'dd-MM-yyyy' (e.g., "30-01-2026")
+        const parsedDateDMY = parse(trimmedValue, 'dd-MM-yyyy', new Date());
+        if (isValid(parsedDateDMY)) return formatISO(parsedDateDMY);
+      } catch (e) { /* fall through */ }
+
+      try {
+        // 3. Try parsing 'dd-MM-yyyy H:mm:ss' (e.g., "06-01-2026 1:56:29")
+        const parsedDateDMYHMS = parse(trimmedValue, 'dd-MM-yyyy H:mm:ss', new Date());
+        if (isValid(parsedDateDMYHMS)) return formatISO(parsedDateDMYHMS);
+      } catch (e) { /* fall through */ }
+
+      try {
+        // 4. Try parsing 'dd-MM-yyyy H:mm' (e.g., "06-01-2026 1:56")
+        const parsedDateDMYHM = parse(trimmedValue, 'dd-MM-yyyy H:mm', new Date());
+        if (isValid(parsedDateDMYHM)) return formatISO(parsedDateDMYHM);
+      } catch (e) { /* fall through */ }
+
+      console.warn(`[CSV Import] Failed to parse date: "${trimmedValue}" for field "${String(key)}". Using default valid format.`);
+      // If parsing fails, return ISO for current date as fallback to prevent invalid date errors
       return formatISO(new Date());
     default:
       return trimmedValue;
@@ -402,66 +465,61 @@ export default function BookingsPage() {
   };
 
   const handleLeadFormSubmit = async (submittedLeadData: Lead) => {
-    if (!currentUserId || !currentUserRole) {
-      toast({ title: 'Authentication Error', description: 'User details not found. Please re-login.', variant: 'destructive' });
-      return;
-    }
     setIsLoading(true);
-
-    const isNewLead = !editingLead || !submittedLeadData.id || submittedLeadData.id.startsWith('temp-');
-    let finalTransactionId = submittedLeadData.transactionId;
-
-    if (isNewLead && (!finalTransactionId || String(finalTransactionId).trim() === "" || finalTransactionId === "Pending Generation")) {
-      const leadYear = submittedLeadData.month ? getFullYear(parseISO(submittedLeadData.month)) : new Date().getFullYear();
-      finalTransactionId = generateNewLeadTransactionId(allLeads, leadYear);
-    }
-
-    const payload: Partial<Lead> & { requestingUserId: string; requestingUserRole: string } = {
-      ...submittedLeadData,
-      transactionId: finalTransactionId,
-      lastModifiedByUserId: currentUserId,
-      updatedAt: new Date().toISOString(),
-      month: submittedLeadData.month ? formatISO(parseISO(submittedLeadData.month)) : formatISO(new Date()),
-      paymentConfirmationStatus: submittedLeadData.paymentConfirmationStatus,
-      packageQuantities: submittedLeadData.packageQuantities?.map(pq => ({
-        ...pq,
-        quantity: Number(pq.quantity || 0),
-        rate: Number(pq.rate || 0)
-      })) || [],
-      freeGuestCount: Number(submittedLeadData.freeGuestCount || 0),
-      perTicketRate: submittedLeadData.perTicketRate !== undefined && submittedLeadData.perTicketRate !== null ? Number(submittedLeadData.perTicketRate) : undefined,
-      requestingUserId: currentUserId,
-      requestingUserRole: currentUserRole,
-      status: submittedLeadData.status,
-    };
-
-    let payloadToSubmit: any = { ...payload };
-
-    if (isNewLead) {
-      payloadToSubmit.ownerUserId = currentUserId;
-      payloadToSubmit.createdAt = new Date().toISOString();
-      if (payloadToSubmit.id && payloadToSubmit.id.startsWith('temp-')) {
-        const { id, ...rest } = payloadToSubmit;
-        payloadToSubmit = rest;
-      } else if (!payloadToSubmit.id) {
-        const { id, ...rest } = payloadToSubmit;
-        payloadToSubmit = rest;
-      }
-    } else if (editingLead) {
-      payloadToSubmit.ownerUserId = editingLead.ownerUserId || currentUserId;
-      payloadToSubmit.createdAt = editingLead.createdAt || new Date().toISOString();
-      if (editingLead.status.startsWith('Closed') && !isAdmin) {
-        toast({ title: "Action Denied", description: "Closed bookings cannot be modified by non-administrators.", variant: "destructive" });
-        setIsLoading(false);
-        setIsLeadDialogOpen(false);
-        setEditingLead(null);
-        return;
-      }
-    }
-
-    console.log("[BookingsPage] Submitting booking payload:", JSON.stringify(payloadToSubmit, null, 2));
-
     try {
+      if (!currentUserId || !currentUserRole) {
+        throw new Error('Authentication Error: User details not found. Please re-login.');
+      }
+
+      const isNewLead = !editingLead || !submittedLeadData.id || submittedLeadData.id.startsWith('temp-');
+      let finalTransactionId = submittedLeadData.transactionId;
+
+      if (isNewLead && (!finalTransactionId || String(finalTransactionId).trim() === "" || finalTransactionId === "Pending Generation")) {
+        const leadYear = submittedLeadData.month ? getFullYear(parseISO(submittedLeadData.month)) : new Date().getFullYear();
+        finalTransactionId = generateNewLeadTransactionId(allLeads, leadYear);
+      }
+
+      const payload: Partial<Lead> & { requestingUserId: string; requestingUserRole: string } = {
+        ...submittedLeadData,
+        transactionId: finalTransactionId,
+        lastModifiedByUserId: currentUserId,
+        updatedAt: new Date().toISOString(),
+        month: submittedLeadData.month ? formatISO(parseISO(submittedLeadData.month)) : formatISO(new Date()),
+        paymentConfirmationStatus: submittedLeadData.paymentConfirmationStatus,
+        packageQuantities: submittedLeadData.packageQuantities?.map(pq => ({
+          ...pq,
+          quantity: Number(pq.quantity || 0),
+          rate: Number(pq.rate || 0)
+        })) || [],
+        freeGuestCount: Number(submittedLeadData.freeGuestCount || 0),
+        perTicketRate: submittedLeadData.perTicketRate !== undefined && submittedLeadData.perTicketRate !== null ? Number(submittedLeadData.perTicketRate) : undefined,
+        requestingUserId: currentUserId,
+        requestingUserRole: currentUserRole,
+        status: submittedLeadData.status,
+      };
+
+      let payloadToSubmit: any = { ...payload };
+
+      if (isNewLead) {
+        payloadToSubmit.ownerUserId = currentUserId;
+        payloadToSubmit.createdAt = new Date().toISOString();
+        if (payloadToSubmit.id && payloadToSubmit.id.startsWith('temp-')) {
+          const { id, ...rest } = payloadToSubmit;
+          payloadToSubmit = rest;
+        } else if (!payloadToSubmit.id) {
+          const { id, ...rest } = payloadToSubmit;
+          payloadToSubmit = rest;
+        }
+      } else if (editingLead) {
+        payloadToSubmit.ownerUserId = editingLead.ownerUserId || currentUserId;
+        payloadToSubmit.createdAt = editingLead.createdAt || new Date().toISOString();
+        if (editingLead.status.startsWith('Closed') && !isAdmin) {
+          throw new Error("Action Denied: Closed bookings cannot be modified by non-administrators.");
+        }
+      }
+
+      console.log("[BookingsPage] Submitting booking payload:", JSON.stringify(payloadToSubmit, null, 2));
+
       let response;
       if (editingLead && payloadToSubmit.id === editingLead.id) {
         response = await fetch(`/api/leads/${editingLead.id}`, {
@@ -486,7 +544,7 @@ export default function BookingsPage() {
           descriptiveMessage = parsedError.message || descriptiveMessage;
           errorDetailsLog = JSON.stringify(parsedError.error) || '';
         } catch (jsonError) {
-          console.warn("[BookingsPage] API error response body was not valid JSON or was empty. Status:", response.status, "StatusText:", response.statusText, "JSON parse error:", jsonError);
+          console.warn("[BookingsPage] API error response body was not valid JSON or was empty.", jsonError);
         }
         const finalErrorMessage = descriptiveMessage + (errorDetailsLog ? ` - Details: ${errorDetailsLog}` : '');
         throw new Error(finalErrorMessage);
@@ -504,6 +562,7 @@ export default function BookingsPage() {
     } catch (error) {
       console.error("[BookingsPage] Error saving booking:", error);
       toast({ title: 'Error Saving Booking', description: (error as Error).message, variant: 'destructive' });
+      // Keep dialog open on error
     } finally {
       setIsLoading(false);
     }
@@ -764,6 +823,9 @@ export default function BookingsPage() {
 
         const batchMaxTransactionNumbersByYear: { [year: number]: number } = {};
 
+        const parsedRows: Array<Partial<Lead & { package_quantities_json_string?: LeadPackageQuantity[] } & { [key: `pkg_${string}`]: number } & { _originalRowIndex: number }>> = [];
+
+        // 1. First Pass: Parse all rows and apply package detection
         for (let i = 1; i < lines.length; i++) {
           let data = parseCsvLine(lines[i]);
 
@@ -781,86 +843,265 @@ export default function BookingsPage() {
             continue;
           }
 
-          const parsedRow = {} as Partial<Lead & { package_quantities_json_string?: LeadPackageQuantity[] } & { [key: `pkg_${string}`]: number }>;
+          const parsedRow = {} as any;
           fileHeaders.forEach((fileHeader, index) => {
             const leadKey = csvHeaderMapping[fileHeader];
             if (leadKey) {
-              (parsedRow as any)[leadKey] = convertCsvValue(leadKey, data[index], allYachts, agentMap, userMap, yachtMap);
-            } else {
-              console.warn(`[CSV Import Bookings] Unknown header "${fileHeader}" (normalized: ${fileHeader}) in CSV row ${i + 1}. Skipping this column.`);
+              parsedRow[leadKey] = convertCsvValue(leadKey, data[index], allYachts, agentMap, userMap, yachtMap);
             }
           });
 
-          let packageQuantities: LeadPackageQuantity[] = [];
-          if (parsedRow.package_quantities_json_string && Array.isArray(parsedRow.package_quantities_json_string)) {
-            packageQuantities = parsedRow.package_quantities_json_string;
+          // Capture original values for package detection
+          let yachtNameFromCsv = '';
+          fileHeaders.forEach((header, idx) => {
+            if (csvHeaderMapping[header] === 'yacht') yachtNameFromCsv = data[idx]?.trim() || '';
+          });
+
+          // Package Type Detection Logic
+          let packageTypeFromYachtName = '';
+          if (yachtNameFromCsv && yachtNameFromCsv.includes(' - ')) {
+            packageTypeFromYachtName = yachtNameFromCsv.split(' - ')[1]?.trim().toUpperCase() || '';
+          }
+
+          if (packageTypeFromYachtName) {
+            const adultQty = parsedRow.pkg_adult || 0;
+            const childQty = parsedRow.pkg_child || 0;
+
+            // Clear default
+            delete parsedRow.pkg_adult;
+            delete parsedRow.pkg_child;
+
+            if (packageTypeFromYachtName.includes('VIP') && packageTypeFromYachtName.includes('SOFT')) {
+              if (adultQty > 0) parsedRow.pkg_vip_adult = adultQty;
+              if (childQty > 0) parsedRow.pkg_vip_child = childQty;
+            } else if (packageTypeFromYachtName.includes('VIP') && (packageTypeFromYachtName.includes('PREMIUM') || packageTypeFromYachtName.includes('UNLIMITED')) && packageTypeFromYachtName.includes('ALCOHOLIC')) {
+              if (adultQty > 0) parsedRow.pkg_vip_alc = adultQty;
+            } else if (packageTypeFromYachtName.includes('UNLIMITED') && packageTypeFromYachtName.includes('ALCOHOLIC')) {
+              if (adultQty > 0) parsedRow.pkg_adult_alc = adultQty;
+            } else if (packageTypeFromYachtName.includes('FOOD') || packageTypeFromYachtName.includes('SOFT')) {
+              if (adultQty > 0) parsedRow.pkg_adult = adultQty;
+              if (childQty > 0) parsedRow.pkg_child = childQty;
+            } else {
+              if (adultQty > 0) parsedRow.pkg_adult = adultQty;
+              if (childQty > 0) parsedRow.pkg_child = childQty;
+            }
+          }
+
+          parsedRow._originalRowIndex = i + 1;
+          parsedRows.push(parsedRow);
+        }
+
+        // 2. Grouping Logic
+        const bookingGroups = new Map<string, typeof parsedRows>();
+        const ungroupedRows: typeof parsedRows = [];
+
+        parsedRows.forEach(row => {
+          if (row.bookingRefNo) {
+            if (!bookingGroups.has(row.bookingRefNo)) {
+              bookingGroups.set(row.bookingRefNo, []);
+            }
+            bookingGroups.get(row.bookingRefNo)!.push(row);
           } else {
-            const leadYachtId = parsedRow.yacht || '';
-            const yachtForLead = allYachts.find(y => y.id === leadYachtId || y.name.toLowerCase() === String(leadYachtId).toLowerCase());
+            ungroupedRows.push(row);
+          }
+        });
 
-            if (yachtForLead && yachtForLead.packages && Array.isArray(yachtForLead.packages)) {
-              fileHeaders.forEach(csvHeaderKey => {
-                const internalKey = csvHeaderMapping[csvHeaderKey];
-                if (internalKey && internalKey.startsWith('pkg_')) {
-                  const actualPackageName = packageReverseHeaderMap[csvHeaderKey];
-                  const quantity = (parsedRow as any)[internalKey] as number | undefined;
+        // 3. Process Groups into Leads
+        const processParsedRowToLead = (rows: typeof parsedRows, isGroup: boolean): Lead | null => {
+          const primaryRow = rows[0]; // Use first row as template
+          if (!primaryRow) return null;
 
-                  if (actualPackageName && quantity !== undefined && quantity > 0) {
-                    const yachtPackage = yachtForLead.packages?.find(p => p.name.toUpperCase() === actualPackageName.toUpperCase());
-                    if (yachtPackage) {
+          // Aggregate quantities
+          const aggregatedPkg: { [key: string]: number } = {};
+          let totalPaid = 0;
+          const ticketNumbers: string[] = [];
+
+          rows.forEach(r => {
+            Object.keys(r).forEach(k => {
+              if (k.startsWith('pkg_')) {
+                aggregatedPkg[k] = (aggregatedPkg[k] || 0) + ((r as any)[k] as number || 0);
+              }
+            });
+            if (r.paidAmount) totalPaid += Number(r.paidAmount);
+            if (r.transactionId) ticketNumbers.push(r.transactionId);
+          });
+
+          // Build PackageQuantities list
+          const leadYachtId = primaryRow.yacht || '';
+          const yachtForLead = allYachts.find(y => y.id === leadYachtId || y.name.toLowerCase() === String(leadYachtId).toLowerCase());
+
+          const packageQuantities: LeadPackageQuantity[] = [];
+          if (yachtForLead && yachtForLead.packages) {
+            Object.entries(aggregatedPkg).forEach(([key, qty]) => {
+              // Find a CSV header that maps to this internal key (e.g., 'ad' -> 'pkg_adult')
+              const csvHeader = Object.keys(csvHeaderMapping).find(h => csvHeaderMapping[h] === key);
+              if (csvHeader) {
+                const actualPackageName = packageReverseHeaderMap[csvHeader];
+                if (actualPackageName) {
+                  const p = yachtForLead.packages?.find(pkg => pkg.name.toUpperCase() === actualPackageName.toUpperCase());
+                  if (p) {
+                    // Check if already added (avoid duplicates if multiple csv headers map to same pkg)
+                    const existing = packageQuantities.find(pq => pq.packageId === p.id);
+                    if (existing) existing.quantity = qty; // Should be same
+                    else {
                       packageQuantities.push({
-                        packageId: yachtPackage.id,
-                        packageName: yachtPackage.name,
-                        quantity: quantity,
-                        rate: yachtPackage.rate,
+                        packageId: p.id,
+                        packageName: p.name,
+                        quantity: qty,
+                        rate: p.rate
                       });
-                    } else {
-                      console.warn(`[CSV Import] Package "${actualPackageName}" from CSV not found on yacht "${yachtForLead.name}". Skipping package for this booking.`);
                     }
+                  } else {
+                    console.warn(`[CSV Import] Package "${actualPackageName}" from CSV (derived from internal key "${key}") not found on yacht "${yachtForLead.name}". Skipping package for this booking.`);
                   }
+                } else {
+                  console.warn(`[CSV Import] Could not find actual package name for CSV header mapping to internal key "${key}". Skipping package for this booking.`);
                 }
-              });
-            }
+              }
+            });
           }
 
-          const leadYear = parsedRow.month ? getFullYear(parseISO(parsedRow.month)) : new Date().getFullYear();
-          let transactionIdForRow = parsedRow.transactionId;
+          // Transaction Generation
+          const leadYear = primaryRow.month ? getFullYear(parseISO(primaryRow.month)) : new Date().getFullYear();
+          let transactionIdForRow = ticketNumbers[0] || primaryRow.transactionId; // Use first ticket or existing
+
+          // If no transaction ID, generate new one (logic from before)
           if (!transactionIdForRow || String(transactionIdForRow).trim() === '') {
-            const currentMaxForYearInBatch = batchMaxTransactionNumbersByYear[leadYear] || 0;
-            transactionIdForRow = generateNewLeadTransactionId(allLeads, leadYear, currentMaxForYearInBatch);
-            const numPart = parseInt(transactionIdForRow.substring(transactionIdForRow.indexOf('-') + 1 + 4), 10);
-            if (!isNaN(numPart)) {
-              batchMaxTransactionNumbersByYear[leadYear] = numPart;
-            }
+            const currentMax = batchMaxTransactionNumbersByYear[leadYear] || 0;
+            transactionIdForRow = generateNewLeadTransactionId(allLeads, leadYear, currentMax);
+            const numPart = parseInt(transactionIdForRow.slice(transactionIdForRow.lastIndexOf('-') + 1), 10); // Simplified
+            if (!isNaN(numPart)) batchMaxTransactionNumbersByYear[leadYear] = numPart;
           }
+
+          // Append tickets to notes if grouped
+          let additionalNotes = primaryRow.notes || '';
+          if (isGroup && ticketNumbers.length > 0) {
+            additionalNotes += `\n[Merged Tickets]: ${ticketNumbers.join(', ')}`;
+          }
+
+          // Calculate Financials (Total, Commission, Net, Balance)
+          let calculatedTotal = 0;
+          packageQuantities.forEach(pq => {
+            calculatedTotal += (pq.quantity * pq.rate);
+          });
+
+          // Get Agent Discount
+          const agentId = primaryRow.agent;
+          const agentForLead = allAgents.find(a => a.id === agentId);
+          const discountPercentage = agentForLead ? agentForLead.discount : 0;
+
+          const calculatedCommission = calculatedTotal * (discountPercentage / 100);
+          const calculatedNet = calculatedTotal - calculatedCommission;
+          const calculatedBalance = calculatedNet - totalPaid;
 
           const fullLead: Lead = {
-            id: parsedRow.id || `imported-booking-${Date.now()}-${i}`,
-            clientName: parsedRow.clientName || 'N/A from CSV',
-            agent: parsedRow.agent || '',
-            yacht: parsedRow.yacht || '',
-            status: parsedRow.status || 'Balance',
-            month: parsedRow.month || formatISO(new Date()),
-            notes: parsedRow.notes || '',
-            type: parsedRow.type || 'Private Cruise',
-            paymentConfirmationStatus: parsedRow.paymentConfirmationStatus || 'UNCONFIRMED',
+            id: primaryRow.id || `imported-${Date.now()}-${primaryRow._originalRowIndex}`,
+            clientName: primaryRow.clientName || 'N/A',
+            agent: primaryRow.agent || '',
+            yacht: primaryRow.yacht || '',
+            status: primaryRow.status || 'Balance',
+            month: primaryRow.month || formatISO(new Date()),
+            notes: additionalNotes,
+            type: primaryRow.type || 'Private Cruise',
+            paymentConfirmationStatus: primaryRow.paymentConfirmationStatus || 'UNCONFIRMED',
             transactionId: transactionIdForRow,
-            bookingRefNo: parsedRow.bookingRefNo || '',
-            modeOfPayment: parsedRow.modeOfPayment || 'CARD',
+            bookingRefNo: primaryRow.bookingRefNo || '',
+            modeOfPayment: primaryRow.modeOfPayment || 'CARD',
             packageQuantities: packageQuantities,
-            freeGuestCount: parsedRow.freeGuestCount || 0,
-            perTicketRate: parsedRow.perTicketRate !== undefined && parsedRow.perTicketRate !== null ? Number(parsedRow.perTicketRate) : undefined,
-            totalAmount: parsedRow.totalAmount ?? 0,
-            commissionPercentage: parsedRow.commissionPercentage ?? 0,
-            commissionAmount: parsedRow.commissionAmount ?? 0,
-            netAmount: parsedRow.netAmount ?? 0,
-            paidAmount: parsedRow.paidAmount ?? 0,
-            balanceAmount: parsedRow.balanceAmount ?? 0,
-            createdAt: parsedRow.createdAt || formatISO(new Date()),
+            freeGuestCount: primaryRow.freeGuestCount || 0,
+            perTicketRate: primaryRow.perTicketRate,
+            totalAmount: calculatedTotal,
+            commissionPercentage: discountPercentage,
+            commissionAmount: calculatedCommission,
+            netAmount: calculatedNet,
+            paidAmount: totalPaid, // CSV aggregated paid amount
+            balanceAmount: calculatedBalance,
+            createdAt: primaryRow.createdAt || formatISO(new Date()),
             updatedAt: formatISO(new Date()),
             lastModifiedByUserId: currentUserId,
-            ownerUserId: parsedRow.ownerUserId || currentUserId,
+            ownerUserId: primaryRow.ownerUserId || currentUserId,
           };
+
+          // VALIDATION
+          const csvRowData: CSVRowData = {
+            rowNumber: primaryRow._originalRowIndex,
+            agentName: fullLead.agent,
+            yachtId: fullLead.yacht,
+            packageQuantities: fullLead.packageQuantities,
+            paidAmount: fullLead.paidAmount,
+            totalAmount: fullLead.totalAmount,
+            clientName: fullLead.clientName
+          };
+          const validationResult = validateCSVRow(csvRowData, allAgents, allYachts);
+          console.log(formatValidationResult(primaryRow._originalRowIndex, validationResult, fullLead.clientName));
+
+          if (!validationResult.isValid) {
+            const w = validationResult.errors.join('; ');
+            console.warn(`[CSV Validation] Row ${primaryRow._originalRowIndex}: ${w}`);
+            fullLead.notes += `\n[VALIDATION WARNING]: ${w}`;
+          } else {
+            console.log(`✅ [CSV Validation] Validated group/row ${primaryRow._originalRowIndex}`);
+          }
+
+          // DUPLICATE DETECTION: Check for duplicate client names and booking ref numbers
+          const duplicateWarnings: string[] = [];
+
+          // Check client name duplicates
+          if (fullLead.clientName && fullLead.clientName !== 'N/A from CSV') {
+            const clientNameLower = fullLead.clientName.toLowerCase().trim();
+
+            // Check against existing bookings
+            const existingWithSameName = allLeads.find(l =>
+              l.clientName.toLowerCase().trim() === clientNameLower
+            );
+
+            // Check within current CSV batch (already processed leads)
+            const duplicateInBatch = newLeadsFromCsv.find(l =>
+              l.clientName.toLowerCase().trim() === clientNameLower
+            );
+
+            if (existingWithSameName) {
+              const warning = `⚠️ DUPLICATE CLIENT NAME: "${fullLead.clientName}" already exists in booking ${existingWithSameName.id}`;
+              duplicateWarnings.push(warning);
+              console.warn(`[CSV Import] Row ${primaryRow._originalRowIndex}: ${warning}`);
+            } else if (duplicateInBatch) {
+              const warning = `⚠️ DUPLICATE CLIENT NAME: "${fullLead.clientName}" appears multiple times in this CSV`;
+              duplicateWarnings.push(warning);
+              console.warn(`[CSV Import] Row ${primaryRow._originalRowIndex}: ${warning}`);
+            }
+          }
+
+          // Check booking reference number duplicates
+          if (fullLead.bookingRefNo && fullLead.bookingRefNo.trim() !== '') {
+            const bookingRefLower = fullLead.bookingRefNo.toLowerCase().trim();
+
+            // Check against existing bookings
+            const existingWithSameRef = allLeads.find(l =>
+              l.bookingRefNo && l.bookingRefNo.toLowerCase().trim() === bookingRefLower
+            );
+
+            // Check within current CSV batch (already processed leads)
+            const duplicateRefInBatch = newLeadsFromCsv.find(l =>
+              l.bookingRefNo && l.bookingRefNo.toLowerCase().trim() === bookingRefLower
+            );
+
+            if (existingWithSameRef) {
+              const warning = `⚠️ DUPLICATE BOOKING REF: "${fullLead.bookingRefNo}" already exists in booking ${existingWithSameRef.id}`;
+              duplicateWarnings.push(warning);
+              console.warn(`[CSV Import] Row ${primaryRow._originalRowIndex}: ${warning}`);
+            } else if (duplicateRefInBatch) {
+              const warning = `⚠️ DUPLICATE BOOKING REF: "${fullLead.bookingRefNo}" appears multiple times in this CSV`;
+              duplicateWarnings.push(warning);
+              console.warn(`[CSV Import] Row ${primaryRow._originalRowIndex}: ${warning}`);
+            }
+          }
+
+          // Add duplicate warnings to notes if any found
+          if (duplicateWarnings.length > 0) {
+            const duplicateNote = `\n[DUPLICATE ALERT]: ${duplicateWarnings.join('; ')}`;
+            fullLead.notes = (fullLead.notes || '') + duplicateNote;
+          }
+          // ========== END DUPLICATE DETECTION ==========
 
           const missingFields = [];
           if (!fullLead.clientName || fullLead.clientName === 'N/A from CSV') missingFields.push('clientName (missing or "N/A from CSV")');
@@ -871,18 +1112,35 @@ export default function BookingsPage() {
 
 
           if (missingFields.length > 0) {
-            console.warn(`[CSV Import Bookings] Skipping booking at CSV row ${i + 1} due to missing required fields: ${missingFields.join(', ')}. Booking data:`, JSON.parse(JSON.stringify(fullLead)));
-            skippedCount++;
-            continue;
+            console.warn(`[CSV Import Bookings] Skipping booking at CSV row ${primaryRow._originalRowIndex} due to missing required fields: ${missingFields.join(', ')}. Booking data:`, JSON.parse(JSON.stringify(fullLead)));
+            return null;
           }
           if (currentLeadIds.has(fullLead.id) || newLeadsFromCsv.some(l => l.id === fullLead.id)) {
-            console.warn(`[CSV Import Bookings] Skipping booking with duplicate ID "${fullLead.id}" from CSV row ${i + 1}.`);
-            skippedCount++;
-            continue;
+            console.warn(`[CSV Import Bookings] Skipping booking with duplicate ID "${fullLead.id}" from CSV row ${primaryRow._originalRowIndex}.`);
+            return null;
           }
 
-          newLeadsFromCsv.push(fullLead);
-        }
+          return fullLead;
+        };
+
+        // Create Leads from Groups
+        bookingGroups.forEach((rows) => {
+          const lead = processParsedRowToLead(rows, true);
+          if (lead) newLeadsFromCsv.push(lead);
+          else skippedCount += rows.length; // Count all rows in the group as skipped if the lead is not created
+        });
+
+        // Create Leads from Ungrouped
+        ungroupedRows.forEach(row => {
+          const lead = processParsedRowToLead([row], false);
+          if (lead) newLeadsFromCsv.push(lead);
+          else skippedCount++;
+        });
+
+        // Final check for duplicates before inserting
+        // This is now handled within processParsedRowToLead for existing and already processed leads.
+        // The `newLeadsFromCsv` array should now contain only valid, non-skipped leads.
+
 
         if (newLeadsFromCsv.length > 0) {
           for (const leadToImport of newLeadsFromCsv) {
@@ -958,8 +1216,8 @@ export default function BookingsPage() {
       if (selectedYachtId !== 'all' && lead.yacht !== selectedYachtId) return false;
       if (selectedAgentId !== 'all' && lead.agent !== selectedAgentId) return false;
       if (selectedUserIdFilter !== 'all' && (lead.lastModifiedByUserId !== selectedUserIdFilter && lead.ownerUserId !== selectedUserIdFilter)) return false;
-      const bookingStatuses = ['Balance', 'Deposit Paid', 'Full Payment', 'Check-in', 'Closed (Won)', 'Closed (Lost)', 'Cancelled'];
-      if (!bookingStatuses.includes(lead.status)) return false;
+      // const bookingStatuses = ['Balance', 'Deposit Paid', 'Full Payment', 'Check-in', 'Closed (Won)', 'Closed (Lost)', 'Cancelled'];
+      // if (!bookingStatuses.includes(lead.status)) return false;
 
       if (statusFilter !== 'all' && lead.status !== statusFilter) return false;
       if (paymentConfirmationStatusFilter !== 'all' && lead.paymentConfirmationStatus !== paymentConfirmationStatusFilter) return false;

@@ -7,15 +7,16 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 export default function HomePage() {
   const router = useRouter();
-  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+  const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
+    setIsMounted(true);
+
     let isAuthenticated = false;
     try {
       isAuthenticated = !!localStorage.getItem('currentUserRole');
     } catch (e) {
       console.error("Error accessing localStorage for auth check:", e);
-      // Fallback: assume not authenticated if localStorage is inaccessible
     }
 
     if (isAuthenticated) {
@@ -23,12 +24,9 @@ export default function HomePage() {
     } else {
       router.replace('/login');
     }
-    // Set checking to false after the redirect logic is initiated
-    // This might still show a brief loading skeleton, which is acceptable for this check.
-    setIsCheckingAuth(false); 
   }, [router]);
 
-  if (isCheckingAuth) {
+  if (!isMounted) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4">
         <Skeleton className="h-12 w-1/2 mb-4" />
@@ -38,6 +36,5 @@ export default function HomePage() {
     );
   }
 
-  // This part will ideally not be seen as redirect should happen quickly
-  return null; 
+  return null;
 }

@@ -1,0 +1,5 @@
+client_name,agent,yacht,date,ch,ad,chd_top,adt_top,ad_alc,vip_ch,vip_ad,vip_alc,total_amt,paid_amount,note,payment_status,type
+John Doe,AG-001,YT-001,15/01/2026,2,4,0,0,0,0,0,0,800.00,720.00,Birthday party - Validated,CONFIRMED,Dinner Cruise
+Jane Smith,AG-002,YT-002,20/01/2026,0,6,2,0,1,0,0,0,1200.00,1080.00,Corporate event,CONFIRMED,Dinner Cruise
+Michael Brown,Travel Pro Agency,LOTUS MEGA YACHT,25/01/2026,1,3,0,0,0,0,2,0,950.00,855.00,Anniversary celebration,CONFIRMED,Private Cruise
+Sarah Wilson,AG-003,DHOW CRUISE,28/01/2026,3,8,0,2,0,1,0,0,1500.00,1350.00,Family gathering,UNCONFIRMED,Dinner Cruise

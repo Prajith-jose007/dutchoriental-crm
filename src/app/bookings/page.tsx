@@ -25,287 +25,23 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { ChevronDown, Trash2 } from 'lucide-react';
 import { validateCSVRow, formatValidationResult, type CSVRowData, type CSVValidationResult } from '@/lib/csvValidation';
+import { leadCsvHeaderMapping as csvHeaderMapping, convertLeadCsvValue as convertCsvValue, parseCsvLine, applyPackageTypeDetection } from '@/lib/csvHelpers';
 
 
 const USER_ID_STORAGE_KEY = 'currentUserId';
 const USER_ROLE_STORAGE_KEY = 'currentUserRole';
 
 
-const csvHeaderMapping: { [csvHeaderKey: string]: keyof Omit<Lead, 'packageQuantities'> | 'package_quantities_json_string' | `pkg_${string}` | undefined } = {
-  'id': 'id',
-  'status': 'status',
-  'date': 'month', 'eventdate': 'month', 'event_date': 'month', 'lead/event_date': 'month',
-  'yacht': 'yacht',
-  'agent': 'agent', 'agent_name': 'agent',
-  'client': 'clientName', 'client_name': 'clientName',
-  'payment_status': 'paymentConfirmationStatus', 'pay_status': 'paymentConfirmationStatus', 'payment_confirmation_status': 'paymentConfirmationStatus',
-  'type': 'type', 'lead_type': 'type',
-  'transaction_id': 'transactionId', 'transaction id': 'transactionId',
-  'booking_ref_no': 'bookingRefNo', 'booking ref no': 'bookingRefNo',
-  'payment_mode': 'modeOfPayment', 'mode_of_payment': 'modeOfPayment',
-  'free': 'freeGuestCount', 'free_guests': 'freeGuestCount',
-  'ch': 'pkg_child',
-  'ad': 'pkg_adult',
-  'chd_top': 'pkg_child_top_deck', 'child_top_deck': 'pkg_child_top_deck',
-  'adt_top': 'pkg_adult_top_deck', 'adult_top_deck': 'pkg_adult_top_deck',
-  'ad_alc': 'pkg_adult_alc', 'adult_alc': 'pkg_adult_alc',
-  'vip_ch': 'pkg_vip_child',
-  'vip_ad': 'pkg_vip_adult',
-  'vip_alc_pkg': 'pkg_vip_alc',
-  'ryl_ch': 'pkg_royal_child', 'royal_child': 'pkg_royal_child',
-  'ryl_ad': 'pkg_royal_adult', 'royal_adult': 'pkg_royal_adult',
-  'ryl_alc': 'pkg_royal_alc', 'royal_alc': 'pkg_royal_alc',
-  'basic': 'pkg_basic',
-  'std': 'pkg_standard', 'standard': 'pkg_standard',
-  'prem': 'pkg_premium', 'premium': 'pkg_premium',
-  'vip': 'pkg_vip',
-  'hrchtr': 'pkg_hour_charter', 'hour_charter': 'pkg_hour_charter',
-  'package_details_(json)': 'package_quantities_json_string', 'package_details_json': 'package_quantities_json_string',
-  'addon_pack': 'perTicketRate', 'addon': 'perTicketRate', 'per_ticket_rate': 'perTicketRate',
-  'total_amt': 'totalAmount', 'total_amount': 'totalAmount',
-  'discount_%': 'commissionPercentage', 'discount_rate': 'commissionPercentage',
-  'discount': 'commissionPercentage',
-  'commission': 'commissionAmount', 'commission_amount': 'commissionAmount',
-  'net_amt': 'netAmount', 'net_amount': 'netAmount',
-  'paid': 'paidAmount', 'paid_amount': 'paidAmount',
-  'balance': 'balanceAmount', 'balance_amount': 'balanceAmount',
-  'note': 'notes',
-  'created_by': 'ownerUserId', 'created by': 'ownerUserId',
-  'modified_by': 'lastModifiedByUserId', 'modified by': 'lastModifiedByUserId',
-  'date_of_creation': 'createdAt', 'creation_date': 'createdAt',
-  'date_of_modification': 'updatedAt', 'modification_date': 'updatedAt',
-
-  // ========== NEW: Ticketing System CSV Format Mappings ==========
-  // Map ticketing system export fields to booking fields
-  'company_name': 'agent',           // Company Name → Agent
-  'companyname': 'agent',             // Alternative format
-  'user': undefined,                  // Ignore - internal system field
-  'ticketnumber': 'transactionId',    // TicketNumber → Transaction ID
-  'ticket_number': 'transactionId',
-  'booking_refno': 'bookingRefNo',    // Booking RefNO → Booking Reference Number
-  'transaction': 'modeOfPayment',     // Transaction → Mode of Payment (was incorrectly transactionId)
-  'yachtname': 'yacht',               // YachtName → Yacht
-  'yacht_name': 'yacht',
-  'pax_name': 'clientName',           // Pax Name → Client Name
-  'paxname': 'clientName',
-  'contactno': 'customerPhone',       // ContactNo → Customer Phone
-  'contact_no': 'customerPhone',
-  'travel_date': 'month',             // Travel Date → Event Date
-  'traveldate': 'month',
-  'time': undefined,                  // Time → Will be merged with Travel Date
-  'sales_amount(aed)': 'paidAmount',  // Sales Amount(AED) → Paid Amount (VALIDATED!)
-  'sales_amount': 'paidAmount',
-  'salesamount(aed)': 'paidAmount',
-  'salesamount': 'paidAmount',
-  'order_id': undefined,              // Ignore - internal order system
-  'orderid': undefined,
-  'sales_date': 'createdAt',          // Sales Date → Created At
-  'salesdate': 'createdAt',
-  'adult': 'pkg_adult',               // Adult → Adult Package Quantity
-  'child': 'pkg_child',               // Child → Child Package Quantity
-  'scanned_on': 'checkInTime',        // Scanned On → Check-in Time
-  'scannedon': 'checkInTime',
-  'remarks': 'notes',                 // Remarks → Notes
-
-  // ========== PACKAGE TYPE MAPPINGS (Ticketing System Package Names) ==========
-  // Standard packages - FOOD & SOFT DRINKS
-  'food_&_soft_drinks': 'pkg_adult',           // FOOD & SOFT DRINKS (Adult) → AD
-  'food_and_soft_drinks': 'pkg_adult',
-  'food_&_soft_drinks_(adult)': 'pkg_adult',
-  'food_&_soft_drinks_(child)': 'pkg_child',   // FOOD & SOFT DRINKS (Child) → CH
-  'food_and_soft_drinks_(child)': 'pkg_child',
-
-  // Alcoholic packages - FOOD AND UNLIMITED ALCOHOLIC DRINKS
-  'food_and_unlimited_alcoholic_drinks': 'pkg_adult_alc',  // → AD ALC
-  'food_&_unlimited_alcoholic_drinks': 'pkg_adult_alc',
-  'unlimited_alcoholic_drinks': 'pkg_adult_alc',
-
-  // VIP SOFT packages
-  'vip_soft': 'pkg_vip_adult',                 // VIP SOFT (Adult) → VIP AD
-  'vip_soft_(adult)': 'pkg_vip_adult',
-  'vip_soft_(child)': 'pkg_vip_child',         // VIP SOFT (Child) → VIP CH
-
-  // VIP PREMIUM/UNLIMITED ALCOHOLIC packages
-  'vip_premium_alcoholic_drinks': 'pkg_vip_alc',    // VIP PREMIUM ALCOHOLIC → VIP ALC
-  'vip_unlimited_alcoholic_drinks': 'pkg_vip_alc',  // VIP UNLIMITED ALCOHOLIC → VIP ALC
-  'vip_alcoholic': 'pkg_vip_alc',
-  'vip_alc': 'pkg_vip_alc',
-  // ========== END PACKAGE TYPE MAPPINGS ==========
-  // ========== END TICKETING SYSTEM MAPPINGS ==========
-};
 
 
-const convertCsvValue = (
-  key: keyof Omit<Lead, 'packageQuantities'> | 'package_quantities_json_string' | `pkg_${string}`,
-  value: string,
-  allYachts: Yacht[],
-  agentMap: { [id: string]: string },
-  userMap: { [id: string]: string },
-  yachtMap: { [id: string]: string }
-): any => {
-  const trimmedValue = value ? String(value).trim() : '';
-  const currentUserId = typeof window !== 'undefined' ? localStorage.getItem(USER_ID_STORAGE_KEY) : null;
-
-  if (key.startsWith('pkg_')) {
-    const num = parseInt(trimmedValue, 10);
-    return isNaN(num) || num < 0 ? 0 : num;
-  }
-  if (key === 'package_quantities_json_string') {
-    if (!trimmedValue) return null;
-    try {
-      const parsedJson = JSON.parse(trimmedValue);
-      if (Array.isArray(parsedJson)) {
-        return parsedJson.map(pq => ({
-          packageId: String(pq.packageId || pq.packageld || ''),
-          packageName: String(pq.packageName || 'Unknown CSV Pkg'),
-          quantity: Number(pq.quantity || 0),
-          rate: Number(pq.rate || 0),
-        })).filter(pq => pq.packageName);
-      }
-      return null;
-    } catch (e) {
-      console.warn(`[CSV Import Bookings] Could not parse package_quantities_json_string: "${trimmedValue}". Error:`, e);
-      return null;
-    }
-  }
-
-  if (trimmedValue === '' || value === null || value === undefined) {
-    switch (key) {
-      case 'totalAmount': case 'commissionPercentage': case 'commissionAmount':
-      case 'netAmount': case 'paidAmount': case 'balanceAmount':
-      case 'freeGuestCount': return 0;
-      case 'perTicketRate': return null;
-      case 'modeOfPayment': return 'CARD';
-      case 'status': return 'Balance';
-      case 'type': return 'Private Cruise';
-      case 'paymentConfirmationStatus': return 'UNCONFIRMED';
-      case 'notes': case 'bookingRefNo': return '';
-      case 'month': return formatISO(new Date());
-      case 'createdAt': case 'updatedAt': return formatISO(new Date());
-      case 'lastModifiedByUserId': return currentUserId || undefined;
-      case 'ownerUserId': return currentUserId || undefined;
-      default: return undefined;
-    }
-  }
-
-  switch (key) {
-    case 'agent':
-    case 'ownerUserId':
-    case 'lastModifiedByUserId':
-      const mapToUse = key === 'agent' ? agentMap : userMap;
-      const idByName = Object.keys(mapToUse).find(id => mapToUse[id]?.toLowerCase() === trimmedValue.toLowerCase());
-      return idByName || trimmedValue;
-
-    case 'yacht':
-      // Special handling for ticketing system format: "YACHT NAME - PACKAGE TYPE"
-      // Example: "LOTUS ROYALE - FOOD AND SOFT DRINKS"
-      let yachtNameOnly = trimmedValue;
-
-      // Check if the value contains " - " (yacht name with package type)
-      if (trimmedValue.includes(' - ')) {
-        const parts = trimmedValue.split(' - ');
-        yachtNameOnly = parts[0].trim();
-        // Package type will be in parts[1], but we handle that separately
-        console.log(`[CSV Import] Parsed yacht from ticketing format: "${trimmedValue}" → Yacht: "${yachtNameOnly}"`);
-      }
-
-      // Try to find yacht by ID or name
-      const yachtIdByName = Object.keys(yachtMap).find(id => yachtMap[id]?.toLowerCase() === yachtNameOnly.toLowerCase());
-      return yachtIdByName || yachtNameOnly;
-
-    case 'totalAmount': case 'commissionPercentage': case 'commissionAmount':
-    case 'netAmount': case 'paidAmount': case 'balanceAmount':
-    case 'freeGuestCount':
-      const numFinancial = parseFloat(trimmedValue.replace(/,/g, ''));
-      return isNaN(numFinancial) ? 0 : numFinancial;
-    case 'perTicketRate':
-      const numRate = parseFloat(trimmedValue.replace(/,/g, ''));
-      return isNaN(numRate) ? null : numRate;
-
-    case 'modeOfPayment':
-      // Map 'Credit' and 'Online' to 'CARD' if they don't match exactly
-      const lowerVal = trimmedValue.toLowerCase();
-      if (lowerVal === 'credit' || lowerVal === 'online') return 'CARD';
-
-      const foundMop = modeOfPaymentOptions.find(opt => opt.toLowerCase() === lowerVal);
-      return foundMop || 'CARD';
-    case 'status':
-      const lowerTrimmedStatusValue = trimmedValue.toLowerCase();
-      const foundStatus = leadStatusOptions.find(opt => opt.toLowerCase() === lowerTrimmedStatusValue);
-      return foundStatus || 'Balance';
-    case 'type':
-      const foundType = leadTypeOptions.find(opt => opt.toLowerCase() === trimmedValue.toLowerCase());
-      return foundType || 'Private Cruise';
-    case 'paymentConfirmationStatus':
-      const upperTrimmedPaymentStatus = trimmedValue.toUpperCase();
-      if (paymentConfirmationStatusOptions.includes(upperTrimmedPaymentStatus as PaymentConfirmationStatus)) {
-        return upperTrimmedPaymentStatus as PaymentConfirmationStatus;
-      }
-      if (upperTrimmedPaymentStatus === 'PAID') return 'CONFIRMED';
-      if (upperTrimmedPaymentStatus === 'UNPAID') return 'UNCONFIRMED';
-      return 'UNCONFIRMED';
-
-    case 'month':
-    case 'createdAt':
-    case 'updatedAt':
-    case 'checkInTime':
-      try {
-        // 1. Try ISO parsing first
-        const parsedISODate = parseISO(trimmedValue);
-        if (isValid(parsedISODate)) return formatISO(parsedISODate);
-      } catch (e) { /* fall through */ }
-
-      try {
-        // 2. Try parsing 'dd-MM-yyyy' (e.g., "30-01-2026")
-        const parsedDateDMY = parse(trimmedValue, 'dd-MM-yyyy', new Date());
-        if (isValid(parsedDateDMY)) return formatISO(parsedDateDMY);
-      } catch (e) { /* fall through */ }
-
-      try {
-        // 3. Try parsing 'dd-MM-yyyy H:mm:ss' (e.g., "06-01-2026 1:56:29")
-        const parsedDateDMYHMS = parse(trimmedValue, 'dd-MM-yyyy H:mm:ss', new Date());
-        if (isValid(parsedDateDMYHMS)) return formatISO(parsedDateDMYHMS);
-      } catch (e) { /* fall through */ }
-
-      try {
-        // 4. Try parsing 'dd-MM-yyyy H:mm' (e.g., "06-01-2026 1:56")
-        const parsedDateDMYHM = parse(trimmedValue, 'dd-MM-yyyy H:mm', new Date());
-        if (isValid(parsedDateDMYHM)) return formatISO(parsedDateDMYHM);
-      } catch (e) { /* fall through */ }
-
-      console.warn(`[CSV Import] Failed to parse date: "${trimmedValue}" for field "${String(key)}". Using default valid format.`);
-      // If parsing fails, return ISO for current date as fallback to prevent invalid date errors
-      return formatISO(new Date());
-    default:
-      return trimmedValue;
-  }
-};
 
 
-function parseCsvLine(line: string): string[] {
-  const columns: string[] = [];
-  let currentColumn = '';
-  let inQuotes = false;
 
-  for (let i = 0; i < line.length; i++) {
-    const char = line[i];
-    if (char === '"') {
-      if (inQuotes && i + 1 < line.length && line[i + 1] === '"') {
-        currentColumn += '"';
-        i++;
-      } else {
-        inQuotes = !inQuotes;
-      }
-    } else if (char === ',' && !inQuotes) {
-      columns.push(currentColumn.trim());
-      currentColumn = '';
-    } else {
-      currentColumn += char;
-    }
-  }
-  columns.push(currentColumn.trim());
-  return columns;
-}
+
+
+
+
+
 
 
 function generateNewLeadId(existingLeadIds: string[]): string {
@@ -845,7 +581,7 @@ export default function BookingsPage() {
 
           const parsedRow = {} as any;
           fileHeaders.forEach((fileHeader, index) => {
-            const leadKey = csvHeaderMapping[fileHeader];
+            const leadKey = csvHeaderMapping[fileHeader] || csvHeaderMapping[fileHeader.toLowerCase()];
             if (leadKey) {
               parsedRow[leadKey] = convertCsvValue(leadKey, data[index], allYachts, agentMap, userMap, yachtMap);
             }
@@ -858,34 +594,7 @@ export default function BookingsPage() {
           });
 
           // Package Type Detection Logic
-          let packageTypeFromYachtName = '';
-          if (yachtNameFromCsv && yachtNameFromCsv.includes(' - ')) {
-            packageTypeFromYachtName = yachtNameFromCsv.split(' - ')[1]?.trim().toUpperCase() || '';
-          }
-
-          if (packageTypeFromYachtName) {
-            const adultQty = parsedRow.pkg_adult || 0;
-            const childQty = parsedRow.pkg_child || 0;
-
-            // Clear default
-            delete parsedRow.pkg_adult;
-            delete parsedRow.pkg_child;
-
-            if (packageTypeFromYachtName.includes('VIP') && packageTypeFromYachtName.includes('SOFT')) {
-              if (adultQty > 0) parsedRow.pkg_vip_adult = adultQty;
-              if (childQty > 0) parsedRow.pkg_vip_child = childQty;
-            } else if (packageTypeFromYachtName.includes('VIP') && (packageTypeFromYachtName.includes('PREMIUM') || packageTypeFromYachtName.includes('UNLIMITED')) && packageTypeFromYachtName.includes('ALCOHOLIC')) {
-              if (adultQty > 0) parsedRow.pkg_vip_alc = adultQty;
-            } else if (packageTypeFromYachtName.includes('UNLIMITED') && packageTypeFromYachtName.includes('ALCOHOLIC')) {
-              if (adultQty > 0) parsedRow.pkg_adult_alc = adultQty;
-            } else if (packageTypeFromYachtName.includes('FOOD') || packageTypeFromYachtName.includes('SOFT')) {
-              if (adultQty > 0) parsedRow.pkg_adult = adultQty;
-              if (childQty > 0) parsedRow.pkg_child = childQty;
-            } else {
-              if (adultQty > 0) parsedRow.pkg_adult = adultQty;
-              if (childQty > 0) parsedRow.pkg_child = childQty;
-            }
-          }
+          applyPackageTypeDetection(yachtNameFromCsv, parsedRow);
 
           parsedRow._originalRowIndex = i + 1;
           parsedRows.push(parsedRow);
@@ -933,30 +642,38 @@ export default function BookingsPage() {
           const packageQuantities: LeadPackageQuantity[] = [];
           if (yachtForLead && yachtForLead.packages) {
             Object.entries(aggregatedPkg).forEach(([key, qty]) => {
-              // Find a CSV header that maps to this internal key (e.g., 'ad' -> 'pkg_adult')
-              const csvHeader = Object.keys(csvHeaderMapping).find(h => csvHeaderMapping[h] === key);
-              if (csvHeader) {
-                const actualPackageName = packageReverseHeaderMap[csvHeader];
-                if (actualPackageName) {
-                  const p = yachtForLead.packages?.find(pkg => pkg.name.toUpperCase() === actualPackageName.toUpperCase());
-                  if (p) {
-                    // Check if already added (avoid duplicates if multiple csv headers map to same pkg)
-                    const existing = packageQuantities.find(pq => pq.packageId === p.id);
-                    if (existing) existing.quantity = qty; // Should be same
-                    else {
-                      packageQuantities.push({
-                        packageId: p.id,
-                        packageName: p.name,
-                        quantity: qty,
-                        rate: p.rate
-                      });
-                    }
-                  } else {
-                    console.warn(`[CSV Import] Package "${actualPackageName}" from CSV (derived from internal key "${key}") not found on yacht "${yachtForLead.name}". Skipping package for this booking.`);
-                  }
+              if (qty <= 0) return;
+
+              // Derive canonical package name from internal key (e.g., 'pkg_adult_alc' -> 'ADULT ALC')
+              const actualPackageName = key.startsWith('pkg_')
+                ? key.substring('pkg_'.length).replace(/_/g, ' ').toUpperCase()
+                : key.toUpperCase();
+
+              // Robust finding: try exact (case-insensitive) then fuzzy
+              let p = yachtForLead.packages?.find(pkg => pkg.name.toUpperCase() === actualPackageName);
+
+              if (!p) {
+                // Fuzzy match: if target is "ADULT", handle "Adult pp", "Food only (Adult)", etc.
+                p = yachtForLead.packages?.find(pkg => {
+                  const n = pkg.name.toUpperCase();
+                  return n.includes(actualPackageName) || actualPackageName.includes(n);
+                });
+              }
+
+              if (p) {
+                const existing = packageQuantities.find(pq => pq.packageId === p!.id);
+                if (existing) {
+                  existing.quantity += qty;
                 } else {
-                  console.warn(`[CSV Import] Could not find actual package name for CSV header mapping to internal key "${key}". Skipping package for this booking.`);
+                  packageQuantities.push({
+                    packageId: p.id,
+                    packageName: p.name,
+                    quantity: qty,
+                    rate: p.rate
+                  });
                 }
+              } else {
+                console.warn(`[CSV Import] Package derived from "${key}" (as "${actualPackageName}") not found on yacht "${yachtForLead.name}". Skipping.`);
               }
             });
           }
@@ -992,6 +709,12 @@ export default function BookingsPage() {
 
           const calculatedCommission = calculatedTotal * (discountPercentage / 100);
           const calculatedNet = calculatedTotal - calculatedCommission;
+
+          // Auto-calculate paid amount if status is confirmed (Assuming Full Payment)
+          if (primaryRow.status === 'Confirmed' && totalPaid === 0) {
+            totalPaid = calculatedTotal;
+          }
+
           const calculatedBalance = calculatedNet - totalPaid;
 
           const fullLead: Lead = {

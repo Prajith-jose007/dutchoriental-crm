@@ -10,58 +10,11 @@ import { AgentFormDialog } from './_components/AgentFormDialog';
 import type { Agent } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
+import { agentCsvHeaderMapping as csvHeaderMapping, convertAgentValue, parseCsvLine } from '@/lib/csvHelpers';
 
 const USER_ROLE_STORAGE_KEY = 'currentUserRole';
 
-// Header mapping for CSV import (lowercase, underscore_separated keys)
-const csvHeaderMapping: { [csvHeaderKey: string]: keyof Agent } = {
-  'id': 'id',
-  'name': 'name',
-  'agency_code': 'agency_code',
-  'agency code': 'agency_code',
-  'address': 'address',
-  'phone_no': 'phone_no',
-  'phone no': 'phone_no',
-  'phoneno': 'phone_no',
-  'email': 'email',
-  'status': 'status',
-  'trn_number': 'TRN_number',
-  'trn number': 'TRN_number',
-  'customer_type_id': 'customer_type_id',
-  'customer type id': 'customer_type_id',
-  'discount': 'discount',
-  'discount_rate': 'discount',
-  'discount rate': 'discount',
-  'websiteurl': 'websiteUrl',
-  'website url': 'websiteUrl',
-  'website_url': 'websiteUrl',
-};
 
-
-// Helper to convert CSV row values to correct Agent types
-const convertAgentValue = <K extends keyof Agent>(key: K, value: string): Agent[K] => {
-  const trimmedValue = value ? String(value).trim() : '';
-
-  if (trimmedValue === '' || value === null || value === undefined) {
-    if (key === 'discount') return 0 as Agent[K];
-    if (key === 'status') return 'Active' as Agent[K];
-    if (['agency_code', 'address', 'phone_no', 'TRN_number', 'customer_type_id', 'websiteUrl'].includes(key as string)) {
-      return undefined as Agent[K];
-    }
-    return '' as Agent[K];
-  }
-
-  switch (key as string) {
-    case 'discount':
-      const num = parseFloat(trimmedValue);
-      return (isNaN(num) || !isFinite(num) ? 0 : num) as Agent[K];
-    case 'status':
-      const validStatuses: Agent['status'][] = ['Active', 'Non Active', 'Dead'];
-      return (validStatuses.includes(trimmedValue as Agent['status']) ? trimmedValue : 'Active') as Agent[K];
-    default:
-      return trimmedValue as Agent[K];
-  }
-};
 
 
 export default function AgentsPage() {
@@ -331,7 +284,7 @@ export default function AgentsPage() {
         if (headerLine.charCodeAt(0) === 0xFEFF) {
           headerLine = headerLine.substring(1);
         }
-        const fileHeaders = headerLine.split(',').map(h => h.trim().toLowerCase().replace(/\s+/g, '_'));
+        const fileHeaders = parseCsvLine(headerLine).map(h => h.trim().toLowerCase().replace(/\s+/g, '_'));
         console.log("[CSV Import Agents] Detected Headers:", fileHeaders);
 
         const newAgentsFromCsv: Agent[] = [];
@@ -359,7 +312,7 @@ export default function AgentsPage() {
 
 
         for (let i = 1; i < lines.length; i++) {
-          const data = lines[i].split(',');
+          const data = parseCsvLine(lines[i]);
           if (data.length !== fileHeaders.length) {
             console.warn(`[CSV Import Agents] Skipping malformed CSV line ${i + 1}: Expected ${fileHeaders.length} columns, got ${data.length}. Line: "${lines[i]}"`);
             skippedCount++;

@@ -283,7 +283,9 @@ export function BookingsTable({
 
   const renderCellContent = (lead: Lead, column: BookingTableColumn) => {
     if (column.isPackageQuantityColumn && column.actualPackageName) {
-      const pkgQuantityItem = lead.packageQuantities?.find(pq => pq.packageName === column.actualPackageName);
+      const pkgQuantityItem = lead.packageQuantities?.find(
+        pq => pq.packageName.toUpperCase() === column.actualPackageName!.toUpperCase()
+      );
       const quantity = pkgQuantityItem?.quantity;
       return (quantity !== undefined && quantity > 0) ? String(quantity) : '-';
     }

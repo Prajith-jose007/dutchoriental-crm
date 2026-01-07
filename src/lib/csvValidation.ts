@@ -1,4 +1,4 @@
-import type { Agent, Yacht, Lead, LeadPackageQuantity } from './types';
+import type { Agent, Yacht, LeadPackageQuantity } from './types';
 
 export interface CSVValidationResult {
     isValid: boolean;

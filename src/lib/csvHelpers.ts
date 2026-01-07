@@ -186,7 +186,7 @@ export const convertLeadCsvValue = (
             }
             if (upperTrimmedPaymentStatus === 'PAID') return 'CONFIRMED';
             if (upperTrimmedPaymentStatus === 'UNPAID') return 'UNCONFIRMED';
-            return 'UNCONFIRMED';
+            return 'CONFIRMED';
 
         case 'month':
         case 'createdAt':
@@ -295,8 +295,20 @@ export function applyPackageTypeDetection(
         } else if (packageTypeFromYachtName.includes('PREMIUM') && packageTypeFromYachtName.includes('ALCOHOLIC')) {
             // Premium alcoholic package
             if (adultQty > 0) parsedRow.pkg_adult_alc = adultQty;
+        } else if (packageTypeFromYachtName.includes('ROYAL')) {
+            // Royal packages
+            if (packageTypeFromYachtName.includes('ALCOHOL')) {
+                if (adultQty > 0) parsedRow.pkg_royal_alc = adultQty;
+            } else {
+                if (adultQty > 0) parsedRow.pkg_royal_adult = adultQty;
+                if (childQty > 0) parsedRow.pkg_royal_child = childQty;
+            }
+        } else if (packageTypeFromYachtName.includes('TOP DECK')) {
+            // Top Deck packages
+            if (adultQty > 0) parsedRow.pkg_adult_top_deck = adultQty;
+            if (childQty > 0) parsedRow.pkg_child_top_deck = childQty;
         } else if (packageTypeFromYachtName.includes('FOOD') || packageTypeFromYachtName.includes('SOFT') || packageTypeFromYachtName.includes('ONLY') || packageTypeFromYachtName.includes('STANDARD') || packageTypeFromYachtName.includes('REGULAR')) {
-            // \"Food only\", \"Soft Drinks\", \"Standard\", \"Regular\"
+            // "Food only", "Soft Drinks", "Standard", "Regular"
             if (adultQty > 0) parsedRow.pkg_adult = adultQty;
             if (childQty > 0) parsedRow.pkg_child = childQty;
         } else {

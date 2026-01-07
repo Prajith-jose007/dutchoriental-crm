@@ -147,7 +147,7 @@ const getDefaultFormValues = (existingLead?: Lead | null, currentUserId?: string
     month: existingLead?.month && isValid(parseISO(existingLead.month)) ? parseISO(existingLead.month) : new Date(),
     yacht: existingLead?.yacht || '',
     type: existingLead?.type || (undefined as any), // Force selection
-    paymentConfirmationStatus: existingLead?.paymentConfirmationStatus || 'UNCONFIRMED',
+    paymentConfirmationStatus: existingLead?.paymentConfirmationStatus || 'CONFIRMED',
     modeOfPayment: existingLead?.modeOfPayment || 'CARD',
     clientName: existingLead?.clientName || '',
     notes: existingLead?.notes || '',

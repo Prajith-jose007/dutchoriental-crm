@@ -46,7 +46,7 @@ const USER_ROLE_STORAGE_KEY = 'currentUserRole';
 
 function generateNewLeadId(existingLeadIds: string[]): string {
   const prefix = "DO-";
-  let maxNum = 0;
+  let maxNum = 100; // Force start from 101
   existingLeadIds.forEach(id => {
     if (id && id.startsWith(prefix)) {
       const numPart = parseInt(id.substring(prefix.length), 10);

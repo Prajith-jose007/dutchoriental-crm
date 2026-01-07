@@ -96,7 +96,7 @@ const mapDbLeadToLeadObject = (dbLead: DbLead): Lead => {
 
 function generateNewLeadId(existingLeadIds: string[]): string {
   const prefix = "DO-";
-  let maxNum = 0;
+  let maxNum = 100; // Force start from 101 if no existing leads >= 101
   existingLeadIds.forEach(id => {
     if (id && id.startsWith(prefix)) {
       const numPart = parseInt(id.substring(prefix.length), 10);
@@ -147,7 +147,7 @@ export async function POST(request: NextRequest) {
     }
 
     let leadId = newLeadData.id;
-    if (!leadId || leadId.startsWith('temp-')) {
+    if (!leadId || leadId.startsWith('temp-') || leadId.startsWith('imported-')) {
       const currentLeadsFromDB = await query<DbLead[]>('SELECT id FROM leads WHERE id LIKE "DO-%"');
       leadId = generateNewLeadId(currentLeadsFromDB.map(l => l.id as string));
     }
@@ -184,7 +184,7 @@ export async function POST(request: NextRequest) {
       formatToMySQLDateTime(formattedMonth),
       newLeadData.notes || null,
       newLeadData.type || 'Private Cruise',
-      newLeadData.paymentConfirmationStatus || 'UNCONFIRMED',
+      newLeadData.paymentConfirmationStatus || 'CONFIRMED',
       finalTransactionId,
       newLeadData.bookingRefNo || null,
       newLeadData.modeOfPayment || 'Online',

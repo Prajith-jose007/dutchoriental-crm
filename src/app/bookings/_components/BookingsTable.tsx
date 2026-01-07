@@ -76,7 +76,7 @@ export const generateBookingColumns = (allYachts: Yacht[]): BookingTableColumn[]
     { accessorKey: 'yacht', header: 'Yacht', isYachtLookup: true },
     { accessorKey: 'agent', header: 'Agent', isAgentLookup: true },
     { accessorKey: 'clientName', header: 'Client' },
-    { accessorKey: 'paymentConfirmationStatus', header: 'Conf.' },
+    { accessorKey: 'paymentConfirmationStatus', header: 'Confirmed' },
     { accessorKey: 'type', header: 'Type' },
     { accessorKey: 'transactionId', header: 'Trans ID' },
     { accessorKey: 'bookingRefNo', header: 'REF' },

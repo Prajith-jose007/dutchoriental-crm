@@ -7,21 +7,21 @@ const USER_ID_STORAGE_KEY = 'currentUserId';
 export const leadCsvHeaderMapping: Record<string, any> = {
     'id': 'id',
     'status': 'status',
-    'date': 'month', 'eventdate': 'month', 'event_date': 'month', 'lead/event_date': 'month', 'travel_date': 'month', 'traveldate': 'month', 'travel_date_': 'month',
-    'yacht': 'yacht', 'service_nam': 'yacht', 'service_name': 'yacht', 'yachtname': 'yacht', 'option': 'yacht',
+    'date': 'month', 'eventdate': 'month', 'event_date': 'month', 'lead/event_date': 'month', 'travel_date': 'month', 'traveldate': 'month', 'travel_date_': 'month', 'travel date': 'month',
+    'yacht': 'yacht', 'service_nam': 'yacht', 'service_name': 'yacht', 'yachtname': 'yacht', 'option': 'yacht', 'service name': 'yacht',
     'agent': 'agent', 'agent_name': 'agent', 'company_na': 'agent', 'company_name': 'agent', 'companyname': 'agent',
-    'client': 'clientName', 'client_name': 'clientName', 'customer_na': 'clientName', 'customer_name': 'clientName', 'customer': 'clientName', 'pax_name': 'clientName', 'paxname': 'clientName',
+    'client': 'clientName', 'client_name': 'clientName', 'customer_na': 'clientName', 'customer_name': 'clientName', 'customer': 'clientName', 'pax_name': 'clientName', 'paxname': 'clientName', 'customer name': 'clientName',
     'traveler\'s_fi': 'clientNameFirst', 'traveler\'s_first_name': 'clientNameFirst',
     'traveler\'s_la': 'clientNameLast', 'traveler\'s_last_name': 'clientNameLast',
     'payment_status': 'paymentConfirmationStatus', 'pay_status': 'paymentConfirmationStatus', 'payment_confirmation_status': 'paymentConfirmationStatus',
     'type': 'type', 'lead_type': 'type',
-    'transaction_id': 'transactionId', 'transaction id': 'transactionId', 'ticketnumber': 'transactionId', 'ticket_number': 'transactionId', 'trn_number': 'transactionId', 'trn_no': 'transactionId',
-    'booking_ref_no': 'bookingRefNo', 'booking ref no': 'bookingRefNo', 'booking_refno': 'bookingRefNo', 'booking_ref': 'bookingRefNo', 'booking_reff': 'bookingRefNo', 'ref_no.': 'bookingRefNo', 'ref_no': 'bookingRefNo',
+    'transaction_id': 'transactionId', 'transaction id': 'transactionId', 'ticketnumber': 'transactionId', 'ticket_number': 'transactionId', 'trn_number': 'transactionId', 'trn_no': 'transactionId', 'confirmation number': 'transactionId', 'confirmation_number': 'transactionId',
+    'booking_ref_no': 'bookingRefNo', 'booking ref no': 'bookingRefNo', 'booking_refno': 'bookingRefNo', 'booking_ref': 'bookingRefNo', 'booking_reff': 'bookingRefNo', 'ref_no.': 'bookingRefNo', 'ref_no': 'bookingRefNo', 'ref no.': 'bookingRefNo',
     'payment_mode': 'modeOfPayment', 'mode_of_payment': 'modeOfPayment', 'transaction': 'modeOfPayment',
     'free': 'freeGuestCount', 'free_guests': 'freeGuestCount',
     'ch': 'pkg_child', 'child': 'pkg_child', 'child_qty': 'pkg_child',
     'ad': 'pkg_adult', 'adult': 'pkg_adult', 'adult_qty': 'pkg_adult',
-    'no._of_pax': 'pkg_pax_complex', 'no.of_pax': 'pkg_pax_complex', 'pax': 'pkg_pax_complex',
+    'no._of_pax': 'pkg_pax_complex', 'no.of_pax': 'pkg_pax_complex', 'pax': 'pkg_pax_complex', 'no. of pax': 'pkg_pax_complex', 'pax_count': 'pkg_pax_complex',
     'chd_top': 'pkg_child_top_deck', 'child_top_deck': 'pkg_child_top_deck',
     'adt_top': 'pkg_adult_top_deck', 'adult_top_deck': 'pkg_adult_top_deck',
     'ad_alc': 'pkg_adult_alc', 'adult_alc': 'pkg_adult_alc', 'alc': 'pkg_adult_alc', 'alcoholic': 'pkg_adult_alc',
@@ -277,10 +277,14 @@ export function applyPackageTypeDetection(
     parsedRow: { [key: string]: any }
 ) {
     let packageTypeFromYachtName = '';
-    // Robust split using regex for \" - \", \"- \", \" -\"
+    // Robust split using regex for " - ", "- ", " -"
     if (yachtNameFromCsv && yachtNameFromCsv.match(/\s*-\s*/)) {
         const parts = yachtNameFromCsv.split(/\s*-\s*/);
         if (parts.length > 1) packageTypeFromYachtName = parts[1].trim().toUpperCase();
+    } else if (yachtNameFromCsv && yachtNameFromCsv.includes('(') && yachtNameFromCsv.includes(')')) {
+        // Handle format like "Yacht Name (Package Type)"
+        const match = yachtNameFromCsv.match(/\(([^)]+)\)/);
+        if (match) packageTypeFromYachtName = match[1].trim().toUpperCase();
     }
 
     if (packageTypeFromYachtName) {

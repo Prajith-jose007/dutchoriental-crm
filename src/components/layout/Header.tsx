@@ -31,6 +31,8 @@ export function Header() {
     try {
       localStorage.removeItem('currentUserRole');
       localStorage.removeItem('currentUserEmail');
+      localStorage.removeItem('currentUserId');
+      localStorage.removeItem('currentUserName');
       toast({
         title: 'Logged Out',
         description: 'You have been successfully logged out.',
@@ -51,7 +53,7 @@ export function Header() {
       <div className="md:hidden">
         <SidebarTrigger />
       </div>
-      
+
       {/* This div was identified as the source of hydration mismatch */}
       {/* Conditionally render to ensure server and initial client render match */}
       {mounted ? (

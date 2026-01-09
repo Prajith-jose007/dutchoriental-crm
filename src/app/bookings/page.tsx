@@ -722,11 +722,11 @@ export default function BookingsPage() {
             clientName: primaryRow.clientName || 'N/A',
             agent: primaryRow.agent || '',
             yacht: primaryRow.yacht || '',
-            status: primaryRow.status || 'Balance',
+            status: primaryRow.status || 'Confirmed',
             month: primaryRow.month || formatISO(new Date()),
             notes: additionalNotes,
             type: primaryRow.type || 'Private Cruise',
-            paymentConfirmationStatus: primaryRow.paymentConfirmationStatus || 'UNCONFIRMED',
+            paymentConfirmationStatus: primaryRow.paymentConfirmationStatus || 'CONFIRMED',
             transactionId: transactionIdForRow,
             bookingRefNo: primaryRow.bookingRefNo || '',
             modeOfPayment: primaryRow.modeOfPayment || 'CARD',
@@ -969,24 +969,25 @@ export default function BookingsPage() {
 
           const pkgNameUpper = pq.packageName.toUpperCase();
 
-          if (yachtCategoryMap.get(lead.yacht) === 'Dinner Cruise') {
+          const category = yachtCategoryMap.get(lead.yacht);
+
+          if (category === 'Dinner Cruise' || category === 'Superyacht Sightseeing Cruise') {
             if (pkgNameUpper === 'CHILD') counts.child += qty;
             else if (pkgNameUpper === 'ADULT') counts.adult += qty;
-            else if (pkgNameUpper === 'CHILD TOP DECK') counts.childTopDeck += qty;
-            else if (pkgNameUpper === 'ADULT TOP DECK') counts.adultTopDeck += qty;
-            else if (pkgNameUpper === 'ADULT ALC') counts.adultAlc += qty;
+            else if (pkgNameUpper.includes('CHILD TOP DECK')) counts.childTopDeck += qty;
+            else if (pkgNameUpper.includes('ADULT TOP DECK')) counts.adultTopDeck += qty;
+            else if (pkgNameUpper === 'ADULT ALC' || pkgNameUpper === 'ADULT ALCOHOLIC') counts.adultAlc += qty;
             else if (pkgNameUpper === 'VIP CHILD') counts.vipChild += qty;
             else if (pkgNameUpper === 'VIP ADULT') counts.vipAdult += qty;
-            else if (pkgNameUpper === 'VIP ALC') counts.vipAlc += qty;
+            else if (pkgNameUpper.includes('VIP') && (pkgNameUpper.includes('ALC') || pkgNameUpper.includes('ALCOHOLIC'))) counts.vipAlc += qty;
             else if (pkgNameUpper === 'ROYAL CHILD') counts.royalChild += qty;
             else if (pkgNameUpper === 'ROYAL ADULT') counts.royalAdult += qty;
             else if (pkgNameUpper === 'ROYAL ALC') counts.royalAlc += qty;
-          } else if (yachtCategoryMap.get(lead.yacht) === 'Superyacht Sightseeing Cruise') {
-            if (pkgNameUpper === 'BASIC') counts.basicSY += qty;
+            else if (pkgNameUpper === 'BASIC') counts.basicSY += qty;
             else if (pkgNameUpper === 'STANDARD') counts.standardSY += qty;
             else if (pkgNameUpper === 'PREMIUM') counts.premiumSY += qty;
             else if (pkgNameUpper === 'VIP') counts.vipSY += qty;
-          } else if (yachtCategoryMap.get(lead.yacht) === 'Private Cruise') {
+          } else if (category === 'Private Cruise') {
             if (pkgNameUpper === 'HOUR CHARTER') counts.hourCharterPC += qty;
           }
         });

@@ -27,7 +27,7 @@ export const leadCsvHeaderMapping: Record<string, any> = {
     'ad_alc': 'pkg_adult_alc', 'adult_alc': 'pkg_adult_alc', 'alc': 'pkg_adult_alc', 'alcoholic': 'pkg_adult_alc',
     'vip_ch': 'pkg_vip_child', 'vip_child': 'pkg_vip_child',
     'vip_ad': 'pkg_vip_adult', 'vip_adult': 'pkg_vip_adult',
-    'vip_alc_pkg': 'pkg_vip_alc',
+    'vip_alc_pkg': 'pkg_vip_alc', 'vip_adult_alc': 'pkg_vip_alc', 'adult_vip_alc': 'pkg_vip_alc',
     'ryl_ch': 'pkg_royal_child', 'royal_child': 'pkg_royal_child',
     'ryl_ad': 'pkg_royal_adult', 'royal_adult': 'pkg_royal_adult',
     'ryl_alc': 'pkg_royal_alc', 'royal_alc': 'pkg_royal_alc',
@@ -51,6 +51,12 @@ export const leadCsvHeaderMapping: Record<string, any> = {
     'date_of_modification': 'updatedAt', 'modification_date': 'updatedAt',
     'contactno': 'customerPhone', 'contact_no': 'customerPhone',
     'scanned_on': 'checkInTime', 'scannedon': 'checkInTime',
+
+    // Package SQL structure mappings (Directly map to pkg_ internal keys)
+    'pkg_child': 'pkg_child', 'pkg_adult': 'pkg_adult', 'pkg_adult_alc': 'pkg_adult_alc',
+    'pkg_child_top_deck': 'pkg_child_top_deck', 'pkg_adult_top_deck': 'pkg_adult_top_deck',
+    'pkg_vip_child': 'pkg_vip_child', 'pkg_vip_adult': 'pkg_vip_adult', 'pkg_vip_alc': 'pkg_vip_alc',
+    'pkg_royal_child': 'pkg_royal_child', 'pkg_royal_adult': 'pkg_royal_adult', 'pkg_royal_alc': 'pkg_royal_alc',
 
     // Ticketing System Specific Package Names (Direct Mappings)
     'food_&_soft_drinks': 'pkg_adult', 'food_and_soft_drinks': 'pkg_adult', 'food_&_soft_drinks_(adult)': 'pkg_adult',
@@ -110,9 +116,9 @@ export const convertLeadCsvValue = (
             case 'freeGuestCount': return 0;
             case 'perTicketRate': return null;
             case 'modeOfPayment': return 'CARD';
-            case 'status': return 'Balance';
+            case 'status': return 'Confirmed';
             case 'type': return 'Private Cruise';
-            case 'paymentConfirmationStatus': return 'UNCONFIRMED';
+            case 'paymentConfirmationStatus': return 'CONFIRMED';
             case 'notes': case 'bookingRefNo': return '';
             case 'month': return formatISO(new Date());
             case 'createdAt': case 'updatedAt': return formatISO(new Date());

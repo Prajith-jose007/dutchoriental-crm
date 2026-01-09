@@ -19,14 +19,14 @@ export const leadCsvHeaderMapping: Record<string, any> = {
     'booking_ref_no': 'bookingRefNo', 'booking ref no': 'bookingRefNo', 'booking_refno': 'bookingRefNo', 'booking_ref': 'bookingRefNo', 'booking_reff': 'bookingRefNo', 'ref_no.': 'bookingRefNo', 'ref_no': 'bookingRefNo',
     'payment_mode': 'modeOfPayment', 'mode_of_payment': 'modeOfPayment', 'transaction': 'modeOfPayment',
     'free': 'freeGuestCount', 'free_guests': 'freeGuestCount',
-    'ch': 'pkg_child', 'child': 'pkg_child',
-    'ad': 'pkg_adult', 'adult': 'pkg_adult',
+    'ch': 'pkg_child', 'child': 'pkg_child', 'child_qty': 'pkg_child',
+    'ad': 'pkg_adult', 'adult': 'pkg_adult', 'adult_qty': 'pkg_adult',
     'no._of_pax': 'pkg_pax_complex', 'no.of_pax': 'pkg_pax_complex', 'pax': 'pkg_pax_complex',
     'chd_top': 'pkg_child_top_deck', 'child_top_deck': 'pkg_child_top_deck',
     'adt_top': 'pkg_adult_top_deck', 'adult_top_deck': 'pkg_adult_top_deck',
-    'ad_alc': 'pkg_adult_alc', 'adult_alc': 'pkg_adult_alc',
-    'vip_ch': 'pkg_vip_child',
-    'vip_ad': 'pkg_vip_adult',
+    'ad_alc': 'pkg_adult_alc', 'adult_alc': 'pkg_adult_alc', 'alc': 'pkg_adult_alc', 'alcoholic': 'pkg_adult_alc',
+    'vip_ch': 'pkg_vip_child', 'vip_child': 'pkg_vip_child',
+    'vip_ad': 'pkg_vip_adult', 'vip_adult': 'pkg_vip_adult',
     'vip_alc_pkg': 'pkg_vip_alc',
     'ryl_ch': 'pkg_royal_child', 'royal_child': 'pkg_royal_child',
     'ryl_ad': 'pkg_royal_adult', 'royal_adult': 'pkg_royal_adult',
@@ -34,7 +34,7 @@ export const leadCsvHeaderMapping: Record<string, any> = {
     'basic': 'pkg_basic',
     'std': 'pkg_standard', 'standard': 'pkg_standard',
     'prem': 'pkg_premium', 'premium': 'pkg_premium',
-    'vip': 'pkg_vip',
+    'vip': 'pkg_vip_adult', // Changed from pkg_vip to pkg_vip_adult as default
     'hrchtr': 'pkg_hour_charter', 'hour_charter': 'pkg_hour_charter',
     'package_details_(json)': 'package_quantities_json_string', 'package_details_json': 'package_quantities_json_string',
     'addon_pack': 'perTicketRate', 'addon': 'perTicketRate', 'per_ticket_rate': 'perTicketRate',
@@ -61,6 +61,7 @@ export const leadCsvHeaderMapping: Record<string, any> = {
     'food_&_drinks': 'pkg_adult', 'food_and_drinks': 'pkg_adult', 'food_&_drinks_(child)': 'pkg_child', 'food_and_drinks_(child)': 'pkg_child',
     'unlimited_soft_drinks': 'pkg_adult', 'soft_drinks_package': 'pkg_adult', 'soft_drinks_package_pp': 'pkg_adult',
     'unlimited_alcoholic': 'pkg_adult_alc', 'premium_alcoholic': 'pkg_vip_alc',
+    'soft_drinks': 'pkg_adult', 'soft_drink': 'pkg_adult', 'drinks': 'pkg_adult',
 
     '1': 'pkg_adult', '2': 'pkg_child', '3': 'freeGuestCount',
 };
@@ -273,31 +274,28 @@ export function applyPackageTypeDetection(
         delete parsedRow.pkg_adult;
         delete parsedRow.pkg_child;
 
-        if (packageTypeFromYachtName.includes('VIP') && packageTypeFromYachtName.includes('SOFT')) {
+        if (packageTypeFromYachtName.includes('VIP') && (packageTypeFromYachtName.includes('SOFT') || packageTypeFromYachtName.includes('DRINK') || packageTypeFromYachtName.includes('ONLY'))) {
             // VIP tickets with soft (Handle both if quantities map, defaulting Adult header to VIP Adult)
             if (adultQty > 0) parsedRow.pkg_vip_adult = adultQty;
             if (childQty > 0) parsedRow.pkg_vip_child = childQty;
-        } else if (packageTypeFromYachtName === 'VIP') {
-            // Just \"VIP\" implies VIP Alcohol
+        } else if (packageTypeFromYachtName === 'VIP' || packageTypeFromYachtName === 'VIP ALC' || packageTypeFromYachtName === 'VIP ALCOHOLIC') {
+            // Just "VIP" implies VIP Alcohol
             if (adultQty > 0) parsedRow.pkg_vip_alc = adultQty;
             if (childQty > 0) parsedRow.pkg_vip_child = childQty;
-        } else if (packageTypeFromYachtName.includes('VIP') && (packageTypeFromYachtName.includes('PREMIUM') || packageTypeFromYachtName.includes('UNLIMITED')) && packageTypeFromYachtName.includes('ALCOHOLIC')) {
+        } else if (packageTypeFromYachtName.includes('VIP') && (packageTypeFromYachtName.includes('PREMIUM') || packageTypeFromYachtName.includes('UNLIMITED') || packageTypeFromYachtName.includes('ALC') || packageTypeFromYachtName.includes('ALCOHOLIC'))) {
             if (adultQty > 0) parsedRow.pkg_vip_alc = adultQty;
             if (childQty > 0) parsedRow.pkg_vip_child = childQty;
-        } else if (packageTypeFromYachtName.includes('UNLIMITED') && packageTypeFromYachtName.includes('ALCOHOLIC')) {
+        } else if ((packageTypeFromYachtName.includes('UNLIMITED') || packageTypeFromYachtName.includes('PREMIUM')) && (packageTypeFromYachtName.includes('ALCOHOLIC') || packageTypeFromYachtName.includes('ALC'))) {
             if (adultQty > 0) parsedRow.pkg_adult_alc = adultQty;
-        } else if (packageTypeFromYachtName.includes('FOOD') && packageTypeFromYachtName.includes('BAR')) {
-            // \"Food and bar\"
+        } else if (packageTypeFromYachtName.includes('FOOD') && (packageTypeFromYachtName.includes('BAR') || packageTypeFromYachtName.includes('ALC'))) {
+            // "Food and bar" or "Food and alc"
             if (adultQty > 0) parsedRow.pkg_adult_alc = adultQty;
-        } else if (packageTypeFromYachtName.includes('ALCOHOLIC')) {
+        } else if (packageTypeFromYachtName.includes('ALCOHOLIC') || packageTypeFromYachtName.includes('ALC')) {
             // Generic alcoholic package
-            if (adultQty > 0) parsedRow.pkg_adult_alc = adultQty;
-        } else if (packageTypeFromYachtName.includes('PREMIUM') && packageTypeFromYachtName.includes('ALCOHOLIC')) {
-            // Premium alcoholic package
             if (adultQty > 0) parsedRow.pkg_adult_alc = adultQty;
         } else if (packageTypeFromYachtName.includes('ROYAL')) {
             // Royal packages
-            if (packageTypeFromYachtName.includes('ALCOHOL')) {
+            if (packageTypeFromYachtName.includes('ALCOHOL') || packageTypeFromYachtName.includes('ALC')) {
                 if (adultQty > 0) parsedRow.pkg_royal_alc = adultQty;
             } else {
                 if (adultQty > 0) parsedRow.pkg_royal_adult = adultQty;
@@ -307,7 +305,7 @@ export function applyPackageTypeDetection(
             // Top Deck packages
             if (adultQty > 0) parsedRow.pkg_adult_top_deck = adultQty;
             if (childQty > 0) parsedRow.pkg_child_top_deck = childQty;
-        } else if (packageTypeFromYachtName.includes('FOOD') || packageTypeFromYachtName.includes('SOFT') || packageTypeFromYachtName.includes('ONLY') || packageTypeFromYachtName.includes('STANDARD') || packageTypeFromYachtName.includes('REGULAR')) {
+        } else if (packageTypeFromYachtName.includes('FOOD') || packageTypeFromYachtName.includes('SOFT') || packageTypeFromYachtName.includes('ONLY') || packageTypeFromYachtName.includes('STANDARD') || packageTypeFromYachtName.includes('REGULAR') || packageTypeFromYachtName.includes('DRINK')) {
             // "Food only", "Soft Drinks", "Standard", "Regular"
             if (adultQty > 0) parsedRow.pkg_adult = adultQty;
             if (childQty > 0) parsedRow.pkg_child = childQty;

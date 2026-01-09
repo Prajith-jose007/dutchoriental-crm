@@ -117,6 +117,16 @@ export const placeholderYachts: Yacht[] = [
       { id: 'private-hourly', name: 'HOUR CHARTER', rate: 1500 },
     ],
     customPackageInfo: "Ideal for private, intimate gatherings. Hourly rate applies."
+  },
+  {
+    id: 'CALYPSO SUNSET', name: 'CALYPSO SUNSET', capacity: 100, status: 'Available', imageUrl: 'https://placehold.co/600x400.png?text=Calypso+Sunset',
+    category: 'Dinner Cruise',
+    packages: [
+      { id: 'cs-child', name: 'CHILD', rate: 150 },
+      { id: 'cs-adult', name: 'ADULT', rate: 250 },
+      { id: 'cs-ad-alc', name: 'ADULT ALC', rate: 350 },
+    ],
+    customPackageInfo: "Sunset cruise experience."
   }
 ];
 

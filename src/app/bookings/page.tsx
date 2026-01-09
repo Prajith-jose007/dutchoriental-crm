@@ -26,6 +26,24 @@ import {
 import { ChevronDown, Trash2 } from 'lucide-react';
 import { validateCSVRow, formatValidationResult, type CSVRowData, type CSVValidationResult } from '@/lib/csvValidation';
 import { leadCsvHeaderMapping as csvHeaderMapping, convertLeadCsvValue as convertCsvValue, parseCsvLine, applyPackageTypeDetection } from '@/lib/csvHelpers';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
 
 
 const USER_ID_STORAGE_KEY = 'currentUserId';
@@ -123,6 +141,9 @@ export default function BookingsPage() {
   const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [selectedLeadIds, setSelectedLeadIds] = useState<string[]>([]);
+  const [importPreviewLeads, setImportPreviewLeads] = useState<Lead[]>([]);
+  const [isShowingImportPreview, setIsShowingImportPreview] = useState(false);
+  const [importSkippedCount, setImportSkippedCount] = useState(0);
 
 
   const fetchAllData = async () => {
@@ -523,8 +544,7 @@ export default function BookingsPage() {
     const reader = new FileReader();
     reader.onload = async (event) => {
       const csvText = event.target?.result as string;
-      let successCount = 0;
-      let skippedCount = 0;
+      let currentSkippedCount = 0;
 
       if (!csvText) {
         toast({ title: 'Import Error', description: 'Could not read CSV file.', variant: 'destructive' });
@@ -850,63 +870,29 @@ export default function BookingsPage() {
         bookingGroups.forEach((rows) => {
           const lead = processParsedRowToLead(rows, true);
           if (lead) newLeadsFromCsv.push(lead);
-          else skippedCount += rows.length; // Count all rows in the group as skipped if the lead is not created
+          else currentSkippedCount += rows.length;
         });
 
         // Create Leads from Ungrouped
         ungroupedRows.forEach(row => {
           const lead = processParsedRowToLead([row], false);
           if (lead) newLeadsFromCsv.push(lead);
-          else skippedCount++;
+          else currentSkippedCount++;
         });
 
-        // Final check for duplicates before inserting
-        // This is now handled within processParsedRowToLead for existing and already processed leads.
-        // The `newLeadsFromCsv` array should now contain only valid, non-skipped leads.
-
-
         if (newLeadsFromCsv.length > 0) {
-          for (const leadToImport of newLeadsFromCsv) {
-            try {
-              let payloadToSubmit: Partial<Lead> & { requestingUserId: string; requestingUserRole: string | null };
-              const { id, ...rest } = leadToImport;
-              if (leadToImport.id.startsWith('imported-booking-')) {
-                payloadToSubmit = { ...rest, requestingUserId: currentUserId, requestingUserRole: currentUserRole };
-              } else {
-                payloadToSubmit = { id, ...rest, requestingUserId: currentUserId, requestingUserRole: currentUserRole };
-              }
-
-              const response = await fetch('/api/leads', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payloadToSubmit),
-              });
-              if (response.ok) {
-                successCount++;
-              } else {
-                const errorData = await response.json().catch(() => ({ message: `API Error: ${response.statusText}` }));
-                console.warn(`[CSV Import Bookings] API Error for booking client ${leadToImport.clientName} (ID: ${leadToImport.id}): ${errorData.message || response.statusText}. Payload:`, payloadToSubmit);
-                skippedCount++;
-              }
-            } catch (apiError) {
-              console.warn(`[CSV Import Bookings] Network/JS Error importing booking client ${leadToImport.clientName} (ID: ${leadToImport.id}):`, apiError, "Payload:", leadToImport);
-              skippedCount++;
-            }
-          }
+          setImportPreviewLeads(newLeadsFromCsv);
+          setImportSkippedCount(currentSkippedCount);
+          setIsShowingImportPreview(true);
+          toast({ title: 'Preview Ready', description: `Parsed ${newLeadsFromCsv.length} bookings. Please review before confirming.` });
+        } else {
+          toast({ title: 'Import Finished', description: `No valid bookings found to import. ${currentSkippedCount} rows were skipped.`, variant: 'destructive' });
         }
+
       } catch (error) {
         console.error("CSV Parsing Error:", error);
         toast({ title: 'Import Error', description: (error as Error).message, variant: 'destructive' });
       } finally {
-        const endTime = Date.now();
-        const durationInSeconds = ((endTime - startTime) / 1000).toFixed(2);
-        if (successCount > 0 || skippedCount > 0) {
-          await fetchAllData();
-        }
-        toast({
-          title: 'Import Processed',
-          description: `${successCount} bookings imported. ${skippedCount} rows skipped. Processed in ${durationInSeconds} seconds. Check console for details on skipped rows.`
-        });
         setIsImporting(false);
       }
     };
@@ -915,6 +901,55 @@ export default function BookingsPage() {
       setIsImporting(false);
     }
     reader.readAsText(file);
+  };
+
+  const handleConfirmBulkImport = async () => {
+    if (importPreviewLeads.length === 0) return;
+    setIsImporting(true);
+    let successCount = 0;
+    let failCount = 0;
+    const startTime = Date.now();
+
+    toast({ title: 'Finalizing Import', description: `Saving ${importPreviewLeads.length} bookings...` });
+
+    for (const leadToImport of importPreviewLeads) {
+      try {
+        let payloadToSubmit: Partial<Lead> & { requestingUserId: string; requestingUserRole: string | null };
+        const { id, ...rest } = leadToImport;
+        // Strip temp ID if it was generated
+        if (leadToImport.id.startsWith('imported-') || leadToImport.id.startsWith('temp-')) {
+          payloadToSubmit = { ...rest, requestingUserId: currentUserId!, requestingUserRole: currentUserRole };
+        } else {
+          payloadToSubmit = { id, ...rest, requestingUserId: currentUserId!, requestingUserRole: currentUserRole };
+        }
+
+        const response = await fetch('/api/leads', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payloadToSubmit),
+        });
+
+        if (response.ok) {
+          successCount++;
+        } else {
+          failCount++;
+        }
+      } catch (e) {
+        console.error("Bulk save error:", e);
+        failCount++;
+      }
+    }
+
+    const duration = ((Date.now() - startTime) / 1000).toFixed(2);
+    toast({
+      title: 'Import Complete',
+      description: `Successfully imported ${successCount} bookings. ${failCount} failed. Took ${duration}s.`
+    });
+
+    setIsShowingImportPreview(false);
+    setImportPreviewLeads([]);
+    setIsImporting(false);
+    fetchAllData();
   };
 
   const filteredLeads = useMemo(() => {
@@ -1335,6 +1370,76 @@ export default function BookingsPage() {
         isAdmin={isAdmin}
         allUsers={allUsers}
       />
+
+      <Dialog open={isShowingImportPreview} onOpenChange={setIsShowingImportPreview}>
+        <DialogContent className="max-w-7xl max-h-[90vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle>Import Preview ({importPreviewLeads.length} Bookings Found)</DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 overflow-hidden">
+            <ScrollArea className="h-[60vh] pr-4">
+              <div className="space-y-4">
+                {importSkippedCount > 0 && (
+                  <Alert variant="destructive">
+                    <AlertDescription>
+                      {importSkippedCount} rows were skipped due to parsing errors or missing required data. Check console for details.
+                    </AlertDescription>
+                  </Alert>
+                )}
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Ref No.</TableHead>
+                      <TableHead>Client</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Yacht</TableHead>
+                      <TableHead>Packages</TableHead>
+                      <TableHead>Agent</TableHead>
+                      <TableHead className="text-right">Total (AED)</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {importPreviewLeads.map((lead, idx) => (
+                      <TableRow key={idx}>
+                        <TableCell className="font-mono text-xs">{lead.bookingRefNo || 'N/A'}</TableCell>
+                        <TableCell className="font-medium">{lead.clientName}</TableCell>
+                        <TableCell>{lead.month ? format(parseISO(lead.month), 'dd/MM/yyyy') : 'N/A'}</TableCell>
+                        <TableCell>
+                          <Badge variant="outline">{yachtMap[lead.yacht] || lead.yacht}</Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex flex-wrap gap-1">
+                            {lead.packageQuantities?.map((pq, pidx) => (
+                              <Badge key={pidx} variant="secondary" className="text-[10px]">
+                                {pq.quantity}x {pq.packageName}
+                              </Badge>
+                            ))}
+                          </div>
+                        </TableCell>
+                        <TableCell>{agentMap[lead.agent] || lead.agent || 'Direct'}</TableCell>
+                        <TableCell className="text-right font-bold">
+                          {lead.totalAmount.toLocaleString()}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </ScrollArea>
+          </div>
+          <DialogFooter className="mt-4 pt-4 border-t">
+            <Button variant="outline" onClick={() => {
+              setIsShowingImportPreview(false);
+              setImportPreviewLeads([]);
+            }} disabled={isImporting}>
+              Cancel
+            </Button>
+            <Button onClick={handleConfirmBulkImport} disabled={isImporting}>
+              {isImporting ? 'Importing...' : `Confirm & Import ${importPreviewLeads.length} Bookings`}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

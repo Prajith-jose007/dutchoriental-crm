@@ -725,7 +725,7 @@ export default function BookingsPage() {
             status: primaryRow.status || 'Confirmed',
             month: primaryRow.month || formatISO(new Date()),
             notes: additionalNotes,
-            type: primaryRow.type || 'Private Cruise',
+            type: primaryRow.type || 'Shared Cruise',
             paymentConfirmationStatus: primaryRow.paymentConfirmationStatus || 'CONFIRMED',
             transactionId: transactionIdForRow,
             bookingRefNo: primaryRow.bookingRefNo || '',

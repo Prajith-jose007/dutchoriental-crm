@@ -119,7 +119,7 @@ export const convertLeadCsvValue = (
             case 'perTicketRate': return null;
             case 'modeOfPayment': return 'CARD';
             case 'status': return 'Confirmed';
-            case 'type': return 'Private Cruise';
+            case 'type': return 'Shared Cruise';
             case 'paymentConfirmationStatus': return 'CONFIRMED';
             case 'notes': case 'bookingRefNo': return '';
             case 'month': return formatISO(new Date());

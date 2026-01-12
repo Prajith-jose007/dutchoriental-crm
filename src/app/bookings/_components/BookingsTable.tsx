@@ -81,6 +81,7 @@ export const generateBookingColumns = (allYachts: Yacht[]): BookingTableColumn[]
     { accessorKey: 'transactionId', header: 'Trans ID' },
     { accessorKey: 'bookingRefNo', header: 'REF' },
     { accessorKey: 'modeOfPayment', header: 'Mode' },
+    { accessorKey: 'source', header: 'Source' },
     { accessorKey: 'freeGuestCount', header: 'Free', isNumeric: true },
   ];
   columns.push(...baseInfoColumns);

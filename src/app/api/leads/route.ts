@@ -91,6 +91,9 @@ const mapDbLeadToLeadObject = (dbLead: DbLead): Lead => {
     checkInStatus: (dbLead.checkInStatus as 'Checked In' | 'Not Checked In') || 'Not Checked In',
     checkInTime: ensureISOFormat(dbLead.checkInTime) || undefined,
     freeGuestDetails,
+    customerPhone: dbLead.customerPhone || undefined,
+    customerEmail: dbLead.customerEmail || undefined,
+    source: (dbLead.source as any) || undefined,
   };
 };
 
@@ -171,8 +174,9 @@ export async function POST(request: NextRequest) {
         package_quantities_json, freeGuestCount, perTicketRate,
         totalAmount, commissionPercentage, commissionAmount, netAmount,
         paidAmount, balanceAmount,
-        createdAt, updatedAt, lastModifiedByUserId, ownerUserId, free_guest_details_json
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        createdAt, updatedAt, lastModifiedByUserId, ownerUserId, free_guest_details_json,
+        customerPhone, customerEmail, source
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     const params = [
@@ -202,6 +206,9 @@ export async function POST(request: NextRequest) {
       requestingUserId,
       newLeadData.ownerUserId || requestingUserId,
       newLeadData.freeGuestDetails ? JSON.stringify(newLeadData.freeGuestDetails) : null,
+      newLeadData.customerPhone || null,
+      newLeadData.customerEmail || null,
+      newLeadData.source || null,
     ];
 
     await query(sql, params);

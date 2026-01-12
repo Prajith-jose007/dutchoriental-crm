@@ -265,6 +265,23 @@ export interface Opportunity {
   reportType?: OpportunityReportType;
   tripReportStatus?: OpportunityTripReportStatus;
 }
+export interface SalesLead {
+  id: string;
+  clientName: string;
+  email: string;
+  phone: string;
+  subject: string;
+  message?: string;
+  source: string;
+  status: 'New' | 'Contacted' | 'Qualified' | 'Converted' | 'Lost';
+  priority: 'Low' | 'Medium' | 'High';
+  preferredDate?: string;
+  paxCount?: number;
+  assignedTo?: string; // User ID
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
 
 
 export interface BookingReportData {

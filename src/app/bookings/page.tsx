@@ -128,8 +128,8 @@ export default function BookingsPage() {
 
   const [fetchError, setFetchError] = useState<string | null>(null);
 
-  const [startDate, setStartDate] = useState<Date | undefined>(new Date());
-  const [endDate, setEndDate] = useState<Date | undefined>(new Date());
+  const [startDate, setStartDate] = useState<Date | undefined>(undefined);
+  const [endDate, setEndDate] = useState<Date | undefined>(undefined);
   const [statusFilter, setStatusFilter] = useState<LeadStatus | 'all'>('all');
   const [paymentConfirmationStatusFilter, setPaymentConfirmationStatusFilter] = useState<PaymentConfirmationStatus | 'all'>('all');
   const [selectedYachtId, setSelectedYachtId] = useState<string>('all');
@@ -851,7 +851,8 @@ export default function BookingsPage() {
           if (!fullLead.agent) missingFields.push('agent');
           if (!fullLead.yacht) missingFields.push('yacht');
           if (!fullLead.month) missingFields.push('month');
-          if (!fullLead.notes) missingFields.push('notes (mandatory)');
+          // Removed mandatory notes requirement to allow empty notes import
+          // if (!fullLead.notes) missingFields.push('notes (mandatory)');
 
 
           if (missingFields.length > 0) {
@@ -1036,8 +1037,8 @@ export default function BookingsPage() {
 
 
   const resetFilters = () => {
-    setStartDate(new Date());
-    setEndDate(new Date());
+    setStartDate(undefined);
+    setEndDate(undefined);
     setSelectedYachtId('all');
     setSelectedAgentId('all');
     setSelectedUserIdFilter('all');

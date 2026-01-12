@@ -38,7 +38,7 @@ export function DatePicker({ date, setDate, placeholder = "Pick a date", classNa
           {date ? format(date, 'PPP') : <span>{placeholder}</span>}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-auto p-0">
+      <PopoverContent className="w-auto p-0 flex flex-col">
         <Calendar
           mode="single"
           selected={date}
@@ -46,6 +46,21 @@ export function DatePicker({ date, setDate, placeholder = "Pick a date", classNa
           initialFocus
           disabled={disabled}
         />
+        {date && (
+          <div className="p-2 border-t">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="w-full text-xs h-7"
+              onClick={(e) => {
+                e.stopPropagation();
+                setDate(undefined);
+              }}
+            >
+              Clear Selection
+            </Button>
+          </div>
+        )}
       </PopoverContent>
     </Popover>
   );

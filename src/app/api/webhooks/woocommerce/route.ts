@@ -37,6 +37,10 @@ const PACKAGE_NAME_MAPPING: Record<string, string> = {
     'Royal Child': 'ROYAL CHILD'
 };
 
+export async function GET() {
+    return NextResponse.json({ message: 'WooCommerce Webhook Endpoint is Active' }, { status: 200 });
+}
+
 export async function POST(req: NextRequest) {
     try {
         const body = await req.json();

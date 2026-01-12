@@ -14,7 +14,7 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { DatePicker } from '@/components/ui/date-picker';
 import { Skeleton } from '@/components/ui/skeleton';
-import { format, parseISO, isWithinInterval, isValid, formatISO, getYear as getFullYear, getMonth as getMonthIndex, addDays, parse } from 'date-fns';
+import { format, parseISO, isWithinInterval, isValid, formatISO, getYear as getFullYear, getMonth as getMonthIndex, addDays, parse, startOfDay, endOfDay } from 'date-fns';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -25,7 +25,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { ChevronDown, Trash2 } from 'lucide-react';
 import { validateCSVRow, formatValidationResult, type CSVRowData, type CSVValidationResult } from '@/lib/csvValidation';
-import { leadCsvHeaderMapping as csvHeaderMapping, convertLeadCsvValue as convertCsvValue, parseCsvLine, applyPackageTypeDetection } from '@/lib/csvHelpers';
+import { leadCsvHeaderMapping as csvHeaderMapping, convertLeadCsvValue as convertCsvValue, parseCsvLine, applyPackageTypeDetection, escapeCsvCell, formatCurrencyForCsv, formatPercentageForCsv, formatNumericForCsv, calculateTotalGuestsForExport } from '@/lib/csvHelpers';
 import {
   Dialog,
   DialogContent,
@@ -128,8 +128,8 @@ export default function BookingsPage() {
 
   const [fetchError, setFetchError] = useState<string | null>(null);
 
-  const [startDate, setStartDate] = useState<Date | undefined>(undefined);
-  const [endDate, setEndDate] = useState<Date | undefined>(undefined);
+  const [startDate, setStartDate] = useState<Date | undefined>(new Date());
+  const [endDate, setEndDate] = useState<Date | undefined>(new Date());
   const [statusFilter, setStatusFilter] = useState<LeadStatus | 'all'>('all');
   const [paymentConfirmationStatusFilter, setPaymentConfirmationStatusFilter] = useState<PaymentConfirmationStatus | 'all'>('all');
   const [selectedYachtId, setSelectedYachtId] = useState<string>('all');
@@ -595,7 +595,7 @@ export default function BookingsPage() {
 
           if (data.length !== fileHeaders.length) {
             console.warn(`[CSV Import Bookings] Skipping malformed CSV line ${i + 1}: Expected ${fileHeaders.length} columns, got ${data.length}. Line: "${lines[i]}"`);
-            skippedCount++;
+            currentSkippedCount++;
             continue;
           }
 
@@ -962,11 +962,11 @@ export default function BookingsPage() {
       } catch (e) { console.warn(`Invalid month/event date for booking ${lead.id}: ${lead.month}`); }
 
       if (startDate && endDate && leadEventDate) {
-        if (!isWithinInterval(leadEventDate, { start: startDate, end: endDate })) return false;
+        if (!isWithinInterval(leadEventDate, { start: startOfDay(startDate), end: endOfDay(endDate) })) return false;
       } else if (startDate && leadEventDate) {
-        if (leadEventDate < startDate) return false;
+        if (leadEventDate < startOfDay(startDate)) return false;
       } else if (endDate && leadEventDate) {
-        if (leadEventDate > endDate) return false;
+        if (leadEventDate > endOfDay(endDate)) return false;
       }
       else if (!startDate && !endDate) {
       }
@@ -1036,8 +1036,8 @@ export default function BookingsPage() {
 
 
   const resetFilters = () => {
-    setStartDate(undefined);
-    setEndDate(undefined);
+    setStartDate(new Date());
+    setEndDate(new Date());
     setSelectedYachtId('all');
     setSelectedAgentId('all');
     setSelectedUserIdFilter('all');
@@ -1050,10 +1050,7 @@ export default function BookingsPage() {
     toast({ title: "Filters Applied", description: `Displaying ${filteredLeads.length} bookings based on current selections.` });
   };
 
-  const calculateTotalGuestsFromPackageQuantitiesForExport = (lead: Lead): number => {
-    if (!lead.packageQuantities || lead.packageQuantities.length === 0) return 0;
-    return lead.packageQuantities.reduce((sum, pq) => sum + (Number(pq.quantity) || 0), 0);
-  };
+
 
   const handleCsvExport = () => {
     if (filteredLeads.length === 0) {
@@ -1068,31 +1065,7 @@ export default function BookingsPage() {
       .map((col: BookingTableColumn) => col.header);
 
 
-    const escapeCsvCell = (cellData: any): string => {
-      if (cellData === null || cellData === undefined) return '';
-      let stringValue = String(cellData);
-      if (String(cellData).trim() === '-' && typeof cellData === 'string') return '';
-      if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n')) {
-        return `"${stringValue.replace(/"/g, '""')}"`;
-      }
-      return stringValue;
-    };
 
-    const formatCurrencyForCsv = (amount?: number | null) => {
-      if (amount === null || amount === undefined || isNaN(amount)) return '';
-      return amount.toFixed(2);
-    };
-
-    const formatPercentageForCsv = (value?: number | null) => {
-      if (typeof value !== 'number' || isNaN(value)) return '';
-      return value.toFixed(1);
-    };
-    const formatNumericForCsv = (num?: number | null): string => {
-      if (num === null || num === undefined || isNaN(num) || num === 0) {
-        return '';
-      }
-      return String(num);
-    };
 
 
     const csvRows = [
@@ -1108,9 +1081,9 @@ export default function BookingsPage() {
               cellValue = (quantity !== undefined && quantity > 0) ? String(quantity) : '';
             }
             else if (col.accessorKey === 'totalGuestsCalculated') {
-              cellValue = calculateTotalGuestsFromPackageQuantitiesForExport(lead);
+              cellValue = calculateTotalGuestsForExport(lead);
             } else if (col.accessorKey === 'averageRateCalculated') {
-              const totalGuests = calculateTotalGuestsFromPackageQuantitiesForExport(lead);
+              const totalGuests = calculateTotalGuestsForExport(lead);
               if (totalGuests > 0 && lead.totalAmount !== undefined && lead.totalAmount !== null) {
                 const averageRate = lead.totalAmount / totalGuests;
                 cellValue = formatCurrencyForCsv(averageRate);

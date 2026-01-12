@@ -411,3 +411,37 @@ export const convertAgentValue = <K extends keyof Agent>(key: K, value: string):
             return trimmedValue as Agent[K];
     }
 };
+
+// ========== EXPORT HELPERS ==========
+
+export const escapeCsvCell = (cellData: any): string => {
+    if (cellData === null || cellData === undefined) return '';
+    let stringValue = String(cellData);
+    if (String(cellData).trim() === '-' && typeof cellData === 'string') return '';
+    if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n')) {
+        return `"${stringValue.replace(/"/g, '""')}"`;
+    }
+    return stringValue;
+};
+
+export const formatCurrencyForCsv = (amount?: number | null) => {
+    if (amount === null || amount === undefined || isNaN(amount)) return '';
+    return amount.toFixed(2);
+};
+
+export const formatPercentageForCsv = (value?: number | null) => {
+    if (typeof value !== 'number' || isNaN(value)) return '';
+    return value.toFixed(1);
+};
+
+export const formatNumericForCsv = (num?: number | null): string => {
+    if (num === null || num === undefined || isNaN(num) || num === 0) {
+        return '';
+    }
+    return String(num);
+};
+
+export const calculateTotalGuestsForExport = (lead: Lead): number => {
+    if (!lead.packageQuantities || lead.packageQuantities.length === 0) return 0;
+    return lead.packageQuantities.reduce((sum, pq) => sum + (Number(pq.quantity) || 0), 0);
+};

@@ -38,7 +38,7 @@ export function ImportExportButtons({ onAddBookingClick, onCsvImport, onCsvExpor
       }
     }
   };
-  
+
   return (
     <div className="flex items-center gap-2">
       <input
@@ -50,7 +50,7 @@ export function ImportExportButtons({ onAddBookingClick, onCsvImport, onCsvExpor
       />
       <Button variant="outline" onClick={handleImportClick}>
         <Upload className="mr-2 h-4 w-4" />
-        Import CSV
+        Daily Import
       </Button>
       <Button variant="outline" onClick={onCsvExport}>
         <Download className="mr-2 h-4 w-4" />

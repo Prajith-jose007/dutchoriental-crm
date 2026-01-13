@@ -4,6 +4,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { PageHeader } from '@/components/PageHeader';
 import { BookingsTable, generateBookingColumns, type BookingTableColumn } from './_components/BookingsTable';
+import { DailyBookingsStats } from '@/components/DailyBookingsStats';
 import { ImportExportButtons } from './_components/ImportExportButtons';
 import { BookingFormDialog } from './_components/BookingFormDialog';
 import type { Lead, LeadStatus, User, Agent, Yacht, LeadType, LeadPackageQuantity, PaymentConfirmationStatus, YachtPackageItem, YachtCategory, Invoice } from '@/lib/types';
@@ -14,7 +15,7 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { DatePicker } from '@/components/ui/date-picker';
 import { Skeleton } from '@/components/ui/skeleton';
-import { format, parseISO, isWithinInterval, isValid, formatISO, getYear as getFullYear, getMonth as getMonthIndex, addDays, parse, startOfDay, endOfDay } from 'date-fns';
+import { format, parseISO, isWithinInterval, isValid, formatISO, getYear as getFullYear, getMonth as getMonthIndex, addDays, parse } from 'date-fns';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -25,7 +26,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { ChevronDown, Trash2 } from 'lucide-react';
 import { validateCSVRow, formatValidationResult, type CSVRowData, type CSVValidationResult } from '@/lib/csvValidation';
-import { leadCsvHeaderMapping as csvHeaderMapping, convertLeadCsvValue as convertCsvValue, parseCsvLine, applyPackageTypeDetection, escapeCsvCell, formatCurrencyForCsv, formatPercentageForCsv, formatNumericForCsv, calculateTotalGuestsForExport } from '@/lib/csvHelpers';
+import { leadCsvHeaderMapping as csvHeaderMapping, convertLeadCsvValue as convertCsvValue, parseCsvLine, applyPackageTypeDetection } from '@/lib/csvHelpers';
 import {
   Dialog,
   DialogContent,
@@ -851,8 +852,7 @@ export default function BookingsPage() {
           if (!fullLead.agent) missingFields.push('agent');
           if (!fullLead.yacht) missingFields.push('yacht');
           if (!fullLead.month) missingFields.push('month');
-          // Removed mandatory notes requirement to allow empty notes import
-          // if (!fullLead.notes) missingFields.push('notes (mandatory)');
+          // if (!fullLead.notes) missingFields.push('notes (mandatory)'); // Removed constraint
 
 
           if (missingFields.length > 0) {
@@ -963,11 +963,11 @@ export default function BookingsPage() {
       } catch (e) { console.warn(`Invalid month/event date for booking ${lead.id}: ${lead.month}`); }
 
       if (startDate && endDate && leadEventDate) {
-        if (!isWithinInterval(leadEventDate, { start: startOfDay(startDate), end: endOfDay(endDate) })) return false;
+        if (!isWithinInterval(leadEventDate, { start: startDate, end: endDate })) return false;
       } else if (startDate && leadEventDate) {
-        if (leadEventDate < startOfDay(startDate)) return false;
+        if (leadEventDate < startDate) return false;
       } else if (endDate && leadEventDate) {
-        if (leadEventDate > endOfDay(endDate)) return false;
+        if (leadEventDate > endDate) return false;
       }
       else if (!startDate && !endDate) {
       }
@@ -1051,7 +1051,10 @@ export default function BookingsPage() {
     toast({ title: "Filters Applied", description: `Displaying ${filteredLeads.length} bookings based on current selections.` });
   };
 
-
+  const calculateTotalGuestsFromPackageQuantitiesForExport = (lead: Lead): number => {
+    if (!lead.packageQuantities || lead.packageQuantities.length === 0) return 0;
+    return lead.packageQuantities.reduce((sum, pq) => sum + (Number(pq.quantity) || 0), 0);
+  };
 
   const handleCsvExport = () => {
     if (filteredLeads.length === 0) {
@@ -1066,7 +1069,31 @@ export default function BookingsPage() {
       .map((col: BookingTableColumn) => col.header);
 
 
+    const escapeCsvCell = (cellData: any): string => {
+      if (cellData === null || cellData === undefined) return '';
+      let stringValue = String(cellData);
+      if (String(cellData).trim() === '-' && typeof cellData === 'string') return '';
+      if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n')) {
+        return `"${stringValue.replace(/"/g, '""')}"`;
+      }
+      return stringValue;
+    };
 
+    const formatCurrencyForCsv = (amount?: number | null) => {
+      if (amount === null || amount === undefined || isNaN(amount)) return '';
+      return amount.toFixed(2);
+    };
+
+    const formatPercentageForCsv = (value?: number | null) => {
+      if (typeof value !== 'number' || isNaN(value)) return '';
+      return value.toFixed(1);
+    };
+    const formatNumericForCsv = (num?: number | null): string => {
+      if (num === null || num === undefined || isNaN(num) || num === 0) {
+        return '';
+      }
+      return String(num);
+    };
 
 
     const csvRows = [
@@ -1082,9 +1109,9 @@ export default function BookingsPage() {
               cellValue = (quantity !== undefined && quantity > 0) ? String(quantity) : '';
             }
             else if (col.accessorKey === 'totalGuestsCalculated') {
-              cellValue = calculateTotalGuestsForExport(lead);
+              cellValue = calculateTotalGuestsFromPackageQuantitiesForExport(lead);
             } else if (col.accessorKey === 'averageRateCalculated') {
-              const totalGuests = calculateTotalGuestsForExport(lead);
+              const totalGuests = calculateTotalGuestsFromPackageQuantitiesForExport(lead);
               if (totalGuests > 0 && lead.totalAmount !== undefined && lead.totalAmount !== null) {
                 const averageRate = lead.totalAmount / totalGuests;
                 cellValue = formatCurrencyForCsv(averageRate);
@@ -1320,6 +1347,12 @@ export default function BookingsPage() {
         </div>
       </div>
 
+      <DailyBookingsStats
+        leads={allLeads}
+        yachts={allYachts}
+        date={startDate || new Date()}
+        title={startDate ? "Daily Report (Selected Date)" : "Daily Report (Today)"}
+      />
       <BookingsTable
         leads={filteredLeads}
         onEditLead={handleEditLeadClick}

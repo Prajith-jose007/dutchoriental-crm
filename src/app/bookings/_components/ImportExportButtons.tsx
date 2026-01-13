@@ -50,7 +50,7 @@ export function ImportExportButtons({ onAddBookingClick, onCsvImport, onCsvExpor
       />
       <Button variant="outline" onClick={handleImportClick}>
         <Upload className="mr-2 h-4 w-4" />
-        Daily Import
+        Import CSV
       </Button>
       <Button variant="outline" onClick={onCsvExport}>
         <Download className="mr-2 h-4 w-4" />

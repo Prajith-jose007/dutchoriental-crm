@@ -24,11 +24,6 @@ export const mainNavItems: NavItem[] = [
     icon: Briefcase,
   },
   {
-    title: 'Sales Leads',
-    href: '/sales-leads',
-    icon: KanbanSquare,
-  },
-  {
     title: 'Guest Check-In',
     href: '/check-in',
     icon: Ticket,

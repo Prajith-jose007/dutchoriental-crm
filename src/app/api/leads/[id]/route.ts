@@ -87,7 +87,7 @@ function buildLeadUpdateSetClause(data: Partial<Omit<Lead, 'id' | 'createdAt' | 
     'paymentConfirmationStatus', 'transactionId', 'bookingRefNo', 'modeOfPayment',
     'package_quantities_json', 'freeGuestCount', 'perTicketRate',
     'totalAmount', 'commissionPercentage', 'commissionAmount', 'netAmount', 'paidAmount', 'balanceAmount',
-    'updatedAt', 'lastModifiedByUserId', 'ownerUserId', 'customerPhone', 'customerEmail', 'source'
+    'updatedAt', 'lastModifiedByUserId', 'ownerUserId'
   ];
 
   Object.entries(data).forEach(([key, value]) => {

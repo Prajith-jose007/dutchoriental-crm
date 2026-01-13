@@ -9,6 +9,7 @@ import { SalesByYachtPieChart } from '../dashboard/_components/SalesByYachtPieCh
 import { BookingsByAgentBarChart } from '../dashboard/_components/BookingsByAgentBarChart';
 import { ReportSummaryStats } from './_components/ReportSummaryStats';
 import { FilteredBookedAgentsList } from './_components/FilteredBookedAgentsList';
+import { DailyBookingsStats } from '@/components/DailyBookingsStats';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
@@ -18,15 +19,6 @@ import type { Lead, Invoice, Yacht, Agent, User, LeadStatus, LeadType } from '@/
 import { leadStatusOptions, leadTypeOptions } from '@/lib/types';
 import { format, parseISO, isWithinInterval, startOfMonth, endOfMonth, startOfYear, endOfYear, isValid, getYear as getFullYear, getMonth as getMonthIndex } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
-import { generateBookingColumns, type BookingTableColumn } from '../bookings/_components/BookingsTable';
-import {
-  escapeCsvCell,
-  formatCurrencyForCsv,
-  formatPercentageForCsv,
-  formatNumericForCsv,
-  calculateTotalGuestsForExport
-} from '@/lib/csvHelpers';
-import { Download } from 'lucide-react';
 
 
 export default function ReportsPage() {
@@ -35,8 +27,6 @@ export default function ReportsPage() {
   const [allYachts, setAllYachts] = useState<Yacht[]>([]);
   const [allAgents, setAllAgents] = useState<Agent[]>([]);
   const [userMap, setUserMap] = useState<{ [id: string]: string }>({});
-  const [agentMap, setAgentMap] = useState<{ [id: string]: string }>({});
-  const [yachtMap, setYachtMap] = useState<{ [id: string]: string }>({});
 
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -96,18 +86,6 @@ export default function ReportsPage() {
           usersData.forEach(user => { map[user.id] = user.name; });
         }
         setUserMap(map);
-
-        const aMap: { [id: string]: string } = {};
-        if (Array.isArray(agentsData)) {
-          agentsData.forEach(agent => { aMap[agent.id] = agent.name; });
-        }
-        setAgentMap(aMap);
-
-        const yMap: { [id: string]: string } = {};
-        if (Array.isArray(yachtsData)) {
-          yachtsData.forEach(yacht => { yMap[yacht.id] = yacht.name; });
-        }
-        setYachtMap(yMap);
 
       } catch (err) {
         console.error("Error fetching report data:", err);
@@ -214,99 +192,6 @@ export default function ReportsPage() {
     setSelectedLeadTypeFilter('all');
   };
 
-  const handleCsvExport = () => {
-    if (filteredLeads.length === 0) {
-      toast({ title: 'No Data', description: 'There are no bookings (matching current filters) to export.', variant: 'default' });
-      return;
-    }
-
-    const dynamicColumns = generateBookingColumns(allYachts);
-
-    const finalCsvHeaders = dynamicColumns
-      .filter((col: BookingTableColumn) => col.accessorKey !== 'select' && col.accessorKey !== 'actions' && !col.isJsonDetails)
-      .map((col: BookingTableColumn) => col.header);
-
-    const csvRows = [
-      finalCsvHeaders.join(','),
-      ...filteredLeads.map(lead => {
-        return dynamicColumns
-          .filter((col: BookingTableColumn) => col.accessorKey !== 'select' && col.accessorKey !== 'actions' && !col.isJsonDetails)
-          .map((col: BookingTableColumn) => {
-            let cellValue: any;
-            if (col.isPackageQuantityColumn && col.actualPackageName) {
-              const pkgQuantityItem = lead.packageQuantities?.find(pq => pq.packageName === col.actualPackageName);
-              const quantity = pkgQuantityItem?.quantity;
-              cellValue = (quantity !== undefined && quantity > 0) ? String(quantity) : '';
-            }
-            else if (col.accessorKey === 'totalGuestsCalculated') {
-              cellValue = calculateTotalGuestsForExport(lead);
-            } else if (col.accessorKey === 'averageRateCalculated') {
-              const totalGuests = calculateTotalGuestsForExport(lead);
-              if (totalGuests > 0 && lead.totalAmount !== undefined && lead.totalAmount !== null) {
-                const averageRate = lead.totalAmount / totalGuests;
-                cellValue = formatCurrencyForCsv(averageRate);
-              } else {
-                cellValue = '';
-              }
-            } else if (col.isAgentLookup) {
-              cellValue = agentMap[lead.agent as string] || lead.agent;
-            } else if (col.isYachtLookup) {
-              cellValue = yachtMap[lead.yacht as string] || lead.yacht;
-            } else if (col.isUserLookup) {
-              const userId = lead[col.accessorKey as keyof Lead] as string | undefined;
-              cellValue = userId ? userMap[userId] || userId : '';
-            } else if (col.isDate) {
-              const dateVal = lead[col.accessorKey as keyof Lead] as string | undefined;
-              cellValue = dateVal && isValid(parseISO(dateVal)) ? format(parseISO(dateVal), 'dd/MM/yyyy HH:mm') : '';
-            } else if (col.isShortDate) {
-              const dateVal = lead[col.accessorKey as keyof Lead] as string | undefined;
-              cellValue = dateVal && isValid(parseISO(dateVal)) ? format(parseISO(dateVal), 'dd/MM/yyyy') : '';
-            } else if (col.isCurrency) {
-              cellValue = formatCurrencyForCsv(lead[col.accessorKey as keyof Lead] as number | null | undefined);
-            } else if (col.isPercentage) {
-              cellValue = formatPercentageForCsv(lead[col.accessorKey as keyof Lead] as number | null | undefined);
-            } else if (col.accessorKey === 'freeGuestCount') {
-              cellValue = formatNumericForCsv(lead.freeGuestCount);
-            }
-            else {
-              cellValue = lead[col.accessorKey as keyof Lead];
-            }
-
-            if ((col.isPackageQuantityColumn || col.accessorKey === 'totalGuestsCalculated' || col.accessorKey === 'freeGuestCount') &&
-              (cellValue === 0 || cellValue === undefined || cellValue === null || cellValue === '')) {
-              return '';
-            }
-            if (col.accessorKey === 'perTicketRate' && (cellValue === null || cellValue === undefined)) {
-              return '';
-            }
-
-            return escapeCsvCell(cellValue);
-          })
-          .join(',');
-      })
-    ];
-
-    const csvString = csvRows.join('\n');
-    const blob = new Blob(["\uFEFF" + csvString], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    if (link.download !== undefined) {
-      const url = URL.createObjectURL(blob);
-      link.setAttribute('href', url);
-      const filename = selectedReportMonth !== 'all' && selectedReportYear !== 'all'
-        ? `bookings_report_${selectedReportYear}_${selectedReportMonth}.csv`
-        : 'bookings_report_export.csv';
-      link.setAttribute('download', filename);
-      link.style.visibility = 'hidden';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-      toast({ title: 'Export Successful', description: 'Monthly report has been exported to CSV.' });
-    } else {
-      toast({ title: 'Export Failed', description: 'Your browser does not support this feature.', variant: 'destructive' });
-    }
-  };
-
   if (isLoading) {
     return (
       <div className="container mx-auto py-2">
@@ -344,12 +229,6 @@ export default function ReportsPage() {
       <PageHeader
         title="Reports"
         description="Filter and view key metrics for your bookings and invoices."
-        actions={
-          <Button variant="outline" onClick={handleCsvExport} disabled={filteredLeads.length === 0}>
-            <Download className="mr-2 h-4 w-4" />
-            Download Monthly Report
-          </Button>
-        }
       />
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 mb-6 p-4 border rounded-lg shadow-sm">
@@ -445,6 +324,15 @@ export default function ReportsPage() {
       </div>
 
       <ReportSummaryStats filteredLeads={filteredLeads} isLoading={isLoading} error={error} />
+
+      <div className="mt-6">
+        <DailyBookingsStats
+          leads={allLeads}
+          yachts={allYachts}
+          date={startDate || new Date()}
+          title={startDate ? "Daily Report (Selected Date)" : "Daily Report (Today)"}
+        />
+      </div>
 
       <div className="grid gap-6 mt-6">
         <div className="grid gap-6 lg:grid-cols-1">

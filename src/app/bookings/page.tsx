@@ -533,13 +533,21 @@ export default function BookingsPage() {
   };
 
 
-  const handleCsvImport = async (file: File) => {
+  // Import definition at top of file needed?
+  // We can just use string or import the type if we want strictness.
+  // Assuming strictness is good but 'any' is easier for the callback signature matching if imports are messy.
+  // usage: const handleCsvImport = async (file: File, source: string) => { ... }
+
+  const handleCsvImport = async (file: File, source: string = 'DEFAULT') => {
     if (!currentUserId) {
       toast({ title: 'Error', description: 'Current user ID not found. Cannot set owner for imported bookings.', variant: 'destructive' });
       return;
     }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const importSource = source as any;
+
     setIsImporting(true);
-    toast({ title: 'Import Started', description: 'Processing CSV file... This may take a few moments.' });
+    toast({ title: 'Import Started', description: `Processing ${source} CSV file...` });
     const startTime = Date.now();
 
     const reader = new FileReader();
@@ -615,7 +623,7 @@ export default function BookingsPage() {
           });
 
           // Package Type Detection Logic
-          applyPackageTypeDetection(yachtNameFromCsv, parsedRow);
+          applyPackageTypeDetection(yachtNameFromCsv, parsedRow, importSource);
 
           parsedRow._originalRowIndex = i + 1;
           parsedRows.push(parsedRow);

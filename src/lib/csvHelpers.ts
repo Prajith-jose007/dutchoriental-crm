@@ -4,6 +4,8 @@ import { formatISO, parseISO, isValid, parse } from 'date-fns';
 
 const USER_ID_STORAGE_KEY = 'currentUserId';
 
+export type ImportSource = 'DEFAULT' | 'MASTER' | 'RUZINN' | 'RAYNA' | 'GYG';
+
 export const leadCsvHeaderMapping: Record<string, any> = {
     'id': 'id',
     'status': 'status',
@@ -22,6 +24,7 @@ export const leadCsvHeaderMapping: Record<string, any> = {
     'ch': 'pkg_child', 'child': 'pkg_child', 'child_qty': 'pkg_child',
     'ad': 'pkg_adult', 'adult': 'pkg_adult', 'adult_qty': 'pkg_adult',
     'no._of_pax': 'pkg_pax_complex', 'no.of_pax': 'pkg_pax_complex', 'pax': 'pkg_pax_complex', 'no. of pax': 'pkg_pax_complex', 'pax_count': 'pkg_pax_complex',
+    'quantity': 'pkg_pax_complex', 'qty': 'pkg_pax_complex',
     'chd_top': 'pkg_child_top_deck', 'child_top_deck': 'pkg_child_top_deck',
     'adt_top': 'pkg_adult_top_deck', 'adult_top_deck': 'pkg_adult_top_deck',
     'ad_alc': 'pkg_adult_alc', 'adult_alc': 'pkg_adult_alc', 'alc': 'pkg_adult_alc', 'alcoholic': 'pkg_adult_alc',
@@ -51,6 +54,9 @@ export const leadCsvHeaderMapping: Record<string, any> = {
     'date_of_modification': 'updatedAt', 'modification_date': 'updatedAt',
     'contactno': 'customerPhone', 'contact_no': 'customerPhone',
     'scanned_on': 'checkInTime', 'scannedon': 'checkInTime',
+
+    // New generic text capture for specific import logic
+    'product_name': 'temp_package_text', 'product': 'temp_package_text', 'item': 'temp_package_text', 'package': 'temp_package_text',
 
     // Package SQL structure mappings (Directly map to pkg_ internal keys)
     'pkg_child': 'pkg_child', 'pkg_adult': 'pkg_adult', 'pkg_adult_alc': 'pkg_adult_alc',
@@ -271,11 +277,104 @@ export function parseCsvLine(line: string): string[] {
 }
 
 
+
+function applyMasterFileLogic(row: { [key: string]: any }) {
+    // Usually the 'yacht' field will contain the product string if 'Option'/'Service Name' mapped to it. 
+    // Or 'temp_package_text' if 'Product Name' mapped to it.
+    const rawString = (row.yacht && row.yacht !== 'Unknown Yacht') ? String(row.yacht) : (row.temp_package_text || '');
+
+    // We expect there to be a quantity. usually row.pkg_pax_complex (from 'pax') holds it.
+    const quantity = row.pkg_pax_complex || row.pkg_adult || 1;
+
+    // Reset quantities to 0 before assignment to avoid double counting
+    Object.keys(row).forEach(k => { if (k.startsWith('pkg_')) row[k] = 0; });
+    delete row.pkg_pax_complex;
+
+    const lowerRaw = rawString.toLowerCase();
+
+    if (lowerRaw.includes('dhow')) {
+        row.yacht = 'Al Mansour Dhow';
+        if (lowerRaw.includes('child')) row.pkg_child = quantity;
+        else if (lowerRaw.includes('drinks') || lowerRaw.includes('alc')) row.pkg_adult_alc = quantity;
+        else if (lowerRaw.includes('vip')) row.pkg_vip_adult = quantity;
+        else row.pkg_adult = quantity; // Default Food/Adult
+    }
+    else if (lowerRaw.includes('oe ') || lowerRaw.startsWith('oe')) { // Ocean Empress
+        row.yacht = 'Ocean Empress';
+        if (lowerRaw.includes('child')) row.pkg_child = quantity;
+        else if (lowerRaw.includes('drinks') || lowerRaw.includes('alc')) row.pkg_adult_alc = quantity;
+        else row.pkg_adult = quantity;
+    }
+    else if (lowerRaw.includes('sunset')) {
+        row.yacht = 'Calypso Sunset';
+        if (lowerRaw.includes('child')) row.pkg_child = quantity;
+        else if (lowerRaw.includes('drinks') || lowerRaw.includes('alc')) row.pkg_adult_alc = quantity;
+        else row.pkg_adult = quantity;
+    }
+    else if (lowerRaw.includes('lotus')) {
+        row.yacht = 'Lotus Royale';
+        if (lowerRaw.includes('child')) row.pkg_child = quantity;
+        else if (lowerRaw.includes('drinks') || lowerRaw.includes('alc')) row.pkg_adult_alc = quantity;
+        else row.pkg_adult = quantity;
+    }
+    else if (lowerRaw.startsWith('vip') || lowerRaw.startsWith('royale')) {
+        row.yacht = 'Lotus Royale';
+        if (lowerRaw.includes('child')) {
+            if (lowerRaw.includes('royale')) row.pkg_royal_child = quantity;
+            else row.pkg_vip_child = quantity;
+        } else if (lowerRaw.includes('alc') || lowerRaw.includes('alcohol')) {
+            if (lowerRaw.includes('royale')) row.pkg_royal_alc = quantity;
+            else row.pkg_vip_alc = quantity;
+        } else {
+            if (lowerRaw.includes('royale')) row.pkg_royal_adult = quantity;
+            else row.pkg_vip_adult = quantity;
+        }
+        // Specific user request overrides: "Royale Adult 999 - royale adult alc"
+        if (lowerRaw.includes('royale adult') || lowerRaw.includes('royale adult 999')) {
+            row.pkg_royal_alc = quantity;
+            row.pkg_royal_adult = 0;
+        }
+    }
+}
+
+function applyRuzinnLogic(row: { [key: string]: any }) {
+    // Expect yacht name in row.yacht (mapped) and package text in row.temp_package_text
+    const pkgText = (row.temp_package_text || '').toLowerCase();
+    const quantity = row.pkg_pax_complex || row.pkg_adult || 1;
+
+    // Reset quantities
+    Object.keys(row).forEach(k => { if (k.startsWith('pkg_')) row[k] = 0; });
+    delete row.pkg_pax_complex;
+
+    if (pkgText.includes('vip soft')) {
+        row.pkg_vip_adult = quantity;
+    } else if (pkgText.includes('food') && pkgText.includes('soft')) {
+        row.pkg_adult = quantity; // Assuming adult default
+    } else if (pkgText.includes('vip unlimited')) {
+        row.pkg_vip_alc = quantity;
+    } else if ((pkgText.includes('food') || pkgText.includes('unlimited')) && (pkgText.includes('alcohol') || pkgText.includes('alc'))) {
+        row.pkg_adult_alc = quantity;
+    } else {
+        // Fallback
+        if (pkgText.includes('child')) row.pkg_child = quantity;
+        else row.pkg_adult = quantity;
+    }
+}
+
 export function applyPackageTypeDetection(
     yachtNameFromCsv: string,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    parsedRow: { [key: string]: any }
+    parsedRow: { [key: string]: any },
+    source: ImportSource = 'DEFAULT'
 ) {
+    if (source === 'MASTER') {
+        applyMasterFileLogic(parsedRow);
+        return;
+    }
+    if (source === 'RUZINN') {
+        applyRuzinnLogic(parsedRow);
+        return;
+    }
     let packageTypeFromYachtName = '';
     // Robust split using regex for " - ", "- ", " -"
     if (yachtNameFromCsv && yachtNameFromCsv.match(/\s*-\s*/)) {

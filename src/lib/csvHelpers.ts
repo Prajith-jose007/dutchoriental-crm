@@ -27,6 +27,7 @@ export const leadCsvHeaderMapping: Record<string, any> = {
     'quantity': 'pkg_pax_complex', 'qty': 'pkg_pax_complex',
     'chd_top': 'pkg_child_top_deck', 'child_top_deck': 'pkg_child_top_deck',
     'adt_top': 'pkg_adult_top_deck', 'adult_top_deck': 'pkg_adult_top_deck',
+    'adt_top_alc': 'pkg_adult_top_deck_alc', 'adult_top_deck_alc': 'pkg_adult_top_deck_alc', 'top_alc': 'pkg_adult_top_deck_alc',
     'ad_alc': 'pkg_adult_alc', 'adult_alc': 'pkg_adult_alc', 'alc': 'pkg_adult_alc', 'alcoholic': 'pkg_adult_alc',
     'vip_ch': 'pkg_vip_child', 'vip_child': 'pkg_vip_child',
     'vip_ad': 'pkg_vip_adult', 'vip_adult': 'pkg_vip_adult',
@@ -60,7 +61,7 @@ export const leadCsvHeaderMapping: Record<string, any> = {
 
     // Package SQL structure mappings (Directly map to pkg_ internal keys)
     'pkg_child': 'pkg_child', 'pkg_adult': 'pkg_adult', 'pkg_adult_alc': 'pkg_adult_alc',
-    'pkg_child_top_deck': 'pkg_child_top_deck', 'pkg_adult_top_deck': 'pkg_adult_top_deck',
+    'pkg_child_top_deck': 'pkg_child_top_deck', 'pkg_adult_top_deck': 'pkg_adult_top_deck', 'pkg_adult_top_deck_alc': 'pkg_adult_top_deck_alc',
     'pkg_vip_child': 'pkg_vip_child', 'pkg_vip_adult': 'pkg_vip_adult', 'pkg_vip_alc': 'pkg_vip_alc',
     'pkg_royal_child': 'pkg_royal_child', 'pkg_royal_adult': 'pkg_royal_adult', 'pkg_royal_alc': 'pkg_royal_alc',
     'yacht_name': 'yacht', 'booking_ref_id': 'bookingRefNo', 'agency_name': 'agent', 'guest_name': 'clientName',
@@ -423,7 +424,13 @@ export function applyPackageTypeDetection(
             }
         } else if (yachtNameFromCsv.toUpperCase().includes('TOP DECK') || packageTypeFromYachtName.includes('TOP DECK')) {
             // Top Deck packages
-            if (adultQty > 0) parsedRow.pkg_adult_top_deck = adultQty;
+            if (adultQty > 0) {
+                if (packageTypeFromYachtName.includes('ALC') || packageTypeFromYachtName.includes('ALCOHOL') || yachtNameFromCsv.toUpperCase().includes('ALC')) {
+                    parsedRow.pkg_adult_top_deck_alc = adultQty;
+                } else {
+                    parsedRow.pkg_adult_top_deck = adultQty;
+                }
+            }
             if (childQty > 0) parsedRow.pkg_child_top_deck = childQty;
         } else if (packageTypeFromYachtName.includes('FOOD') || packageTypeFromYachtName.includes('SOFT') || packageTypeFromYachtName.includes('ONLY') || packageTypeFromYachtName.includes('STANDARD') || packageTypeFromYachtName.includes('REGULAR') || packageTypeFromYachtName.includes('DRINK')) {
             // "Food only", "Soft Drinks", "Standard", "Regular"

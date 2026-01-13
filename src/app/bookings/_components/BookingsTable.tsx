@@ -47,8 +47,9 @@ export type BookingTableColumn = {
 export const packageHeaderMap: { [fullPackageName: string]: string } = {
   'CHILD': 'CH',
   'ADULT': 'AD',
-  'CHILD TOP DECK': 'CHD TOP',
-  'ADULT TOP DECK': 'ADT TOP',
+  'CHILD TOP DECK': 'TOP-CH',
+  'ADULT TOP DECK': 'TOP-AD',
+  'ADULT TOP DECK ALC': 'TOP-ALC',
   'ADULT ALC': 'AD ALC',
   'VIP CHILD': 'VIP CH',
   'VIP ADULT': 'VIP AD',
@@ -91,7 +92,7 @@ export const generateBookingColumns = (allYachts: Yacht[]): BookingTableColumn[]
       const baseAccessorKey = pkgDef.actualPackageName.replace(/\s+/g, '_').toLowerCase();
 
       columns.push({
-        header: `${shortHeader} Qty`,
+        header: `${shortHeader}`,
         accessorKey: `pkgqty_${baseAccessorKey}`,
         isPackageQuantityColumn: true,
         actualPackageName: pkgDef.actualPackageName,
@@ -104,6 +105,7 @@ export const generateBookingColumns = (allYachts: Yacht[]): BookingTableColumn[]
   const dinnerCruisePackageDefinitions = [
     { actualPackageName: 'CHILD', category: 'Dinner Cruise' }, { actualPackageName: 'ADULT', category: 'Dinner Cruise' },
     { actualPackageName: 'CHILD TOP DECK', category: 'Dinner Cruise' }, { actualPackageName: 'ADULT TOP DECK', category: 'Dinner Cruise' },
+    { actualPackageName: 'ADULT TOP DECK ALC', category: 'Dinner Cruise' },
     { actualPackageName: 'ADULT ALC', category: 'Dinner Cruise' },
     { actualPackageName: 'VIP CHILD', category: 'Dinner Cruise' }, { actualPackageName: 'VIP ADULT', category: 'Dinner Cruise' },
     { actualPackageName: 'VIP ALC', category: 'Dinner Cruise' },

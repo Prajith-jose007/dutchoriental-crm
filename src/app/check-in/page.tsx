@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
+import { QrScanner } from '@/components/QrScanner';
 import {
     Loader2,
     Search,
@@ -18,7 +19,8 @@ import {
     Plus,
     ArrowUpCircle,
     Lock,
-    Save
+    Save,
+    QrCode
 } from 'lucide-react';
 import type { Lead, LeadPackageQuantity, Yacht, CheckedInQuantity } from '@/lib/types';
 import { format, parseISO, isValid } from 'date-fns';
@@ -39,6 +41,7 @@ export default function CheckInPage() {
     const [isSaving, setIsSaving] = useState(false);
     const [yachts, setYachts] = useState<Yacht[]>([]);
     const [manualComment, setManualComment] = useState('');
+    const [showScanner, setShowScanner] = useState(false);
 
     useEffect(() => {
         fetchYachts();
@@ -56,9 +59,11 @@ export default function CheckInPage() {
         }
     };
 
-    const handleSearch = async (e?: React.FormEvent) => {
+    const handleSearch = async (e?: React.FormEvent | null, overrideQuery?: string) => {
         if (e) e.preventDefault();
-        if (!searchQuery.trim()) {
+        const query = overrideQuery || searchQuery;
+
+        if (!query.trim()) {
             toast({ title: "Input Required", description: "Please enter a ticket number or reference.", variant: "destructive" });
             return;
         }
@@ -69,7 +74,7 @@ export default function CheckInPage() {
         setManualComment('');
 
         try {
-            const response = await fetch(`/api/check-in?query=${encodeURIComponent(searchQuery.trim())}`);
+            const response = await fetch(`/api/check-in?query=${encodeURIComponent(query.trim())}`);
             if (!response.ok) {
                 if (response.status === 404) {
                     toast({ title: "Not Found", description: "No booking found.", variant: "destructive" });
@@ -96,6 +101,13 @@ export default function CheckInPage() {
         } finally {
             setIsLoading(false);
         }
+    };
+
+    const handleScan = (code: string) => {
+        setShowScanner(false);
+        setSearchQuery(code);
+        handleSearch(null, code);
+        toast({ title: "Scanned", description: `Found code: ${code}` });
     };
 
     const handleSyncCheckIn = async (finalLock: boolean = false) => {
@@ -301,6 +313,9 @@ export default function CheckInPage() {
                             onChange={(e) => setSearchQuery(e.target.value)}
                             className="flex-1"
                         />
+                        <Button type="button" variant="outline" size="icon" onClick={() => setShowScanner(true)} title="Scan QR Code" className="shrink-0">
+                            <QrCode className="h-4 w-4" />
+                        </Button>
                         <Button type="submit" disabled={isLoading} size="sm">
                             {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4 mr-2" />}
                             Search
@@ -471,6 +486,12 @@ export default function CheckInPage() {
                         </CardContent>
                     </Card>
                 </div>
+            )}
+            {showScanner && (
+                <QrScanner
+                    onScan={handleScan}
+                    onClose={() => setShowScanner(false)}
+                />
             )}
         </div>
     );

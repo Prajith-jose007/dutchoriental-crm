@@ -857,7 +857,7 @@ export default function BookingsPage() {
 
           const missingFields = [];
           if (!fullLead.clientName || fullLead.clientName === 'N/A from CSV') missingFields.push('clientName (missing or "N/A from CSV")');
-          if (!fullLead.agent) missingFields.push('agent');
+          // if (!fullLead.agent) missingFields.push('agent'); // Relaxed validation as per user request
           if (!fullLead.yacht) missingFields.push('yacht');
           if (!fullLead.month) missingFields.push('month');
           // if (!fullLead.notes) missingFields.push('notes (mandatory)'); // Removed constraint

@@ -11,6 +11,13 @@ export const leadCsvHeaderMapping: Record<string, any> = {
     'status': 'status',
     'date': 'month', 'eventdate': 'month', 'event_date': 'month', 'lead/event_date': 'month', 'travel_date': 'month', 'traveldate': 'month', 'travel_date_': 'month', 'travel date': 'month',
     'yacht': 'yacht', 'service_nam': 'yacht', 'service_name': 'yacht', 'yachtname': 'yacht', 'option': 'yacht', 'service name': 'yacht',
+    'event': 'yacht', // Added for Master CSV
+    'inv': 'modeOfPayment', // Updated for Master CSV (User request)
+    'comm %': 'commissionPercentage', // Added for Master CSV
+    'comm': 'commissionAmount', // Added for Master CSV
+    'net': 'netAmount', // Added for Master CSV
+    'amt': 'totalAmount', // Added for Master CSV
+    'rate': 'perTicketRate', // Added for Master CSV
     'agent': 'agent', 'agent_name': 'agent', 'company_na': 'agent', 'company_name': 'agent', 'companyname': 'agent',
     'client': 'clientName', 'client_name': 'clientName', 'customer_na': 'clientName', 'customer_name': 'clientName', 'customer': 'clientName', 'pax_name': 'clientName', 'paxname': 'clientName', 'customer name': 'clientName',
     'traveler\'s_fi': 'clientNameFirst', 'traveler\'s_first_name': 'clientNameFirst',
@@ -58,6 +65,8 @@ export const leadCsvHeaderMapping: Record<string, any> = {
 
     // New generic text capture for specific import logic
     'product_name': 'temp_package_text', 'product': 'temp_package_text', 'item': 'temp_package_text', 'package': 'temp_package_text',
+    'item_name': 'temp_package_text', 'activity': 'temp_package_text', 'description': 'temp_package_text', 'ticket_name': 'temp_package_text',
+    'package_type': 'temp_package_text', 'service': 'temp_package_text', 'ticket': 'temp_package_text',
 
     // Package SQL structure mappings (Directly map to pkg_ internal keys)
     'pkg_child': 'pkg_child', 'pkg_adult': 'pkg_adult', 'pkg_adult_alc': 'pkg_adult_alc',
@@ -77,6 +86,34 @@ export const leadCsvHeaderMapping: Record<string, any> = {
     'unlimited_soft_drinks': 'pkg_adult', 'soft_drinks_package': 'pkg_adult', 'soft_drinks_package_pp': 'pkg_adult',
     'unlimited_alcoholic': 'pkg_adult_alc', 'premium_alcoholic': 'pkg_vip_alc',
     'soft_drinks': 'pkg_adult', 'soft_drink': 'pkg_adult', 'drinks': 'pkg_adult',
+
+    // Master File Specific Column Mappings
+    'dhow_child_89(55_spl)': 'master_qty_dhow_child',
+    'dhow_child_89_(55_spl)': 'master_qty_dhow_child', // Variation
+    'dhow_food_99_(60_spl)': 'master_qty_dhow_food',
+    'dhow_food_99(60_spl)': 'master_qty_dhow_food', // Variation
+    'dhow_drinks_199': 'master_qty_dhow_alc',
+    'dhow_vip_299': 'master_qty_dhow_vip',
+    'oe_child_129': 'master_qty_oe_child',
+    'oe_food_149': 'master_qty_oe_food',
+    'oe_drinks_249': 'master_qty_oe_alc',
+    'oe_vip_349': 'master_qty_oe_vip',
+    'sunset_child_179': 'master_qty_sunset_child',
+    'sunset_food_199': 'master_qty_sunset_food',
+    'sunset_drinks_299': 'master_qty_sunset_alc',
+    'lotus_new_child_249': 'master_qty_lotus_new_child',
+    'lotus_new_food_299': 'master_qty_lotus_new_food',
+    'lotus_new_drinks_399': 'master_qty_lotus_new_alc',
+    'lotus_child_199': 'master_qty_lotus_child',
+    'lotus_food_249': 'master_qty_lotus_food',
+    'lotus_drinks_349': 'master_qty_lotus_alc',
+    'vip_child_399': 'master_qty_vip_child',
+    'vip_child_399_': 'master_qty_vip_child', // Potential trailing
+    'vip_499': 'master_qty_vip_adult',
+    'royale_child_799': 'master_qty_royale_child',
+    'royale_adult_999': 'master_qty_royale_adult',
+    'others_amt_(cake)': 'master_amt_cake',
+    'others_amt(cake)': 'master_amt_cake', // Variation
 
     '1': 'pkg_adult', '2': 'pkg_child', '3': 'freeGuestCount',
 };
@@ -280,14 +317,69 @@ export function parseCsvLine(line: string): string[] {
 
 
 function applyMasterFileLogic(row: { [key: string]: any }) {
-    // Usually the 'yacht' field will contain the product string if 'Option'/'Service Name' mapped to it. 
-    // Or 'temp_package_text' if 'Product Name' mapped to it.
-    const rawString = (row.yacht && row.yacht !== 'Unknown Yacht') ? String(row.yacht) : (row.temp_package_text || '');
+    // Force Shared Cruise type
+    row.type = 'Shared Cruise';
 
-    // We expect there to be a quantity. usually row.pkg_pax_complex (from 'pax') holds it.
+    // 1. Check for Specific Master File Columns first
+    // If we find counts in these columns, they dictate the yacht and package.
+
+    let masterYachtFound = false;
+
+    // Helper to process column
+    const process = (key: string, targetYacht: string, targetPkgKey: string) => {
+        const qty = Number(row[key]);
+        if (!isNaN(qty) && qty > 0) {
+            row.yacht = targetYacht;
+            row[targetPkgKey] = (row[targetPkgKey] || 0) + qty;
+            masterYachtFound = true;
+        }
+    };
+
+    // Dhow
+    process('master_qty_dhow_child', 'Al Mansour Dhow', 'pkg_child');
+    process('master_qty_dhow_food', 'Al Mansour Dhow', 'pkg_adult');
+    process('master_qty_dhow_alc', 'Al Mansour Dhow', 'pkg_adult_alc');
+    process('master_qty_dhow_vip', 'Al Mansour Dhow', 'pkg_vip_adult');
+
+    // Ocean Empress
+    process('master_qty_oe_child', 'Ocean Empress', 'pkg_child');
+    process('master_qty_oe_food', 'Ocean Empress', 'pkg_adult');
+    process('master_qty_oe_alc', 'Ocean Empress', 'pkg_adult_alc');
+    process('master_qty_oe_vip', 'Ocean Empress', 'pkg_vip_adult');
+
+    // Calypso Sunset
+    process('master_qty_sunset_child', 'Calypso Sunset', 'pkg_child');
+    process('master_qty_sunset_food', 'Calypso Sunset', 'pkg_adult');
+    process('master_qty_sunset_alc', 'Calypso Sunset', 'pkg_adult_alc');
+
+    // Lotus (Old/New - treat as Lotus Royale)
+    process('master_qty_lotus_child', 'Lotus Royale', 'pkg_child');
+    process('master_qty_lotus_food', 'Lotus Royale', 'pkg_adult');
+    process('master_qty_lotus_alc', 'Lotus Royale', 'pkg_adult_alc');
+
+    process('master_qty_lotus_new_child', 'Lotus Royale', 'pkg_child');
+    process('master_qty_lotus_new_food', 'Lotus Royale', 'pkg_adult');
+    process('master_qty_lotus_new_alc', 'Lotus Royale', 'pkg_adult_alc');
+
+    // High Tier Lotus/Royal
+    process('master_qty_vip_child', 'Lotus Royale', 'pkg_vip_child');
+    process('master_qty_vip_adult', 'Lotus Royale', 'pkg_vip_adult');
+    process('master_qty_royale_child', 'Lotus Royale', 'pkg_royal_child');
+    process('master_qty_royale_adult', 'Lotus Royale', 'pkg_royal_adult');
+
+
+    if (masterYachtFound) {
+        // Clear generic 'pkg_' if they were set from 'QTY' column to avoid double counting if QTY was a sum
+        delete row.pkg_pax_complex;
+        return;
+    }
+
+    // Fallback to legacy/generic parsing if no specific columns found (e.g. maybe separate sheet format)
+
+    const rawString = (row.yacht && row.yacht !== 'Unknown Yacht') ? String(row.yacht) : (row.temp_package_text || '');
     const quantity = row.pkg_pax_complex || row.pkg_adult || 1;
 
-    // Reset quantities to 0 before assignment to avoid double counting
+    // Reset default quantities 
     Object.keys(row).forEach(k => { if (k.startsWith('pkg_')) row[k] = 0; });
     delete row.pkg_pax_complex;
 
@@ -376,6 +468,28 @@ export function applyPackageTypeDetection(
         applyRuzinnLogic(parsedRow);
         return;
     }
+
+    // Fallback: If yacht is missing (empty column) but we captured product text, use that
+    // This fixes rows where 'Service Name' is empty but 'Product Name' contains the yacht info.
+    if (!parsedRow.yacht && parsedRow.temp_package_text) {
+        yachtNameFromCsv = parsedRow.temp_package_text; // Use full string for package detection
+
+        // Extract clean yacht name from the product text
+        let cleanName = yachtNameFromCsv;
+        if (cleanName.match(/\s*-\s*/)) {
+            cleanName = cleanName.split(/\s*-\s*/)[0].trim();
+        }
+        // Basic alias handling (simplified from convertLeadCsvValue)
+        const lowerClean = cleanName.toLowerCase();
+        if (lowerClean.startsWith('lotus megayacht')) cleanName = 'Lotus Royale';
+        else if (lowerClean.startsWith('ocean empress')) cleanName = 'Ocean Empress';
+        else if (lowerClean.startsWith('al mansour')) cleanName = 'Al Mansour Dhow';
+        else if (lowerClean.startsWith('calypso')) cleanName = 'Calypso Sunset';
+
+        parsedRow.yacht = cleanName;
+        console.log(`[CSV Import] Fallback yacht from product: "${yachtNameFromCsv}" -> "${cleanName}"`);
+    }
+
     let packageTypeFromYachtName = '';
     // Robust split using regex for " - ", "- ", " -"
     if (yachtNameFromCsv && yachtNameFromCsv.match(/\s*-\s*/)) {

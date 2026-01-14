@@ -26,7 +26,8 @@ export const leadCsvHeaderMapping: Record<string, any> = {
     'type': 'type', 'lead_type': 'type',
     'transaction_id': 'transactionId', 'transaction id': 'transactionId', 'ticketnumber': 'transactionId', 'ticket_number': 'transactionId', 'trn_number': 'transactionId', 'trn_no': 'transactionId', 'confirmation number': 'transactionId', 'confirmation_number': 'transactionId',
     'booking_ref_no': 'bookingRefNo', 'booking ref no': 'bookingRefNo', 'booking_refno': 'bookingRefNo', 'booking_ref': 'bookingRefNo', 'booking_reff': 'bookingRefNo', 'ref_no.': 'bookingRefNo', 'ref_no': 'bookingRefNo', 'ref no.': 'bookingRefNo',
-    'payment_mode': 'modeOfPayment', 'mode_of_payment': 'modeOfPayment', 'transaction': 'modeOfPayment',
+    'order_id': 'bookingRefNo', // Added alias
+    'payment_mode': 'modeOfPayment', 'mode_of_payment': 'modeOfPayment', 'transaction': 'modeOfPayment', 'mode': 'modeOfPayment', // Added mode
     'free': 'freeGuestCount', 'free_guests': 'freeGuestCount',
     'ch': 'pkg_child', 'child': 'pkg_child', 'child_qty': 'pkg_child',
     'ad': 'pkg_adult', 'adult': 'pkg_adult', 'adult_qty': 'pkg_adult',
@@ -53,7 +54,7 @@ export const leadCsvHeaderMapping: Record<string, any> = {
     'discount_%': 'commissionPercentage', 'discount_rate': 'commissionPercentage', 'discount': 'commissionPercentage',
     'commission': 'commissionAmount', 'commission_amount': 'commissionAmount',
     'net_amt': 'netAmount', 'net_amount': 'netAmount',
-    'paid': 'paidAmount', 'paid_amount': 'paidAmount', 'sales_amount(aed)': 'paidAmount', 'sales_amount': 'paidAmount', 'salesamount(aed)': 'paidAmount',
+    'paid': 'paidAmount', 'paid_amount': 'paidAmount', 'sales_amount(aed)': 'paidAmount', 'sales_amount_(aed)': 'paidAmount', 'sales_amount': 'paidAmount', 'salesamount(aed)': 'paidAmount',
     'balance': 'balanceAmount', 'balance_amount': 'balanceAmount',
     'note': 'notes', 'remarks': 'notes',
     'created_by': 'ownerUserId', 'created by': 'ownerUserId',

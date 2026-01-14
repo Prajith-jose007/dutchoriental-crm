@@ -27,7 +27,9 @@ export const leadCsvHeaderMapping: Record<string, any> = {
     'transaction_id': 'transactionId', 'transaction id': 'transactionId', 'ticketnumber': 'transactionId', 'ticket_number': 'transactionId', 'trn_number': 'transactionId', 'trn_no': 'transactionId', 'confirmation number': 'transactionId', 'confirmation_number': 'transactionId',
     'booking_ref_no': 'bookingRefNo', 'booking ref no': 'bookingRefNo', 'booking_refno': 'bookingRefNo', 'booking_ref': 'bookingRefNo', 'booking_reff': 'bookingRefNo', 'ref_no.': 'bookingRefNo', 'ref_no': 'bookingRefNo', 'ref no.': 'bookingRefNo',
     'order_id': 'bookingRefNo', // Added alias
+    'reff': 'bookingRefNo', // User specific Ruzinn alias
     'payment_mode': 'modeOfPayment', 'mode_of_payment': 'modeOfPayment', 'transaction': 'modeOfPayment', 'mode': 'modeOfPayment', // Added mode
+    'trn': 'transactionId', // User specific Ruzinn alias
     'free': 'freeGuestCount', 'free_guests': 'freeGuestCount',
     'ch': 'pkg_child', 'child': 'pkg_child', 'child_qty': 'pkg_child',
     'ad': 'pkg_adult', 'adult': 'pkg_adult', 'adult_qty': 'pkg_adult',

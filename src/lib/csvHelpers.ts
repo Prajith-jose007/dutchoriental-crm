@@ -295,21 +295,21 @@ export const convertLeadCsvValue = (
 };
 
 
-export function parseCsvLine(line: string): string[] {
+export function parseCsvLine(line: string, delimiter = ','): string[] {
     const columns: string[] = [];
     let currentColumn = '';
     let inQuotes = false;
 
     for (let i = 0; i < line.length; i++) {
         const char = line[i];
-        if (char === '\"') {
-            if (inQuotes && i + 1 < line.length && line[i + 1] === '\"') {
-                currentColumn += '\"';
+        if (char === '"') {
+            if (inQuotes && i + 1 < line.length && line[i + 1] === '"') {
+                currentColumn += '"';
                 i++;
             } else {
                 inQuotes = !inQuotes;
             }
-        } else if (char === ',' && !inQuotes) {
+        } else if (char === delimiter && !inQuotes) {
             columns.push(currentColumn.trim());
             currentColumn = '';
         } else {

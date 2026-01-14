@@ -572,7 +572,14 @@ export default function BookingsPage() {
         if (headerLine.charCodeAt(0) === 0xFEFF) {
           headerLine = headerLine.substring(1);
         }
-        const fileHeaders = parseCsvLine(headerLine).map(h => h.trim().toLowerCase().replace(/\s+/g, '_'));
+        // Detect delimiter (Comma vs Tab)
+        const tabCount = (headerLine.match(/\t/g) || []).length;
+        const commaCount = (headerLine.match(/,/g) || []).length;
+        const delimiter = tabCount > commaCount ? '\t' : ',';
+
+        console.log(`[CSV Import Bookings] Detected delimiter: "${delimiter === '\t' ? '\\t' : ','}"`);
+
+        const fileHeaders = parseCsvLine(headerLine, delimiter).map(h => h.trim().toLowerCase().replace(/\s+/g, '_'));
         console.log("[CSV Import Bookings] Detected Normalized Headers:", fileHeaders);
 
         const newLeadsFromCsv: Lead[] = [];
@@ -598,7 +605,7 @@ export default function BookingsPage() {
 
         // 1. First Pass: Parse all rows and apply package detection
         for (let i = 1; i < lines.length; i++) {
-          let data = parseCsvLine(lines[i]);
+          let data = parseCsvLine(lines[i], delimiter);
 
           if (data.length > fileHeaders.length) {
             const extraColumns = data.slice(fileHeaders.length);

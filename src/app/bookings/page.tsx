@@ -578,6 +578,12 @@ export default function BookingsPage() {
         const newLeadsFromCsv: Lead[] = [];
         const currentLeadIds = new Set(allLeads.map(l => l.id));
 
+        // OPTIMIZATION: Pre-calculate sets for fast duplicate detection
+        const existingClientNames = new Set(allLeads.map(l => l.clientName.toLowerCase().trim()));
+        const existingBookingRefs = new Set(allLeads.filter(l => l.bookingRefNo).map(l => l.bookingRefNo!.toLowerCase().trim()));
+        const batchClientNames = new Set<string>();
+        const batchBookingRefs = new Set<string>();
+
         const packageReverseHeaderMap: { [shortHeader: string]: string } = {};
         Object.entries(csvHeaderMapping).forEach(([csvKey, internalKey]) => {
           if (internalKey && internalKey.startsWith('pkg_')) {
@@ -802,24 +808,17 @@ export default function BookingsPage() {
           if (fullLead.clientName && fullLead.clientName !== 'N/A from CSV') {
             const clientNameLower = fullLead.clientName.toLowerCase().trim();
 
-            // Check against existing bookings
-            const existingWithSameName = allLeads.find(l =>
-              l.clientName.toLowerCase().trim() === clientNameLower
-            );
-
-            // Check within current CSV batch (already processed leads)
-            const duplicateInBatch = newLeadsFromCsv.find(l =>
-              l.clientName.toLowerCase().trim() === clientNameLower
-            );
-
-            if (existingWithSameName) {
-              const warning = `⚠️ DUPLICATE CLIENT NAME: "${fullLead.clientName}" already exists in booking ${existingWithSameName.id}`;
+            if (existingClientNames.has(clientNameLower)) {
+              const existing = allLeads.find(l => l.clientName.toLowerCase().trim() === clientNameLower);
+              const warning = `⚠️ DUPLICATE CLIENT NAME: "${fullLead.clientName}" already exists in booking ${existing?.id}`;
               duplicateWarnings.push(warning);
               console.warn(`[CSV Import] Row ${primaryRow._originalRowIndex}: ${warning}`);
-            } else if (duplicateInBatch) {
+            } else if (batchClientNames.has(clientNameLower)) {
               const warning = `⚠️ DUPLICATE CLIENT NAME: "${fullLead.clientName}" appears multiple times in this CSV`;
               duplicateWarnings.push(warning);
               console.warn(`[CSV Import] Row ${primaryRow._originalRowIndex}: ${warning}`);
+            } else {
+              batchClientNames.add(clientNameLower);
             }
           }
 
@@ -827,24 +826,17 @@ export default function BookingsPage() {
           if (fullLead.bookingRefNo && fullLead.bookingRefNo.trim() !== '') {
             const bookingRefLower = fullLead.bookingRefNo.toLowerCase().trim();
 
-            // Check against existing bookings
-            const existingWithSameRef = allLeads.find(l =>
-              l.bookingRefNo && l.bookingRefNo.toLowerCase().trim() === bookingRefLower
-            );
-
-            // Check within current CSV batch (already processed leads)
-            const duplicateRefInBatch = newLeadsFromCsv.find(l =>
-              l.bookingRefNo && l.bookingRefNo.toLowerCase().trim() === bookingRefLower
-            );
-
-            if (existingWithSameRef) {
-              const warning = `⚠️ DUPLICATE BOOKING REF: "${fullLead.bookingRefNo}" already exists in booking ${existingWithSameRef.id}`;
+            if (existingBookingRefs.has(bookingRefLower)) {
+              const existing = allLeads.find(l => l.bookingRefNo?.toLowerCase().trim() === bookingRefLower);
+              const warning = `⚠️ DUPLICATE BOOKING REF: "${fullLead.bookingRefNo}" already exists in booking ${existing?.id}`;
               duplicateWarnings.push(warning);
               console.warn(`[CSV Import] Row ${primaryRow._originalRowIndex}: ${warning}`);
-            } else if (duplicateRefInBatch) {
+            } else if (batchBookingRefs.has(bookingRefLower)) {
               const warning = `⚠️ DUPLICATE BOOKING REF: "${fullLead.bookingRefNo}" appears multiple times in this CSV`;
               duplicateWarnings.push(warning);
               console.warn(`[CSV Import] Row ${primaryRow._originalRowIndex}: ${warning}`);
+            } else {
+              batchBookingRefs.add(bookingRefLower);
             }
           }
 
@@ -1414,7 +1406,7 @@ export default function BookingsPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {importPreviewLeads.map((lead, idx) => (
+                    {importPreviewLeads.slice(0, 100).map((lead, idx) => (
                       <TableRow key={idx}>
                         <TableCell className="font-mono text-xs">{lead.bookingRefNo || 'N/A'}</TableCell>
                         <TableCell className="font-medium">{lead.clientName}</TableCell>
@@ -1437,6 +1429,13 @@ export default function BookingsPage() {
                         </TableCell>
                       </TableRow>
                     ))}
+                    {importPreviewLeads.length > 100 && (
+                      <TableRow>
+                        <TableCell colSpan={7} className="text-center text-muted-foreground p-4">
+                          ... and {importPreviewLeads.length - 100} more rows (hidden for performance)
+                        </TableCell>
+                      </TableRow>
+                    )}
                   </TableBody>
                 </Table>
               </div>

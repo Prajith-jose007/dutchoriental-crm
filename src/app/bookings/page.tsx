@@ -749,7 +749,7 @@ export default function BookingsPage() {
           const fullLead: Lead = {
             id: primaryRow.id || `imported-${Date.now()}-${primaryRow._originalRowIndex}`,
             clientName: primaryRow.clientName || 'N/A',
-            agent: primaryRow.agent || '',
+            agent: primaryRow.agent || 'Direct Booking',
             yacht: primaryRow.yacht || '',
             status: primaryRow.status || 'Confirmed',
             month: primaryRow.month || formatISO(new Date()),

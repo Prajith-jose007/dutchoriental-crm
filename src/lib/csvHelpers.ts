@@ -491,6 +491,17 @@ export function applyPackageTypeDetection(
         console.log(`[CSV Import] Fallback yacht from product: "${yachtNameFromCsv}" -> "${cleanName}"`);
     }
 
+    // Last Resort: If yacht is STILL missing but we have a valid ticket/reference, try to guess or default
+    if (!parsedRow.yacht && (parsedRow.transactionId || parsedRow.bookingRefNo)) {
+        const txt = (parsedRow.temp_package_text || '').toLowerCase();
+        if (txt.includes('dhow') || txt.includes('creek')) parsedRow.yacht = 'Al Mansour Dhow';
+        else if (txt.includes('ocean')) parsedRow.yacht = 'Ocean Empress';
+        else if (txt.includes('sunset')) parsedRow.yacht = 'Calypso Sunset';
+        else parsedRow.yacht = 'Lotus Royale'; // Default for Dutch Oriental
+
+        console.log(`[CSV Import] Last resort yacht assignment: ${parsedRow.yacht}`);
+    }
+
     let packageTypeFromYachtName = '';
     // Robust split using regex for " - ", "- ", " -"
     if (yachtNameFromCsv && yachtNameFromCsv.match(/\s*-\s*/)) {

@@ -125,9 +125,23 @@ function generateNewLeadTransactionId(existingLeads: Lead[], forYear: number, cu
   return `${prefix}${String(nextNumber).padStart(5, '0')}`;
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const leadsDataDb = await query<DbLead[]>('SELECT * FROM leads ORDER BY createdAt DESC');
+    const { searchParams } = new URL(request.url);
+    const limitParam = searchParams.get('limit');
+
+    let sql = 'SELECT * FROM leads ORDER BY createdAt DESC';
+    const params: (number | string)[] = [];
+
+    if (limitParam) {
+      const limit = parseInt(limitParam, 10);
+      if (!isNaN(limit) && limit > 0) {
+        sql += ' LIMIT ?';
+        params.push(limit);
+      }
+    }
+
+    const leadsDataDb = await query<DbLead[]>(sql, params);
     const leads: Lead[] = leadsDataDb.map(mapDbLeadToLeadObject);
     return NextResponse.json(leads, { status: 200 });
   } catch (err) {

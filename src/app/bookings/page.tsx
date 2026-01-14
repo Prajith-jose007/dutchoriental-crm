@@ -152,7 +152,7 @@ export default function BookingsPage() {
     setFetchError(null);
     try {
       const [leadsRes, agentsRes, yachtsRes, usersRes] = await Promise.all([
-        fetch('/api/leads'),
+        fetch('/api/leads?limit=3500'),
         fetch('/api/agents'),
         fetch('/api/yachts'),
         fetch('/api/users'),

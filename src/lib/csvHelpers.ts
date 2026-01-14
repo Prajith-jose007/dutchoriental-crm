@@ -207,13 +207,16 @@ export const convertLeadCsvValue = (
 
             // Check if the value contains hyphen separator
             // Supports \" - \", \"- \", \" -\"
-            if (yachtNameOnly.match(/\s*-\s*/)) {
-                const parts = yachtNameOnly.split(/\s*-\s*/);
+            if (yachtNameOnly.match(/\s*[-\u2013\u2014]\s*/)) {
+                const parts = yachtNameOnly.split(/\s*[-\u2013\u2014]\s*/);
                 yachtNameOnly = parts[0].trim();
                 // If alias used, force Lotus Royale
                 if (yachtNameOnly.toLowerCase() === 'lotus megayacht dinner cruise') yachtNameOnly = 'Lotus Royale';
 
-                console.log(`[CSV Import] Parsed yacht from ticketing format: \"${trimmedValue}\" → Yacht: \"${yachtNameOnly}\"`);
+                console.log(`[CSV Import] Parsed yacht from ticketing format: "${trimmedValue}" -> Yacht: "${yachtNameOnly}"`);
+            }
+            if (yachtNameOnly.includes('(')) {
+                yachtNameOnly = yachtNameOnly.split('(')[0].trim();
             }
 
             // Try to find yacht by ID or name
@@ -479,8 +482,11 @@ export function applyPackageTypeDetection(
 
         // Extract clean yacht name from the product text
         let cleanName = yachtNameFromCsv;
-        if (cleanName.match(/\s*-\s*/)) {
-            cleanName = cleanName.split(/\s*-\s*/)[0].trim();
+        if (cleanName.match(/\s*[-\u2013\u2014]\s*/)) {
+            cleanName = cleanName.split(/\s*[-\u2013\u2014]\s*/)[0].trim();
+        }
+        if (cleanName.includes('(')) {
+            cleanName = cleanName.split('(')[0].trim();
         }
         // Basic alias handling (simplified from convertLeadCsvValue)
         const lowerClean = cleanName.toLowerCase();
@@ -506,8 +512,8 @@ export function applyPackageTypeDetection(
 
     let packageTypeFromYachtName = '';
     // Robust split using regex for " - ", "- ", " -"
-    if (yachtNameFromCsv && yachtNameFromCsv.match(/\s*-\s*/)) {
-        const parts = yachtNameFromCsv.split(/\s*-\s*/);
+    if (yachtNameFromCsv && yachtNameFromCsv.match(/\s*[-\u2013\u2014]\s*/)) {
+        const parts = yachtNameFromCsv.split(/\s*[-\u2013\u2014]\s*/);
         if (parts.length > 1) packageTypeFromYachtName = parts[1].trim().toUpperCase();
     } else if (yachtNameFromCsv && yachtNameFromCsv.includes('(') && yachtNameFromCsv.includes(')')) {
         // Handle format like "Yacht Name (Package Type)"

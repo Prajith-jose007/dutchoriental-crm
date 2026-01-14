@@ -1,8 +1,7 @@
-
 'use client';
 
-import { useMemo } from 'react';
-import { MoreHorizontal } from 'lucide-react';
+import { useMemo, useState, useEffect } from 'react';
+import { MoreHorizontal, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -208,6 +207,18 @@ export function BookingsTable({
 
   const leadColumns = useMemo(() => generateBookingColumns(allYachts), [allYachts]);
 
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(50); // Default 50 items per page
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [leads]); // Reset to page 1 when data changes
+
+  const totalPages = Math.ceil(leads.length / pageSize);
+  const startIndex = (currentPage - 1) * pageSize;
+  const paginatedLeads = leads.slice(startIndex, startIndex + pageSize);
+
   const getStatusVariant = (status?: LeadStatus) => {
     if (!status) return 'outline';
     switch (status) {
@@ -395,90 +406,158 @@ export function BookingsTable({
   const isSomeSelected = selectedLeadIds.length > 0 && selectedLeadIds.length < leads.length;
 
   return (
-    <ScrollArea className="rounded-md border whitespace-nowrap">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            {leadColumns
-              .filter((col: BookingTableColumn) => !col.isJsonDetails)
-              .map((col: BookingTableColumn) => (
-                <TableHead key={col.accessorKey} className={col.accessorKey === 'select' ? "w-[40px]" : ""}>
-                  {col.accessorKey === 'select' ? (
-                    <Checkbox
-                      aria-label="Select all rows"
-                      checked={isAllSelected}
-                      onCheckedChange={(checked) => onSelectAllLeads(Boolean(checked))}
-                      data-state={isSomeSelected ? 'indeterminate' : (isAllSelected ? 'checked' : 'unchecked')}
-                      disabled={leads.length === 0}
-                    />
-                  ) : col.header}
-                </TableHead>
-              ))}
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {leads.length === 0 ? (
+    <div className="space-y-4">
+      <ScrollArea className="rounded-md border whitespace-nowrap">
+        <Table>
+          <TableHeader>
             <TableRow>
-              <TableCell colSpan={leadColumns.filter((col: BookingTableColumn) => !col.isJsonDetails).length} className="h-24 text-center">
-                No bookings found.
-              </TableCell>
+              {leadColumns
+                .filter((col: BookingTableColumn) => !col.isJsonDetails)
+                .map((col: BookingTableColumn) => (
+                  <TableHead key={col.accessorKey} className={col.accessorKey === 'select' ? "w-[40px]" : ""}>
+                    {col.accessorKey === 'select' ? (
+                      <Checkbox
+                        aria-label="Select all rows"
+                        checked={isAllSelected}
+                        onCheckedChange={(checked) => onSelectAllLeads(Boolean(checked))}
+                        data-state={isSomeSelected ? 'indeterminate' : (isAllSelected ? 'checked' : 'unchecked')}
+                        disabled={leads.length === 0}
+                      />
+                    ) : col.header}
+                  </TableHead>
+                ))}
             </TableRow>
-          ) : (
-            leads.map((lead) => (
-              <TableRow
-                key={lead.id}
-                data-state={selectedLeadIds.includes(lead.id) ? "selected" : ""}
-              >
-                {leadColumns
-                  .filter((col: BookingTableColumn) => !col.isJsonDetails)
-                  .map((col: BookingTableColumn) => (
-                    <TableCell key={`${lead.id}-${col.accessorKey}`}>
-                      {col.accessorKey === 'select' ? (
-                        <Checkbox
-                          aria-label={`Select row ${lead.id}`}
-                          checked={selectedLeadIds.includes(lead.id)}
-                          onCheckedChange={(checked) => onSelectLead(lead.id, Boolean(checked))}
-                        />
-                      ) : col.accessorKey === 'actions' ? (
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="h-8 w-8 p-0">
-                              <span className="sr-only">Open menu</span>
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                            <DropdownMenuItem
-                              onClick={() => onEditLead(lead)}
-                              disabled={!isAdmin && lead.status.startsWith('Closed')}
-                            >
-                              {lead.status.startsWith('Closed') && !isAdmin ? 'View Details' : 'Edit Booking'}
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => onGenerateInvoice(lead)}>
-                              Generate Invoice
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              className="text-destructive"
-                              onClick={() => onDeleteLead(lead.id)}
-                              disabled={!isAdmin && lead.status.startsWith('Closed')}
-                            >
-                              Delete Booking
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      ) : (
-                        renderCellContent(lead, col)
-                      )}
-                    </TableCell>
-                  ))}
+          </TableHeader>
+          <TableBody>
+            {paginatedLeads.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={leadColumns.filter((col: BookingTableColumn) => !col.isJsonDetails).length} className="h-24 text-center">
+                  No bookings found.
+                </TableCell>
               </TableRow>
-            ))
-          )}
-        </TableBody>
-      </Table>
-      <ScrollBar orientation="horizontal" />
-    </ScrollArea>
+            ) : (
+              paginatedLeads.map((lead) => (
+                <TableRow
+                  key={lead.id}
+                  data-state={selectedLeadIds.includes(lead.id) ? "selected" : ""}
+                >
+                  {leadColumns
+                    .filter((col: BookingTableColumn) => !col.isJsonDetails)
+                    .map((col: BookingTableColumn) => (
+                      <TableCell key={`${lead.id}-${col.accessorKey}`}>
+                        {col.accessorKey === 'select' ? (
+                          <Checkbox
+                            aria-label={`Select row ${lead.id}`}
+                            checked={selectedLeadIds.includes(lead.id)}
+                            onCheckedChange={(checked) => onSelectLead(lead.id, Boolean(checked))}
+                          />
+                        ) : col.accessorKey === 'actions' ? (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" className="h-8 w-8 p-0">
+                                <span className="sr-only">Open menu</span>
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                              <DropdownMenuItem
+                                onClick={() => onEditLead(lead)}
+                                disabled={!isAdmin && lead.status.startsWith('Closed')}
+                              >
+                                {lead.status.startsWith('Closed') && !isAdmin ? 'View Details' : 'Edit Booking'}
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => onGenerateInvoice(lead)}>
+                                Generate Invoice
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                className="text-destructive"
+                                onClick={() => onDeleteLead(lead.id)}
+                                disabled={!isAdmin && lead.status.startsWith('Closed')}
+                              >
+                                Delete Booking
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        ) : (
+                          renderCellContent(lead, col)
+                        )}
+                      </TableCell>
+                    ))}
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+        <ScrollBar orientation="horizontal" />
+      </ScrollArea>
+      <div className="flex items-center justify-between px-2 py-4">
+        <div className="flex-1 text-sm text-muted-foreground">
+          {selectedLeadIds.length} of {leads.length} row(s) selected.
+          Showing {startIndex + 1} to {Math.min(startIndex + pageSize, leads.length)} of {leads.length} entries
+        </div>
+        <div className="flex items-center space-x-6 lg:space-x-8">
+          <div className="flex items-center space-x-2">
+            <p className="text-sm font-medium">Rows per page</p>
+            <select
+              className="h-8 w-[70px] rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm ring-offset-background focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+              value={pageSize}
+              onChange={(e) => {
+                setPageSize(Number(e.target.value));
+                setCurrentPage(1);
+              }}
+            >
+              {[10, 20, 50, 100].map((pageSize) => (
+                <option key={pageSize} value={pageSize}>
+                  {pageSize}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex w-[100px] items-center justify-center text-sm font-medium">
+            Page {currentPage} of {totalPages}
+          </div>
+          <div className="flex items-center space-x-2">
+            <Button
+              variant="outline"
+              className="hidden h-8 w-8 p-0 lg:flex"
+              onClick={() => setCurrentPage(1)}
+              disabled={currentPage === 1}
+            >
+              <span className="sr-only">Go to first page</span>
+              <ChevronsLeft className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="outline"
+              className="h-8 w-8 p-0"
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+            >
+              <span className="sr-only">Go to previous page</span>
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="outline"
+              className="h-8 w-8 p-0"
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+            >
+              <span className="sr-only">Go to next page</span>
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="outline"
+              className="hidden h-8 w-8 p-0 lg:flex"
+              onClick={() => setCurrentPage(totalPages)}
+              disabled={currentPage === totalPages}
+            >
+              <span className="sr-only">Go to last page</span>
+              <ChevronsRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }

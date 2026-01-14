@@ -8,7 +8,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { QrScanner } from '@/components/QrScanner';
+import dynamic from 'next/dynamic';
+const QrScanner = dynamic(() => import('@/components/QrScanner').then(mod => mod.QrScanner), { ssr: false });
 import {
     Loader2,
     Search,

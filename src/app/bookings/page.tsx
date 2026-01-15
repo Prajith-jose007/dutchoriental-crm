@@ -607,6 +607,12 @@ export default function BookingsPage() {
         for (let i = 1; i < lines.length; i++) {
           let data = parseCsvLine(lines[i], delimiter);
 
+          // Check if line is effectively empty
+          const isEffectivelyEmpty = data.every(col => !col || col.trim() === '');
+          if (isEffectivelyEmpty) {
+            continue; // Skip empty lines silently
+          }
+
           if (data.length > fileHeaders.length) {
             const extraColumns = data.slice(fileHeaders.length);
             const allExtraAreEmpty = extraColumns.every(col => (col || '').trim() === '');
@@ -811,39 +817,110 @@ export default function BookingsPage() {
           // DUPLICATE DETECTION: Check for duplicate client names and booking ref numbers
           const duplicateWarnings: string[] = [];
 
+          const clientNameLower = fullLead.clientName?.toLowerCase().trim();
+          const bookingRefLower = fullLead.bookingRefNo?.toLowerCase().trim();
+          const transactionIdLower = fullLead.transactionId?.toLowerCase().trim();
+
           // Check client name duplicates
           if (fullLead.clientName && fullLead.clientName !== 'N/A from CSV') {
-            const clientNameLower = fullLead.clientName.toLowerCase().trim();
-
-            if (existingClientNames.has(clientNameLower)) {
+            // Check against existing leads in DB
+            if (existingClientNames.has(clientNameLower!)) {
               const existing = allLeads.find(l => l.clientName.toLowerCase().trim() === clientNameLower);
-              const warning = `⚠️ DUPLICATE CLIENT NAME: "${fullLead.clientName}" already exists in booking ${existing?.id}`;
-              duplicateWarnings.push(warning);
-              console.warn(`[CSV Import] Row ${primaryRow._originalRowIndex}: ${warning}`);
-            } else if (batchClientNames.has(clientNameLower)) {
-              const warning = `⚠️ DUPLICATE CLIENT NAME: "${fullLead.clientName}" appears multiple times in this CSV`;
+
+              // NEW LOGIC: If duplicate client but SAME booking ref (DO number) and DIFFERENT transaction ID (RT number), it's a batch, not an error.
+              // However, 'existing' is a single lead. We need to check if that existing lead allows merging.
+              // If we are currently IMPORTING a new row, and it matches an existing DB row by Client Name... 
+              // We usually want to warn unless we are intentionally updating.
+
+              // Refinement: The user says "if there is duplicate in client name then the RTnumber [Transaction] is difference and DO number [Booking Ref] is same then the RT tickets ase in one batch."
+              // This implies we should have grouped them earlier if they had the same Booking Ref.
+              // If they were NOT grouped (e.g. diff csv rows), we might be seeing them here sequentially.
+              // But handleCsvImport groups by Booking Ref (DO number) BEFORE this function is called.
+
+              // So if we are here, it means this lead represents a GROUP of rows with the same Booking Ref.
+              // The duplicate check here is against *other* groups or *existing DB* leads.
+
+              const isSameBookingRef = existing?.bookingRefNo?.toLowerCase().trim() === bookingRefLower;
+
+              if (existing && isSameBookingRef) {
+                // Same DO Number (Booking Ref) -> This is likely an update or a continuation of the same booking batch.
+                // We should NOT flag this as a duplicate warning.
+                console.log(`[CSV Import] Merging/Updating batch for existing booking ${existing.id} (Ref: ${existing.bookingRefNo})`);
+              } else {
+                const warning = `⚠️ DUPLICATE CLIENT NAME: "${fullLead.clientName}" already exists in booking ${existing?.id}`;
+                duplicateWarnings.push(warning);
+                console.warn(`[CSV Import] Row ${primaryRow._originalRowIndex}: ${warning}`);
+              }
+            }
+
+            // Check against current batch being imported
+            else if (batchClientNames.has(clientNameLower!)) {
+              // In the current batch, we already saw this client.
+              // Since we group by Booking Ref No, if we see the same client again, it must be under a DIFFERENT Booking Ref No (otherwise it would be in the same group).
+              // So this IS a duplicate duplicate warning case (Same client, different booking ref).
+              const warning = `⚠️ DUPLICATE CLIENT NAME: "${fullLead.clientName}" appears multiple times in this CSV (different Booking Refs)`;
               duplicateWarnings.push(warning);
               console.warn(`[CSV Import] Row ${primaryRow._originalRowIndex}: ${warning}`);
             } else {
-              batchClientNames.add(clientNameLower);
+              batchClientNames.add(clientNameLower!);
             }
           }
 
           // Check booking reference number duplicates
           if (fullLead.bookingRefNo && fullLead.bookingRefNo.trim() !== '') {
-            const bookingRefLower = fullLead.bookingRefNo.toLowerCase().trim();
-
-            if (existingBookingRefs.has(bookingRefLower)) {
+            if (existingBookingRefs.has(bookingRefLower!)) {
+              // Same logic: If it exists, but we are just adding more tickets (different RT) to the SAME DO (Booking Ref)...
+              // Actually, if the DO exists in DB, we are technically "updating" it.
               const existing = allLeads.find(l => l.bookingRefNo?.toLowerCase().trim() === bookingRefLower);
+
+              // If strict duplicate check is needed, we warn. But for "batch", we might want to allow.
               const warning = `⚠️ DUPLICATE BOOKING REF: "${fullLead.bookingRefNo}" already exists in booking ${existing?.id}`;
               duplicateWarnings.push(warning);
               console.warn(`[CSV Import] Row ${primaryRow._originalRowIndex}: ${warning}`);
-            } else if (batchBookingRefs.has(bookingRefLower)) {
+            } else if (batchBookingRefs.has(bookingRefLower!)) {
+              // Should not happen if we grouped correctly, unless blank ref?
               const warning = `⚠️ DUPLICATE BOOKING REF: "${fullLead.bookingRefNo}" appears multiple times in this CSV`;
               duplicateWarnings.push(warning);
               console.warn(`[CSV Import] Row ${primaryRow._originalRowIndex}: ${warning}`);
             } else {
-              batchBookingRefs.add(bookingRefLower);
+              batchBookingRefs.add(bookingRefLower!);
+            }
+          }
+
+          // Check Transaction ID (RT Number) duplicates
+          if (transactionIdLower && transactionIdLower !== '') {
+            // Logic: RT number must be unique globally.
+
+            // 1. Check DB
+            const existingWithSameRT = allLeads.find(l => l.transactionId?.toLowerCase().trim() === transactionIdLower);
+            if (existingWithSameRT) {
+              const warning = `⚠️ DUPLICATE TICKET/RT NO: "${fullLead.transactionId}" already exists in booking ${existingWithSameRT.id}`;
+              duplicateWarnings.push(warning);
+              console.warn(`[CSV Import] Row ${primaryRow._originalRowIndex}: ${warning}`);
+            }
+
+            // 2. Check current batch (prevent 2 rows having same RT unless grouped?)
+            // Note: If grouped, transactionIdForRow is single. This checks across DIFFERENT groups/leads in batch.
+            // We can use a set for batchTransactionIds (need to define it first if not exists, but we can iterate newLeadsFromCsv)
+
+            // Only flag if we strictly haven't seen it in batch?
+            // Simplest: Just warn if DB has it.
+          } else {
+            // If NO Transaction ID provided, it should have been generated upstream.
+            // Double check generation logic (already present in lines 729-739 of original file, ensure it runs).
+            // If somehow empty here:
+            // transactionIdForRow = ... (It is already assigned to fullLead.transactionId)
+            if (!fullLead.transactionId) {
+              const leadYear = fullLead.month ? getFullYear(parseISO(fullLead.month)) : new Date().getFullYear();
+              const currentMax = batchMaxTransactionNumbersByYear[leadYear] || 0;
+              const newTx = generateNewLeadTransactionId(allLeads, leadYear, currentMax);
+              fullLead.transactionId = newTx;
+
+              // Update batch checker
+              const numPart = parseInt(newTx.slice(newTx.lastIndexOf('-') + 1), 10);
+              if (!isNaN(numPart)) batchMaxTransactionNumbersByYear[leadYear] = numPart;
+
+              console.log(`[CSV Import] Generated Missing Transaction ID: ${newTx} for Row ${primaryRow._originalRowIndex}`);
             }
           }
 

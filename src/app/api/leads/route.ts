@@ -136,8 +136,8 @@ export async function GET(request: NextRequest) {
     if (limitParam) {
       const limit = parseInt(limitParam, 10);
       if (!isNaN(limit) && limit > 0) {
-        sql += ' LIMIT ?';
-        params.push(limit);
+        sql += ` LIMIT ${limit}`;
+        // params.push(limit); // Avoid parameterized LIMIT due to mysqld_stmt_execute error
       }
     }
 

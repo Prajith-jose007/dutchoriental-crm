@@ -203,7 +203,11 @@ export const convertLeadCsvValue = (
             } else if (yachtNameOnly.toLowerCase().startsWith('calypso sunset')) {
                 // If calypso exists in DB it will find it, otherwise it keeps the name
                 yachtNameOnly = 'CALYPSO SUNSET' + (trimmedValue.substring('CALYPSO SUNSET'.length));
+            } else if (yachtNameOnly.toLowerCase().includes('lotus royal') && yachtNameOnly.toLowerCase().includes('food and soft drinks')) {
+                // Specific user request: "lotus royal FOOD AND SOFT DRINKS" -> Lotus Royale
+                yachtNameOnly = 'Lotus Royale';
             }
+
 
             // Check if the value contains hyphen separator
             // Supports \" - \", \"- \", \" -\"
@@ -436,27 +440,85 @@ function applyMasterFileLogic(row: { [key: string]: any }) {
     }
 }
 
-function applyRuzinnLogic(row: { [key: string]: any }) {
-    // Expect yacht name in row.yacht (mapped) and package text in row.temp_package_text
-    const pkgText = (row.temp_package_text || '').toLowerCase();
-    const quantity = row.pkg_pax_complex || row.pkg_adult || 1;
+function applyRuzinnLogic(row: { [key: string]: any }, rawYachtString: string) {
+    // rawYachtString comes from the original CSV column before any splitting.
+    // e.g. "LOTUS ROYALE - FOOD AND SOFT DRINKS"
+    const targetString = (rawYachtString || row.yacht || '').toUpperCase().trim();
 
-    // Reset quantities
-    Object.keys(row).forEach(k => { if (k.startsWith('pkg_')) row[k] = 0; });
-    delete row.pkg_pax_complex;
+    // 1. Quantities from columns 'Adult' and 'Child' (already mapped to pkg_adult/pkg_child)
+    const adultQty = row.pkg_adult || 0;
+    const childQty = row.pkg_child || 0;
 
-    if (pkgText.includes('vip soft')) {
-        row.pkg_vip_adult = quantity;
-    } else if (pkgText.includes('food') && pkgText.includes('soft')) {
-        row.pkg_adult = quantity; // Assuming adult default
-    } else if (pkgText.includes('vip unlimited')) {
-        row.pkg_vip_alc = quantity;
-    } else if ((pkgText.includes('food') || pkgText.includes('unlimited')) && (pkgText.includes('alcohol') || pkgText.includes('alc'))) {
-        row.pkg_adult_alc = quantity;
-    } else {
-        // Fallback
-        if (pkgText.includes('child')) row.pkg_child = quantity;
-        else row.pkg_adult = quantity;
+    // Clear default generic keys so we can assign to specific buckets
+    delete row.pkg_adult;
+    delete row.pkg_child;
+
+    // 2. Priority Classification Logic
+    // Rules: VIP ALCOHOL > VIP SOFT > ROYALE > FOOD+UNLIMITED ALC > SOFT DRINKS > FOOD AND SOFT DRINKS > DEFAULT
+
+    // Rule 5: VIP UNLIMITED ALCOHOLIC DRINKS
+    if (targetString.includes("VIP UNLIMITED ALCOHOLIC DRINKS")) {
+        row.pkg_vip_alc = adultQty;
+        row.pkg_vip_child = childQty; // "Child if any -> VIP CH"
+    }
+    // Rule 4: VIP SOFT
+    else if (targetString.includes("VIP SOFT")) {
+        row.pkg_vip_adult = adultQty;
+        row.pkg_vip_child = childQty;
+    }
+    // Rule 6: ROYALE STANDARD or Matches ROYALE + STANDARD
+    else if (targetString.includes("ROYALE STANDARD") || (targetString.includes("ROYALE") && targetString.includes("STANDARD"))) {
+        row.pkg_royal_adult = adultQty;
+        row.pkg_royal_child = childQty;
+    }
+    // Rule 2: FOOD AND UNLIMITED ALCOHOLIC DRINKS
+    else if (targetString.includes("FOOD AND UNLIMITED ALCOHOLIC DRINKS")) {
+        row.pkg_adult_alc = adultQty;
+        row.pkg_child = childQty; // "Treat as CH (no alcohol)"
+    }
+    // Rule 3: SOFT DRINKS (and not VIP and not ROYALE)
+    // Note: SOFT DRINKS usually found in "FOOD AND SOFT DRINKS" too, so check ordering or exclusion.
+    // Spec says: "If YachtName contains 'SOFT DRINKS' (and not VIP and not ROYALE)"
+    // "FOOD AND SOFT DRINKS" matches this.
+    // But explicitly checking Rule 1 specific "LOTUS ROYALE - FOOD AND SOFT DRINKS" first might be safer if that meant something special.
+    // Actually Rule 1 says "Normal (no alcohol). Use Adult and Child counts".
+    // Rule 3 says "Normal package... Adult -> AD, Child -> CH".
+    // They are effectively the same mapping, just different text triggers.
+
+    // Let's implement specific Rule 1 Check first just in case
+    else if (targetString.includes("LOTUS ROYALE") && targetString.includes("FOOD AND SOFT DRINKS")) {
+        row.pkg_adult = adultQty;
+        row.pkg_child = childQty;
+        if (!row.yacht || row.yacht === 'Unknown Yacht') row.yacht = 'Lotus Royale';
+    }
+    else if (targetString.includes("SOFT DRINKS") && !targetString.includes("VIP") && !targetString.includes("ROYALE")) {
+        row.pkg_adult = adultQty;
+        row.pkg_child = childQty;
+    }
+    // Catch-all: "FOOD AND SOFT DRINKS" without Lotus Royale (if any) -> Normal
+    else if (targetString.includes("FOOD AND SOFT DRINKS")) {
+        row.pkg_adult = adultQty;
+        row.pkg_child = childQty;
+    }
+    // DEFAULT
+    else {
+        row.pkg_adult = adultQty;
+        row.pkg_child = childQty;
+    }
+
+    // 3. Extract Base Yacht Name (if not already handled by convertLeadCsvValue)
+    // Ruzinn format is "YACHT NAME - PACKAGE"
+    if (targetString.includes(' - ')) {
+        const parts = targetString.split(' - ');
+        const baseName = parts[0].trim();
+        // Update row.yacht only if it wasn't already mapped to an ID or cleaned
+        // convertLeadCsvValue likely did this, but we force consistency here.
+        // We use Title Case for display if we are setting it raw
+        row.yacht = baseName.charAt(0).toUpperCase() + baseName.slice(1).toLowerCase();
+
+        // Fix known casing for Lotus
+        if (row.yacht.toUpperCase() === 'LOTUS ROYALE') row.yacht = 'Lotus Royale';
+        if (row.yacht.toUpperCase() === 'OCEAN EMPRESS') row.yacht = 'Ocean Empress';
     }
 }
 
@@ -471,7 +533,7 @@ export function applyPackageTypeDetection(
         return;
     }
     if (source === 'RUZINN') {
-        applyRuzinnLogic(parsedRow);
+        applyRuzinnLogic(parsedRow, yachtNameFromCsv);
         return;
     }
 
@@ -519,6 +581,9 @@ export function applyPackageTypeDetection(
         // Handle format like "Yacht Name (Package Type)"
         const match = yachtNameFromCsv.match(/\(([^)]+)\)/);
         if (match) packageTypeFromYachtName = match[1].trim().toUpperCase();
+    } else if (yachtNameFromCsv && yachtNameFromCsv.toLowerCase().includes('food and soft drinks')) {
+        // Specific user request: "lotus royal FOOD AND SOFT DRINKS" (no separator)
+        packageTypeFromYachtName = 'FOOD AND SOFT DRINKS';
     }
 
     if (packageTypeFromYachtName) {

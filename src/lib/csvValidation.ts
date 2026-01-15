@@ -47,16 +47,32 @@ export function validateCSVRow(
     };
 
     // Step 1: Find the agent
-    const agent = agents.find(
+    let agent = agents.find(
         (a) =>
             a.id === rowData.agentName ||
             a.name.toLowerCase() === rowData.agentName.toLowerCase()
     );
 
     if (!agent) {
-        result.isValid = false;
-        result.errors.push(`Agent "${rowData.agentName}" not found in the system`);
-        return result;
+        // Special case for Direct Booking or if whitelisted
+        if (rowData.agentName === 'Direct Booking' || rowData.agentName.toLowerCase() === 'direct booking') {
+            // Treat as valid, 0 discount
+            agent = {
+                id: 'direct-booking',
+                name: 'Direct Booking',
+                discount: 0,
+                status: 'Active',
+                email: '',
+                phone_no: '',
+                address: '',
+                agency_code: '',
+                TRN_number: ''
+            };
+        } else {
+            result.isValid = false;
+            result.errors.push(`Agent "${rowData.agentName}" not found in the system`);
+            return result;
+        }
     }
 
     result.agentName = agent.name;

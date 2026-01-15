@@ -9,7 +9,7 @@ export type ImportSource = 'DEFAULT' | 'MASTER' | 'RUZINN' | 'RAYNA' | 'GYG';
 export const leadCsvHeaderMapping: Record<string, any> = {
     'id': 'id',
     'status': 'status',
-    'date': 'month', 'eventdate': 'month', 'event_date': 'month', 'lead/event_date': 'month', 'travel_date': 'month', 'traveldate': 'month', 'travel_date_': 'month', 'travel date': 'month',
+    'date': 'month', 'eventdate': 'month', 'event_date': 'month', 'lead/event_date': 'month', 'travel_date': 'month', 'traveldate': 'month', 'travel_date_': 'month', 'travel date': 'month', 'booking_date': 'month', 'booking date': 'month',
     'yacht': 'yacht', 'service_nam': 'yacht', 'service_name': 'yacht', 'yachtname': 'yacht', 'option': 'yacht', 'service name': 'yacht',
     'event': 'yacht', // Added for Master CSV
     'inv': 'modeOfPayment', // Updated for Master CSV (User request)
@@ -61,7 +61,7 @@ export const leadCsvHeaderMapping: Record<string, any> = {
     'note': 'notes', 'remarks': 'notes',
     'created_by': 'ownerUserId', 'created by': 'ownerUserId',
     'modified_by': 'lastModifiedByUserId', 'modified by': 'lastModifiedByUserId',
-    'date_of_creation': 'createdAt', 'creation_date': 'createdAt', 'sales_date': 'createdAt', 'salesdate': 'createdAt', 'booking_date': 'createdAt', 'purchase_dat': 'createdAt',
+    'date_of_creation': 'createdAt', 'creation_date': 'createdAt', 'sales_date': 'createdAt', 'salesdate': 'createdAt', 'purchase_dat': 'createdAt',
     'date_of_modification': 'updatedAt', 'modification_date': 'updatedAt',
     'contactno': 'customerPhone', 'contact_no': 'customerPhone',
     'scanned_on': 'checkInTime', 'scannedon': 'checkInTime',

@@ -704,6 +704,35 @@ export default function BookingsPage() {
                 // Fuzzy match: if target is "ADULT", handle "Adult pp", "Food only (Adult)", etc.
                 p = yachtForLead.packages?.find(pkg => {
                   const n = pkg.name.toUpperCase();
+
+                  // STRICT EXCLUSION RULES to prevent cross-tier matching
+
+                  // 1. Basic vs Premium Tiers
+                  if ((actualPackageName === 'ADULT' || actualPackageName === 'CHILD') &&
+                    (n.includes('VIP') || n.includes('ROYAL') || n.includes('TOP DECK'))) {
+                    return false;
+                  }
+
+                  // 2. VIP vs Royal
+                  if (actualPackageName.includes('VIP') && n.includes('ROYAL')) return false;
+                  if (actualPackageName.includes('ROYAL') && n.includes('VIP') && !n.includes('VIP ROOM')) return false; // Allow VIP Room if unrelated to tier? safely exclude for now.
+
+                  // 3. Top Deck Isolation
+                  if (actualPackageName.includes('TOP DECK') && !n.includes('TOP DECK')) return false;
+                  if (!actualPackageName.includes('TOP DECK') && n.includes('TOP DECK')) return false;
+
+                  // 4. Alcohol vs Non-Alcohol (Basic)
+                  const isAlcPackage = actualPackageName.includes('ALC') || actualPackageName.includes('ALCOHOL');
+                  if (isAlcPackage) {
+                    // If looking for alcohol, ensure target isn't just "Soft Drinks" or "Child"
+                    if (n.includes('SOFT') || n.includes('CHILD')) return false;
+                    // Crucial: If import asks for ALC, the package MUST have ALC/ALCOHOL/DRINKS (unless it's just 'Adult' which is ambiguous, but usually distinguishing from Soft)
+                    if (!n.includes('ALC') && !n.includes('ALCOHOL') && !n.includes('DRINKS') && !n.includes('HARD')) return false;
+                  } else {
+                    // If NOT looking for alcohol, avoid Alcohol packages
+                    if (n.includes('ALC') || n.includes('ALCOHOL')) return false;
+                  }
+
                   return n.includes(actualPackageName) || actualPackageName.includes(n);
                 });
               }

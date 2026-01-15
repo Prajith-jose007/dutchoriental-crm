@@ -68,10 +68,14 @@ export function QrScanner({ onScan, onClose }: QrScannerProps) {
                 if (mountedRef.current) {
                     setHasPermission(false);
                     setHeaderText("No cameras found");
+                    alert("No cameras found. Please ensure you have granted camera permissions.");
                 }
             }
         } catch (err) {
             console.error("Camera start error", err);
+            // Explicit alert for mobile users as requested
+            alert("Camera access is required to use the scanner. Please allow camera permission in your browser settings.");
+
             if (mountedRef.current) {
                 setHasPermission(false);
                 setHeaderText("Permission Denied or Error");

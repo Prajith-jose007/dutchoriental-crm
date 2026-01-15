@@ -582,6 +582,17 @@ export default function BookingsPage() {
         const fileHeaders = parseCsvLine(headerLine, delimiter).map(h => h.trim().toLowerCase().replace(/\s+/g, '_'));
         console.log("[CSV Import Bookings] Detected Normalized Headers:", fileHeaders);
 
+        // Auto-Detect Ruzinn Format
+        // Ruzinn headers typically include: TicketNumber, YachtName, Booking RefNO
+        let detectedSource = importSource;
+        if (fileHeaders.includes('ticketnumber') && fileHeaders.includes('yachtname')) {
+          console.log("[CSV Import] Auto-detected RUZINN format based on headers.");
+          detectedSource = 'RUZINN';
+        } else if (fileHeaders.includes('master_qty_dhow_child') || fileHeaders.includes('oe_food_149')) {
+          console.log("[CSV Import] Auto-detected MASTER format based on headers.");
+          detectedSource = 'MASTER';
+        }
+
         const newLeadsFromCsv: Lead[] = [];
         const currentLeadIds = new Set(allLeads.map(l => l.id));
 
@@ -642,7 +653,7 @@ export default function BookingsPage() {
           });
 
           // Package Type Detection Logic
-          applyPackageTypeDetection(yachtNameFromCsv, parsedRow, importSource);
+          applyPackageTypeDetection(yachtNameFromCsv, parsedRow, detectedSource);
 
           parsedRow._originalRowIndex = i + 1;
           parsedRows.push(parsedRow);

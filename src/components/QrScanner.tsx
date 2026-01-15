@@ -37,6 +37,14 @@ export function QrScanner({ onScan, onClose }: QrScannerProps) {
     }, []);
 
     const startScanner = async () => {
+        // Security Check for Camera Access
+        if (typeof window !== 'undefined' && !window.isSecureContext) {
+            alert("Camera access requires a Secure Context (HTTPS) or Localhost. Your current connection is not secure, so the browser will block the camera.");
+            setHasPermission(false);
+            setHeaderText("Insecure Connection (No Camera)");
+            return;
+        }
+
         try {
             const tempScanner = new Html5Qrcode("reader");
             scannerRef.current = tempScanner;

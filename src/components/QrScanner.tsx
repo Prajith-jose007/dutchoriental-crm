@@ -39,7 +39,7 @@ export function QrScanner({ onScan, onClose }: QrScannerProps) {
     const startScanner = async () => {
         // Security Check for Camera Access
         if (typeof window !== 'undefined' && !window.isSecureContext) {
-            alert("Camera access requires a Secure Context (HTTPS) or Localhost. Your current connection is not secure, so the browser will block the camera.");
+            console.warn("Camera access blocked: Your connection is not secure (HTTP).");
             setHasPermission(false);
             setHeaderText("Insecure Connection (No Camera)");
             return;
@@ -76,13 +76,10 @@ export function QrScanner({ onScan, onClose }: QrScannerProps) {
                 if (mountedRef.current) {
                     setHasPermission(false);
                     setHeaderText("No cameras found");
-                    alert("No cameras found. Please ensure you have granted camera permissions.");
                 }
             }
         } catch (err) {
             console.error("Camera start error", err);
-            // Explicit alert for mobile users as requested
-            alert("Camera access is required to use the scanner. Please allow camera permission in your browser settings.");
 
             if (mountedRef.current) {
                 setHasPermission(false);

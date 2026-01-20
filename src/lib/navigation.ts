@@ -116,4 +116,4 @@ export const mainNavItems: NavItem[] = [
   },
 ];
 
-export const AppName = "DutchOriental CRM";
+export const AppName = "Desert Rose Yacht CRM";

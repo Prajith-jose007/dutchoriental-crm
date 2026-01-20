@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Logo } from "@/components/icons/Logo"; // Import Logo
+import { AppName } from "@/lib/navigation";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
@@ -129,7 +130,7 @@ export default function LoginPage() {
           </div>
           <CardTitle className="text-2xl">Member Login</CardTitle>
           <CardDescription>
-            Enter your credentials to access the DutchOriental CRM.
+            Enter your credentials to access the {AppName}.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -139,7 +140,7 @@ export default function LoginPage() {
               <Input
                 id="email"
                 type="email"
-                placeholder="admin@dutchoriental.com"
+                placeholder="admin@desertroseyacht.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
@@ -165,7 +166,7 @@ export default function LoginPage() {
           </form>
         </CardContent>
         <CardFooter className="flex flex-col items-center text-xs text-muted-foreground">
-          <p>&copy; {new Date().getFullYear()} DutchOriental CRM. All rights reserved.</p>
+          <p>&copy; {new Date().getFullYear()} {AppName}. All rights reserved.</p>
         </CardFooter>
       </Card>
     </div>

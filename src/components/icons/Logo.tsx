@@ -5,7 +5,7 @@ import Image from 'next/image';
 import { AppName } from '@/lib/navigation';
 import { cn } from '@/lib/utils';
 
-const LOGO_STORAGE_KEY = 'dutchOrientalCrmCompanyLogo';
+const LOGO_STORAGE_KEY = 'desertRoseCompanyLogo';
 const DEFAULT_LOGO_SRC = '/logo.png'; // Points to public/logo.png
 
 interface LogoProps extends HTMLAttributes<HTMLDivElement> {

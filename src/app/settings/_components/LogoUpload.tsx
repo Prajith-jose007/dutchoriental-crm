@@ -9,8 +9,8 @@ import { Button } from '@/components/ui/button';
 import { UploadCloud } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
-const LOGO_STORAGE_KEY = 'dutchOrientalCrmCompanyLogo';
-const DEFAULT_LOGO_URL = 'https://placehold.co/150x50.png?text=DutchOriental+Logo';
+const LOGO_STORAGE_KEY = 'desertRoseCompanyLogo';
+const DEFAULT_LOGO_URL = 'https://placehold.co/150x50.png?text=Desert+Rose+Yacht';
 
 export function LogoUpload() {
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
@@ -48,7 +48,7 @@ export function LogoUpload() {
         toast({ title: 'Success', description: 'Logo uploaded and saved locally.' });
       } catch (error) {
         console.error('Failed to save logo to localStorage:', error);
-        toast({ title: 'Error', description: 'Could not save logo. Storage might be full.', variant: 'destructive'});
+        toast({ title: 'Error', description: 'Could not save logo. Storage might be full.', variant: 'destructive' });
       }
     } else {
       toast({ title: 'Error', description: 'Please select a logo to upload.', variant: 'destructive' });
@@ -72,11 +72,11 @@ export function LogoUpload() {
         <div>
           <h3 className="text-sm font-medium mb-2">Current Logo:</h3>
           {currentLogo ? (
-            <Image 
-              src={currentLogo} 
-              alt="Current Company Logo" 
-              width={150} 
-              height={50} 
+            <Image
+              src={currentLogo}
+              alt="Current Company Logo"
+              width={150}
+              height={50}
               className="rounded border p-2 bg-muted object-contain"
               data-ai-hint="company logo"
               onError={() => {
@@ -90,7 +90,7 @@ export function LogoUpload() {
             <p className="text-sm text-muted-foreground">No logo uploaded yet. Displaying default.</p>
           )}
         </div>
-        
+
         <div className="space-y-2">
           <label htmlFor="logo-upload" className="text-sm font-medium">Select new logo (PNG, JPG, SVG)</label>
           <Input id="logo-upload" type="file" accept="image/png, image/jpeg, image/svg+xml" onChange={handleFileChange} />
@@ -99,17 +99,17 @@ export function LogoUpload() {
         {logoPreview && (
           <div>
             <h3 className="text-sm font-medium mb-2">New Logo Preview:</h3>
-            <Image 
-              src={logoPreview} 
-              alt="New Logo Preview" 
-              width={150} 
-              height={50} 
+            <Image
+              src={logoPreview}
+              alt="New Logo Preview"
+              width={150}
+              height={50}
               className="rounded border p-2 bg-muted object-contain"
               data-ai-hint="logo preview"
             />
           </div>
         )}
-        
+
         <div className="flex flex-wrap gap-2">
           <Button onClick={handleUpload} disabled={!logoPreview}>
             <UploadCloud className="mr-2 h-4 w-4" />

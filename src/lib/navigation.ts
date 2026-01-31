@@ -8,8 +8,8 @@ export interface NavItem {
   icon: LucideIcon;
   disabled?: boolean;
   external?: boolean;
-  adminOnly?: boolean;
-  items?: NavItem[]; // Added for sub-menus
+  requiredPermission?: string; // Use string loosely to match Permission type
+  items?: NavItem[];
 }
 
 export const mainNavItems: NavItem[] = [
@@ -77,7 +77,7 @@ export const mainNavItems: NavItem[] = [
         title: 'Agents',
         href: '/private-charter/agents',
         icon: UserSquare2,
-        adminOnly: true,
+        requiredPermission: 'create_agent',
       },
       {
         title: 'Reports',
@@ -95,24 +95,25 @@ export const mainNavItems: NavItem[] = [
     title: 'Reports',
     href: '/reports',
     icon: BarChart3,
+    requiredPermission: 'view_reports',
   },
   {
     title: 'Agents',
     href: '/agents',
     icon: Briefcase,
-    adminOnly: true, // Mark as admin only
+    requiredPermission: 'create_agent',
   },
   {
     title: 'Users',
     href: '/users',
     icon: Users,
-    adminOnly: true, // Mark as admin only
+    requiredPermission: 'manage_users',
   },
   {
     title: 'Settings',
     href: '/settings',
     icon: Settings,
-    adminOnly: true, // Mark as admin only
+    requiredPermission: 'manage_users',
   },
 ];
 

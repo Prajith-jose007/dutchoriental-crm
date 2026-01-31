@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react'; // Added useEffect to keep fetchAgents call
 import { Button } from '@/components/ui/button';
 import { PlusCircle, Upload, Download, Trash2 } from 'lucide-react';
 import { PageHeader } from '@/components/PageHeader';
@@ -11,11 +11,7 @@ import type { Agent } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { agentCsvHeaderMapping as csvHeaderMapping, convertAgentValue, parseCsvLine } from '@/lib/csvHelpers';
-
-const USER_ROLE_STORAGE_KEY = 'currentUserRole';
-
-
-
+import { useUserRole } from '@/hooks/use-user-role';
 
 export default function AgentsPage() {
   const [isAgentDialogOpen, setIsAgentDialogOpen] = useState(false);
@@ -23,16 +19,27 @@ export default function AgentsPage() {
   const [agents, setAgents] = useState<Agent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isImporting, setIsImporting] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [canAdd, setCanAdd] = useState(false);
-  const [canEdit, setCanEdit] = useState(false);
-  const [canDelete, setCanDelete] = useState(false);
-  const [canImportExport, setCanImportExport] = useState(false);
-  const [canView, setCanView] = useState(false);
 
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedAgentIds, setSelectedAgentIds] = useState<string[]>([]);
+
+  const { hasPermission } = useUserRole();
+
+  const canAdd = hasPermission('create_agent');
+  const canEdit = hasPermission('edit_agent');
+  const canDelete = hasPermission('delete_agent');
+  const canImportExport = hasPermission('manage_users'); // Restrict import/export to admins for agents? Or use 'export_data'? 
+  // Prompt says "sales... export the data of each day" (likely bookings). 
+  // For Agents, normally only admins/managers manage this list.
+  // Existing code was `isAdmin || isSuperAdmin` for import/export.
+  // We can use `hasPermission('create_agent')` as proxy or just strict admin check if needed.
+  // Let's assume Managers can also import if they can add?
+  // Actually, let's map it to 'manage_users' (Admin/Super Admin) to be safe given "upload the data" restriction context usually implies bulk actions are sensitive.
+  // But wait, "sales... upload the data". That usually means Bookings.
+  // For Agents, let's restrict Import to Super Admin / Admin.
+  const isAdmin = hasPermission('manage_users');
+  const canView = true;
 
   const fetchAgents = useCallback(async () => {
     setIsLoading(true);
@@ -66,28 +73,6 @@ export default function AgentsPage() {
   }, [toast]);
 
   useEffect(() => {
-    try {
-      const role = localStorage.getItem(USER_ROLE_STORAGE_KEY) || '';
-      const r = role.toLowerCase();
-
-      const isSuperAdmin = r === 'super admin';
-      const isAdminRole = r === 'admin';
-      const isManager = r === 'manager';
-      const isSales = r === 'sales';
-      const isAccounts = r === 'accounts';
-
-      // Permissions
-      setIsAdmin(isSuperAdmin || isAdminRole); // Keep for backend compat if needed, simplified
-
-      setCanView(true); // Everyone can view agents list ideally, or restricts if needed
-      setCanAdd(isSuperAdmin || isAdminRole || isManager);
-      setCanEdit(isSuperAdmin || isAdminRole || isManager);
-      setCanDelete(isSuperAdmin || isAdminRole);
-      setCanImportExport(isSuperAdmin || isAdminRole);
-
-    } catch (error) {
-      console.error("Error accessing localStorage for user role:", error);
-    }
     fetchAgents();
   }, [fetchAgents]);
 

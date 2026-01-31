@@ -25,6 +25,7 @@ import { LogOut, UserCircle } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
+import { useUserRole, type Permission } from '@/hooks/use-user-role';
 
 const USER_ROLE_STORAGE_KEY = 'currentUserRole';
 const USER_EMAIL_STORAGE_KEY = 'currentUserEmail';
@@ -32,14 +33,27 @@ const USER_EMAIL_STORAGE_KEY = 'currentUserEmail';
 export function SidebarNav() {
   const pathname = usePathname();
   const { state } = useSidebar();
-  const [isAdmin, setIsAdmin] = useState(false);
+  // const [isAdmin, setIsAdmin] = useState(false); // Replaced by hook
   const [mounted, setMounted] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
+  const { hasPermission } = useUserRole();
 
   const [loggedInUserName, setLoggedInUserName] = useState<string | null>(null);
   const [loggedInUserEmail, setLoggedInUserEmail] = useState<string | null>(null);
   const [isLoadingUserDetails, setIsLoadingUserDetails] = useState(true);
+
+  // ... useEffect ...
+
+  // Inside map:
+  /*
+              {mainNavItems.map((item) => {
+                if (item.requiredPermission && !hasPermission(item.requiredPermission as Permission)) {
+                  return null;
+                }
+  */
+  // I'll replace the top part first to add imports and hook.
+
 
   useEffect(() => {
     setMounted(true);
@@ -54,7 +68,7 @@ export function SidebarNav() {
     } catch (error) {
       console.error("Error accessing localStorage in SidebarNav:", error);
     }
-    setIsAdmin(role === 'admin');
+    // setIsAdmin(role === 'admin'); // Removed
     setLoggedInUserEmail(email || 'Not logged in');
     setLoggedInUserName(name || 'User');
     setIsLoadingUserDetails(false);
@@ -67,7 +81,7 @@ export function SidebarNav() {
 
       setLoggedInUserName('Guest');
       setLoggedInUserEmail('Not logged in');
-      setIsAdmin(false);
+      // setIsAdmin(false);
 
       router.push('/login');
       toast({
@@ -102,10 +116,10 @@ export function SidebarNav() {
         <Accordion type="single" collapsible defaultValue={getActiveSubMenuValue()}>
           <SidebarMenu>
             {mainNavItems.map((item) => {
-              if (item.adminOnly && mounted && !isAdmin) {
+              if (item.requiredPermission && mounted && !hasPermission(item.requiredPermission as Permission)) {
                 return null;
               }
-              if (item.adminOnly && !mounted) {
+              if (item.requiredPermission && !mounted) {
                 return null;
               }
 

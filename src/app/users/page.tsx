@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react'; // Added useEffect to keep fetchUsers call
 import { Button } from '@/components/ui/button';
 import { PlusCircle } from 'lucide-react';
 import { PageHeader } from '@/components/PageHeader';
@@ -10,16 +10,17 @@ import { UserFormDialog } from './_components/UserFormDialog';
 import type { User } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
-
-const USER_ROLE_STORAGE_KEY = 'currentUserRole';
+import { useUserRole } from '@/hooks/use-user-role';
 
 export default function UsersPage() {
   const [isUserDialogOpen, setIsUserDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [users, setUsers] = useState<User[]>([]);
-  const [isAdmin, setIsAdmin] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
+  const { role, hasPermission, isLoading: isRoleLoading } = useUserRole();
+
+  const isAdmin = hasPermission('manage_users');
 
   const fetchUsers = useCallback(async () => {
     setIsLoading(true);
@@ -41,17 +42,6 @@ export default function UsersPage() {
   }, [toast]);
 
   useEffect(() => {
-    try {
-      const role = localStorage.getItem(USER_ROLE_STORAGE_KEY);
-      const r = role?.trim().toLowerCase();
-      // Broad check: if it contains 'admin', grant access. This covers 'Super Admin', 'Admin', 'System Administrator'.
-      const isSuperOrAdmin = r ? r.includes('admin') : false;
-      console.log('User Role Debug:', { raw: role, refined: r, access: isSuperOrAdmin });
-      setIsAdmin(isSuperOrAdmin);
-    } catch (error) {
-      console.error("Error accessing localStorage for user role:", error);
-      setIsAdmin(false);
-    }
     fetchUsers();
   }, [fetchUsers]);
 
@@ -148,9 +138,8 @@ export default function UsersPage() {
     }
   };
 
-  if (isLoading && !isAdmin && typeof window !== 'undefined' && !localStorage.getItem(USER_ROLE_STORAGE_KEY)) {
-    // Special loading state if not admin and initial auth role hasn't been determined yet
-    // This helps prevent flashing the "Access Denied" message too early
+  if (isLoading && isRoleLoading) {
+    // Special loading state while checking permissions
     return (
       <div className="container mx-auto py-2">
         <PageHeader title="User Management" description="Loading user data and permissions..." />

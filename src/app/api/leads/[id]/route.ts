@@ -154,11 +154,14 @@ export async function PUT(
     }
     const { ownerUserId: existingOwner, status: existingStatus } = existingLeadResult[0];
 
-    if (existingStatus.startsWith('Closed') && requestingUserRole !== 'admin') {
-      return NextResponse.json({ message: 'Permission denied: Closed bookings cannot be modified by non-administrators.' }, { status: 403 });
+    const userRoleLower = requestingUserRole?.toLowerCase() || '';
+    const canEditAll = ['admin', 'super admin', 'system administrator', 'manager', 'accounts'].includes(userRoleLower);
+
+    if (existingStatus.startsWith('Closed') && !canEditAll) {
+      return NextResponse.json({ message: 'Permission denied: Closed bookings cannot be modified by unauthorized roles.' }, { status: 403 });
     }
-    if (requestingUserRole !== 'admin' && existingOwner !== requestingUserId) {
-      return NextResponse.json({ message: 'Permission denied: You can only edit bookings you own, or you must be an admin.' }, { status: 403 });
+    if (!canEditAll && existingOwner !== requestingUserId) {
+      return NextResponse.json({ message: 'Permission denied: You can only edit bookings you own, or you must be an admin/manager/account.' }, { status: 403 });
     }
 
     const { packageQuantities, ...leadFields } = updatedLeadDataFromClient;
@@ -221,10 +224,13 @@ export async function DELETE(
     }
     const { ownerUserId: existingOwner, status: existingStatus } = existingLeadResult[0];
 
-    if (existingStatus.startsWith('Closed') && requestingUserRole !== 'admin') {
-      return NextResponse.json({ message: 'Permission denied: Closed bookings cannot be deleted by non-administrators.' }, { status: 403 });
+    const userRoleLower = requestingUserRole?.toLowerCase() || '';
+    const isSuperOrAdmin = ['admin', 'super admin', 'system administrator'].includes(userRoleLower);
+
+    if (existingStatus.startsWith('Closed') && !isSuperOrAdmin) {
+      return NextResponse.json({ message: 'Permission denied: Closed bookings cannot be deleted by unauthorized roles.' }, { status: 403 });
     }
-    if (requestingUserRole !== 'admin' && existingOwner !== requestingUserId) {
+    if (!isSuperOrAdmin && existingOwner !== requestingUserId) {
       return NextResponse.json({ message: 'Permission denied: You can only delete bookings you own, or you must be an admin.' }, { status: 403 });
     }
 

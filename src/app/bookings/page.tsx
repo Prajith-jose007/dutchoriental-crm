@@ -15,6 +15,7 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { DatePicker } from '@/components/ui/date-picker';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useUserRole } from '@/hooks/use-user-role';
 import { format, parseISO, isWithinInterval, isValid, formatISO, getYear as getFullYear, getMonth as getMonthIndex, addDays, parse } from 'date-fns';
 import {
   DropdownMenu,
@@ -139,8 +140,15 @@ export default function BookingsPage() {
   const [isImporting, setIsImporting] = useState(false);
 
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-  const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
+
+  const { hasPermission, role: currentUserRole } = useUserRole();
+  const canDelete = hasPermission('delete_bookings');
+  const canBypassClosed = hasPermission('bypass_closed_lock');
+  const canImport = hasPermission('manage_bookings');
+
+  // Legacy 'isAdmin' mapping: used for bulk delete and previously for closed status bypass.
+  // We strictly distinguish now.
+  // const isAdmin = canDelete; // We will replace usages instead.
   const [selectedLeadIds, setSelectedLeadIds] = useState<string[]>([]);
   const [importPreviewLeads, setImportPreviewLeads] = useState<Lead[]>([]);
   const [isShowingImportPreview, setIsShowingImportPreview] = useState(false);
@@ -202,10 +210,7 @@ export default function BookingsPage() {
   useEffect(() => {
     try {
       const storedUserId = localStorage.getItem(USER_ID_STORAGE_KEY);
-      const storedUserRole = localStorage.getItem(USER_ROLE_STORAGE_KEY);
       setCurrentUserId(storedUserId);
-      setCurrentUserRole(storedUserRole);
-      setIsAdmin(storedUserRole === 'admin');
     } catch (e) {
       console.error("Error accessing localStorage for user details:", e);
     }
@@ -271,7 +276,7 @@ export default function BookingsPage() {
       } else if (editingLead) {
         payloadToSubmit.ownerUserId = editingLead.ownerUserId || currentUserId;
         payloadToSubmit.createdAt = editingLead.createdAt || new Date().toISOString();
-        if (editingLead.status.startsWith('Closed') && !isAdmin) {
+        if (editingLead.status.startsWith('Closed') && !canBypassClosed) {
           throw new Error("Action Denied: Closed bookings cannot be modified by non-administrators.");
         }
       }
@@ -331,8 +336,12 @@ export default function BookingsPage() {
       toast({ title: 'Authentication Error', description: 'User details not found. Please re-login.', variant: 'destructive' });
       return;
     }
+    if (!canDelete) {
+      toast({ title: "Access Denied", description: "You do not have permission to delete bookings.", variant: "destructive" });
+      return;
+    }
     const leadToDelete = allLeads.find(l => l.id === leadId);
-    if (leadToDelete?.status.startsWith('Closed') && !isAdmin) {
+    if (leadToDelete?.status.startsWith('Closed') && !canBypassClosed) {
       toast({ title: "Action Denied", description: "Closed bookings cannot be deleted by non-administrators.", variant: "destructive" });
       return;
     }
@@ -478,7 +487,7 @@ export default function BookingsPage() {
       toast({ title: "No Bookings Selected", description: "Please select bookings to delete.", variant: "destructive" });
       return;
     }
-    if (!isAdmin) {
+    if (!canDelete) {
       toast({ title: "Access Denied", description: "Only administrators can perform bulk delete.", variant: "destructive" });
       return;
     }
@@ -494,7 +503,7 @@ export default function BookingsPage() {
 
       for (const leadId of selectedLeadIds) {
         const leadToDelete = allLeads.find(l => l.id === leadId);
-        if (leadToDelete?.status.startsWith('Closed') && !isAdmin) {
+        if (leadToDelete?.status.startsWith('Closed') && !canBypassClosed) {
           failedDeletes++;
           continue;
         }
@@ -1437,7 +1446,7 @@ export default function BookingsPage() {
               ))}
             </DropdownMenuContent>
           </DropdownMenu>
-          {isAdmin && (
+          {canDelete && (
             <Button variant="destructive" onClick={handleDeleteSelectedLeads} disabled={isImporting}>
               <Trash2 className="mr-2 h-4 w-4" />
               Delete Selected ({selectedLeadIds.length})
@@ -1610,7 +1619,7 @@ export default function BookingsPage() {
         yachtMap={yachtMap}
         allYachts={allYachts}
         currentUserId={currentUserId}
-        isAdmin={isAdmin}
+        isAdmin={canBypassClosed}
         selectedLeadIds={selectedLeadIds}
         onSelectLead={handleSelectLead}
         onSelectAllLeads={handleSelectAllLeads}
@@ -1621,7 +1630,7 @@ export default function BookingsPage() {
         lead={editingLead}
         onSubmitSuccess={handleLeadFormSubmit}
         currentUserId={currentUserId}
-        isAdmin={isAdmin}
+        isAdmin={canBypassClosed}
         allUsers={allUsers}
       />
 

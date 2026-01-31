@@ -19,6 +19,7 @@ import type { Lead, Invoice, Yacht, Agent, User, LeadStatus, LeadType } from '@/
 import { leadStatusOptions, leadTypeOptions } from '@/lib/types';
 import { format, parseISO, isWithinInterval, startOfMonth, endOfMonth, startOfYear, endOfYear, isValid, getYear as getFullYear, getMonth as getMonthIndex } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
+import { useUserRole } from '@/hooks/use-user-role';
 
 
 export default function ReportsPage() {
@@ -49,25 +50,10 @@ export default function ReportsPage() {
 
   const [selectedReportMonth, setSelectedReportMonth] = useState<string>('all');
   const [selectedReportYear, setSelectedReportYear] = useState<string>('all');
-  const [isAuthorized, setIsAuthorized] = useState(false);
-  const [authChecked, setAuthChecked] = useState(false);
 
-  const USER_ROLE_STORAGE_KEY = 'currentUserRole';
-
-  useEffect(() => {
-    try {
-      const role = localStorage.getItem(USER_ROLE_STORAGE_KEY) || '';
-      const r = role.toLowerCase();
-      // Super Admin, Admin, Manager, Accounts have access. Sales does NOT.
-      const hasAccess = ['super admin', 'admin', 'manager', 'accounts', 'system administrator'].includes(r);
-      setIsAuthorized(hasAccess);
-    } catch (error) {
-      console.error("Auth check error:", error);
-      setIsAuthorized(false);
-    } finally {
-      setAuthChecked(true);
-    }
-  }, []);
+  const { hasPermission, isLoading: isAuthLoading } = useUserRole();
+  const isAuthorized = hasPermission('view_reports');
+  const authChecked = !isAuthLoading;
 
 
   useEffect(() => {

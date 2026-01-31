@@ -24,6 +24,12 @@ export default function AgentsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isImporting, setIsImporting] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [canAdd, setCanAdd] = useState(false);
+  const [canEdit, setCanEdit] = useState(false);
+  const [canDelete, setCanDelete] = useState(false);
+  const [canImportExport, setCanImportExport] = useState(false);
+  const [canView, setCanView] = useState(false);
+
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedAgentIds, setSelectedAgentIds] = useState<string[]>([]);
@@ -45,7 +51,6 @@ export default function AgentsPage() {
         if (!isNaN(numA) && !isNaN(numB)) {
           return numA - numB;
         }
-        // Fallback for non-numeric parts or purely string IDs
         return a.id.localeCompare(b.id);
       });
 
@@ -62,19 +67,34 @@ export default function AgentsPage() {
 
   useEffect(() => {
     try {
-      const role = localStorage.getItem(USER_ROLE_STORAGE_KEY);
-      setIsAdmin(role === 'admin');
+      const role = localStorage.getItem(USER_ROLE_STORAGE_KEY) || '';
+      const r = role.toLowerCase();
+
+      const isSuperAdmin = r === 'super admin';
+      const isAdminRole = r === 'admin';
+      const isManager = r === 'manager';
+      const isSales = r === 'sales';
+      const isAccounts = r === 'accounts';
+
+      // Permissions
+      setIsAdmin(isSuperAdmin || isAdminRole); // Keep for backend compat if needed, simplified
+
+      setCanView(true); // Everyone can view agents list ideally, or restricts if needed
+      setCanAdd(isSuperAdmin || isAdminRole || isManager);
+      setCanEdit(isSuperAdmin || isAdminRole || isManager);
+      setCanDelete(isSuperAdmin || isAdminRole);
+      setCanImportExport(isSuperAdmin || isAdminRole);
+
     } catch (error) {
       console.error("Error accessing localStorage for user role:", error);
-      setIsAdmin(false);
     }
     fetchAgents();
   }, [fetchAgents]);
 
 
   const handleAddAgentClick = () => {
-    if (!isAdmin) {
-      toast({ title: "Access Denied", description: "Only administrators can add agents.", variant: "destructive" });
+    if (!canAdd) {
+      toast({ title: "Access Denied", description: "You do not have permission to add agents.", variant: "destructive" });
       return;
     }
     setEditingAgent(null);
@@ -82,28 +102,43 @@ export default function AgentsPage() {
   };
 
   const handleEditAgentClick = (agent: Agent) => {
-    // Admins can edit, non-admins can open dialog in read-only mode (handled in dialog)
+    // Sales can view but not edit - handled by hiding button in table, but double check here
+    if (!canEdit) {
+      // Optional: Allow opening in readonly? For now, restriction logic:
+      // If logic allows managers to edit, they pass here.
+      // Sales shouldn't even see the edit button if table logic is correct.
+    }
     setEditingAgent(agent);
     setIsAgentDialogOpen(true);
   };
 
   const handleAgentFormSubmit = async (submittedAgentData: Agent) => {
-    if (!isAdmin) {
+    if (!canEdit && !canAdd) { // Basic check
       toast({ title: "Access Denied", description: "You do not have permission to save agent data.", variant: "destructive" });
       return;
     }
+    // Specific check for Edit v Add could be done here but permissions align
+
     try {
       let response;
       if (editingAgent && submittedAgentData.id === editingAgent.id) {
+        if (!canEdit) {
+          toast({ title: "Access Denied", description: "You cannot edit agents.", variant: "destructive" });
+          return;
+        }
         response = await fetch(`/api/agents/${editingAgent.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(submittedAgentData),
         });
       } else {
+        if (!canAdd) {
+          toast({ title: "Access Denied", description: "You cannot add agents.", variant: "destructive" });
+          return;
+        }
         // Check if agent with this ID already exists before POSTing
         const checkResponse = await fetch(`/api/agents/${submittedAgentData.id}`);
-        if (checkResponse.ok && !editingAgent) { // if status 200, agent exists
+        if (checkResponse.ok && !editingAgent) {
           toast({
             title: 'Error Adding Agent',
             description: `Agent with ID ${submittedAgentData.id} already exists.`,
@@ -111,7 +146,7 @@ export default function AgentsPage() {
           });
           return;
         }
-        // Check for email conflict as well, only if email is provided and different from current editing agent's email
+
         if (submittedAgentData.email) {
           const allAgentsResponse = await fetch('/api/agents');
           if (allAgentsResponse.ok) {
@@ -158,8 +193,8 @@ export default function AgentsPage() {
   };
 
   const handleDeleteAgent = async (agentId: string) => {
-    if (!isAdmin) {
-      toast({ title: "Access Denied", description: "Only administrators can delete agents.", variant: "destructive" });
+    if (!canDelete) {
+      toast({ title: "Access Denied", description: "Only authorized users can delete agents.", variant: "destructive" });
       return;
     }
     if (!confirm(`Are you sure you want to delete agent ${agentId}? This action cannot be undone.`)) {
@@ -183,26 +218,26 @@ export default function AgentsPage() {
   };
 
   const handleSelectAgent = (agentId: string, isSelected: boolean) => {
-    if (!isAdmin) return;
+    if (!canDelete) return; // Only allow selection if can delete (for bulk actions)
     setSelectedAgentIds(prevSelected =>
       isSelected ? [...prevSelected, agentId] : prevSelected.filter(id => id !== agentId)
     );
   };
 
   const handleSelectAllAgents = (isSelected: boolean) => {
-    if (!isAdmin) return;
+    if (!canDelete) return;
     setSelectedAgentIds(isSelected ? agents.map(agent => agent.id) : []);
   };
 
   const handleDeleteSelectedAgents = async () => {
-    if (!isAdmin || selectedAgentIds.length === 0) {
+    if (!canDelete || selectedAgentIds.length === 0) {
       toast({ title: "Action Denied", description: "No agents selected or insufficient permissions.", variant: "destructive" });
       return;
     }
     if (!confirm(`Are you sure you want to delete ${selectedAgentIds.length} selected agents? This action cannot be undone.`)) {
       return;
     }
-    console.log("[Bulk Delete Agents] Selected IDs to delete:", selectedAgentIds); // Frontend Log
+    console.log("[Bulk Delete Agents] Selected IDs to delete:", selectedAgentIds);
     try {
       const response = await fetch('/api/agents', {
         method: 'DELETE',
@@ -211,21 +246,20 @@ export default function AgentsPage() {
       });
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ message: `API Error ${response.status}: ${response.statusText}` }));
-        console.error("[Bulk Delete Agents] API Error:", response.status, errorData); // Frontend Log
         throw new Error(errorData.message || 'Failed to delete selected agents');
       }
       toast({ title: 'Agents Deleted', description: `${selectedAgentIds.length} agents have been deleted.` });
       fetchAgents();
       setSelectedAgentIds([]);
     } catch (error) {
-      console.error("Error deleting selected agents:", error); // Frontend Log
+      console.error("Error deleting selected agents:", error);
       toast({ title: 'Error Deleting Agents', description: (error as Error).message, variant: 'destructive' });
     }
   };
 
 
   const handleImportClick = () => {
-    if (!isAdmin) {
+    if (!canImportExport) {
       toast({ title: "Access Denied", description: "Only administrators can import agents.", variant: "destructive" });
       return;
     }
@@ -252,7 +286,7 @@ export default function AgentsPage() {
   };
 
   const handleCsvImport = async (file: File) => {
-    if (!isAdmin) {
+    if (!canImportExport) {
       toast({ title: "Access Denied", description: "Only administrators can import agents.", variant: "destructive" });
       return;
     }
@@ -328,29 +362,24 @@ export default function AgentsPage() {
               console.warn(`[CSV Import Agents] Unknown header "${fileHeader}" in CSV row ${i + 1}. Skipping this column.`);
             }
           });
-          if (i < 3) console.log(`[CSV Import Agents] Processing Row ${i + 1} - Parsed (after mapping & convertAgentValue):`, JSON.parse(JSON.stringify(parsedRow)));
 
           let agentId = parsedRow.id && String(parsedRow.id).trim() !== '' ? String(parsedRow.id).trim() : '';
 
           if (!agentId) { // Generate ID if not provided
             let potentialId: string;
             do {
-              // Generate IDs like DO-1, DO-2, etc. Padding is not strictly necessary here but can be added if desired.
               potentialId = `DO-${nextNumericSuffix}`;
               nextNumericSuffix++;
             } while (allKnownAgentIds.has(potentialId) || newAgentsFromCsv.some(a => a.id === potentialId));
             agentId = potentialId;
-            console.log(`[CSV Import Agents] Generated new ID for row ${i + 1}: ${agentId}`);
           }
 
 
           if (allKnownAgentIds.has(agentId)) {
-            console.warn(`[CSV Import Agents] Skipping agent with duplicate ID: ${agentId} from CSV row ${i + 1}.`);
             skippedCount++;
             continue;
           }
           if (parsedRow.email && (existingAgentEmails.has(parsedRow.email.toLowerCase()) || newAgentsFromCsv.some(a => a.email!.toLowerCase() === parsedRow.email!.toLowerCase()))) {
-            console.warn(`[CSV Import Agents] Skipping agent with duplicate email: ${parsedRow.email} from CSV row ${i + 1}.`);
             skippedCount++;
             continue;
           }
@@ -368,16 +397,14 @@ export default function AgentsPage() {
             discount: typeof parsedRow.discount === 'number' ? parsedRow.discount : 0,
             websiteUrl: parsedRow.websiteUrl,
           };
-          if (i < 3) console.log(`[CSV Import Agents] Processing Row ${i + 1} - Agent to POST:`, JSON.parse(JSON.stringify(fullAgent)));
 
           if (!fullAgent.id || !fullAgent.name || !fullAgent.email || fullAgent.discount === undefined || !fullAgent.status) {
-            console.warn(`[CSV Import Agents] Skipping agent due to missing required fields (id, name, email, discount, status) at CSV row ${i + 1}. Agent data:`, fullAgent);
             skippedCount++;
             continue;
           }
 
           newAgentsFromCsv.push(fullAgent);
-          allKnownAgentIds.add(fullAgent.id); // Add to known IDs for current batch
+          allKnownAgentIds.add(fullAgent.id);
           if (fullAgent.email) existingAgentEmails.add(fullAgent.email.toLowerCase());
         }
 
@@ -392,12 +419,9 @@ export default function AgentsPage() {
               if (response.ok) {
                 successCount++;
               } else {
-                const errorData = await response.json().catch(() => ({ message: `API Error: ${response.statusText}` }));
-                console.warn(`[CSV Import Agents] API Error for agent ID ${agentToImport.id}: ${errorData.message || response.statusText}. Payload:`, agentToImport);
                 skippedCount++;
               }
             } catch (apiError) {
-              console.warn(`[CSV Import Agents] Network/JS Error importing agent ${agentToImport.id}:`, apiError, "Payload:", agentToImport);
               skippedCount++;
             }
           }
@@ -413,7 +437,7 @@ export default function AgentsPage() {
         }
         toast({
           title: 'Import Processed',
-          description: `${successCount} agents imported. ${skippedCount} rows skipped. Processed in ${durationInSeconds} seconds. Check console for details.`
+          description: `${successCount} agents imported. ${skippedCount} rows skipped. Processed in ${durationInSeconds} seconds.`
         });
         setIsImporting(false);
       }
@@ -426,8 +450,8 @@ export default function AgentsPage() {
   };
 
   const handleCsvExport = () => {
-    if (!isAdmin) {
-      toast({ title: "Access Denied", description: "Only administrators can export agents.", variant: "destructive" });
+    if (!canImportExport) {
+      toast({ title: "Access Denied", description: "Only authorized users can export agents.", variant: "destructive" });
       return;
     }
     if (agents.length === 0) {
@@ -474,15 +498,15 @@ export default function AgentsPage() {
   };
 
 
-  if (!isAdmin && !isLoading) {
+  if (!canView && !isLoading) {
     return (
       <div className="container mx-auto py-2">
         <PageHeader
           title="Agent Management"
-          description="Access Denied. This page is for administrators only."
+          description="Access Denied."
         />
         <p className="text-destructive text-center py-10">
-          You do not have permission to view or manage agent data.
+          You do not have permission to view agent data.
         </p>
       </div>
     );
@@ -495,7 +519,7 @@ export default function AgentsPage() {
           title="Agent Management"
           description="Loading agent data..."
           actions={
-            isAdmin && (
+            canAdd && (
               <div className="flex items-center gap-2">
                 <Skeleton className="h-10 w-32" />
                 <Skeleton className="h-10 w-32" />
@@ -516,47 +540,55 @@ export default function AgentsPage() {
         title="Agent Management"
         description="Manage your external sales agents and their details."
         actions={
-          isAdmin && (
-            <div className="flex items-center gap-2">
-              {selectedAgentIds.length > 0 && (
-                <Button variant="destructive" onClick={handleDeleteSelectedAgents} disabled={isImporting}>
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  Delete Selected ({selectedAgentIds.length})
+          <div className="flex items-center gap-2">
+            {canDelete && selectedAgentIds.length > 0 && (
+              <Button variant="destructive" onClick={handleDeleteSelectedAgents} disabled={isImporting}>
+                <Trash2 className="mr-2 h-4 w-4" />
+                Delete Selected ({selectedAgentIds.length})
+              </Button>
+            )}
+
+            {canImportExport && (
+              <>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  accept=".csv"
+                  style={{ display: 'none' }}
+                  onChange={handleFileChange}
+                />
+                <Button variant="outline" onClick={handleImportClick} disabled={isImporting}>
+                  <Upload className="mr-2 h-4 w-4" />
+                  {isImporting ? 'Importing...' : 'Import CSV'}
                 </Button>
-              )}
-              <input
-                type="file"
-                ref={fileInputRef}
-                accept=".csv"
-                style={{ display: 'none' }}
-                onChange={handleFileChange}
-              />
-              <Button variant="outline" onClick={handleImportClick} disabled={isImporting || !isAdmin}>
-                <Upload className="mr-2 h-4 w-4" />
-                {isImporting ? 'Importing...' : 'Import CSV'}
-              </Button>
-              <Button variant="outline" onClick={handleCsvExport} disabled={isImporting || !isAdmin}>
-                <Download className="mr-2 h-4 w-4" />
-                Export CSV
-              </Button>
-              <Button onClick={handleAddAgentClick} disabled={isImporting || !isAdmin}>
+                <Button variant="outline" onClick={handleCsvExport} disabled={isImporting}>
+                  <Download className="mr-2 h-4 w-4" />
+                  Export CSV
+                </Button>
+              </>
+            )}
+
+            {canAdd && (
+              <Button onClick={handleAddAgentClick} disabled={isImporting}>
                 <PlusCircle className="mr-2 h-4 w-4" />
                 Add Agent
               </Button>
-            </div>
-          )
+            )}
+          </div>
         }
       />
       <AgentsTable
         agents={agents}
         onEditAgent={handleEditAgentClick}
         onDeleteAgent={handleDeleteAgent}
-        isAdmin={isAdmin}
+        isAdmin={isAdmin} // Retained 
+        canEdit={canEdit}
+        canDelete={canDelete}
         selectedAgentIds={selectedAgentIds}
         onSelectAgent={handleSelectAgent}
         onSelectAllAgents={handleSelectAllAgents}
       />
-      {isAgentDialogOpen && ( // Dialog now only opens if admin
+      {isAgentDialogOpen && (
         <AgentFormDialog
           isOpen={isAgentDialogOpen}
           onOpenChange={setIsAgentDialogOpen}

@@ -28,7 +28,9 @@ interface AgentsTableProps {
   agents: Agent[];
   onEditAgent: (agent: Agent) => void;
   onDeleteAgent: (agentId: string) => void;
-  isAdmin: boolean;
+  isAdmin: boolean; // Retained for backward compatibility/superuser checks
+  canEdit?: boolean;
+  canDelete?: boolean;
   selectedAgentIds: string[];
   onSelectAgent: (agentId: string, isSelected: boolean) => void;
   onSelectAllAgents: (isSelected: boolean) => void;
@@ -39,6 +41,8 @@ export function AgentsTable({
   onEditAgent,
   onDeleteAgent,
   isAdmin,
+  canEdit = false,
+  canDelete = false,
   selectedAgentIds,
   onSelectAgent,
   onSelectAllAgents
@@ -112,15 +116,15 @@ export function AgentsTable({
                     aria-label={`Select agent ${agent.name}`}
                     checked={selectedAgentIds.includes(agent.id)}
                     onCheckedChange={(checked) => onSelectAgent(agent.id, Boolean(checked))}
-                    disabled={!isAdmin}
+                    disabled={!canDelete && !isAdmin}
                   />
                 </TableCell>
                 <TableCell>
                   <Button
                     variant="link"
                     className="p-0 h-auto font-normal"
-                    onClick={() => isAdmin && onEditAgent(agent)}
-                    disabled={!isAdmin}
+                    onClick={() => (canEdit || isAdmin) && onEditAgent(agent)}
+                    disabled={!canEdit && !isAdmin}
                   >
                     {truncateText(agent.id, 10)}
                   </Button>
@@ -148,14 +152,14 @@ export function AgentsTable({
                 <TableCell>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" className="h-8 w-8 p-0" disabled={!isAdmin}>
+                      <Button variant="ghost" className="h-8 w-8 p-0" disabled={(!canEdit && !canDelete) && !isAdmin}>
                         <span className="sr-only">Open menu</span>
                         <MoreHorizontal className="h-4 w-4" />
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                      <DropdownMenuItem onClick={() => onEditAgent(agent)} disabled={!isAdmin}>
+                      <DropdownMenuItem onClick={() => onEditAgent(agent)} disabled={!canEdit && !isAdmin}>
                         Edit Agent
                       </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => console.log('View agent details (not implemented)', agent.id)}>View Details</DropdownMenuItem>
@@ -163,7 +167,7 @@ export function AgentsTable({
                       <DropdownMenuItem
                         className="text-destructive"
                         onClick={() => onDeleteAgent(agent.id)}
-                        disabled={!isAdmin}
+                        disabled={!canDelete && !isAdmin}
                       >
                         Delete Agent
                       </DropdownMenuItem>

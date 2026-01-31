@@ -49,6 +49,25 @@ export default function ReportsPage() {
 
   const [selectedReportMonth, setSelectedReportMonth] = useState<string>('all');
   const [selectedReportYear, setSelectedReportYear] = useState<string>('all');
+  const [isAuthorized, setIsAuthorized] = useState(false);
+  const [authChecked, setAuthChecked] = useState(false);
+
+  const USER_ROLE_STORAGE_KEY = 'currentUserRole';
+
+  useEffect(() => {
+    try {
+      const role = localStorage.getItem(USER_ROLE_STORAGE_KEY) || '';
+      const r = role.toLowerCase();
+      // Super Admin, Admin, Manager, Accounts have access. Sales does NOT.
+      const hasAccess = ['super admin', 'admin', 'manager', 'accounts'].includes(r);
+      setIsAuthorized(hasAccess);
+    } catch (error) {
+      console.error("Auth check error:", error);
+      setIsAuthorized(false);
+    } finally {
+      setAuthChecked(true);
+    }
+  }, []);
 
 
   useEffect(() => {
@@ -192,7 +211,16 @@ export default function ReportsPage() {
     setSelectedLeadTypeFilter('all');
   };
 
-  if (isLoading) {
+  if (authChecked && !isAuthorized) {
+    return (
+      <div className="container mx-auto py-2">
+        <PageHeader title="Reports" description="Access Denied" />
+        <p className="text-destructive text-center py-10">You do not have permission to view reports.</p>
+      </div>
+    );
+  }
+
+  if (isLoading || !authChecked) {
     return (
       <div className="container mx-auto py-2">
         <PageHeader title="Reports" description="Loading report data..." />

@@ -43,7 +43,9 @@ export default function UsersPage() {
   useEffect(() => {
     try {
       const role = localStorage.getItem(USER_ROLE_STORAGE_KEY);
-      setIsAdmin(role === 'admin');
+      // Check for both Super Admin and Admin (case-insensitive for safety)
+      const r = role?.toLowerCase();
+      setIsAdmin(r === 'admin' || r === 'super admin');
     } catch (error) {
       console.error("Error accessing localStorage for user role:", error);
       setIsAdmin(false);

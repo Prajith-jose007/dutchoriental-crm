@@ -39,7 +39,7 @@ const userFormSchemaBase = z.object({
   id: z.string().min(1, 'User ID is required').optional(),
   name: z.string().min(2, 'Name must be at least 2 characters'),
   email: z.string().email('Invalid email address'),
-  designation: z.string().min(2, 'Designation is required'),
+  designation: z.enum(['Super Admin', 'Admin', 'Manager', 'Sales', 'Accounts']),
   avatarUrl: z.string().url().optional().or(z.literal('')),
   websiteUrl: z.string().url({ message: "Invalid URL" }).optional().or(z.literal('')),
   status: z.enum(['Active', 'Inactive', 'Archived']).optional().default('Active'),
@@ -106,7 +106,7 @@ export function UserFormDialog({ isOpen, onOpenChange, user, onSubmitSuccess }: 
       id: '',
       name: '',
       email: '',
-      designation: '',
+      designation: 'Sales', // Default role
       avatarUrl: '',
       websiteUrl: '',
       status: 'Active',
@@ -130,7 +130,7 @@ export function UserFormDialog({ isOpen, onOpenChange, user, onSubmitSuccess }: 
           id: '',
           name: '',
           email: '',
-          designation: '',
+          designation: 'Sales',
           avatarUrl: '',
           websiteUrl: '',
           status: 'Active',
@@ -152,7 +152,7 @@ export function UserFormDialog({ isOpen, onOpenChange, user, onSubmitSuccess }: 
       id: user?.id || data.id!,
       name: data.name,
       email: data.email,
-      designation: data.designation,
+      designation: data.designation as import('@/lib/types').UserRole,
       avatarUrl: data.avatarUrl || undefined,
       websiteUrl: data.websiteUrl || undefined,
       status: data.status || 'Active',
@@ -253,10 +253,21 @@ export function UserFormDialog({ isOpen, onOpenChange, user, onSubmitSuccess }: 
               name="designation"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Designation</FormLabel>
-                  <FormControl>
-                    <Input placeholder="e.g., Sales Agent" {...field} />
-                  </FormControl>
+                  <FormLabel>Designation (Role)</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select role" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="Super Admin">Super Admin</SelectItem>
+                      <SelectItem value="Admin">Admin</SelectItem>
+                      <SelectItem value="Manager">Manager</SelectItem>
+                      <SelectItem value="Sales">Sales</SelectItem>
+                      <SelectItem value="Accounts">Accounts</SelectItem>
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )}

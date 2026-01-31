@@ -1,0 +1,4 @@
+Travel Date,Yacht Name,Agent Name,Client Name,Transaction ID,Total Amount,Paid Amount,Status,ch,ad,ad alc,vip ch,vip ad,vip ad alc,royal ch,royal ad,royal ad alc,top ch,top ad,top ad alc
+30/01/2026,Lotus Royale,ABC Travels,John Doe,TRN-12345,1000,1000,Confirmed,0,2,0,0,0,0,0,0,0,0,0,0
+01/02/2026,Ocean Empress,Direct,Jane Smith,TRN-67890,500,0,Pending,1,0,0,0,0,0,0,0,0,0,0,0
+02/02/2026,Desert Rose,Events Co,Mike Johnson,TRN-11223,3000,1500,Confirmed,0,0,0,0,0,0,0,0,2,0,0,0

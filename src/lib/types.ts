@@ -1,9 +1,11 @@
 
+export type UserRole = 'Super Admin' | 'Admin' | 'Manager' | 'Sales' | 'Accounts';
+
 export interface User {
   id: string;
   name: string;
   email: string;
-  designation: string;
+  designation: UserRole; // Using designation as the role field
   avatarUrl?: string;
   websiteUrl?: string;
   status?: 'Active' | 'Inactive' | 'Archived';

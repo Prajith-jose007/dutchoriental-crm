@@ -119,21 +119,35 @@ export async function GET(request: NextRequest) {
     }
 
     try {
-        const sql = `
+        // 1. Initial Search: Find leads matching the input (Transaction ID, Ref No, or ID)
+        const initialSearchSql = `
             SELECT * FROM leads 
             WHERE transactionId = ? 
             OR bookingRefNo = ? 
             OR id = ?
-            LIMIT 1
         `;
-        const leadsDataDb = await query<DbLead[]>(sql, [queryParam, queryParam, queryParam]);
+        const initialMatches = await query<DbLead[]>(initialSearchSql, [queryParam, queryParam, queryParam]);
 
-        if (leadsDataDb.length === 0) {
+        if (initialMatches.length === 0) {
             return NextResponse.json({ message: 'Booking not found.' }, { status: 404 });
         }
 
-        const lead = mapDbLeadToLeadObject(leadsDataDb[0]);
-        return NextResponse.json(lead, { status: 200 });
+        // 2. Expand Search: If a Booking Ref exists, get ALL leads for that booking
+        //    (This ensures scanning one ticket shows the whole group if they are split)
+        const bookingRefNo = initialMatches[0].bookingRefNo;
+        let finalResults = initialMatches;
+
+        if (bookingRefNo) {
+            const groupSql = `
+                SELECT * FROM leads 
+                WHERE bookingRefNo = ?
+                ORDER BY id ASC
+            `;
+            finalResults = await query<DbLead[]>(groupSql, [bookingRefNo]);
+        }
+
+        const leads = finalResults.map(mapDbLeadToLeadObject);
+        return NextResponse.json(leads, { status: 200 });
 
     } catch (error) {
         console.error('[API GET /api/check-in] Search Error:', error);

@@ -24,7 +24,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { ChevronDown, Trash2 } from 'lucide-react';
+import { ChevronDown, Trash2, Printer } from 'lucide-react';
 import { validateCSVRow, formatValidationResult, type CSVRowData, type CSVValidationResult } from '@/lib/csvValidation';
 import { leadCsvHeaderMapping as csvHeaderMapping, convertLeadCsvValue as convertCsvValue, parseCsvLine, applyPackageTypeDetection } from '@/lib/csvHelpers';
 import {
@@ -1077,6 +1077,125 @@ export default function BookingsPage() {
     fetchAllData();
   };
 
+  const handlePrintDailyManifest = () => {
+    if (filteredLeads.length === 0) {
+      toast({ title: "No Bookings", description: "There are no bookings to print with the current filters.", variant: "default" });
+      return;
+    }
+
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      toast({ title: "Pop-up Blocked", description: "Please allow pop-ups to print the manifest.", variant: "destructive" });
+      return; // Added missing return here
+    }
+
+    const title = startDate ? `Daily Manifest - ${format(startDate, 'dd MMM yyyy')}` : 'Bookings Manifest';
+
+    // Helper to categorize items
+    const categorizeBooking = (lead: Lead) => {
+      const packageNames = lead.packageQuantities?.map(pq => pq.packageName.toUpperCase()) || [];
+      // Assign highest tier found
+      if (packageNames.some(n => n.includes('ROYAL'))) return 'ROYAL';
+      if (packageNames.some(n => n.includes('VIP'))) return 'VIP';
+      return 'STANDARD';
+    };
+
+    const royalLeads = filteredLeads.filter(l => categorizeBooking(l) === 'ROYAL');
+    const vipLeads = filteredLeads.filter(l => categorizeBooking(l) === 'VIP');
+    const standardLeads = filteredLeads.filter(l => categorizeBooking(l) === 'STANDARD');
+
+
+    const generateTableHtml = (categoryTitle: string, leads: Lead[]) => {
+      if (leads.length === 0) return '';
+      return `
+        <div class="category-section">
+          <h2>${categoryTitle} (${leads.length})</h2>
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 40px;">#</th>
+                <th>Client Name</th>
+                <th>Agent Name</th>
+                <th>Ticket Number</th>
+                <th>Booking Ref</th>
+                <th>Packs (Tickets)</th>
+                <th>Date of Booking</th>
+                <th>Date of Travel</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${leads.map((lead, index) => {
+        const packSummary = lead.packageQuantities?.map(pq => `${pq.quantity}x ${pq.packageName}`).join(', ') || '-';
+        return `
+                  <tr>
+                    <td>${index + 1}</td>
+                    <td>${lead.clientName || '-'}</td>
+                    <td>${agentMap[lead.agent] || lead.agent || '-'}</td>
+                    <td>${lead.transactionId || '-'}</td>
+                    <td>${lead.bookingRefNo || '-'}</td>
+                    <td>${packSummary}</td>
+                    <td>${lead.createdAt ? format(parseISO(lead.createdAt), 'dd/MM/yyyy') : '-'}</td>
+                    <td>${lead.month ? format(parseISO(lead.month), 'dd/MM/yyyy') : '-'}</td>
+                  </tr>
+                `;
+      }).join('')}
+            </tbody>
+          </table>
+        </div>
+      `;
+    };
+
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>${title}</title>
+        <style>
+          body { font-family: Arial, sans-serif; font-size: 12px; color: #333; }
+          .container { width: 100%; max-width: 100%; margin: 0 auto; }
+          h1 { text-align: center; margin-bottom: 5px; }
+          .meta { text-align: center; margin-bottom: 20px; font-size: 14px; color: #666; }
+          
+          .category-section { margin-bottom: 30px; page-break-inside: avoid; }
+          h2 { border-bottom: 2px solid #333; padding-bottom: 5px; margin-bottom: 10px; font-size: 16px; text-transform: uppercase; }
+          
+          table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
+          th, td { border: 1px solid #ddd; padding: 6px 8px; text-align: left; vertical-align: top; }
+          th { background-color: #f2f2f2; font-weight: bold; font-size: 11px; }
+          td { font-size: 11px; }
+          
+          @media print {
+            @page { margin: 1cm; size: landscape; }
+            body { -webkit-print-color-adjust: exact; }
+            .category-section { page-break-inside: auto; }
+            tr { page-break-inside: avoid; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <h1>${title}</h1>
+          <div class="meta">
+            Generated on: ${format(new Date(), 'dd MMM yyyy HH:mm')}<br>
+            Total Records: ${filteredLeads.length}
+          </div>
+          
+          ${generateTableHtml('Royal Bookings', royalLeads)}
+          ${generateTableHtml('VIP Bookings', vipLeads)}
+          ${generateTableHtml('Standard Bookings', standardLeads)}
+          
+        </div>
+        <script>
+          window.onload = function() { window.print(); window.close(); }
+        </script>
+      </body>
+      </html>
+    `;
+
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
+  };
+
   const filteredLeads = useMemo(() => {
     return allLeads.filter(lead => {
       let leadEventDate: Date | null = null;
@@ -1331,6 +1450,10 @@ export default function BookingsPage() {
         onCsvImport={handleCsvImport}
         onCsvExport={handleCsvExport}
       />
+      <Button variant="outline" onClick={handlePrintDailyManifest} disabled={isImporting}>
+        <Printer className="mr-2 h-4 w-4" />
+        Print Daily Manifest
+      </Button>
     </div>
   );
 

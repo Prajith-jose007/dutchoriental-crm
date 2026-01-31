@@ -10,6 +10,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 
 export type ImportSource = 'DEFAULT' | 'MASTER' | 'RUZINN' | 'RAYNA' | 'GYG';
@@ -75,8 +76,8 @@ export function ImportExportButtons({ onAddBookingClick, onCsvImport, onCsvExpor
         <DropdownMenuTrigger asChild>
           <Button variant="outline" size="sm" className="h-9">
             <Upload className="mr-2 h-4 w-4" />
-            <span className="hidden sm:inline">Import...</span>
-            <span className="inline sm:hidden">Import</span>
+            <span className="hidden sm:inline">Upload CSV</span>
+            <span className="inline sm:hidden">Upload</span>
             <ChevronDown className="ml-2 h-3 w-3" />
           </Button>
         </DropdownMenuTrigger>
@@ -86,13 +87,19 @@ export function ImportExportButtons({ onAddBookingClick, onCsvImport, onCsvExpor
           <DropdownMenuItem onClick={() => handleImportClick('RAYNA')}>Rayna</DropdownMenuItem>
           <DropdownMenuItem onClick={() => handleImportClick('GYG')}>Get-Your-Guide</DropdownMenuItem>
           <DropdownMenuItem onClick={() => handleImportClick('DEFAULT')}>Standard CSV</DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem asChild>
+            <a href="/sample_import.csv" download="sample_import.csv" className="w-full cursor-pointer">
+              Download Sample CSV
+            </a>
+          </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
 
       <Button variant="outline" onClick={onCsvExport} size="sm" className="h-9">
         <Download className="mr-2 h-4 w-4" />
-        <span className="hidden sm:inline">Export CSV</span>
-        <span className="inline sm:hidden">Export</span>
+        <span className="hidden sm:inline">Download CSV</span>
+        <span className="inline sm:hidden">Download</span>
       </Button>
       <Button onClick={onAddBookingClick} size="sm" className="h-9">
         <PlusCircle className="mr-2 h-4 w-4" />

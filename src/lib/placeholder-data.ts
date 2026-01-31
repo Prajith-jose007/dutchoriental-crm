@@ -2,10 +2,10 @@ import type { Lead, User, Yacht, Invoice, Agent, Opportunity } from './types';
 import { formatISO, subDays, addDays, format, parseISO, getYear } from 'date-fns';
 
 export const placeholderUsers: User[] = [
-  { id: 'DO-user1', name: 'Naufal', email: 'naufal@desertroseyacht.com', designation: 'Acounts', avatarUrl: 'https://placehold.co/100x100.png?text=NS', status: 'Active' },
-  { id: 'DO-user2', name: 'Bob Johnson', email: 'bob@desertroseyacht.com', designation: 'Sales Agent', avatarUrl: 'https://placehold.co/100x100.png?text=BJ', status: 'Active' },
+  { id: 'DO-user1', name: 'Naufal', email: 'naufal@desertroseyacht.com', designation: 'Accounts', avatarUrl: 'https://placehold.co/100x100.png?text=NS', status: 'Active' },
+  { id: 'DO-user2', name: 'Bob Johnson', email: 'bob@desertroseyacht.com', designation: 'Sales', avatarUrl: 'https://placehold.co/100x100.png?text=BJ', status: 'Active' },
   { id: 'DO-user3', name: 'Carol White', email: 'carol@desertroseyacht.com', designation: 'Admin', avatarUrl: 'https://placehold.co/100x100.png?text=CW', status: 'Active' },
-  { id: 'DO-admin', name: 'Admin User', email: 'admin@desertroseyacht.com', designation: 'System Administrator', avatarUrl: 'https://placehold.co/100x100.png?text=AU', status: 'Active', password: 'Dutch@123#' },
+  { id: 'DO-admin', name: 'Admin User', email: 'admin@desertroseyacht.com', designation: 'Super Admin', avatarUrl: 'https://placehold.co/100x100.png?text=AU', status: 'Active', password: 'Dutch@123#' },
 ];
 
 export const placeholderAgents: Agent[] = [

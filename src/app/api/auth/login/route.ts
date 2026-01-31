@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
         console.log(`[Login] Password verified for user: ${email}`);
 
         // Determine role
-        const role = dbUser.designation === 'System Administrator' || dbUser.designation === 'Admin' ? 'admin' : 'user';
+        const role = dbUser.designation === 'Super Admin' || dbUser.designation === 'Admin' ? 'admin' : 'user';
 
         // Return user info (excluding password)
         const userInfo = {

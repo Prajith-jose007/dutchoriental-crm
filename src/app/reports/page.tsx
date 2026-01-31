@@ -59,7 +59,7 @@ export default function ReportsPage() {
       const role = localStorage.getItem(USER_ROLE_STORAGE_KEY) || '';
       const r = role.toLowerCase();
       // Super Admin, Admin, Manager, Accounts have access. Sales does NOT.
-      const hasAccess = ['super admin', 'admin', 'manager', 'accounts'].includes(r);
+      const hasAccess = ['super admin', 'admin', 'manager', 'accounts', 'system administrator'].includes(r);
       setIsAuthorized(hasAccess);
     } catch (error) {
       console.error("Auth check error:", error);

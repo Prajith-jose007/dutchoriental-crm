@@ -72,7 +72,7 @@ export default function LoginPage() {
 
       const { id, role, name } = data;
 
-      localStorage.setItem(USER_ROLE_STORAGE_KEY, role);
+      localStorage.setItem(USER_ROLE_STORAGE_KEY, data.designation);
       localStorage.setItem(USER_EMAIL_STORAGE_KEY, email);
       localStorage.setItem(USER_ID_STORAGE_KEY, id);
       localStorage.setItem(USER_NAME_STORAGE_KEY, name || '');

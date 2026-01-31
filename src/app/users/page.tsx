@@ -44,7 +44,8 @@ export default function UsersPage() {
     try {
       const role = localStorage.getItem(USER_ROLE_STORAGE_KEY);
       const r = role?.trim().toLowerCase();
-      const isSuperOrAdmin = r === 'admin' || r === 'super admin' || r === 'system administrator';
+      // Broad check: if it contains 'admin', grant access. This covers 'Super Admin', 'Admin', 'System Administrator'.
+      const isSuperOrAdmin = r ? r.includes('admin') : false;
       console.log('User Role Debug:', { raw: role, refined: r, access: isSuperOrAdmin });
       setIsAdmin(isSuperOrAdmin);
     } catch (error) {

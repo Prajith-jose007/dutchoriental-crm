@@ -77,7 +77,7 @@ export const leadStatusOptions = [
 ] as const;
 export type LeadStatus = typeof leadStatusOptions[number];
 
-export const leadSourceOptions = ['Website', 'WhatsApp', 'Instagram', 'Walk-in', 'Partner', 'Agent'] as const;
+export const leadSourceOptions = ['Website', 'WhatsApp', 'Instagram', 'Walk-in', 'Partner', 'Agent', 'Direct Sales', 'Counter Sales'] as const;
 export type LeadSource = typeof leadSourceOptions[number];
 
 export const yachtTypeOptions = ['Luxury', 'Mega Yacht', 'Catamaran', 'Speedboat'] as const;

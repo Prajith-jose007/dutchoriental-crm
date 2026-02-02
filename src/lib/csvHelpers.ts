@@ -230,7 +230,8 @@ export const convertLeadCsvValue = (
         case 'totalAmount': case 'commissionPercentage': case 'commissionAmount':
         case 'netAmount': case 'paidAmount': case 'balanceAmount':
         case 'freeGuestCount':
-            const numFinancial = parseFloat(trimmedValue.replace(/,/g, ''));
+            // Robust parsing: Remove everything except numbers, decimal points, and minus signs
+            const numFinancial = parseFloat(trimmedValue.replace(/[^0-9.-]+/g, ''));
             return isNaN(numFinancial) ? 0 : numFinancial;
         case 'perTicketRate':
             const numRate = parseFloat(trimmedValue.replace(/,/g, ''));
@@ -269,26 +270,42 @@ export const convertLeadCsvValue = (
                 const dmyRegex = /^(\d{1,2})\/(\d{1,2})\/(\d{4})/;
                 if (dmyRegex.test(trimmedValue)) {
                     const parsed = parse(trimmedValue.substring(0, 10), 'dd/MM/yyyy', new Date());
-                    if (isValid(parsed)) return formatISO(parsed);
+                    if (isValid(parsed)) {
+                        // Force NOON to avoid timezone midnight shifting
+                        parsed.setHours(12, 0, 0, 0);
+                        return formatISO(parsed);
+                    }
                 }
             } catch { /* fall through */ }
 
             try {
                 // 2. Try ISO parsing 
                 const parsedISODate = parseISO(trimmedValue);
-                if (isValid(parsedISODate)) return formatISO(parsedISODate);
+                if (isValid(parsedISODate)) {
+                    parsedISODate.setHours(12, 0, 0, 0);
+                    return formatISO(parsedISODate);
+                }
             } catch { /* fall through */ }
 
             try {
                 // 3. Try parsing 'dd-MM-yyyy' (e.g., \"30-01-2026\")
                 const parsedDateDMY = parse(trimmedValue, 'dd-MM-yyyy', new Date());
-                if (isValid(parsedDateDMY)) return formatISO(parsedDateDMY);
+                if (isValid(parsedDateDMY)) {
+                    parsedDateDMY.setHours(12, 0, 0, 0);
+                    return formatISO(parsedDateDMY);
+                }
             } catch { /* fall through */ }
 
             try {
                 // 4. Try parsing 'dd-MM-yyyy H:mm:ss' (e.g., \"06-01-2026 1:56:29\")
                 const parsedDateDMYHMS = parse(trimmedValue, 'dd-MM-yyyy H:mm:ss', new Date());
-                if (isValid(parsedDateDMYHMS)) return formatISO(parsedDateDMYHMS);
+                // If it has distinct time, we might keep it, but for 'month' (Booking Date) usually Date Only matters.
+                // If the user says dates shift, it's safer to force noon for the primary date field.
+                if (isValid(parsedDateDMYHMS)) {
+                    // Only force noon if it looks like midnight or we are parsing 'month' specifically
+                    if (key === 'month') parsedDateDMYHMS.setHours(12, 0, 0, 0);
+                    return formatISO(parsedDateDMYHMS);
+                }
             } catch { /* fall through */ }
 
             console.warn(`[CSV Import] Failed to parse date: \"${trimmedValue}\" for field \"${String(key)}\". Using default valid format.`);

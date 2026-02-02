@@ -37,7 +37,7 @@ import { DatePicker } from '@/components/ui/date-picker';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import type { Lead, Agent, Yacht, ModeOfPayment, LeadStatus, LeadType, YachtPackageItem, LeadPackageQuantity, PaymentConfirmationStatus, User } from '@/lib/types';
-import { leadStatusOptions, modeOfPaymentOptions, leadTypeOptions, yachtCategoryOptions, paymentConfirmationStatusOptions } from '@/lib/types';
+import { leadStatusOptions, modeOfPaymentOptions, leadTypeOptions, paymentConfirmationStatusOptions, leadSourceOptions } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { useEffect, useState, useMemo } from 'react';
 import { format, formatISO, parseISO, isValid, getYear } from 'date-fns';
@@ -70,7 +70,7 @@ const leadFormSchema = z.object({
   type: z.enum(leadTypeOptions, { required_error: "Booking type is required." }),
   paymentConfirmationStatus: z.enum(paymentConfirmationStatusOptions, { required_error: "Payment confirmation status is required." }),
   transactionId: z.string().optional(),
-  bookingRefNo: z.string().optional(),
+  bookingRefNo: z.string().min(1, "Portal DO Number is required"),
   modeOfPayment: z.enum(modeOfPaymentOptions),
   clientName: z.string().min(1, 'Client name is required'),
 
@@ -272,8 +272,13 @@ export function BookingFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess,
     if (!watchedLeadType || allYachts.length === 0) {
       return allYachts;
     }
+    // For Private Cruise, allow any yacht (loose filtering) or specific logic.
+    // User complaint: "Private Boat name option is not available".
+    if (watchedLeadType === 'Private Cruise') {
+      return allYachts;
+    }
     const filtered = allYachts.filter(yacht => yacht.category === watchedLeadType);
-    return filtered;
+    return filtered.length > 0 ? filtered : allYachts; // Fallback to all if none match category
   }, [watchedLeadType, allYachts]);
 
   const filteredLeadTypeOptions = useMemo(() => {
@@ -525,7 +530,9 @@ export function BookingFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess,
       id: lead?.id || `temp-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
       transactionId: lead?.id && data.transactionId === "Pending Generation" ? lead.transactionId : (data.transactionId === "Pending Generation" ? undefined : data.transactionId),
       bookingRefNo: data.bookingRefNo || undefined,
-      month: data.month ? formatISO(data.month) : formatISO(new Date()),
+      // Issue 2: Date Shifting. Force Noon logic.
+      // Set the time to 12:00:00 local before formatting to ISO to avoid midnight timezone subtraction issues.
+      month: data.month ? formatISO(new Date(data.month.setHours(12, 0, 0, 0))) : formatISO(new Date()),
       inquiryDate: data.inquiryDate ? formatISO(data.inquiryDate) : undefined,
       nextFollowUpDate: data.nextFollowUpDate ? formatISO(data.nextFollowUpDate) : undefined,
       paymentConfirmationStatus: data.paymentConfirmationStatus,
@@ -649,6 +656,24 @@ export function BookingFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess,
                       )}
                     />
 
+                    {/* Source */}
+                    <FormField
+                      control={form.control}
+                      name="source"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Source</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value || undefined}>
+                            <FormControl><SelectTrigger><SelectValue placeholder="Select Source" /></SelectTrigger></FormControl>
+                            <SelectContent>
+                              {leadSourceOptions.map(source => (<SelectItem key={source} value={source}>{source}</SelectItem>))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
                     {/* Booking Type (Merging Scope & Type) */}
                     <FormField
                       control={form.control}
@@ -723,7 +748,7 @@ export function BookingFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess,
                       name="bookingRefNo"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Ticket Number / Ref</FormLabel>
+                          <FormLabel>Portal DO Number <span className="text-red-500">*</span></FormLabel>
                           <FormControl><Input placeholder="Ticket No" {...field} value={field.value || ''} /></FormControl>
                           <FormMessage />
                         </FormItem>

@@ -17,6 +17,7 @@ import { DatePicker } from '@/components/ui/date-picker';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useUserRole } from '@/hooks/use-user-role';
 import { format, parseISO, isWithinInterval, isValid, formatISO, getYear as getFullYear, getMonth as getMonthIndex, addDays, parse } from 'date-fns';
+import { leadSourceOptions, type LeadSource } from '@/lib/types';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -137,6 +138,7 @@ export default function BookingsPage() {
   const [selectedYachtId, setSelectedYachtId] = useState<string>('all');
   const [selectedAgentId, setSelectedAgentId] = useState<string>('all');
   const [selectedUserIdFilter, setSelectedUserIdFilter] = useState<string>('all');
+  const [selectedSourceFilter, setSelectedSourceFilter] = useState<LeadSource | 'all'>('all');
   const [isImporting, setIsImporting] = useState(false);
 
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -1227,6 +1229,7 @@ export default function BookingsPage() {
       if (selectedYachtId !== 'all' && lead.yacht !== selectedYachtId) return false;
       if (selectedAgentId !== 'all' && lead.agent !== selectedAgentId) return false;
       if (selectedUserIdFilter !== 'all' && (lead.lastModifiedByUserId !== selectedUserIdFilter && lead.ownerUserId !== selectedUserIdFilter)) return false;
+      if (selectedSourceFilter !== 'all' && lead.source !== selectedSourceFilter) return false;
       // const bookingStatuses = ['Balance', 'Deposit Paid', 'Full Payment', 'Check-in', 'Closed (Won)', 'Closed (Lost)', 'Cancelled'];
       // if (!bookingStatuses.includes(lead.status)) return false;
 
@@ -1234,7 +1237,7 @@ export default function BookingsPage() {
       if (paymentConfirmationStatusFilter !== 'all' && lead.paymentConfirmationStatus !== paymentConfirmationStatusFilter) return false;
       return true;
     });
-  }, [allLeads, startDate, endDate, selectedYachtId, selectedAgentId, selectedUserIdFilter, statusFilter, paymentConfirmationStatusFilter]);
+  }, [allLeads, startDate, endDate, selectedYachtId, selectedAgentId, selectedUserIdFilter, statusFilter, paymentConfirmationStatusFilter, selectedSourceFilter]);
 
   const calculatedPackageCounts = useMemo(() => {
     const counts: CalculatedPackageCounts = {
@@ -1294,6 +1297,7 @@ export default function BookingsPage() {
     setSelectedYachtId('all');
     setSelectedAgentId('all');
     setSelectedUserIdFilter('all');
+    setSelectedSourceFilter('all');
     setStatusFilter('all');
     setPaymentConfirmationStatusFilter('all');
     toast({ title: "Filters Reset", description: "Showing all bookings." });
@@ -1576,6 +1580,16 @@ export default function BookingsPage() {
               <SelectContent>
                 <SelectItem value="all">All Users</SelectItem>
                 {Object.entries(userMap).map(([id, name]) => <SelectItem key={id} value={id}>{name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label htmlFor="source-filter-leads">Source</Label>
+            <Select value={selectedSourceFilter} onValueChange={(value) => setSelectedSourceFilter(value as LeadSource | 'all')}>
+              <SelectTrigger id="source-filter-leads"><SelectValue placeholder="All Sources" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Sources</SelectItem>
+                {leadSourceOptions.map(source => <SelectItem key={source} value={source}>{source}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>

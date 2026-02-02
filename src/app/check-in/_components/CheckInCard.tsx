@@ -14,7 +14,7 @@ import {
     Save
 } from 'lucide-react';
 import type { Lead, LeadPackageQuantity, Yacht, CheckedInQuantity } from '@/lib/types';
-import { format, parseISO, isValid } from 'date-fns';
+import { format, parseISO, isValid, isSameDay, startOfDay } from 'date-fns';
 import {
     Select,
     SelectContent,
@@ -243,7 +243,17 @@ export function CheckInCard({ lead: initialLead, yachts }: CheckInCardProps) {
                     </div>
                     <div className="hidden md:block border-l pl-3 mr-2">
                         <p className="text-[10px] text-muted-foreground uppercase leading-none mb-1">Event Date</p>
-                        <p className="text-xs font-semibold">{isValid(parseISO(data.month)) ? format(parseISO(data.month), 'dd MMM yyyy') : 'N/A'}</p>
+                        <p className={`text-xs font-semibold ${(() => {
+                                if (!isValid(parseISO(data.month))) return "";
+                                const date = parseISO(data.month);
+                                const today = new Date();
+                                if (isSameDay(date, today)) return "text-green-600 font-bold";
+                                if (startOfDay(date) < startOfDay(today)) return "text-orange-500 font-bold"; // Saffron/Orange for past
+                                return "text-red-600 font-bold"; // Red for future
+                            })()
+                            }`}>
+                            {isValid(parseISO(data.month)) ? format(parseISO(data.month), 'dd MMM yyyy') : 'N/A'}
+                        </p>
                     </div>
                     <div className="border-l pl-3">
                         <p className="text-[10px] text-muted-foreground uppercase leading-none mb-1">Arrival Status</p>

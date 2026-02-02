@@ -21,8 +21,10 @@ import {
     ArrowUpCircle,
     Lock,
     Save,
-    QrCode
+    QrCode,
+    AlertTriangle // Added
 } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'; // Added
 import type { Lead, LeadPackageQuantity, Yacht, CheckedInQuantity } from '@/lib/types';
 import { format, parseISO, isValid } from 'date-fns';
 import {
@@ -38,7 +40,9 @@ export default function CheckInPage() {
     const { toast } = useToast();
     const [searchQuery, setSearchQuery] = useState('');
     const [isLoading, setIsLoading] = useState(false);
-    const [searchResults, setSearchResults] = useState<Lead[]>([]);
+    // Change searchResults to be an array of arrays (groups)
+    const [groupedResults, setGroupedResults] = useState<Lead[][]>([]);
+    const [duplicateAlerts, setDuplicateAlerts] = useState<string[]>([]); // New state for alerts
     const [yachts, setYachts] = useState<Yacht[]>([]);
     const [showScanner, setShowScanner] = useState(false);
 
@@ -68,7 +72,8 @@ export default function CheckInPage() {
         }
 
         setIsLoading(true);
-        setSearchResults([]);
+        setGroupedResults([]);
+        setDuplicateAlerts([]);
 
         try {
             const response = await fetch(`/api/check-in?query=${encodeURIComponent(query.trim())}`);
@@ -84,10 +89,39 @@ export default function CheckInPage() {
 
             // Handle both single object and array responses (though API should now return array)
             const results = Array.isArray(data) ? data : [data];
-            setSearchResults(results);
 
-            if (results.length > 1) {
-                toast({ title: "Multiple Bookings Found", description: `Found ${results.length} bookings for this reference.` });
+            // 1. Group by Client Name
+            const groups: { [name: string]: Lead[] } = {};
+            const duplicates: string[] = [];
+
+            results.forEach(lead => {
+                const name = lead.clientName?.trim() || 'Unknown';
+                if (!groups[name]) groups[name] = [];
+
+                // Check for duplicates within this name group
+                const isDuplicate = groups[name].some(existing =>
+                    (existing.transactionId && existing.transactionId === lead.transactionId) ||
+                    (existing.bookingRefNo && existing.bookingRefNo === lead.bookingRefNo)
+                );
+
+                if (isDuplicate) {
+                    duplicates.push(`Duplicate booking found for ${name} (Ref: ${lead.transactionId || lead.bookingRefNo})`);
+                }
+
+                groups[name].push(lead);
+            });
+
+            setGroupedResults(Object.values(groups));
+            setDuplicateAlerts(duplicates);
+
+            if (duplicates.length > 0) {
+                toast({
+                    title: "Duplicate Bookings Detected",
+                    description: "Some clients have duplicate bookings with the same Reference Number.",
+                    variant: "destructive"
+                });
+            } else if (results.length > 1) {
+                toast({ title: "Multiple Bookings Found", description: `Found ${results.length} bookings.` });
             }
 
         } catch (error) {
@@ -129,10 +163,22 @@ export default function CheckInPage() {
                 </CardContent>
             </Card>
 
-            {searchResults.length > 0 && (
+            {duplicateAlerts.length > 0 && (
+                <div className="max-w-4xl mx-auto space-y-2">
+                    {duplicateAlerts.map((alert, i) => (
+                        <Alert key={i} variant="destructive">
+                            <AlertTriangle className="h-4 w-4" />
+                            <AlertTitle>Duplicate Warning</AlertTitle>
+                            <AlertDescription>{alert}</AlertDescription>
+                        </Alert>
+                    ))}
+                </div>
+            )}
+
+            {groupedResults.length > 0 && (
                 <div className="max-w-4xl mx-auto space-y-8">
-                    {searchResults.map((lead) => (
-                        <CheckInCard key={lead.id} lead={lead} yachts={yachts} />
+                    {groupedResults.map((group, index) => (
+                        <CheckInCard key={index} leads={group} yachts={yachts} /> // Pass group array
                     ))}
                 </div>
             )}

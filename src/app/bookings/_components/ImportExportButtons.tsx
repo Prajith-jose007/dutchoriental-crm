@@ -72,29 +72,17 @@ export function ImportExportButtons({ onAddBookingClick, onCsvImport, onCsvExpor
         onChange={handleFileChange}
       />
 
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="outline" size="sm" className="h-9">
-            <Upload className="mr-2 h-4 w-4" />
-            <span className="hidden sm:inline">Upload CSV</span>
-            <span className="inline sm:hidden">Upload</span>
-            <ChevronDown className="ml-2 h-3 w-3" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuItem onClick={() => handleImportClick('MASTER')}>Master File</DropdownMenuItem>
-          <DropdownMenuItem onClick={() => handleImportClick('RUZINN')}>Ruzinn Booking</DropdownMenuItem>
-          <DropdownMenuItem onClick={() => handleImportClick('RAYNA')}>Rayna</DropdownMenuItem>
-          <DropdownMenuItem onClick={() => handleImportClick('GYG')}>Get-Your-Guide</DropdownMenuItem>
-          <DropdownMenuItem onClick={() => handleImportClick('DEFAULT')}>Standard CSV</DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem asChild>
-            <a href="/sample_import.csv" download="sample_import.csv" className="w-full cursor-pointer">
-              Download Sample CSV
-            </a>
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+      <Button variant="outline" size="sm" className="h-9" onClick={() => handleImportClick('DEFAULT')}>
+        <Upload className="mr-2 h-4 w-4" />
+        <span className="hidden sm:inline">Upload CSV</span>
+        <span className="inline sm:hidden">Upload</span>
+      </Button>
+
+      <Button variant="ghost" size="sm" className="h-9 hidden sm:flex" asChild>
+        <a href="/sample_import.csv" download="sample_import.csv">
+          Sample CSV
+        </a>
+      </Button>
 
       <Button variant="outline" onClick={onCsvExport} size="sm" className="h-9">
         <Download className="mr-2 h-4 w-4" />

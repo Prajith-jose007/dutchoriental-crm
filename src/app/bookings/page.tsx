@@ -781,7 +781,9 @@ export default function BookingsPage() {
 
           // Transaction Generation
           const leadYear = primaryRow.month ? getFullYear(parseISO(primaryRow.month)) : new Date().getFullYear();
-          let transactionIdForRow = ticketNumbers[0] || primaryRow.transactionId; // Use first ticket or existing
+
+          const uniqueTicketNumbers = Array.from(new Set(ticketNumbers.filter(t => t && String(t).trim() !== '')));
+          let transactionIdForRow = uniqueTicketNumbers.length > 0 ? uniqueTicketNumbers.join(', ') : primaryRow.transactionId;
 
           // If no transaction ID, generate new one (logic from before)
           if (!transactionIdForRow || String(transactionIdForRow).trim() === '') {

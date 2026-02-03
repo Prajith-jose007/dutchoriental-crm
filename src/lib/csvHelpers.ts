@@ -27,6 +27,7 @@ export const leadCsvHeaderMapping: Record<string, any> = {
     'transaction_id': 'transactionId', 'transaction id': 'transactionId', 'ticketnumber': 'transactionId', 'ticket_number': 'transactionId', 'trn_number': 'transactionId', 'trn_no': 'transactionId', 'confirmation number': 'transactionId', 'confirmation_number': 'transactionId',
     'booking_ref_no': 'bookingRefNo', 'booking ref no': 'bookingRefNo', 'booking_refno': 'bookingRefNo', 'booking_ref': 'bookingRefNo', 'booking_reff': 'bookingRefNo', 'ref_no.': 'bookingRefNo', 'ref_no': 'bookingRefNo', 'ref no.': 'bookingRefNo',
     'do_number': 'bookingRefNo', 'do number': 'bookingRefNo', 'do': 'bookingRefNo', 'portal_do_number': 'bookingRefNo', // Added DO Number mappings
+    'ref': 'bookingRefNo', 'reference': 'bookingRefNo', 'reference_no': 'bookingRefNo', 'booking_reference_no': 'bookingRefNo', 'booking_reference': 'bookingRefNo', // Added more Ref variants
     'order_id': 'bookingRefNo', // Added alias
     'reff': 'bookingRefNo', // User specific Ruzinn alias
     'payment_mode': 'modeOfPayment', 'mode_of_payment': 'modeOfPayment', 'transaction': 'modeOfPayment', 'mode': 'modeOfPayment', // Added mode

@@ -18,8 +18,8 @@ export const leadCsvHeaderMapping: Record<string, any> = {
     'net': 'netAmount', // Added for Master CSV
     'amt': 'totalAmount', // Added for Master CSV
     'rate': 'perTicketRate', // Added for Master CSV
-    'agent': 'agent', 'agent_name': 'agent', 'company_na': 'agent', 'company_name': 'agent', 'companyname': 'agent',
-    'client': 'clientName', 'client_name': 'clientName', 'customer_na': 'clientName', 'customer_name': 'clientName', 'customer': 'clientName', 'pax_name': 'clientName', 'paxname': 'clientName', 'customer name': 'clientName',
+    'agent': 'agent', 'agent_name': 'agent', 'company_na': 'agent', 'company_name': 'agent', 'companyname': 'agent', 'company na': 'agent',
+    'client': 'clientName', 'client_name': 'clientName', 'customer_na': 'clientName', 'customer_name': 'clientName', 'customer': 'clientName', 'pax_name': 'clientName', 'paxname': 'clientName', 'customer name': 'clientName', 'pax name': 'clientName',
     'traveler\'s_fi': 'clientNameFirst', 'traveler\'s_first_name': 'clientNameFirst',
     'traveler\'s_la': 'clientNameLast', 'traveler\'s_last_name': 'clientNameLast',
     'payment_status': 'paymentConfirmationStatus', 'pay_status': 'paymentConfirmationStatus', 'payment_confirmation_status': 'paymentConfirmationStatus',
@@ -27,13 +27,13 @@ export const leadCsvHeaderMapping: Record<string, any> = {
     'transaction_id': 'transactionId', 'transaction id': 'transactionId', 'ticketnumber': 'transactionId', 'ticket_number': 'transactionId', 'trn_number': 'transactionId', 'trn_no': 'transactionId', 'confirmation number': 'transactionId', 'confirmation_number': 'transactionId',
     'rt': 'transactionId', 'rt_number': 'transactionId', 'rt_no': 'transactionId', 'rt_ref': 'transactionId', // Added RT variants
     'booking_ref_no': 'bookingRefNo', 'booking ref no': 'bookingRefNo', 'booking_refno': 'bookingRefNo', 'booking_ref': 'bookingRefNo', 'booking_reff': 'bookingRefNo', 'ref_no.': 'bookingRefNo', 'ref_no': 'bookingRefNo', 'ref no.': 'bookingRefNo',
-    'bookingrefno': 'bookingRefNo', 'booking refno': 'bookingRefNo', // Added explicit consolidated variants
-    'do_number': 'bookingRefNo', 'do number': 'bookingRefNo', 'do': 'bookingRefNo', 'portal_do_number': 'bookingRefNo', // Added DO Number mappings
-    'ref': 'bookingRefNo', 'reference': 'bookingRefNo', 'reference_no': 'bookingRefNo', 'booking_reference_no': 'bookingRefNo', 'booking_reference': 'bookingRefNo', // Added more Ref variants
-    'order_id': 'bookingRefNo', // Added alias
-    'reff': 'bookingRefNo', // User specific Ruzinn alias
+    'bookingrefno': 'bookingRefNo', 'booking refno': 'bookingRefNo', 'booking reff': 'bookingRefNo', 'bookingreff': 'bookingRefNo', 'booking  reff': 'bookingRefNo', 'book reff': 'bookingRefNo', 'book ref': 'bookingRefNo',
+    'do_number': 'bookingRefNo', 'do number': 'bookingRefNo', 'do': 'bookingRefNo', 'portal_do_number': 'bookingRefNo',
+    'booking_reference_no': 'bookingRefNo', 'booking_reference': 'bookingRefNo', 'booking reference': 'bookingRefNo',
+    'reff': 'bookingRefNo',
     'payment_mode': 'modeOfPayment', 'mode_of_payment': 'modeOfPayment', 'transaction': 'modeOfPayment', 'mode': 'modeOfPayment', // Added mode
     'trn': 'transactionId', // User specific Ruzinn alias
+    'ticketnumbe': 'transactionId', // Truncated header support
     'free': 'freeGuestCount', 'free_guests': 'freeGuestCount',
     'ch': 'pkg_child', 'child': 'pkg_child', 'child_qty': 'pkg_child',
     'ad': 'pkg_adult', 'adult': 'pkg_adult', 'adult_qty': 'pkg_adult',
@@ -60,7 +60,7 @@ export const leadCsvHeaderMapping: Record<string, any> = {
     'discount_%': 'commissionPercentage', 'discount_rate': 'commissionPercentage', 'discount': 'commissionPercentage',
     'commission': 'commissionAmount', 'commission_amount': 'commissionAmount',
     'net_amt': 'netAmount', 'net_amount': 'netAmount',
-    'paid': 'paidAmount', 'paid_amount': 'paidAmount', 'sales_amount(aed)': 'paidAmount', 'sales_amount_(aed)': 'paidAmount', 'sales_amount': 'paidAmount', 'salesamount(aed)': 'paidAmount',
+    'paid': 'paidAmount', 'paid_amount': 'paidAmount', 'sales_amount(aed)': 'paidAmount', 'sales_amount_(aed)': 'paidAmount', 'sales_amount': 'paidAmount', 'salesamount(aed)': 'paidAmount', 'sales amour': 'paidAmount', 'sales_amour': 'paidAmount',
     'balance': 'balanceAmount', 'balance_amount': 'balanceAmount',
     'note': 'notes', 'remarks': 'notes',
     'created_by': 'ownerUserId', 'created by': 'ownerUserId',
@@ -266,12 +266,44 @@ export const convertLeadCsvValue = (
             if (upperTrimmedPaymentStatus === 'UNPAID') return 'UNCONFIRMED';
             return 'CONFIRMED';
 
+        case 'bookingRefNo':
+            if (!trimmedValue) return '';
+            // Validation: Starts with DO and includes digits (e.g. DO010226133828)
+            const bookingRefRegex = /^DO[0-9]+$/;
+            if (!bookingRefRegex.test(trimmedValue)) {
+                console.warn(`[CSV Import] Invalid bookingRefNo format: "${trimmedValue}". Expected ^DO[0-9]+$`);
+            }
+            return trimmedValue;
+
+        case 'transactionId':
+            if (!trimmedValue) return '';
+            // Validation: Starts with RT and alphanumeric. Regex: ^RT[0-9A-Z]+$
+            const transactionIdRegex = /^RT[0-9A-Z]+$/;
+            if (!transactionIdRegex.test(trimmedValue)) {
+                console.warn(`[CSV Import] Invalid transactionId format: "${trimmedValue}". Expected ^RT[0-9A-Z]+$`);
+            }
+            return trimmedValue;
+
+        case 'customerPhone':
+            if (['#ERROR!', '#REF!', 'nan', 'null'].includes(trimmedValue.toLowerCase())) return '';
+            return trimmedValue; // Keep as text to preserve leading zeros, spaces
+
         case 'month':
         case 'createdAt':
         case 'updatedAt':
         case 'checkInTime':
             try {
-                // 1. Try DD/MM/YYYY
+                // 1. Try DD-MM-YYYY (User specific format: 01-02-2026)
+                const dmyDashRegex = /^(\d{1,2})-(\d{1,2})-(\d{4})/;
+                if (dmyDashRegex.test(trimmedValue)) {
+                    const parsed = parse(trimmedValue.substring(0, 10), 'dd-MM-yyyy', new Date());
+                    if (isValid(parsed)) {
+                        parsed.setHours(12, 0, 0, 0);
+                        return formatISO(parsed);
+                    }
+                }
+
+                // 2. Try DD/MM/YYYY
                 const dmyRegex = /^(\d{1,2})\/(\d{1,2})\/(\d{4})/;
                 if (dmyRegex.test(trimmedValue)) {
                     const parsed = parse(trimmedValue.substring(0, 10), 'dd/MM/yyyy', new Date());
@@ -737,4 +769,26 @@ export const convertAgentValue = <K extends keyof Agent>(key: K, value: string):
         default:
             return trimmedValue as Agent[K];
     }
+};
+
+export const normalizeYachtName = (rawName: string): string => {
+    if (!rawName) return '';
+    const upper = rawName.toUpperCase();
+    const clean = upper.replace(/[,.-]/g, ' ').replace(/\s+/g, ' ').trim();
+
+    if (clean === 'OE' || clean.includes('OCEAN EMPRESS') || clean.includes('OE TOP DECK') || clean.includes('OE DINNER')) {
+        return 'Ocean Empress';
+    }
+    if (clean.includes('LOTUS')) {
+        return 'Lotus Royale';
+    }
+    if (clean.includes('DESERT ROSE')) {
+        return 'Desert Rose';
+    }
+    if (clean.includes('MANSOUR') || clean.includes('AL MANSOUR')) {
+        return 'Dhow Cruise'; // Or specific dhow name if applicable
+    }
+
+    // Default: return Title Case of input 
+    return rawName; // Or valid yacht ID if unmatched
 };

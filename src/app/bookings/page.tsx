@@ -29,7 +29,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { ChevronDown, Trash2, Printer } from 'lucide-react';
 import { validateCSVRow, formatValidationResult, type CSVRowData, type CSVValidationResult } from '@/lib/csvValidation';
-import { leadCsvHeaderMapping as csvHeaderMapping, convertLeadCsvValue as convertCsvValue, parseCsvLine, applyPackageTypeDetection } from '@/lib/csvHelpers';
+import { leadCsvHeaderMapping as csvHeaderMapping, convertLeadCsvValue as convertCsvValue, parseCsvLine, applyPackageTypeDetection, normalizeYachtName } from '@/lib/csvHelpers';
 import {
   Dialog,
   DialogContent,
@@ -876,7 +876,7 @@ export default function BookingsPage() {
             id: primaryRow.id || `imported-${Date.now()}-${primaryRow._originalRowIndex}`,
             clientName: primaryRow.clientName || 'N/A',
             agent: primaryRow.agent || 'Direct Booking',
-            yacht: primaryRow.yacht || '',
+            yacht: normalizeYachtName(primaryRow.yacht || ''),
             status: primaryRow.status || 'Confirmed',
             month: primaryRow.month || formatISO(new Date()),
             notes: additionalNotes,
@@ -1072,15 +1072,70 @@ export default function BookingsPage() {
           else currentSkippedCount++;
         });
 
-        if (newLeadsFromCsv.length > 0) {
-          setImportPreviewLeads(newLeadsFromCsv);
-          setImportSkippedCount(currentSkippedCount);
-          setIsShowingImportPreview(true);
-          toast({ title: 'Preview Ready', description: `Parsed ${newLeadsFromCsv.length} bookings. Please review before confirming.` });
-        } else {
-          toast({ title: 'Import Finished', description: `No valid bookings found to import. ${currentSkippedCount} rows were skipped.`, variant: 'destructive' });
+        // Duplicate Key Check: TicketNumber + BookingRefNO
+        const finalLeadsToImport: Lead[] = [];
+        let duplicateCount = 0;
+        const seenKeys = new Set<string>();
+
+        // Pre-fill seenKeys with existing leads
+        allLeads.forEach(l => {
+          const key = `${l.transactionId}_${l.bookingRefNo}`;
+          seenKeys.add(key.toUpperCase());
+        });
+
+        newLeadsFromCsv.forEach(lead => {
+          const key = `${lead.transactionId}_${lead.bookingRefNo}`.toUpperCase();
+          if (seenKeys.has(key)) {
+            console.warn(`[CSV Import] Duplicate booking found (Ticket: ${lead.transactionId}, Ref: ${lead.bookingRefNo}). Skipping.`);
+            duplicateCount++;
+          } else {
+            seenKeys.add(key);
+            finalLeadsToImport.push(lead);
+          }
+        });
+
+        if (duplicateCount > 0) {
+          toast({
+            title: 'Duplicates Skipped',
+            description: `${duplicateCount} bookings were skipped because they already exist.`,
+            variant: 'destructive',
+          });
         }
 
+        if (finalLeadsToImport.length > 0) {
+          let importedCount = 0;
+          // Process sequentially to ensure order and avoid race conditions (optional, but safer)
+          // Or strictly batch if API supports it. Currently loop.
+          for (const lead of finalLeadsToImport) {
+            try {
+              const method = 'POST';
+              const endpoint = '/api/leads';
+              // ... existing fetch logic ...
+              const response = await fetch(endpoint, {
+                method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(lead),
+              });
+
+              if (!response.ok) {
+                console.error(`Failed to import lead ${lead.clientName}:`, response.statusText);
+                setImportSkippedCount(prev => prev + 1);
+              } else {
+                importedCount++;
+              }
+            } catch (e) {
+              console.error(`Error importing lead ${lead.clientName}:`, e);
+              setImportSkippedCount(prev => prev + 1);
+            }
+          }
+          await fetchAllData(); // Refresh data
+          setImportPreviewLeads([]);
+          setIsShowingImportPreview(false);
+          toast({ title: 'Import Successful', description: `Successfully imported ${importedCount} bookings. (${duplicateCount} skipped)` });
+        } else {
+          toast({ title: 'Import Finished', description: `No new bookings to import. ${duplicateCount} duplicates skipped.` });
+          setIsShowingImportPreview(false);
+        }
       } catch (error) {
         console.error("CSV Parsing Error:", error);
         toast({ title: 'Import Error', description: (error as Error).message, variant: 'destructive' });

@@ -13,10 +13,11 @@ import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input'; // Added Input
 import { DatePicker } from '@/components/ui/date-picker';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useUserRole } from '@/hooks/use-user-role';
-import { format, parseISO, isWithinInterval, isValid, formatISO, getYear as getFullYear, getMonth as getMonthIndex, addDays, parse } from 'date-fns';
+import { format, parseISO, isWithinInterval, isValid, formatISO, getYear as getFullYear, getMonth as getMonthIndex, addDays, parse, startOfDay, endOfDay, isSameDay } from 'date-fns';
 import { leadSourceOptions, type LeadSource } from '@/lib/types';
 import {
   DropdownMenu,
@@ -139,6 +140,7 @@ export default function BookingsPage() {
   const [selectedAgentId, setSelectedAgentId] = useState<string>('all');
   const [selectedUserIdFilter, setSelectedUserIdFilter] = useState<string>('all');
   const [selectedSourceFilter, setSelectedSourceFilter] = useState<LeadSource | 'all'>('all');
+  const [searchTerm, setSearchTerm] = useState('');
   const [isImporting, setIsImporting] = useState(false);
 
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -1217,11 +1219,24 @@ export default function BookingsPage() {
       } catch (e) { console.warn(`Invalid month/event date for booking ${lead.id}: ${lead.month}`); }
 
       if (startDate && endDate && leadEventDate) {
-        if (!isWithinInterval(leadEventDate, { start: startDate, end: endDate })) return false;
+        if (isSameDay(startDate, endDate)) {
+          // Specific Day Search
+          if (!isSameDay(leadEventDate, startDate)) return false;
+        } else {
+          // Range Search
+          // Ensure we cover the full end date by setting it to end of day
+          const rangeStart = startOfDay(startDate);
+          const rangeEnd = endOfDay(endDate);
+          if (leadEventDate < rangeStart || leadEventDate > rangeEnd) return false;
+          // Note: isWithinInterval is inclusive but sensitive to exact times if not normalized
+          // if (!isWithinInterval(leadEventDate, { start: startOfDay(startDate), end: endOfDay(endDate) })) return false; 
+        }
       } else if (startDate && leadEventDate) {
-        if (leadEventDate < startDate) return false;
+        // Just Start Date usually acts as "From this date"
+        if (leadEventDate < startOfDay(startDate)) return false;
       } else if (endDate && leadEventDate) {
-        if (leadEventDate > endDate) return false;
+        // Just End Date usually acts as "Until this date"
+        if (leadEventDate > endOfDay(endDate)) return false;
       }
       else if (!startDate && !endDate) {
       }
@@ -1230,14 +1245,23 @@ export default function BookingsPage() {
       if (selectedAgentId !== 'all' && lead.agent !== selectedAgentId) return false;
       if (selectedUserIdFilter !== 'all' && (lead.lastModifiedByUserId !== selectedUserIdFilter && lead.ownerUserId !== selectedUserIdFilter)) return false;
       if (selectedSourceFilter !== 'all' && lead.source !== selectedSourceFilter) return false;
-      // const bookingStatuses = ['Balance', 'Deposit Paid', 'Full Payment', 'Check-in', 'Closed (Won)', 'Closed (Lost)', 'Cancelled'];
-      // if (!bookingStatuses.includes(lead.status)) return false;
+
+      if (searchTerm) {
+        const lowerTerm = searchTerm.toLowerCase();
+        const matchesRef = lead.bookingRefNo?.toLowerCase().includes(lowerTerm);
+        const matchesTicket = lead.transactionId?.toLowerCase().includes(lowerTerm);
+        const matchesClient = lead.clientName?.toLowerCase().includes(lowerTerm);
+        const matchesEmail = lead.customerEmail?.toLowerCase().includes(lowerTerm);
+        const matchesPhone = lead.customerPhone?.toLowerCase().includes(lowerTerm);
+
+        if (!matchesRef && !matchesTicket && !matchesClient && !matchesEmail && !matchesPhone) return false;
+      }
 
       if (statusFilter !== 'all' && lead.status !== statusFilter) return false;
       if (paymentConfirmationStatusFilter !== 'all' && lead.paymentConfirmationStatus !== paymentConfirmationStatusFilter) return false;
       return true;
     });
-  }, [allLeads, startDate, endDate, selectedYachtId, selectedAgentId, selectedUserIdFilter, statusFilter, paymentConfirmationStatusFilter, selectedSourceFilter]);
+  }, [allLeads, startDate, endDate, selectedYachtId, selectedAgentId, selectedUserIdFilter, statusFilter, paymentConfirmationStatusFilter, selectedSourceFilter, searchTerm]);
 
   const calculatedPackageCounts = useMemo(() => {
     const counts: CalculatedPackageCounts = {
@@ -1298,6 +1322,7 @@ export default function BookingsPage() {
     setSelectedAgentId('all');
     setSelectedUserIdFilter('all');
     setSelectedSourceFilter('all');
+    setSearchTerm('');
     setStatusFilter('all');
     setPaymentConfirmationStatusFilter('all');
     toast({ title: "Filters Reset", description: "Showing all bookings." });
@@ -1516,6 +1541,20 @@ export default function BookingsPage() {
         actions={pageHeaderActions}
       />
       <div className="mb-6 p-4 border rounded-lg shadow-sm">
+        {/* Search Bar Row */}
+        <div className="mb-4">
+          <Label htmlFor="search-bookings">Search Bookings</Label>
+          <div className="relative">
+            <Input
+              id="search-bookings"
+              placeholder="Search by Booking Ref, Ticket No, Client Name, Email or Phone..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="max-w-md"
+            />
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           <div>
             <Label htmlFor="start-date-leads">Start Date (Event)</Label>

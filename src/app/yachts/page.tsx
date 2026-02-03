@@ -11,15 +11,15 @@ import { PlusCircle, Edit, Trash2 } from 'lucide-react';
 import { YachtFormDialog } from './_components/YachtFormDialog';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
-
-const USER_ROLE_STORAGE_KEY = 'currentUserRole';
+import { useUserRole } from '@/hooks/use-user-role';
 
 export default function YachtsPage() {
   const [yachts, setYachts] = useState<Yacht[]>([]);
   const [isYachtDialogOpen, setIsYachtDialogOpen] = useState(false);
   const [editingYacht, setEditingYacht] = useState<Yacht | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isAdmin, setIsAdmin] = useState(false);
+  const { hasPermission, isLoading: isRoleLoading } = useUserRole();
+  const isAdmin = hasPermission('manage_yachts');
   const { toast } = useToast();
 
   const fetchYachts = useCallback(async () => {
@@ -42,13 +42,6 @@ export default function YachtsPage() {
   }, [toast]);
 
   useEffect(() => {
-    try {
-      const role = localStorage.getItem(USER_ROLE_STORAGE_KEY);
-      setIsAdmin(role === 'admin');
-    } catch (e) {
-      console.error("Error accessing localStorage for user role:", e);
-      setIsAdmin(false);
-    }
     fetchYachts();
   }, [fetchYachts]);
 
@@ -145,7 +138,7 @@ export default function YachtsPage() {
     }
   };
 
-  if (isLoading) {
+  if (isLoading || isRoleLoading) {
     return (
       <div className="container mx-auto py-2">
         <PageHeader title="Yacht Management" description="Loading yachts..." />

@@ -15,7 +15,22 @@ export function useUserRole() {
             // Normalize role string to title case (e.g. 'super admin' -> 'Super Admin') or matching known types
             // The login page now stores the exact designation string from DB, which should match UserRole values.
             if (storedRole) {
-                setRole(storedRole as UserRole);
+                // Normalize to expected Title Case format for strict comparison
+                const lowerRole = storedRole.toLowerCase();
+                let normalizedRole: UserRole | null = null;
+
+                if (lowerRole === 'super admin') normalizedRole = 'Super Admin';
+                else if (lowerRole === 'admin') normalizedRole = 'Admin';
+                else if (lowerRole === 'manager') normalizedRole = 'Manager';
+                else if (lowerRole === 'sales') normalizedRole = 'Sales';
+                else if (lowerRole === 'accounts') normalizedRole = 'Accounts';
+
+                if (normalizedRole) {
+                    setRole(normalizedRole);
+                } else {
+                    // Fallback to stored value if it matches strict type directly, or just set it
+                    setRole(storedRole as UserRole);
+                }
             }
         } catch (e) {
             console.error("Failed to read user role from storage", e);
@@ -54,6 +69,8 @@ export function useUserRole() {
                 // "sales... should not be able to access..." (implied context of restrictions)
                 // Accounts: "able to get the report"
                 return role === 'Super Admin' || role === 'Admin' || role === 'Manager' || role === 'Accounts';
+            case 'manage_yachts':
+                return role === 'Super Admin' || role === 'Admin';
             case 'manage_accounts':
                 // "invoicing , credit not, credit statements etc related to accounts"
                 return role === 'Super Admin' || role === 'Admin' || role === 'Accounts';
@@ -80,4 +97,5 @@ export type Permission =
     | 'bypass_closed_lock'
     | 'export_data'
     | 'view_reports'
-    | 'manage_accounts';
+    | 'manage_accounts'
+    | 'manage_yachts';

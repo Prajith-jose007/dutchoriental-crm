@@ -698,22 +698,74 @@ export default function BookingsPage() {
           const ticketNumbers: string[] = [];
 
           rows.forEach(r => {
+
+            // Handle explicit package columns (pkg_...)
             Object.keys(r).forEach(k => {
               if (k.startsWith('pkg_')) {
                 aggregatedPkg[k] = (aggregatedPkg[k] || 0) + ((r as any)[k] as number || 0);
               }
             });
+
+            // Handle GENERIC 'adult'/'child' columns if present (from simple CSVs)
+            // Logic: If 'adult' or 'child' column exists > 0, we need to assign it to a package name.
+            // We derive the package name from the 'YachtName' column, e.g. "LOTUS ROYALE - VIP SOFT" -> Package: "VIP SOFT"
+            // If no package suffix found, default to 'Standard' or 'Adult'/'Child' base.
+            const genericAdultQty = Number((r as any)['adult']) || 0;
+            const genericChildQty = Number((r as any)['child']) || 0;
+
+            if (genericAdultQty > 0 || genericChildQty > 0) {
+              // Try to extract package name from YachtName string "Yacht Name - PackageName"
+              let derivedPackageName = 'Standard';
+              const yachtNameStr = (r as any)['yacht'] || ''; // normalized key is 'yacht'
+              const parts = yachtNameStr.split(' - ');
+              if (parts.length > 1) {
+                derivedPackageName = parts.slice(1).join(' - ').trim();
+              }
+
+              // If we found a package name (e.g. "VIP SOFT"), we add counts to it.
+              // We need to construct a key that matches what `pkg_` expects, or just direct map.
+              // Since this is aggregation step, let's map to a temporary internal structure or just normalize here.
+              // BUT `aggregatedPkg` uses `pkg_PkgName`.
+              // So if Package is "VIP SOFT", we want `pkg_VIP SOFT`.
+              const pkgKey = `pkg_${derivedPackageName}`;
+
+              // If the package implies Age distinction (like child/adult separate rows?), usually this CSV format has 1 row per booking line.
+              // If just "Adult": 1, it implies 1 pax of that package type.
+              // If "Adult": 1 AND "Child": 1, it implies 2 pax of that package type.
+              // Wait, some systems have different rates for child vs adult for SAME package name. 
+              // Our system currently stores just "PackageName": Qty.
+              // If we want to distinguish "VIP SOFT (Adult)" vs "VIP SOFT (Child)", we should append.
+
+              if (genericAdultQty > 0) {
+                // For now, let's assume the Package Name applies to both, or append (Adult) if strict.
+                // Looking at your data: "LOTUS ROYALE - VIP SOFT", Adult: 1.
+                // The user usually just wants to see "VIP SOFT": 1.
+                // If both exist: Adult 1, Child 1 -> Package "VIP SOFT": 2? 
+                // Or "VIP SOFT (Adult)": 1, "VIP SOFT (Child)": 1.
+                // Let's try combining for now as simpler systems often do, OR separate if 'Child' > 0.
+
+                // Logic: If Child > 0, likely separate rates, so separate packages. 
+                // If Child column exists and is 0, just ignore.
+                aggregatedPkg[pkgKey] = (aggregatedPkg[pkgKey] || 0) + genericAdultQty;
+              }
+              if (genericChildQty > 0) {
+                const childPkgKey = `pkg_${derivedPackageName} Child`; // Append Child to differentiate
+                aggregatedPkg[childPkgKey] = (aggregatedPkg[childPkgKey] || 0) + genericChildQty;
+              }
+            }
+
             if (r.paidAmount) totalPaid += Number(r.paidAmount);
             if (r.transactionId) ticketNumbers.push(r.transactionId);
           });
 
-          // Build PackageQuantities list
+          // Convert aggregated packages to final LeadPackageQuantity[]
+          const packageQuantities: LeadPackageQuantity[] = [];
           const leadYachtId = primaryRow.yacht || '';
           const yachtForLead = allYachts.find(y => y.id === leadYachtId || y.name.toLowerCase() === String(leadYachtId).toLowerCase());
 
-          const packageQuantities: LeadPackageQuantity[] = [];
           if (yachtForLead && yachtForLead.packages) {
             Object.entries(aggregatedPkg).forEach(([key, qty]) => {
+              // key is like 'pkg_VIP SOFT' or 'pkg_ADULT_ALC'
               if (qty <= 0) return;
 
               // Derive canonical package name from internal key (e.g., 'pkg_adult_alc' -> 'ADULT ALC')

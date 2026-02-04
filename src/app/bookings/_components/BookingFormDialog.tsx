@@ -711,6 +711,7 @@ export function BookingFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess,
                           <DatePicker
                             date={field.value ? (isValid(field.value) ? field.value : new Date()) : new Date()}
                             setDate={(date) => { if (date) field.onChange(date); }}
+                            disabled={(date) => false}
                           />
                           <FormMessage />
                         </FormItem>

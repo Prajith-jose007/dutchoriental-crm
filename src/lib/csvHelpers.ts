@@ -205,6 +205,8 @@ export const convertLeadCsvValue = (
                 yachtNameOnly = 'OCEAN EMPRESS' + (trimmedValue.substring('OCEAN EMPRESS DINNER'.length));
             } else if (yachtNameOnly.toLowerCase().startsWith('oe top deck')) {
                 yachtNameOnly = 'OCEAN EMPRESS' + (trimmedValue.substring('OE TOP DECK'.length));
+            } else if (yachtNameOnly.toLowerCase().startsWith('ocean empress top deck')) {
+                yachtNameOnly = 'OCEAN EMPRESS' + (trimmedValue.substring('OCEAN EMPRESS TOP DECK'.length));
             } else if (yachtNameOnly.toLowerCase().startsWith('calypso sunset')) {
                 // If calypso exists in DB it will find it, otherwise it keeps the name
                 yachtNameOnly = 'CALYPSO SUNSET' + (trimmedValue.substring('CALYPSO SUNSET'.length));

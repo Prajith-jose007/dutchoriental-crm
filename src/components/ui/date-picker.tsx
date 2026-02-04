@@ -22,7 +22,7 @@ interface DatePickerProps {
   disabled?: (date: Date) => boolean;
 }
 
-export function DatePicker({ date, setDate, placeholder = "Pick a date", className, disabled }: DatePickerProps) {
+export function DatePicker({ date, setDate, placeholder = "Pick a date", className, disabled, ...props }: DatePickerProps & { [key: string]: any }) {
   return (
     <Popover>
       <PopoverTrigger asChild>
@@ -38,13 +38,14 @@ export function DatePicker({ date, setDate, placeholder = "Pick a date", classNa
           {date ? format(date, 'PPP') : <span>{placeholder}</span>}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-auto p-0">
+      <PopoverContent className="w-auto p-0" align="start">
         <Calendar
           mode="single"
           selected={date}
           onSelect={setDate}
           initialFocus
           disabled={disabled}
+          {...props}
         />
       </PopoverContent>
     </Popover>

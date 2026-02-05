@@ -164,25 +164,55 @@ export function CheckInCard({ leads: initialLeads, yachts }: CheckInCardProps) {
         if (updatedLeads.length > 0) {
             const primaryLead = updatedLeads[0];
 
-            // 1. Update Package Quantities (Add new packages / changes to primary lead)
-            // Note: Currently we only update CHECKED IN quantity distribution above.
-            // But if we added NEW packages via 'addPackage', we need to persist them.
-            // We'll replace primary lead's package list with the virtual one for simplicty (assuming all new items go to it).
-            // But we must be careful not to lose others. 
-            // Better strategy: Find diff and add to primary.
-            // Simplified: We loop virtual packages, if count > sum(original leads packages), we bump primary.
+            // 1. Update Package Quantities (Handle both Additions and Reductions)
+            // We ensure the saved booking exactly matches the Virtual View (User's selection)
 
-            virtualData.packageQuantities?.forEach(vp => {
-                const originalTotal = leads.reduce((sum, l) => sum + (l.packageQuantities?.find(p => p.packageId === vp.packageId)?.quantity || 0), 0);
-                const diff = vp.quantity - originalTotal;
+            // Get all unique package IDs involved (from virtual and original)
+            const allPkgIds = new Set<string>();
+            virtualData.packageQuantities?.forEach(p => allPkgIds.add(p.packageId));
+            leads.forEach(l => l.packageQuantities?.forEach(p => allPkgIds.add(p.packageId)));
+
+            allPkgIds.forEach(pkgId => {
+                const targetQty = virtualData.packageQuantities?.find(p => p.packageId === pkgId)?.quantity || 0;
+
+                // Calculate current total in DB leads (before this save)
+                // Note: We use 'leads' array which holds the state before recent mutations in this function?
+                // Actually 'updatedLeads' contains dirty state if we mutated it? 
+                // We haven't mutated package quantities yet in this block. 'updatedLeads' reflects 'leads' clones.
+                let currentTotal = updatedLeads.reduce((sum, l) => sum + (l.packageQuantities?.find(p => p.packageId === pkgId)?.quantity || 0), 0);
+
+                let diff = targetQty - currentTotal;
+
                 if (diff > 0) {
-                    let pPkg = primaryLead.packageQuantities?.find(p => p.packageId === vp.packageId);
+                    // ADDITION: Add to Primary Lead
+                    let pPkg = primaryLead.packageQuantities?.find(p => p.packageId === pkgId);
                     if (!pPkg) {
                         if (!primaryLead.packageQuantities) primaryLead.packageQuantities = [];
-                        pPkg = { ...vp, quantity: 0 };
+                        // Find package details (name/rate) from virtualData or fallbacks
+                        const sourcePkg = virtualData.packageQuantities?.find(p => p.packageId === pkgId)
+                            || leads.flatMap(l => l.packageQuantities || []).find(p => p.packageId === pkgId);
+
+                        pPkg = {
+                            packageId: pkgId,
+                            packageName: sourcePkg?.packageName || 'Unknown',
+                            rate: sourcePkg?.rate || 0,
+                            quantity: 0
+                        };
                         primaryLead.packageQuantities.push(pPkg);
                     }
                     pPkg.quantity += diff;
+                } else if (diff < 0) {
+                    // REDUCTION: Remove from leads until satisfied
+                    let toRemove = Math.abs(diff);
+                    for (const lead of updatedLeads) {
+                        if (toRemove <= 0) break;
+                        const pkg = lead.packageQuantities?.find(p => p.packageId === pkgId);
+                        if (pkg && pkg.quantity > 0) {
+                            const taking = Math.min(pkg.quantity, toRemove);
+                            pkg.quantity -= taking;
+                            toRemove -= taking;
+                        }
+                    }
                 }
             });
 

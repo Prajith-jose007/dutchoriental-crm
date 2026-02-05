@@ -73,8 +73,28 @@ export function CheckInCard({ leads: initialLeads, yachts }: CheckInCardProps) {
         const addonAmt = currentLeads.reduce((sum, l) => sum + (l.perTicketRate || 0), 0);
         const totalAmt = packageTotal + addonAmt;
 
-        // Commision might be per lead, sum it up
-        const totalComm = currentLeads.reduce((sum, l) => sum + (l.commissionAmount || 0), 0);
+        // Commision might be per lead, sum it up. Fallback to % if amount is missing.
+        const totalComm = currentLeads.reduce((sum, l) => {
+            // Recalc individual lead total to ensure commission is based on *current* booking state
+            const leadPkgTotal = (l.packageQuantities || []).reduce((s, p) => s + (p.quantity * p.rate), 0);
+            const leadTotal = leadPkgTotal + (l.perTicketRate || 0);
+
+            const explicitComm = l.commissionAmount || 0;
+            const calculatedComm = l.commissionPercentage ? (leadTotal * l.commissionPercentage / 100) : 0;
+
+            // Prefer explicit, fallback to calculated if explicit is 0 but % exists
+            let leadComm = explicitComm || calculatedComm;
+
+            // Fix for "Phantom Balance": 
+            // If comm is still 0, but booking is Confirmed and Paid < Total, assume difference is agent commission.
+            const paid = l.paidAmount || 0;
+            if (leadComm === 0 && (l.status === 'Confirmed' || l.paymentConfirmationStatus === 'CONFIRMED') && paid > 0 && paid < leadTotal) {
+                const impliedDiff = leadTotal - paid;
+                if (impliedDiff > 0) leadComm = impliedDiff;
+            }
+
+            return sum + leadComm;
+        }, 0);
         const netAmt = totalAmt - totalComm; // Derived Net
 
         const paidAmt = currentLeads.reduce((sum, l) => sum + (l.paidAmount || 0), 0);
@@ -133,6 +153,27 @@ export function CheckInCard({ leads: initialLeads, yachts }: CheckInCardProps) {
 
         // Distribute changes back to individual leads
         const updatedLeads: Lead[] = JSON.parse(JSON.stringify(leads));
+
+        // Pre-Fix: Ensure "Implied Commission" is applied to leads before processing
+        // This matches the logic in calculateVirtualLead to persist the "No Balance" state for Agent bookings
+        // (Fixes the issue where saving would revert to "Phantom Balance" due to missing commission in DB)
+        updatedLeads.forEach(l => {
+            let comm = l.commissionAmount || 0;
+            const paid = l.paidAmount || 0;
+
+            // Recalc total using current package state (before upgrades in this func)
+            const pkgTotal = (l.packageQuantities || []).reduce((s, p) => s + (p.quantity * p.rate), 0);
+            const tot = pkgTotal + (l.perTicketRate || 0);
+
+            const calcComm = l.commissionPercentage ? (tot * l.commissionPercentage / 100) : 0;
+            let finalComm = comm || calcComm;
+
+            if (finalComm === 0 && (l.status === 'Confirmed' || l.paymentConfirmationStatus === 'CONFIRMED') && paid > 0 && paid < tot) {
+                const implied = tot - paid;
+                if (implied > 0) finalComm = implied;
+            }
+            l.commissionAmount = finalComm;
+        });
 
         // Calculate the total collected amount to distribute (simplified: add to first lead or distribute? Add to first for now)
         let remainingCollected = collectedNow;

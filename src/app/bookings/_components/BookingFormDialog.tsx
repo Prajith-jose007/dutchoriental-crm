@@ -372,6 +372,8 @@ export function BookingFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess,
           form.setValue('commissionPercentage', agentDiscountRate, { shouldValidate: true });
         }
 
+        let packagesTotal = 0;
+        let addOnTotal = 0;
         let calculatedTotalAmount = 0;
         let tempTotalGuests = 0;
 
@@ -383,7 +385,7 @@ export function BookingFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess,
           const hours = Number(durationHours || 0);
           const yachtTotal = yachtRate * hours;
           if (yachtTotal > 0) {
-            calculatedTotalAmount += yachtTotal;
+            packagesTotal += yachtTotal;
             calculationDetails.push({ pkg: `Yacht: ${selectedYacht.name}`, qty: hours, rate: yachtRate, subtotal: yachtTotal });
           }
         }
@@ -392,7 +394,7 @@ export function BookingFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess,
           const quantity = Number(pqItem.quantity || 0);
           const rate = Number(pqItem.rate || 0);
           if (quantity > 0 && rate >= 0) {
-            calculatedTotalAmount += quantity * rate;
+            packagesTotal += quantity * rate;
             calculationDetails.push({ pkg: pqItem.packageName, qty: quantity, rate, subtotal: quantity * rate });
           }
           tempTotalGuests += quantity;
@@ -403,22 +405,29 @@ export function BookingFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess,
 
 
         if (perTicketRate && Number(perTicketRate) > 0) {
-          // User requested that 'Other Charges' should NOT be included in the Total Amount calculation.
-          // calculatedTotalAmount += Number(perTicketRate); 
-          calculationDetails.push({ pkg: 'Other Charges (Excluded)', qty: 1, rate: Number(perTicketRate) });
+          addOnTotal = Number(perTicketRate);
+          calculationDetails.push({ pkg: 'Other Charges', qty: 1, rate: addOnTotal });
         }
 
+        // Total Amount (Gross) = Packages + AddOns
+        calculatedTotalAmount = Number((packagesTotal + addOnTotal).toFixed(2));
+
         console.log("[BookingForm] Calculation Update:", {
+          packagesTotal,
+          addOnTotal,
           total: calculatedTotalAmount,
           details: calculationDetails
         });
 
-        calculatedTotalAmount = Number(calculatedTotalAmount.toFixed(2));
         setCalculatedTotalGuests(tempTotalGuests);
 
+        // Commission is calculated ONLY on Packages, not AddOns
         const calculatedCommissionAmount = Number(
-          ((calculatedTotalAmount * agentDiscountRate) / 100).toFixed(2)
+          ((packagesTotal * agentDiscountRate) / 100).toFixed(2)
         );
+
+        // Net Amount = Total (Gross) - Commission
+        // (Since Total = Pkgs + Addon, and Comm = Pkgs * %, Net = (Pkgs - Comm) + Addon, which matches req)
         const calculatedNetAmount = Number(
           (calculatedTotalAmount - calculatedCommissionAmount).toFixed(2)
         );
@@ -648,7 +657,7 @@ export function BookingFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess,
                           <Select onValueChange={field.onChange} value={field.value || undefined}>
                             <FormControl><SelectTrigger><SelectValue placeholder="Status" /></SelectTrigger></FormControl>
                             <SelectContent>
-                              {leadStatusOptions.map(status => (<SelectItem key={status} value={status}>{status}</SelectItem>))}
+                              {['New', 'Confirmed', 'Balance', 'Canceled'].map(status => (<SelectItem key={status} value={status}>{status}</SelectItem>))}
                             </SelectContent>
                           </Select>
                           <FormMessage />
@@ -711,7 +720,8 @@ export function BookingFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess,
                           <DatePicker
                             date={field.value ? (isValid(field.value) ? field.value : new Date()) : new Date()}
                             setDate={(date) => { if (date) field.onChange(date); }}
-                            disabled={(date) => false}
+                            fromYear={2024}
+                            toYear={2030}
                           />
                           <FormMessage />
                         </FormItem>

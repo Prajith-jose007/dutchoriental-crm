@@ -154,6 +154,7 @@ export const generateBookingColumns = (allYachts: Yacht[]): BookingTableColumn[]
     { accessorKey: 'commissionAmount', header: 'Comm.', isCurrency: true },
     { accessorKey: 'netAmount', header: 'Net', isCurrency: true },
     { accessorKey: 'paidAmount', header: 'Paid', isCurrency: true },
+    { accessorKey: 'collectedAtCheckIn', header: 'Coll. @ Check-in', isCurrency: true },
     { accessorKey: 'balanceAmount', header: 'Bal', isCurrency: true },
   ];
   columns.push(...accountsColumns);
@@ -235,6 +236,7 @@ export function BookingsTable({
       case 'Completed': return 'success';
       case 'Closed (Lost)':
       case 'Lost': return 'outline';
+      case 'Canceled': return 'destructive';
       default: return 'outline';
     }
   };
@@ -266,7 +268,7 @@ export function BookingsTable({
   };
 
 
-  const formatDateValue = (dateString?: string, includeTime: boolean = true) => {
+  const formatDateValue = (dateString?: string, includeTime: boolean = false) => {
     if (!dateString) return '-';
     try {
       const date = parseISO(dateString);

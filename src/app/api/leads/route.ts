@@ -6,7 +6,7 @@ import { query } from '@/lib/db';
 import { formatISO, parseISO, isValid, getYear as getFullYear } from 'date-fns';
 import { formatToMySQLDateTime } from '@/lib/utils';
 
-interface DbLead extends Omit<Lead, 'packageQuantities' | 'totalAmount' | 'commissionPercentage' | 'commissionAmount' | 'netAmount' | 'paidAmount' | 'balanceAmount' | 'freeGuestCount' | 'perTicketRate' | 'checkInStatus'> {
+interface DbLead extends Omit<Lead, 'packageQuantities' | 'totalAmount' | 'commissionPercentage' | 'commissionAmount' | 'netAmount' | 'paidAmount' | 'balanceAmount' | 'freeGuestCount' | 'perTicketRate' | 'checkInStatus' | 'collectedAtCheckIn'> {
   package_quantities_json?: string;
   totalAmount: string | number;
   commissionPercentage: string | number;
@@ -19,6 +19,7 @@ interface DbLead extends Omit<Lead, 'packageQuantities' | 'totalAmount' | 'commi
   checkInStatus?: string;
   checkInTime?: string;
   free_guest_details_json?: string;
+  collectedAtCheckIn?: string | number;
 }
 
 const ensureISOFormat = (dateSource?: string | Date): string | null => {
@@ -59,6 +60,7 @@ const mapDbLeadToLeadObject = (dbLead: DbLead): Lead => {
   const parsedNetAmount = parseFloat(String(dbLead.netAmount || 0));
   const parsedPaidAmount = parseFloat(String(dbLead.paidAmount || 0));
   const parsedBalanceAmount = parseFloat(String(dbLead.balanceAmount || 0));
+  const parsedCollectedAtCheckIn = parseFloat(String(dbLead.collectedAtCheckIn || 0));
   const parsedFreeGuestCount = parseInt(String(dbLead.freeGuestCount || 0), 10);
   const parsedPerTicketRate = dbLead.perTicketRate !== null && dbLead.perTicketRate !== undefined ? parseFloat(String(dbLead.perTicketRate)) : undefined;
 
@@ -84,6 +86,7 @@ const mapDbLeadToLeadObject = (dbLead: DbLead): Lead => {
     netAmount: isNaN(parsedNetAmount) ? 0 : parsedNetAmount,
     paidAmount: isNaN(parsedPaidAmount) ? 0 : parsedPaidAmount,
     balanceAmount: isNaN(parsedBalanceAmount) ? 0 : parsedBalanceAmount,
+    collectedAtCheckIn: isNaN(parsedCollectedAtCheckIn) ? 0 : parsedCollectedAtCheckIn,
     createdAt: ensureISOFormat(dbLead.createdAt)!,
     updatedAt: ensureISOFormat(dbLead.updatedAt)!,
     lastModifiedByUserId: dbLead.lastModifiedByUserId || undefined,

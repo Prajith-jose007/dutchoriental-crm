@@ -408,10 +408,10 @@ function applyMasterFileLogic(row: { [key: string]: any }) {
     process('master_qty_dhow_vip', 'Al Mansour Dhow', 'pkg_vip_adult');
 
     // Ocean Empress
-    process('master_qty_oe_child', 'Ocean Empress', 'pkg_child');
-    process('master_qty_oe_food', 'Ocean Empress', 'pkg_adult');
-    process('master_qty_oe_alc', 'Ocean Empress', 'pkg_adult_alc');
-    process('master_qty_oe_vip', 'Ocean Empress', 'pkg_vip_adult');
+    process('master_qty_oe_child', 'OCEAN EMPRESS', 'pkg_child');
+    process('master_qty_oe_food', 'OCEAN EMPRESS', 'pkg_adult');
+    process('master_qty_oe_alc', 'OCEAN EMPRESS', 'pkg_adult_alc');
+    process('master_qty_oe_vip', 'OCEAN EMPRESS', 'pkg_vip_adult');
 
     // Calypso Sunset
     process('master_qty_sunset_child', 'Calypso Sunset', 'pkg_child');
@@ -459,7 +459,7 @@ function applyMasterFileLogic(row: { [key: string]: any }) {
         else row.pkg_adult = quantity; // Default Food/Adult
     }
     else if (lowerRaw.includes('oe ') || lowerRaw.startsWith('oe')) { // Ocean Empress
-        row.yacht = 'Ocean Empress';
+        row.yacht = 'OCEAN EMPRESS';
         if (lowerRaw.includes('child')) row.pkg_child = quantity;
         else if (lowerRaw.includes('drinks') || lowerRaw.includes('alc')) row.pkg_adult_alc = quantity;
         else row.pkg_adult = quantity;
@@ -574,7 +574,7 @@ function applyRuzinnLogic(row: { [key: string]: any }, rawYachtString: string) {
 
         // Fix known casing for Lotus
         if (row.yacht.toUpperCase() === 'LOTUS ROYALE') row.yacht = 'Lotus Royale';
-        if (row.yacht.toUpperCase() === 'OCEAN EMPRESS') row.yacht = 'Ocean Empress';
+        if (row.yacht.toUpperCase() === 'OCEAN EMPRESS') row.yacht = 'OCEAN EMPRESS';
     }
 }
 
@@ -609,7 +609,7 @@ export function applyPackageTypeDetection(
         // Basic alias handling (simplified from convertLeadCsvValue)
         const lowerClean = cleanName.toLowerCase();
         if (lowerClean.startsWith('lotus megayacht')) cleanName = 'Lotus Royale';
-        else if (lowerClean.startsWith('ocean empress')) cleanName = 'Ocean Empress';
+        else if (lowerClean.startsWith('ocean empress')) cleanName = 'OCEAN EMPRESS';
         else if (lowerClean.startsWith('al mansour')) cleanName = 'Al Mansour Dhow';
         else if (lowerClean.startsWith('calypso')) cleanName = 'Calypso Sunset';
 
@@ -621,7 +621,7 @@ export function applyPackageTypeDetection(
     if (!parsedRow.yacht && (parsedRow.transactionId || parsedRow.bookingRefNo)) {
         const txt = (parsedRow.temp_package_text || '').toLowerCase();
         if (txt.includes('dhow') || txt.includes('creek')) parsedRow.yacht = 'Al Mansour Dhow';
-        else if (txt.includes('ocean')) parsedRow.yacht = 'Ocean Empress';
+        else if (txt.includes('ocean')) parsedRow.yacht = 'OCEAN EMPRESS';
         else if (txt.includes('sunset')) parsedRow.yacht = 'Calypso Sunset';
         else parsedRow.yacht = 'Lotus Royale'; // Default for Dutch Oriental
 

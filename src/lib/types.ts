@@ -73,7 +73,8 @@ export const leadStatusOptions = [
   'Checked In',
   'Completed',
   'Lost',
-  'Closed (Lost)'
+  'Closed (Lost)',
+  'Canceled'
 ] as const;
 export type LeadStatus = typeof leadStatusOptions[number];
 
@@ -164,6 +165,7 @@ export interface Lead {
   commissionAmount?: number;
   netAmount: number;
   paidAmount: number;
+  collectedAtCheckIn?: number;
   balanceAmount: number;
 
   createdAt: string;

@@ -36,6 +36,7 @@ interface DbLead {
     checkInTime?: string;
     free_guest_details_json?: string;
     checked_in_quantities_json?: string;
+    collectedAtCheckIn?: number;
 }
 
 const ensureISOFormat = (dateSource?: string | Date): string | null => {
@@ -98,6 +99,7 @@ const mapDbLeadToLeadObject = (dbLead: DbLead): Lead => {
         commissionAmount: Number(dbLead.commissionAmount || 0),
         netAmount: Number(dbLead.netAmount || 0),
         paidAmount: Number(dbLead.paidAmount || 0),
+        collectedAtCheckIn: Number(dbLead.collectedAtCheckIn || 0),
         balanceAmount: Number(dbLead.balanceAmount || 0),
         createdAt: ensureISOFormat(dbLead.createdAt)!,
         updatedAt: ensureISOFormat(dbLead.updatedAt)!,
@@ -120,11 +122,11 @@ export async function GET(request: NextRequest) {
 
     try {
         // 1. Initial Search: Find leads matching the input (Transaction ID, Ref No, or ID)
+        // AND exclude Canceled bookings
         const initialSearchSql = `
             SELECT * FROM leads 
-            WHERE transactionId = ? 
-            OR bookingRefNo = ? 
-            OR id = ?
+            WHERE (transactionId = ? OR bookingRefNo = ? OR id = ?)
+            AND status != 'Canceled'
         `;
         const initialMatches = await query<DbLead[]>(initialSearchSql, [queryParam, queryParam, queryParam]);
 
@@ -141,6 +143,7 @@ export async function GET(request: NextRequest) {
             const groupSql = `
                 SELECT * FROM leads 
                 WHERE bookingRefNo = ?
+                AND status != 'Canceled'
                 ORDER BY id ASC
             `;
             finalResults = await query<DbLead[]>(groupSql, [bookingRefNo]);
@@ -174,6 +177,8 @@ export async function POST(request: NextRequest) {
                 commissionAmount,
                 netAmount,
                 balanceAmount,
+                paidAmount,
+                collectedAtCheckIn,
                 status,
                 yacht,
                 clientName,
@@ -191,6 +196,8 @@ export async function POST(request: NextRequest) {
                     commissionAmount = ?,
                     netAmount = ?,
                     balanceAmount = ?,
+                    paidAmount = ?,
+                    collectedAtCheckIn = ?,
                     status = ?,
                     yacht = ?,
                     clientName = ?,
@@ -208,6 +215,8 @@ export async function POST(request: NextRequest) {
                 commissionAmount,
                 netAmount,
                 balanceAmount,
+                paidAmount,
+                collectedAtCheckIn,
                 status,
                 yacht,
                 clientName,

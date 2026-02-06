@@ -126,8 +126,8 @@ export function CheckInCard({ leads: initialLeads, yachts }: CheckInCardProps) {
             checkInStatus: compositeCheckInStatus,
             status: isAllCompleted ? 'Completed' : (isAllCheckedIn ? 'Checked In' : primary.status),
             // Join IDs for display
-            transactionId: currentLeads.map(l => l.transactionId).filter(Boolean).join(', '),
-            bookingRefNo: currentLeads.map(l => l.bookingRefNo).filter(Boolean).join(', '),
+            transactionId: currentLeads.map(l => l.transactionId).filter(Boolean)[0], // Show single TRN as per request
+            bookingRefNo: Array.from(new Set(currentLeads.map(l => l.bookingRefNo).filter(Boolean))).join(', '),
         };
     };
 

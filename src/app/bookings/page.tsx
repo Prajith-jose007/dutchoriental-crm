@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { PageHeader } from '@/components/PageHeader';
-import { BookingsTable, generateBookingColumns, type BookingTableColumn } from './_components/BookingsTable';
+import { BookingsTable, generateBookingColumns, type BookingTableColumn, packageHeaderMap } from './_components/BookingsTable';
 import { DailyBookingsStats } from '@/components/DailyBookingsStats';
 import { ImportExportButtons } from './_components/ImportExportButtons';
 import { BookingFormDialog } from './_components/BookingFormDialog';
@@ -1229,34 +1229,94 @@ export default function BookingsPage() {
 
     const generateTableHtml = (categoryTitle: string, leads: Lead[]) => {
       if (leads.length === 0) return '';
+
+      // Group leads by Booking Ref No
+      const groupedLeadsMap: Record<string, {
+        primary: Lead;
+        aggregatedPackages: LeadPackageQuantity[];
+        totalAddon: number;
+        leads: Lead[];
+      }> = {};
+
+      leads.forEach(lead => {
+        // Use bookingRefNo as key, or fallback to lead ID if missing (treat as unique)
+        const key = lead.bookingRefNo || `unique-${lead.id}`;
+
+        if (!groupedLeadsMap[key]) {
+          groupedLeadsMap[key] = {
+            primary: lead,
+            aggregatedPackages: [],
+            totalAddon: 0,
+            leads: []
+          };
+        }
+        const group = groupedLeadsMap[key];
+        group.leads.push(lead);
+        group.totalAddon += (lead.perTicketRate || 0);
+
+        // Merge packages
+        if (lead.packageQuantities) {
+          lead.packageQuantities.forEach(pq => {
+            const existingIdx = group.aggregatedPackages.findIndex(p =>
+              (p.packageId && p.packageId === pq.packageId) ||
+              (p.packageName && p.packageName === pq.packageName)
+            );
+
+            if (existingIdx !== -1) {
+              group.aggregatedPackages[existingIdx].quantity += pq.quantity;
+            } else {
+              // Clone to avoid mutating original lead
+              group.aggregatedPackages.push({ ...pq });
+            }
+          });
+        }
+      });
+
+      const groupedLeads = Object.values(groupedLeadsMap);
+
+      // Sort groups alphabetically by Client Name (using primary lead)
+      groupedLeads.sort((a, b) => (a.primary.clientName || '').localeCompare(b.primary.clientName || ''));
+
       return `
         <div class="category-section">
-          <h2>${categoryTitle} (${leads.length})</h2>
+          <h2>${categoryTitle} (${groupedLeads.length})</h2>
           <table>
             <thead>
               <tr>
                 <th style="width: 40px;">#</th>
-                <th>Client Name</th>
                 <th>Agent Name</th>
-                <th>Ticket Number</th>
+                <th>Client Name</th>
+                <th>Yacht</th>
                 <th>Booking Ref</th>
-                <th>Packs (Tickets)</th>
-                <th>Date of Booking</th>
-                <th>Date of Travel</th>
+                <th>Package / Upgrades</th>
+                <th>Travel Date</th>
               </tr>
             </thead>
             <tbody>
-              ${leads.map((lead, index) => {
-        const packSummary = lead.packageQuantities?.map(pq => `${pq.quantity}x ${pq.packageName}`).join(', ') || '-';
+              ${groupedLeads.map((group, index) => {
+        const lead = group.primary;
+        // Generate Package Summary from AGGREGATED packages
+        const lines = group.aggregatedPackages
+          .filter(pq => (Number(pq.quantity) || 0) > 0)
+          .map((pq, i) => {
+            const shortName = packageHeaderMap[pq.packageName?.toUpperCase()] || pq.packageName;
+            return `${i + 1}. ${shortName} - ${pq.quantity}`;
+          });
+
+        if (group.totalAddon > 0) {
+          lines.push(`Addon: ${group.totalAddon} AED`);
+        }
+
+        const packSummary = lines.join('<br>') || '-';
+
         return `
                   <tr>
                     <td>${index + 1}</td>
-                    <td>${lead.clientName || '-'}</td>
                     <td>${agentMap[lead.agent] || lead.agent || '-'}</td>
-                    <td>${lead.transactionId || '-'}</td>
+                    <td>${lead.clientName || '-'}</td>
+                    <td>${yachtMap[lead.yacht] || lead.yacht || '-'}</td>
                     <td>${lead.bookingRefNo || '-'}</td>
                     <td>${packSummary}</td>
-                    <td>${lead.createdAt ? format(parseISO(lead.createdAt), 'dd/MM/yyyy') : '-'}</td>
                     <td>${lead.month ? format(parseISO(lead.month), 'dd/MM/yyyy') : '-'}</td>
                   </tr>
                 `;

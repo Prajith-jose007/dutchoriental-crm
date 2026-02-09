@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { PageHeader } from '@/components/PageHeader';
-import { BookingsTable, generateBookingColumns, packageHeaderMap } from './_components/BookingsTable';
+import { BookingsTable, generateBookingColumns, packageHeaderMap, type BookingTableColumn } from './_components/BookingsTable';
 import { DailyBookingsStats } from '@/components/DailyBookingsStats';
 import { ImportExportButtons } from './_components/ImportExportButtons';
 import { BookingFormDialog } from './_components/BookingFormDialog';

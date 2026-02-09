@@ -279,8 +279,11 @@ export default function BookingsPage() {
       } else if (editingLead) {
         payloadToSubmit.ownerUserId = editingLead.ownerUserId || currentUserId;
         payloadToSubmit.createdAt = editingLead.createdAt || new Date().toISOString();
-        if (editingLead.status.startsWith('Closed') && !canBypassClosed) {
-          throw new Error("Action Denied: Closed bookings cannot be modified by non-administrators.");
+        const isClosed = editingLead.status.startsWith('Closed') || editingLead.status === 'Completed';
+        const isCheckedIn = editingLead.status === 'Checked In' || (editingLead as any).checkInStatus === 'Checked In';
+
+        if ((isClosed || isCheckedIn) && !canBypassClosed) {
+          throw new Error("Action Denied: Locked bookings (Closed, Completed, or Checked In) cannot be modified by non-administrators.");
         }
       }
 
@@ -344,8 +347,11 @@ export default function BookingsPage() {
       return;
     }
     const leadToDelete = allLeads.find(l => l.id === leadId);
-    if (leadToDelete?.status.startsWith('Closed') && !canBypassClosed) {
-      toast({ title: "Action Denied", description: "Closed bookings cannot be deleted by non-administrators.", variant: "destructive" });
+    const isClosed = leadToDelete?.status.startsWith('Closed') || leadToDelete?.status === 'Completed';
+    const isCheckedIn = leadToDelete?.status === 'Checked In' || (leadToDelete as any).checkInStatus === 'Checked In';
+
+    if ((isClosed || isCheckedIn) && !canBypassClosed) {
+      toast({ title: "Action Denied", description: "Locked bookings (Closed, Completed, or Checked In) cannot be deleted by non-administrators.", variant: "destructive" });
       return;
     }
 
@@ -506,7 +512,10 @@ export default function BookingsPage() {
 
       for (const leadId of selectedLeadIds) {
         const leadToDelete = allLeads.find(l => l.id === leadId);
-        if (leadToDelete?.status.startsWith('Closed') && !canBypassClosed) {
+        const isClosed = leadToDelete?.status.startsWith('Closed') || leadToDelete?.status === 'Completed';
+        const isCheckedIn = leadToDelete?.status === 'Checked In' || (leadToDelete as any).checkInStatus === 'Checked In';
+
+        if ((isClosed || isCheckedIn) && !canBypassClosed) {
           failedDeletes++;
           continue;
         }

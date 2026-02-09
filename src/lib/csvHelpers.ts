@@ -847,8 +847,8 @@ export const normalizeYachtName = (rawName: string): string => {
     if (clean.includes('DESERT ROSE')) {
         return 'Desert Rose';
     }
-    if (clean.includes('MANSOUR') || clean.includes('AL MANSOUR')) {
-        return 'Dhow Cruise'; // Or specific dhow name if applicable
+    if (clean.includes('MANSOUR') || clean.includes('AL MANSOUR') || clean.includes('DHOW')) {
+        return 'Al Mansour';
     }
 
     // Default: return Title Case of input 

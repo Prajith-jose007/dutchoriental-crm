@@ -229,9 +229,16 @@ export function BookingFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess,
   const watchedStatus = form.watch('status');
 
   const isFormDisabled = useMemo(() => {
-    // A form should be disabled if the status is 'Closed (Won)', 'Closed (Lost)', or 'Completed' and the user is not an admin.
-    return ((watchedStatus.startsWith('Closed') || watchedStatus === 'Completed') && !isAdmin);
-  }, [watchedStatus, isAdmin]);
+    // Form is disabled if the booking is already in a locked state (Closed, Completed, or Checked In)
+    // and the user is not an admin.
+    // We check the ORIGINAL lead status (lead.status), not the current form status, to allow users to transition TO a locked status.
+    if (!lead) return false;
+
+    const isClosed = lead.status.startsWith('Closed') || lead.status === 'Completed';
+    const isCheckedIn = lead.status === 'Checked In' || lead.checkInStatus === 'Checked In';
+
+    return (isClosed || isCheckedIn) && !isAdmin;
+  }, [lead, isAdmin]);
 
 
   useEffect(() => {

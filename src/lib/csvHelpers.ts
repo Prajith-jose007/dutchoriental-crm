@@ -203,6 +203,8 @@ export const convertLeadCsvValue = (
                 yachtNameOnly = 'AL MANSOUR' + (trimmedValue.substring('AL MANSOUR DINNER'.length));
             } else if (yachtNameOnly.toLowerCase().startsWith('ocean empress dinner')) {
                 yachtNameOnly = 'OCEAN EMPRESS' + (trimmedValue.substring('OCEAN EMPRESS DINNER'.length));
+            } else if (yachtNameOnly.toLowerCase().startsWith('ocean emporess')) {
+                yachtNameOnly = 'OCEAN EMPRESS' + (trimmedValue.substring('OCEAN EMPORESS'.length));
             } else if (yachtNameOnly.toLowerCase().startsWith('oe top deck')) {
                 yachtNameOnly = 'OCEAN EMPRESS' + (trimmedValue.substring('OE TOP DECK'.length));
             } else if (yachtNameOnly.toLowerCase().startsWith('ocean empress top deck')) {
@@ -642,14 +644,49 @@ export function applyPackageTypeDetection(
         packageTypeFromYachtName = 'FOOD AND SOFT DRINKS';
     }
 
+
+    const adultQty = parsedRow.pkg_adult || 0;
+    const childQty = parsedRow.pkg_child || 0;
+
+    // Clear generic keys to prevent duplication when assigning to specific packages
+    delete parsedRow.pkg_adult;
+    delete parsedRow.pkg_child;
+
+    const rawLower = yachtNameFromCsv ? yachtNameFromCsv.toLowerCase() : '';
+
+    // 1. Specific Fix: Ocean Emporess / Top Deck (Typo & Missing Keyword handling)
+    if (yachtNameFromCsv && /ocean\s*empo?ress\s*top/i.test(yachtNameFromCsv)) {
+        if (adultQty > 0) {
+            if (/alc|alcohol|drink/i.test(yachtNameFromCsv)) parsedRow.pkg_adult_top_deck_alc = adultQty;
+            else parsedRow.pkg_adult_top_deck = adultQty;
+        }
+        if (childQty > 0) parsedRow.pkg_child_top_deck = childQty;
+        parsedRow.yacht = 'OCEAN EMPRESS';
+        return;
+    }
+
+    // 2. Fuzzy Top Deck Detection
+    if (rawLower.includes('top') && (rawLower.includes('alc') || rawLower.includes('alcohol'))) {
+        if (adultQty > 0) parsedRow.pkg_adult_top_deck_alc = adultQty;
+        if (childQty > 0) parsedRow.pkg_child_top_deck = childQty;
+        parsedRow.yacht = 'OCEAN EMPRESS';
+        return;
+    }
+    if (rawLower.includes('top') && (rawLower.includes('ad') || rawLower.includes('adult'))) {
+        if (adultQty > 0) parsedRow.pkg_adult_top_deck = adultQty;
+        if (childQty > 0) parsedRow.pkg_child_top_deck = childQty;
+        parsedRow.yacht = 'OCEAN EMPRESS';
+        return;
+    }
+    if (rawLower.includes('top') && (rawLower.includes('ch') || rawLower.includes('child'))) {
+        if (adultQty > 0) parsedRow.pkg_adult_top_deck = adultQty;
+        if (childQty > 0) parsedRow.pkg_child_top_deck = childQty;
+        parsedRow.yacht = 'OCEAN EMPRESS';
+        return;
+    }
+
+    // 3. Standard Package Logic based on packageTypeFromYachtName
     if (packageTypeFromYachtName) {
-        const adultQty = parsedRow.pkg_adult || 0;
-        const childQty = parsedRow.pkg_child || 0;
-
-        // Clear default
-        delete parsedRow.pkg_adult;
-        delete parsedRow.pkg_child;
-
         if (packageTypeFromYachtName.includes('VIP') && (packageTypeFromYachtName.includes('SOFT') || packageTypeFromYachtName.includes('DRINK') || packageTypeFromYachtName.includes('ONLY'))) {
             // VIP tickets with soft (Handle both if quantities map, defaulting Adult header to VIP Adult)
             if (adultQty > 0) parsedRow.pkg_vip_adult = adultQty;
@@ -678,7 +715,7 @@ export function applyPackageTypeDetection(
                 if (childQty > 0) parsedRow.pkg_royal_child = childQty;
             }
         } else if (yachtNameFromCsv.toUpperCase().includes('TOP DECK') || packageTypeFromYachtName.includes('TOP DECK')) {
-            // Top Deck packages
+            // Top Deck packages (Standard detection)
             if (adultQty > 0) {
                 if (packageTypeFromYachtName.includes('ALC') || packageTypeFromYachtName.includes('ALCOHOL') || yachtNameFromCsv.toUpperCase().includes('ALC')) {
                     parsedRow.pkg_adult_top_deck_alc = adultQty;
@@ -696,6 +733,10 @@ export function applyPackageTypeDetection(
             if (adultQty > 0) parsedRow.pkg_adult = adultQty;
             if (childQty > 0) parsedRow.pkg_child = childQty;
         }
+    } else {
+        // Fallback if NO package type found: Restore both
+        if (adultQty > 0) parsedRow.pkg_adult = adultQty;
+        if (childQty > 0) parsedRow.pkg_child = childQty;
     }
 
     // Handle \"X + Y + Z\" passenger count format

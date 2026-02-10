@@ -671,7 +671,10 @@ export default function BookingsPage() {
           // Capture original values for package detection
           let yachtNameFromCsv = '';
           fileHeaders.forEach((header, idx) => {
-            if (csvHeaderMapping[header] === 'yacht') yachtNameFromCsv = data[idx]?.trim() || '';
+            if (csvHeaderMapping[header] === 'yacht') {
+              const val = data[idx]?.trim();
+              if (val) yachtNameFromCsv = val;
+            }
           });
 
           // Package Type Detection Logic

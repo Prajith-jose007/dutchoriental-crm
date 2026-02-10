@@ -27,7 +27,6 @@ export const leadCsvHeaderMapping: Record<string, any> = {
     'transaction_id': 'transactionId', 'transaction id': 'transactionId', 'ticketnumber': 'transactionId', 'ticket_number': 'transactionId', 'trn_number': 'transactionId', 'trn_no': 'transactionId', 'confirmation number': 'transactionId', 'confirmation_number': 'transactionId',
     'rt': 'transactionId', 'rt_number': 'transactionId', 'rt_no': 'transactionId', 'rt_ref': 'transactionId', // Added RT variants
     'booking_ref_no': 'bookingRefNo', 'booking ref no': 'bookingRefNo', 'booking_refno': 'bookingRefNo', 'booking_ref': 'bookingRefNo', 'booking_reff': 'bookingRefNo', 'ref_no.': 'bookingRefNo', 'ref_no': 'bookingRefNo', 'ref no.': 'bookingRefNo',
-    'rev': 'bookingRefNo', 'ref': 'bookingRefNo', // Added rev/ref variants
     'bookingrefno': 'bookingRefNo', 'booking refno': 'bookingRefNo', 'booking reff': 'bookingRefNo', 'bookingreff': 'bookingRefNo', 'booking  reff': 'bookingRefNo', 'book reff': 'bookingRefNo', 'book ref': 'bookingRefNo',
     'do_number': 'bookingRefNo', 'do number': 'bookingRefNo', 'do': 'bookingRefNo', 'portal_do_number': 'bookingRefNo',
     'booking_reference_no': 'bookingRefNo', 'booking_reference': 'bookingRefNo', 'booking reference': 'bookingRefNo',
@@ -200,22 +199,20 @@ export const convertLeadCsvValue = (
             // Handle known aliases first
             if (yachtNameOnly.toLowerCase().startsWith('lotus megayacht dinner cruise')) {
                 yachtNameOnly = 'Lotus Royale' + (trimmedValue.substring('Lotus Megayacht dinner cruise'.length));
-            } else if (yachtNameOnly.toLowerCase().startsWith('al mansour') || yachtNameOnly.toLowerCase().includes('dhow cruise') || yachtNameOnly.toLowerCase() === 'dhow') {
-                yachtNameOnly = 'Al Mansour'; // Normalize to Al Mansour
+            } else if (yachtNameOnly.toLowerCase().startsWith('al mansour dinner')) {
+                yachtNameOnly = 'AL MANSOUR' + (trimmedValue.substring('AL MANSOUR DINNER'.length));
             } else if (yachtNameOnly.toLowerCase().startsWith('ocean empress dinner')) {
                 yachtNameOnly = 'OCEAN EMPRESS' + (trimmedValue.substring('OCEAN EMPRESS DINNER'.length));
             } else if (yachtNameOnly.toLowerCase().startsWith('oe top deck')) {
-                yachtNameOnly = 'OCEAN EMPRESS - TOP DECK' + (trimmedValue.substring('OE TOP DECK'.length));
-            } else if (yachtNameOnly.toLowerCase().startsWith('ocean empress top deck') || yachtNameOnly.toLowerCase().startsWith('oceanempress top deck')) {
-                yachtNameOnly = 'OCEAN EMPRESS - TOP DECK' + (trimmedValue.substring('OCEAN EMPRESS TOP DECK'.length));
+                yachtNameOnly = 'OCEAN EMPRESS' + (trimmedValue.substring('OE TOP DECK'.length));
+            } else if (yachtNameOnly.toLowerCase().startsWith('ocean empress top deck')) {
+                yachtNameOnly = 'OCEAN EMPRESS' + (trimmedValue.substring('OCEAN EMPRESS TOP DECK'.length));
             } else if (yachtNameOnly.toLowerCase().startsWith('calypso sunset')) {
                 // If calypso exists in DB it will find it, otherwise it keeps the name
                 yachtNameOnly = 'CALYPSO SUNSET' + (trimmedValue.substring('CALYPSO SUNSET'.length));
             } else if (yachtNameOnly.toLowerCase().includes('lotus royal') && yachtNameOnly.toLowerCase().includes('food and soft drinks')) {
                 // Specific user request: "lotus royal FOOD AND SOFT DRINKS" -> Lotus Royale
                 yachtNameOnly = 'Lotus Royale';
-            } else if (yachtNameOnly.toUpperCase().includes('OE TOP DECK') || yachtNameOnly.toUpperCase().includes('OCEAN EMPRESS DINNER')) {
-                yachtNameOnly = 'OCEAN EMPRESS'; // Normalize immediately
             }
 
 
@@ -248,26 +245,12 @@ export const convertLeadCsvValue = (
             return isNaN(numRate) ? null : numRate;
 
         case 'modeOfPayment':
+            // Map 'Credit' and 'Online' to 'CARD' if they don't match exactly
             const lowerVal = trimmedValue.toLowerCase();
+            if (lowerVal === 'credit' || lowerVal === 'online') return 'CARD';
 
-            // 1. Try Valid Options exact match
             const foundMop = modeOfPaymentOptions.find(opt => opt.toLowerCase() === lowerVal);
-            if (foundMop) return foundMop;
-
-            // 2. Common Mappings
-            if (lowerVal === 'online') return 'CARD';
-
-            // 3. Heuristics
-            if (lowerVal.includes('cash')) return 'CASH';
-            if (lowerVal.includes('card') || lowerVal.includes('visa') || lowerVal.includes('master') || lowerVal.includes('amex')) return 'CARD';
-            if (lowerVal.includes('link') || lowerVal.includes('stripe') || lowerVal.includes('tabby') || lowerVal.includes('pay by')) return 'PAYMOD';
-            if (lowerVal.includes('transfer') || lowerVal.includes('bank') || lowerVal.includes('wire')) return 'OTHER';
-
-            // 4. Specific handle for "Credit" if it meant the option 'CREDIT' or 'CARD'
-            // The options include 'CREDIT'.
-            if (lowerVal === 'credit') return 'CREDIT';
-
-            return 'OTHER'; // Default to OTHER to indicate it wasn't a standard Card/Cash match
+            return foundMop || 'CARD';
         case 'status':
             const lowerTrimmedStatusValue = trimmedValue.toLowerCase();
             if (lowerTrimmedStatusValue === 'confirm') return 'Confirmed'; // Explicit mapping
@@ -610,20 +593,6 @@ export function applyPackageTypeDetection(
         return;
     }
 
-    // Handle \"X + Y + Z\" passenger count format (MOVED TO TOP)
-    if (parsedRow.pkg_pax_complex) {
-        const paxStr = String(parsedRow.pkg_pax_complex).trim();
-        if (paxStr.includes('+')) {
-            const parts = paxStr.split('+').map(p => parseInt(p.trim(), 10));
-            if (parts.length >= 1 && !isNaN(parts[0])) parsedRow.pkg_adult = (parsedRow.pkg_adult || 0) + parts[0];
-            if (parts.length >= 2 && !isNaN(parts[1])) parsedRow.pkg_child = (parsedRow.pkg_child || 0) + parts[1];
-        } else {
-            const num = parseInt(paxStr, 10);
-            if (!isNaN(num)) parsedRow.pkg_adult = (parsedRow.pkg_adult || 0) + num;
-        }
-        delete parsedRow.pkg_pax_complex;
-    }
-
     // Fallback: If yacht is missing (empty column) but we captured product text, use that
     // This fixes rows where 'Service Name' is empty but 'Product Name' contains the yacht info.
     if (!parsedRow.yacht && parsedRow.temp_package_text) {
@@ -641,7 +610,7 @@ export function applyPackageTypeDetection(
         const lowerClean = cleanName.toLowerCase();
         if (lowerClean.startsWith('lotus megayacht')) cleanName = 'Lotus Royale';
         else if (lowerClean.startsWith('ocean empress')) cleanName = 'OCEAN EMPRESS';
-        else if (lowerClean.startsWith('al mansour') || lowerClean.includes('dhow cruise')) cleanName = 'Al Mansour';
+        else if (lowerClean.startsWith('al mansour')) cleanName = 'Al Mansour Dhow';
         else if (lowerClean.startsWith('calypso')) cleanName = 'Calypso Sunset';
 
         parsedRow.yacht = cleanName;
@@ -660,15 +629,9 @@ export function applyPackageTypeDetection(
     }
 
     let packageTypeFromYachtName = '';
-
-    const raw = (yachtNameFromCsv || '').trim();
-    const rawUpper = raw.toUpperCase();
-    const rawLower = raw.toLowerCase();
-
     // Robust split using regex for " - ", "- ", " -"
-    // Robust split using regex for " - ", "- ", " -" WITH SPACES required
-    if (yachtNameFromCsv && yachtNameFromCsv.match(/\s+[-\u2013\u2014]\s+/)) {
-        const parts = yachtNameFromCsv.split(/\s+[-\u2013\u2014]\s+/);
+    if (yachtNameFromCsv && yachtNameFromCsv.match(/\s*[-\u2013\u2014]\s*/)) {
+        const parts = yachtNameFromCsv.split(/\s*[-\u2013\u2014]\s*/);
         if (parts.length > 1) packageTypeFromYachtName = parts[1].trim().toUpperCase();
     } else if (yachtNameFromCsv && yachtNameFromCsv.includes('(') && yachtNameFromCsv.includes(')')) {
         // Handle format like "Yacht Name (Package Type)"
@@ -679,96 +642,76 @@ export function applyPackageTypeDetection(
         packageTypeFromYachtName = 'FOOD AND SOFT DRINKS';
     }
 
-    const adultQty = parsedRow.pkg_adult || 0;
-    const childQty = parsedRow.pkg_child || 0;
+    if (packageTypeFromYachtName) {
+        const adultQty = parsedRow.pkg_adult || 0;
+        const childQty = parsedRow.pkg_child || 0;
 
-    const upperRaw = yachtNameFromCsv.toUpperCase();
+        // Clear default
+        delete parsedRow.pkg_adult;
+        delete parsedRow.pkg_child;
 
-    // Fuzzy Top Deck Detection (Top-CH, Top-AD, Top-ALC variants)
-    // Catch cases like "Top - Alc", "Top Child" even if "Top Deck" phrase is missing/mis-split
-    const checkStr = rawLower;
-
-    if (checkStr.includes('top') && (checkStr.includes('alc') || checkStr.includes('alcohol'))) {
-        if (adultQty > 0) parsedRow.pkg_adult_top_deck_alc = adultQty;
-        if (childQty > 0) parsedRow.pkg_child_top_deck = childQty;
-        parsedRow.yacht = 'OCEAN EMPRESS';
-        return;
-    }
-    if (checkStr.includes('top') && (checkStr.includes('ad') || checkStr.includes('adult'))) {
-        if (adultQty > 0) parsedRow.pkg_adult_top_deck = adultQty;
-        if (childQty > 0) parsedRow.pkg_child_top_deck = childQty;
-        parsedRow.yacht = 'OCEAN EMPRESS';
-        return;
-    }
-    if (checkStr.includes('top') && (checkStr.includes('ch') || checkStr.includes('child'))) {
-        if (adultQty > 0) parsedRow.pkg_adult_top_deck = adultQty;
-        if (childQty > 0) parsedRow.pkg_child_top_deck = childQty;
-        parsedRow.yacht = 'OCEAN EMPRESS';
-        return;
-    }
-
-
-    if (yachtNameFromCsv.toUpperCase().includes('TOP DECK') || packageTypeFromYachtName.includes('TOP DECK')) {
-        // Top Deck packages
-        if (adultQty > 0) {
-            if (packageTypeFromYachtName.includes('ALC') || packageTypeFromYachtName.includes('ALCOHOL') || yachtNameFromCsv.toUpperCase().includes('ALC')) {
-                parsedRow.pkg_adult_top_deck_alc = adultQty;
+        if (packageTypeFromYachtName.includes('VIP') && (packageTypeFromYachtName.includes('SOFT') || packageTypeFromYachtName.includes('DRINK') || packageTypeFromYachtName.includes('ONLY'))) {
+            // VIP tickets with soft (Handle both if quantities map, defaulting Adult header to VIP Adult)
+            if (adultQty > 0) parsedRow.pkg_vip_adult = adultQty;
+            if (childQty > 0) parsedRow.pkg_vip_child = childQty;
+        } else if (packageTypeFromYachtName === 'VIP' || packageTypeFromYachtName === 'VIP ALC' || packageTypeFromYachtName === 'VIP ALCOHOLIC') {
+            // Just "VIP" implies VIP Alcohol
+            if (adultQty > 0) parsedRow.pkg_vip_alc = adultQty;
+            if (childQty > 0) parsedRow.pkg_vip_child = childQty;
+        } else if (packageTypeFromYachtName.includes('VIP') && (packageTypeFromYachtName.includes('PREMIUM') || packageTypeFromYachtName.includes('UNLIMITED') || packageTypeFromYachtName.includes('ALC') || packageTypeFromYachtName.includes('ALCOHOLIC'))) {
+            if (adultQty > 0) parsedRow.pkg_vip_alc = adultQty;
+            if (childQty > 0) parsedRow.pkg_vip_child = childQty;
+        } else if ((packageTypeFromYachtName.includes('UNLIMITED') || packageTypeFromYachtName.includes('PREMIUM')) && (packageTypeFromYachtName.includes('ALCOHOLIC') || packageTypeFromYachtName.includes('ALC'))) {
+            if (adultQty > 0) parsedRow.pkg_adult_alc = adultQty;
+        } else if (packageTypeFromYachtName.includes('FOOD') && (packageTypeFromYachtName.includes('BAR') || packageTypeFromYachtName.includes('ALC'))) {
+            // "Food and bar" or "Food and alc"
+            if (adultQty > 0) parsedRow.pkg_adult_alc = adultQty;
+        } else if (packageTypeFromYachtName.includes('HARD') || packageTypeFromYachtName.includes('ALCOHOLIC') || packageTypeFromYachtName.includes('ALC')) {
+            // Generic alcoholic package
+            if (adultQty > 0) parsedRow.pkg_adult_alc = adultQty;
+        } else if (packageTypeFromYachtName.includes('ROYAL')) {
+            // Royal packages
+            if (packageTypeFromYachtName.includes('ALCOHOL') || packageTypeFromYachtName.includes('ALC')) {
+                if (adultQty > 0) parsedRow.pkg_royal_alc = adultQty;
             } else {
-                parsedRow.pkg_adult_top_deck = adultQty;
+                if (adultQty > 0) parsedRow.pkg_royal_adult = adultQty;
+                if (childQty > 0) parsedRow.pkg_royal_child = childQty;
             }
-        }
-        if (childQty > 0) parsedRow.pkg_child_top_deck = childQty;
-    } else if (packageTypeFromYachtName.includes('VIP') && (packageTypeFromYachtName.includes('SOFT') || packageTypeFromYachtName.includes('DRINK') || packageTypeFromYachtName.includes('ONLY'))) {
-        // VIP tickets with soft (Handle both if quantities map, defaulting Adult header to VIP Adult)
-        if (adultQty > 0) parsedRow.pkg_vip_adult = adultQty;
-        if (childQty > 0) parsedRow.pkg_vip_child = childQty;
-    } else if (packageTypeFromYachtName === 'VIP' || packageTypeFromYachtName === 'VIP ALC' || packageTypeFromYachtName === 'VIP ALCOHOLIC') {
-        // Just "VIP" implies VIP Alcohol
-        if (adultQty > 0) parsedRow.pkg_vip_alc = adultQty;
-        if (childQty > 0) parsedRow.pkg_vip_child = childQty;
-    } else if (packageTypeFromYachtName.includes('VIP') && (packageTypeFromYachtName.includes('PREMIUM') || packageTypeFromYachtName.includes('UNLIMITED') || packageTypeFromYachtName.includes('ALC') || packageTypeFromYachtName.includes('ALCOHOLIC'))) {
-        if (adultQty > 0) parsedRow.pkg_vip_alc = adultQty;
-        if (childQty > 0) parsedRow.pkg_vip_child = childQty;
-    } else if ((packageTypeFromYachtName.includes('UNLIMITED') || packageTypeFromYachtName.includes('PREMIUM')) && (packageTypeFromYachtName.includes('ALCOHOLIC') || packageTypeFromYachtName.includes('ALC'))) {
-        if (adultQty > 0) parsedRow.pkg_adult_alc = adultQty;
-    } else if (packageTypeFromYachtName.includes('FOOD') && (packageTypeFromYachtName.includes('BAR') || packageTypeFromYachtName.includes('ALC'))) {
-        // "Food and bar" or "Food and alc"
-        if (adultQty > 0) parsedRow.pkg_adult_alc = adultQty;
-    } else if (packageTypeFromYachtName.includes('HARD') || packageTypeFromYachtName.includes('ALCOHOLIC') || packageTypeFromYachtName.includes('ALC')) {
-        // Generic alcoholic package
-        if (adultQty > 0) parsedRow.pkg_adult_alc = adultQty;
-    } else if (packageTypeFromYachtName.includes('ROYAL')) {
-        // Royal packages
-        if (packageTypeFromYachtName.includes('ALCOHOL') || packageTypeFromYachtName.includes('ALC')) {
-            if (adultQty > 0) parsedRow.pkg_royal_alc = adultQty;
+        } else if (yachtNameFromCsv.toUpperCase().includes('TOP DECK') || packageTypeFromYachtName.includes('TOP DECK')) {
+            // Top Deck packages
+            if (adultQty > 0) {
+                if (packageTypeFromYachtName.includes('ALC') || packageTypeFromYachtName.includes('ALCOHOL') || yachtNameFromCsv.toUpperCase().includes('ALC')) {
+                    parsedRow.pkg_adult_top_deck_alc = adultQty;
+                } else {
+                    parsedRow.pkg_adult_top_deck = adultQty;
+                }
+            }
+            if (childQty > 0) parsedRow.pkg_child_top_deck = childQty;
+        } else if (packageTypeFromYachtName.includes('FOOD') || packageTypeFromYachtName.includes('SOFT') || packageTypeFromYachtName.includes('ONLY') || packageTypeFromYachtName.includes('STANDARD') || packageTypeFromYachtName.includes('REGULAR') || packageTypeFromYachtName.includes('DRINK')) {
+            // "Food only", "Soft Drinks", "Standard", "Regular"
+            if (adultQty > 0) parsedRow.pkg_adult = adultQty;
+            if (childQty > 0) parsedRow.pkg_child = childQty;
         } else {
-            if (adultQty > 0) parsedRow.pkg_royal_adult = adultQty;
-            if (childQty > 0) parsedRow.pkg_royal_child = childQty;
+            // Fallback: Restore both if they existed
+            if (adultQty > 0) parsedRow.pkg_adult = adultQty;
+            if (childQty > 0) parsedRow.pkg_child = childQty;
         }
-    } else if (packageTypeFromYachtName.includes('FOOD') || packageTypeFromYachtName.includes('SOFT') || packageTypeFromYachtName.includes('ONLY') || packageTypeFromYachtName.includes('STANDARD') || packageTypeFromYachtName.includes('REGULAR') || packageTypeFromYachtName.includes('DRINK')) {
-        // "Food only", "Soft Drinks", "Standard", "Regular"
-        if (adultQty > 0) parsedRow.pkg_adult = adultQty;
-        if (childQty > 0) parsedRow.pkg_child = childQty;
-    } else {
-        // Fallback: Restore both if they existed
-        if (adultQty > 0) parsedRow.pkg_adult = adultQty;
-        if (childQty > 0) parsedRow.pkg_child = childQty;
     }
 
-
-
-
-    // Auto-detect Yacht from Package Keys (Critical fallback if Yacht Name is empty)
-    if (!parsedRow.yacht || parsedRow.yacht === 'Default Yacht') {
-        if ((parsedRow.pkg_adult_top_deck && parsedRow.pkg_adult_top_deck > 0) ||
-            (parsedRow.pkg_child_top_deck && parsedRow.pkg_child_top_deck > 0) ||
-            (parsedRow.pkg_adult_top_deck_alc && parsedRow.pkg_adult_top_deck_alc > 0)) {
-            parsedRow.yacht = 'OCEAN EMPRESS';
-        } else if ((parsedRow.pkg_royal_adult && parsedRow.pkg_royal_adult > 0) ||
-            (parsedRow.pkg_royal_child && parsedRow.pkg_royal_child > 0) ||
-            (parsedRow.pkg_royal_alc && parsedRow.pkg_royal_alc > 0)) {
-            parsedRow.yacht = 'Lotus Royale';
+    // Handle \"X + Y + Z\" passenger count format
+    if (parsedRow.pkg_pax_complex) {
+        const paxStr = String(parsedRow.pkg_pax_complex).trim();
+        if (paxStr.includes('+')) {
+            const parts = paxStr.split('+').map(p => parseInt(p.trim(), 10));
+            if (parts.length >= 1 && !isNaN(parts[0])) parsedRow.pkg_adult = (parsedRow.pkg_adult || 0) + parts[0];
+            if (parts.length >= 2 && !isNaN(parts[1])) parsedRow.pkg_child = (parsedRow.pkg_child || 0) + parts[1];
+            // if parts.length >= 3, could be infant, usually map to free or ignore
+        } else {
+            // Fallback: if it's just a number
+            const num = parseInt(paxStr, 10);
+            if (!isNaN(num)) parsedRow.pkg_adult = (parsedRow.pkg_adult || 0) + num;
         }
+        delete parsedRow.pkg_pax_complex;
     }
 
     // Handle split first/last names
@@ -778,7 +721,6 @@ export function applyPackageTypeDetection(
         parsedRow.clientName = `${first} ${last}`.trim() || parsedRow.clientName;
         delete parsedRow.clientNameFirst;
         delete parsedRow.clientNameLast;
-
     }
 }
 
@@ -795,7 +737,6 @@ export const agentCsvHeaderMapping: { [csvHeaderKey: string]: keyof Agent } = {
     'phoneno': 'phone_no',
     'email': 'email',
     'status': 'status',
-    'TRN_number': 'TRN_number', // Exact match
     'trn_number': 'TRN_number',
     'trn number': 'TRN_number',
     'customer_type_id': 'customer_type_id',
@@ -803,7 +744,6 @@ export const agentCsvHeaderMapping: { [csvHeaderKey: string]: keyof Agent } = {
     'discount': 'discount',
     'discount_rate': 'discount',
     'discount rate': 'discount',
-    'websiteUrl': 'websiteUrl', // Exact match
     'websiteurl': 'websiteUrl',
     'website url': 'websiteUrl',
     'website_url': 'websiteUrl',
@@ -841,7 +781,7 @@ export const normalizeYachtName = (rawName: string): string => {
     if (clean === 'OE' || clean.includes('OCEAN EMPRESS') || clean.includes('OE TOP DECK') || clean.includes('OE DINNER')) {
         return 'Ocean Empress';
     }
-    if (clean.includes('LOTUS ROYALE')) {
+    if (clean.includes('LOTUS')) {
         return 'Lotus Royale';
     }
     if (clean.includes('DESERT ROSE')) {

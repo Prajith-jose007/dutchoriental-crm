@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -97,7 +98,7 @@ function generateNewLeadTransactionId(existingLeads: Lead[], forYear: number, cu
 }
 
 interface CalculatedPackageCounts {
-  child: number; adult: number; childTopDeck: number; adultTopDeck: number; adultTopDeckAlc: number; adultAlc: number;
+  child: number; adult: number; childTopDeck: number; adultTopDeck: number; adultAlc: number;
   vipChild: number; vipAdult: number; vipAlc: number;
   royalChild: number; royalAdult: number; royalAlc: number;
   basicSY: number; standardSY: number; premiumSY: number; vipSY: number;
@@ -106,7 +107,7 @@ interface CalculatedPackageCounts {
 }
 
 const packageCountLabels: Record<keyof CalculatedPackageCounts, string> = {
-  child: 'CHILD', adult: 'ADULT', childTopDeck: 'CHILD TOP DECK', adultTopDeck: 'ADULT TOP DECK', adultTopDeckAlc: 'TOP DECK ALC', adultAlc: 'ADULT ALC',
+  child: 'CHILD', adult: 'ADULT', childTopDeck: 'CHILD TOP DECK', adultTopDeck: 'ADULT TOP DECK', adultAlc: 'ADULT ALC',
   vipChild: 'VIP CHILD', vipAdult: 'VIP ADULT', vipAlc: 'VIP ALC',
   royalChild: 'ROYAL CHILD', royalAdult: 'ROYAL ADULT', royalAlc: 'ROYAL ALC',
   basicSY: 'BASIC (SY)', standardSY: 'STANDARD (SY)', premiumSY: 'PREMIUM (SY)', vipSY: 'VIP (SY)',
@@ -682,46 +683,16 @@ export default function BookingsPage() {
 
         // 2. Grouping Logic
         const bookingGroups = new Map<string, typeof parsedRows>();
-        const contentKeyToGroupKey = new Map<string, string>(); // Maps "Name|Date|Yacht" -> GroupKey
+        const ungroupedRows: typeof parsedRows = [];
 
         parsedRows.forEach(row => {
-          // Create a unique content key for fallback grouping
-          // Normalize to ensure matching: lower case, trimmed
-          const cName = (row.clientName || '').toLowerCase().trim();
-          const cDate = (row.month || '').substring(0, 10); // Match YYYY-MM-DD
-          const cYacht = (row.yacht || '').toLowerCase().trim();
-          const contentKey = `${cName}|${cDate}|${cYacht}`;
-
-          let groupKey = row.bookingRefNo;
-
-          if (groupKey && groupKey.trim() !== '') {
-            // Case A: Row has a Booking Ref. That is the primary Group Key.
-            if (!bookingGroups.has(groupKey)) {
-              bookingGroups.set(groupKey, []);
-
-              // Map this content key to this Ref-Group if not already claimed
-              // This allows subsequent rows *without* Ref to find this group if they match content
-              if (!contentKeyToGroupKey.has(contentKey)) {
-                contentKeyToGroupKey.set(contentKey, groupKey);
-              }
+          if (row.bookingRefNo) {
+            if (!bookingGroups.has(row.bookingRefNo)) {
+              bookingGroups.set(row.bookingRefNo, []);
             }
-            bookingGroups.get(groupKey)!.push(row);
+            bookingGroups.get(row.bookingRefNo)!.push(row);
           } else {
-            // Case B: Row does NOT have a Booking Ref.
-            // Check if we can join an existing group via Content Key
-            if (contentKeyToGroupKey.has(contentKey)) {
-              // Join existing group (could be Ref-based or Content-based)
-              groupKey = contentKeyToGroupKey.get(contentKey)!;
-              bookingGroups.get(groupKey)!.push(row);
-            } else {
-              // No matching group found. Create new group keyed by Content Key.
-              groupKey = contentKey;
-              if (!bookingGroups.has(groupKey)) {
-                bookingGroups.set(groupKey, []);
-                contentKeyToGroupKey.set(contentKey, groupKey);
-              }
-              bookingGroups.get(groupKey)!.push(row);
-            }
+            ungroupedRows.push(row);
           }
         });
 
@@ -740,10 +711,7 @@ export default function BookingsPage() {
             // Handle explicit package columns (pkg_...)
             Object.keys(r).forEach(k => {
               if (k.startsWith('pkg_')) {
-                const val = Number((r as any)[k]);
-                if (!isNaN(val)) {
-                  aggregatedPkg[k] = (aggregatedPkg[k] || 0) + val;
-                }
+                aggregatedPkg[k] = (aggregatedPkg[k] || 0) + ((r as any)[k] as number || 0);
               }
             });
 
@@ -810,81 +778,12 @@ export default function BookingsPage() {
               if (qty <= 0) return;
 
               // Derive canonical package name from internal key (e.g., 'pkg_adult_alc' -> 'ADULT ALC')
-              let actualPackageName = key.startsWith('pkg_')
+              const actualPackageName = key.startsWith('pkg_')
                 ? key.substring('pkg_'.length).replace(/_/g, ' ').toUpperCase()
                 : key.toUpperCase();
 
-              // OCEAN EMPRESS SPECIFIC PACKAGE MAPPING
-              if (yachtForLead.name.toUpperCase().includes('OCEAN EMPRESS') || yachtForLead.name.toUpperCase().includes('OCEANEMPRESS')) {
-                if (key === 'pkg_adult_alc') {
-                  actualPackageName = 'ALC';
-                  // If 'ALC' not found later, fuzzy logic might help, but let's try direct aliases here if we want to force p
-                  // But sticking to setting actualPackageName lets the finder below work if name matches exactly. 
-                  // If DB name is "ALC", this works.
-                }
-                else if (key === 'pkg_adult_top_deck') {
-                  // Try to find exact matches for known variants
-                  const targetNames = ['TOP ADULT', 'TOP-AD', 'TOP - AD', 'TOP AD', 'TOP DECK ADULT'];
-                  const found = yachtForLead.packages?.find(pkg => targetNames.includes(pkg.name.toUpperCase()));
-                  if (found) actualPackageName = found.name.toUpperCase();
-                  else actualPackageName = 'TOP ADULT'; // Default
-                }
-                else if (key === 'pkg_child_top_deck') {
-                  const targetNames = ['TOP CHILD', 'TOP-CH', 'TOP- CH', 'TOP - CH', 'TOP CH', 'TOP DECK CHILD'];
-                  const found = yachtForLead.packages?.find(pkg => targetNames.includes(pkg.name.toUpperCase()));
-                  if (found) actualPackageName = found.name.toUpperCase();
-                  else actualPackageName = 'TOP CHILD';
-                }
-                else if (key === 'pkg_adult_top_deck_alc') {
-                  const targetNames = ['TOP ALC', 'TOP-ALC', 'TOP - ALC', 'TOP DECK ALC'];
-                  const found = yachtForLead.packages?.find(pkg => targetNames.includes(pkg.name.toUpperCase()));
-                  if (found) actualPackageName = found.name.toUpperCase();
-                  else actualPackageName = 'TOP ALC';
-                }
-                else if (key === 'pkg_vip_adult') actualPackageName = 'VIP ADULT';
-                else if (key === 'pkg_vip_child') actualPackageName = 'VIP CHILD';
-                else if (key === 'pkg_adult') actualPackageName = 'ADULT';
-                else if (key === 'pkg_child') actualPackageName = 'CHILD';
-              }
-
               // Robust finding: try exact (case-insensitive) then fuzzy
               let p = yachtForLead.packages?.find(pkg => pkg.name.toUpperCase() === actualPackageName);
-
-              // FALLBACK 1: Map Generic "ADULT" / "CHILD" to "Standard" / "Food" options if direct match failed
-              if (actualPackageName === 'ADULT') {
-                p = yachtForLead.packages?.find(pkg => {
-                  const n = pkg.name.toUpperCase();
-                  // Relaxed check: Includes STANDARD, DINNER, FOOD, REGULAR, SOFT
-                  return n.includes('STANDARD') || n.includes('FOOD') || n.includes('REGULAR') || n.includes('DINNER') || n.includes('SOFT');
-                });
-              } else if (actualPackageName === 'CHILD') {
-                p = yachtForLead.packages?.find(pkg => {
-                  const n = pkg.name.toUpperCase();
-                  return (n.includes('STANDARD') || n.includes('FOOD') || n.includes('REGULAR') || n.includes('DINNER') || n.includes('SOFT')) && n.includes('CHILD');
-                });
-              } else if (actualPackageName === 'VIP ADULT') {
-                // Try finding just "VIP" (assuming it's adult if distinct from child)
-                p = yachtForLead.packages?.find(pkg => {
-                  const n = pkg.name.toUpperCase();
-                  return n.includes('VIP') && !n.includes('ROYAL') && !n.includes('CHILD');
-                });
-              } else if (actualPackageName === 'ADULT TOP DECK') {
-                p = yachtForLead.packages?.find(pkg => {
-                  const n = pkg.name.toUpperCase();
-                  return n.includes('TOP DECK') && !n.includes('CHILD');
-                });
-              } else if (actualPackageName === 'ADULT ALC') {
-                p = yachtForLead.packages?.find(pkg => {
-                  const n = pkg.name.toUpperCase();
-                  return (n.includes('ALC') || n.includes('ALCOHOL') || n.includes('HOUSE') || n.includes('DRINKS')) && !n.includes('SOFT') && !n.includes('CHILD');
-                });
-              } else if (actualPackageName === 'VIP ALC') {
-                p = yachtForLead.packages?.find(pkg => {
-                  const n = pkg.name.toUpperCase();
-                  // VIP + ALC
-                  return n.includes('VIP') && (n.includes('ALC') || n.includes('ALCOHOL')) && !n.includes('CHILD');
-                });
-              }
 
               if (!p) {
                 // Fuzzy match: if target is "ADULT", handle "Adult pp", "Food only (Adult)", etc.
@@ -901,7 +800,7 @@ export default function BookingsPage() {
 
                   // 2. VIP vs Royal
                   if (actualPackageName.includes('VIP') && n.includes('ROYAL')) return false;
-                  if (actualPackageName.includes('ROYAL') && n.includes('VIP') && !n.includes('VIP ROOM')) return false;
+                  if (actualPackageName.includes('ROYAL') && n.includes('VIP') && !n.includes('VIP ROOM')) return false; // Allow VIP Room if unrelated to tier? safely exclude for now.
 
                   // 3. Top Deck Isolation
                   if (actualPackageName.includes('TOP DECK') && !n.includes('TOP DECK')) return false;
@@ -913,24 +812,13 @@ export default function BookingsPage() {
                     // If looking for alcohol, ensure target isn't just "Soft Drinks" or "Child"
                     if (n.includes('SOFT') || n.includes('CHILD')) return false;
                     // Crucial: If import asks for ALC, the package MUST have ALC/ALCOHOL/DRINKS (unless it's just 'Adult' which is ambiguous, but usually distinguishing from Soft)
-                    if (!n.includes('ALC') && !n.includes('ALCOHOL') && !n.includes('DRINKS') && !n.includes('HARD') && !n.includes('HOUSE')) return false;
+                    if (!n.includes('ALC') && !n.includes('ALCOHOL') && !n.includes('DRINKS') && !n.includes('HARD')) return false;
                   } else {
-                    // If NOT looking for alcohol, avoid Alcohol packages (but allow 'Soft Drinks')
-                    // 'Food and Soft Drinks' has 'Drinks', so we must be careful.
-                    // Exclude ALC/ALCOHOL/HARD/SPIRITS
-                    if (n.includes('ALC') || n.includes('ALCOHOL') || n.includes('HARD') || n.includes('SPIRIT')) return false;
+                    // If NOT looking for alcohol, avoid Alcohol packages
+                    if (n.includes('ALC') || n.includes('ALCOHOL')) return false;
                   }
 
-                  // Token-based matching (Order Independent)
-                  const searchTokens = actualPackageName.split(' ').filter(t => t.trim() !== '');
-
-                  // Check if ALL search tokens exist in target tokens (approx)
-                  const allTokensMatch = searchTokens.every(sToken => n.includes(sToken));
-
-                  // If simple inclusion works, return true
-                  if (n.includes(actualPackageName) || actualPackageName.includes(n)) return true;
-
-                  return allTokensMatch;
+                  return n.includes(actualPackageName) || actualPackageName.includes(n);
                 });
               }
 
@@ -947,21 +835,7 @@ export default function BookingsPage() {
                   });
                 }
               } else {
-                // FALLBACK: If package name matches our logic (e.g. "TOP ADULT") but is NOT in the Yacht's package list,
-                // we MUST still include it so the report shows it. We use a generated ID.
-                console.warn(`[CSV Import] Package derived from "${key}" (as "${actualPackageName}") not found on yacht "${yachtForLead.name}". Adding as custom/ad-hoc package.`);
-
-                const existingCustom = packageQuantities.find(pq => pq.packageName === actualPackageName);
-                if (existingCustom) {
-                  existingCustom.quantity += qty;
-                } else {
-                  packageQuantities.push({
-                    packageId: `custom-pkg-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-                    packageName: actualPackageName,
-                    quantity: qty,
-                    rate: 0 // Unknown rate, defaulting to 0
-                  });
-                }
+                console.warn(`[CSV Import] Package derived from "${key}" (as "${actualPackageName}") not found on yacht "${yachtForLead.name}". Skipping.`);
               }
             });
           }
@@ -1056,78 +930,121 @@ export default function BookingsPage() {
             console.log(`✅ [CSV Validation] Validated group/row ${primaryRow._originalRowIndex}`);
           }
 
-          // DUPLICATE DETECTION: Strict 4-Field Check (Name, Agent, Date, Yacht)
-          // User Request: "remove all duplicate entries... if name, agent, date, yacht are same"
-          const normalizeForDup = (s: string | undefined) => (s || '').toLowerCase().trim();
+          // DUPLICATE DETECTION: Check for duplicate client names and booking ref numbers
+          const duplicateWarnings: string[] = [];
 
-          const dName = normalizeForDup(fullLead.clientName);
-          const dAgent = normalizeForDup(agentMap[fullLead.agent as string] || fullLead.agent); // Resolve ID to name for comparison if needed, or just compare IDs if consistent.
-          // Note: fullLead.agent might be an ID or Name. DB leads might have ID. 
-          // Best to compare what we have. If `fullLead.agent` is "Direct Booking" and DB has ID for "Direct Booking"...
-          // Let's rely on the raw value we use for display or ID if possible. 
-          // Actually, `convertLeadCsvValue` tries to map to ID. So `fullLead.agent` should be an ID if found.
-          const dAgentId = normalizeForDup(fullLead.agent);
-
-          const dYacht = normalizeForDup(fullLead.yacht); // Normalized name/ID
-          const dDate = (fullLead.month || '').substring(0, 10); // YYYY-MM-DD
-
-          // 1. Check against Database (allLeads)
-          const isDuplicateInDb = allLeads.some(existing => {
-            const eName = normalizeForDup(existing.clientName);
-            const eDate = (existing.month || '').substring(0, 10);
-            const eYacht = normalizeForDup(existing.yacht);
-            const eAgentId = normalizeForDup(existing.agent);
-
-            // Strict 4-field match
-            return eName === dName && eDate === dDate && eYacht === dYacht && eAgentId === dAgentId;
-          });
-
-          if (isDuplicateInDb) {
-            const warning = `[DUPLICATE DETECTED] Skipping duplicate booking (Already in DB): ${fullLead.clientName} | ${dDate} | ${fullLead.yacht}`;
-            console.warn(warning);
-            // Return null to SKIP/REMOVE this entry
-            return null;
-          }
-
-          // 2. Check against Current Batch (newLeadsFromCsv)
-          const isDuplicateInBatch = newLeadsFromCsv.some(existing => {
-            const eName = normalizeForDup(existing.clientName);
-            const eDate = (existing.month || '').substring(0, 10);
-            const eYacht = normalizeForDup(existing.yacht);
-            const eAgentId = normalizeForDup(existing.agent);
-
-            return eName === dName && eDate === dDate && eYacht === dYacht && eAgentId === dAgentId;
-          });
-
-          if (isDuplicateInBatch) {
-            const warning = `[DUPLICATE DETECTED] Skipping duplicate booking (Found earlier in batch): ${fullLead.clientName} | ${dDate} | ${fullLead.yacht}`;
-            console.warn(warning);
-            // Return null to SKIP/REMOVE this entry
-            return null;
-          }
-
-          // Legacy/Weaker Warnings (Optional: Keep for partially matching cases if desired, or remove to reduce noise)
-          // Removing specific client-name-only warning to focus on the strict removal request.
-          // Keeping Transaction ID check as it is critical for integrity (primary key-ish)
-
+          const clientNameLower = fullLead.clientName?.toLowerCase().trim();
+          const bookingRefLower = fullLead.bookingRefNo?.toLowerCase().trim();
           const transactionIdLower = fullLead.transactionId?.toLowerCase().trim();
-          if (transactionIdLower && transactionIdLower !== '') {
-            const existingWithSameRT = allLeads.find(l => l.transactionId?.toLowerCase().trim() === transactionIdLower);
-            if (existingWithSameRT) {
-              // If it's the SAME booking (checked above by 4-fields), we skipped.
-              // If it's a DIFFERENT booking (e.g. diff name) but SAME Ticket Number -> Warning/Conflict.
-              // We should probably allow this but warn, or generate new ID? User didn't specify.
-              // Standard behavior: Warn.
-              const warning = `⚠️ DUPLICATE TICKET/RT NO: "${fullLead.transactionId}" already exists in booking ${existingWithSameRT.id}`;
-              fullLead.notes = (fullLead.notes || '') + `\n[DUPLICATE ALERT]: ${warning}`;
-              console.warn(`[CSV Import] ${warning}`);
+
+          // Check client name duplicates
+          if (fullLead.clientName && fullLead.clientName !== 'N/A from CSV') {
+            // Check against existing leads in DB
+            if (existingClientNames.has(clientNameLower!)) {
+              const existing = allLeads.find(l => l.clientName.toLowerCase().trim() === clientNameLower);
+
+              // NEW LOGIC: If duplicate client but SAME booking ref (DO number) and DIFFERENT transaction ID (RT number), it's a batch, not an error.
+              // However, 'existing' is a single lead. We need to check if that existing lead allows merging.
+              // If we are currently IMPORTING a new row, and it matches an existing DB row by Client Name... 
+              // We usually want to warn unless we are intentionally updating.
+
+              // Refinement: The user says "if there is duplicate in client name then the RTnumber [Transaction] is difference and DO number [Booking Ref] is same then the RT tickets ase in one batch."
+              // This implies we should have grouped them earlier if they had the same Booking Ref.
+              // If they were NOT grouped (e.g. diff csv rows), we might be seeing them here sequentially.
+              // But handleCsvImport groups by Booking Ref (DO number) BEFORE this function is called.
+
+              // So if we are here, it means this lead represents a GROUP of rows with the same Booking Ref.
+              // The duplicate check here is against *other* groups or *existing DB* leads.
+
+              const isSameBookingRef = existing?.bookingRefNo?.toLowerCase().trim() === bookingRefLower;
+
+              if (existing && isSameBookingRef) {
+                // Same DO Number (Booking Ref) -> This is likely an update or a continuation of the same booking batch.
+                // We should NOT flag this as a duplicate warning.
+                console.log(`[CSV Import] Merging/Updating batch for existing booking ${existing.id} (Ref: ${existing.bookingRefNo})`);
+              } else {
+                const warning = `⚠️ DUPLICATE CLIENT NAME: "${fullLead.clientName}" already exists in booking ${existing?.id}`;
+                duplicateWarnings.push(warning);
+                console.warn(`[CSV Import] Row ${primaryRow._originalRowIndex}: ${warning}`);
+              }
+            }
+
+            // Check against current batch being imported
+            else if (batchClientNames.has(clientNameLower!)) {
+              // In the current batch, we already saw this client.
+              // Since we group by Booking Ref No, if we see the same client again, it must be under a DIFFERENT Booking Ref No (otherwise it would be in the same group).
+              // So this IS a duplicate duplicate warning case (Same client, different booking ref).
+              const warning = `⚠️ DUPLICATE CLIENT NAME: "${fullLead.clientName}" appears multiple times in this CSV (different Booking Refs)`;
+              duplicateWarnings.push(warning);
+              console.warn(`[CSV Import] Row ${primaryRow._originalRowIndex}: ${warning}`);
+            } else {
+              batchClientNames.add(clientNameLower!);
             }
           }
 
-          // Check booking reference number uniqueness only if strictly different booking
-          // (If 4-fields matched, we already skipped. If 4-fields diff but Ref Same -> Likely Grouping issue or valid batch sharing)
-          // We can skip strict Ref check warnings here as the user focused on 4-field duplicates.
+          // Check booking reference number duplicates
+          if (fullLead.bookingRefNo && fullLead.bookingRefNo.trim() !== '') {
+            if (existingBookingRefs.has(bookingRefLower!)) {
+              // Same logic: If it exists, but we are just adding more tickets (different RT) to the SAME DO (Booking Ref)...
+              // Actually, if the DO exists in DB, we are technically "updating" it.
+              const existing = allLeads.find(l => l.bookingRefNo?.toLowerCase().trim() === bookingRefLower);
 
+              // If strict duplicate check is needed, we warn. But for "batch", we might want to allow.
+              const warning = `⚠️ DUPLICATE BOOKING REF: "${fullLead.bookingRefNo}" already exists in booking ${existing?.id}`;
+              duplicateWarnings.push(warning);
+              console.warn(`[CSV Import] Row ${primaryRow._originalRowIndex}: ${warning}`);
+            } else if (batchBookingRefs.has(bookingRefLower!)) {
+              // Should not happen if we grouped correctly, unless blank ref?
+              const warning = `⚠️ DUPLICATE BOOKING REF: "${fullLead.bookingRefNo}" appears multiple times in this CSV`;
+              duplicateWarnings.push(warning);
+              console.warn(`[CSV Import] Row ${primaryRow._originalRowIndex}: ${warning}`);
+            } else {
+              batchBookingRefs.add(bookingRefLower!);
+            }
+          }
+
+          // Check Transaction ID (RT Number) duplicates
+          if (transactionIdLower && transactionIdLower !== '') {
+            // Logic: RT number must be unique globally.
+
+            // 1. Check DB
+            const existingWithSameRT = allLeads.find(l => l.transactionId?.toLowerCase().trim() === transactionIdLower);
+            if (existingWithSameRT) {
+              const warning = `⚠️ DUPLICATE TICKET/RT NO: "${fullLead.transactionId}" already exists in booking ${existingWithSameRT.id}`;
+              duplicateWarnings.push(warning);
+              console.warn(`[CSV Import] Row ${primaryRow._originalRowIndex}: ${warning}`);
+            }
+
+            // 2. Check current batch (prevent 2 rows having same RT unless grouped?)
+            // Note: If grouped, transactionIdForRow is single. This checks across DIFFERENT groups/leads in batch.
+            // We can use a set for batchTransactionIds (need to define it first if not exists, but we can iterate newLeadsFromCsv)
+
+            // Only flag if we strictly haven't seen it in batch?
+            // Simplest: Just warn if DB has it.
+          } else {
+            // If NO Transaction ID provided, it should have been generated upstream.
+            // Double check generation logic (already present in lines 729-739 of original file, ensure it runs).
+            // If somehow empty here:
+            // transactionIdForRow = ... (It is already assigned to fullLead.transactionId)
+            if (!fullLead.transactionId) {
+              const leadYear = fullLead.month ? getFullYear(parseISO(fullLead.month)) : new Date().getFullYear();
+              const currentMax = batchMaxTransactionNumbersByYear[leadYear] || 0;
+              const newTx = generateNewLeadTransactionId(allLeads, leadYear, currentMax);
+              fullLead.transactionId = newTx;
+
+              // Update batch checker
+              const numPart = parseInt(newTx.slice(newTx.lastIndexOf('-') + 1), 10);
+              if (!isNaN(numPart)) batchMaxTransactionNumbersByYear[leadYear] = numPart;
+
+              console.log(`[CSV Import] Generated Missing Transaction ID: ${newTx} for Row ${primaryRow._originalRowIndex}`);
+            }
+          }
+
+          // Add duplicate warnings to notes if any found
+          if (duplicateWarnings.length > 0) {
+            const duplicateNote = `\n[DUPLICATE ALERT]: ${duplicateWarnings.join('; ')}`;
+            fullLead.notes = (fullLead.notes || '') + duplicateNote;
+          }
           // ========== END DUPLICATE DETECTION ==========
 
           const missingFields = [];
@@ -1150,11 +1067,18 @@ export default function BookingsPage() {
           return fullLead;
         };
 
-        // Create Leads from Groups (All rows including singletons are now grouped)
+        // Create Leads from Groups
         bookingGroups.forEach((rows) => {
-          const lead = processParsedRowToLead(rows, rows.length > 1);
+          const lead = processParsedRowToLead(rows, true);
           if (lead) newLeadsFromCsv.push(lead);
           else currentSkippedCount += rows.length;
+        });
+
+        // Create Leads from Ungrouped
+        ungroupedRows.forEach(row => {
+          const lead = processParsedRowToLead([row], false);
+          if (lead) newLeadsFromCsv.push(lead);
+          else currentSkippedCount++;
         });
 
         // Duplicate Key Check: TicketNumber + BookingRefNO
@@ -1216,11 +1140,9 @@ export default function BookingsPage() {
           await fetchAllData(); // Refresh data
           setImportPreviewLeads([]);
           setIsShowingImportPreview(false);
-          const totalSkipped = duplicateCount + currentSkippedCount;
-          toast({ title: 'Import Successful', description: `Successfully imported ${importedCount} bookings. (${totalSkipped} duplicates/skipped)` });
+          toast({ title: 'Import Successful', description: `Successfully imported ${importedCount} bookings. (${duplicateCount} skipped)` });
         } else {
-          const totalSkipped = duplicateCount + currentSkippedCount;
-          toast({ title: 'Import Finished', description: `No new bookings to import. ${totalSkipped} duplicates/skipped.` });
+          toast({ title: 'Import Finished', description: `No new bookings to import. ${duplicateCount} duplicates skipped.` });
           setIsShowingImportPreview(false);
         }
       } catch (error) {
@@ -1521,7 +1443,7 @@ export default function BookingsPage() {
 
   const calculatedPackageCounts = useMemo(() => {
     const counts: CalculatedPackageCounts = {
-      child: 0, adult: 0, childTopDeck: 0, adultTopDeck: 0, adultTopDeckAlc: 0, adultAlc: 0,
+      child: 0, adult: 0, childTopDeck: 0, adultTopDeck: 0, adultAlc: 0,
       vipChild: 0, vipAdult: 0, vipAlc: 0,
       royalChild: 0, royalAdult: 0, royalAlc: 0,
       basicSY: 0, standardSY: 0, premiumSY: 0, vipSY: 0,
@@ -1545,9 +1467,8 @@ export default function BookingsPage() {
           if (category === 'Dinner Cruise' || category === 'Superyacht Sightseeing Cruise') {
             if (pkgNameUpper === 'CHILD') counts.child += qty;
             else if (pkgNameUpper === 'ADULT') counts.adult += qty;
-            else if (pkgNameUpper.includes('CHILD TOP DECK') || pkgNameUpper === 'TOP CHILD' || pkgNameUpper === 'TOP-CH') counts.childTopDeck += qty;
-            else if (pkgNameUpper.includes('ADULT TOP DECK') || pkgNameUpper === 'TOP ADULT' || pkgNameUpper === 'TOP-AD') counts.adultTopDeck += qty;
-            else if (pkgNameUpper === 'ADULT TOP DECK ALC' || pkgNameUpper === 'TOP ALC' || pkgNameUpper === 'TOP-ALC') counts.adultTopDeckAlc += qty;
+            else if (pkgNameUpper.includes('CHILD TOP DECK')) counts.childTopDeck += qty;
+            else if (pkgNameUpper.includes('ADULT TOP DECK')) counts.adultTopDeck += qty;
             else if (pkgNameUpper === 'ADULT ALC' || pkgNameUpper === 'ADULT ALCOHOLIC') counts.adultAlc += qty;
             else if (pkgNameUpper === 'VIP CHILD') counts.vipChild += qty;
             else if (pkgNameUpper === 'VIP ADULT') counts.vipAdult += qty;

@@ -1,4 +1,0 @@
-bookingRefNo,transactionId,month,status,paymentConfirmationStatus,clientName,customerPhone,customerEmail,agent,yacht,modeOfPayment,totalAmount,paidAmount,pkg_adult,pkg_child,pkg_adult_alc,pkg_adult_top_deck,pkg_child_top_deck,pkg_adult_top_deck_alc,pkg_vip_adult,pkg_vip_child,pkg_vip_alc
-REF-001,TICKET-101,2025-10-25 19:00,Confirmed,CONFIRMED,John Doe,971501234567,john@example.com,Direct Booking,Ocean Empress,CARD,500,500,2,1,0,0,0,0,0,0,0
-REF-002,TICKET-102,2025-10-25 19:00,Confirmed,CONFIRMED,Jane Smith,971509876543,jane@example.com,Rayna Tours,Ocean Empress,CREDIT,1200,1200,0,0,0,2,0,1,0,0,0
-REF-003,TICKET-103,2026-01-01 20:00,Confirmed,UNCONFIRMED,Alice Brown,971505555555,alice@example.com,Viator,Lotus Royale,CASH,2000,0,0,0,0,0,0,0,2,1,0

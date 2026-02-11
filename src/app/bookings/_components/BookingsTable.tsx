@@ -117,9 +117,9 @@ export const generateBookingColumns = (allYachts: Yacht[]): BookingTableColumn[]
     { actualPackageName: 'ROYALE CHILD', category: 'Dinner Cruise' },
     { actualPackageName: 'ROYALE ADULT', category: 'Dinner Cruise' },
     { actualPackageName: 'ROYAL ALC', category: 'Dinner Cruise' },
-    { actualPackageName: 'CHILD TOP DECK', category: 'Dinner Cruise' }, // Using DB Name
-    { actualPackageName: 'ADULT TOP DECK', category: 'Dinner Cruise' }, // Using DB Name
-    { actualPackageName: 'ADULT TOP DECK ALC', category: 'Dinner Cruise' } // Using DB Name
+    { actualPackageName: 'TOP CHILD', category: 'Dinner Cruise' },
+    { actualPackageName: 'TOP ADULT', category: 'Dinner Cruise' },
+    { actualPackageName: 'TOP ALC', category: 'Dinner Cruise' }
   ];
   dinnerCruisePackageDefinitions.forEach(addPackageColumns);
 

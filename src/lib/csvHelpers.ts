@@ -39,16 +39,16 @@ export const leadCsvHeaderMapping: Record<string, any> = {
     'ad': 'pkg_adult', 'adult': 'pkg_adult', 'adult_qty': 'pkg_adult',
     'no._of_pax': 'pkg_pax_complex', 'no.of_pax': 'pkg_pax_complex', 'pax': 'pkg_pax_complex', 'no. of pax': 'pkg_pax_complex', 'pax_count': 'pkg_pax_complex',
     'quantity': 'pkg_pax_complex', 'qty': 'pkg_pax_complex',
-    'chd_top': 'pkg_child_top_deck', 'child_top_deck': 'pkg_child_top_deck', 'top child': 'pkg_child_top_deck', 'top -ch': 'pkg_child_top_deck',
-    'adt_top': 'pkg_adult_top_deck', 'adult_top_deck': 'pkg_adult_top_deck', 'top adult': 'pkg_adult_top_deck', 'top ad': 'pkg_adult_top_deck', 'top  ad': 'pkg_adult_top_deck',
-    'adt_top_alc': 'pkg_adult_top_deck_alc', 'adult_top_deck_alc': 'pkg_adult_top_deck_alc', 'top_alc': 'pkg_adult_top_deck_alc', 'top alc': 'pkg_adult_top_deck_alc', 'top_ad_alc': 'pkg_adult_top_deck_alc',
+    'chd_top': 'pkg_top_child', 'child_top_deck': 'pkg_top_child', 'top child': 'pkg_top_child', 'top -ch': 'pkg_top_child',
+    'adt_top': 'pkg_top_adult', 'adult_top_deck': 'pkg_top_adult', 'top adult': 'pkg_top_adult', 'top ad': 'pkg_top_adult', 'top  ad': 'pkg_top_adult',
+    'adt_top_alc': 'pkg_top_alc', 'adult_top_deck_alc': 'pkg_top_alc', 'top_alc': 'pkg_top_alc', 'top alc': 'pkg_top_alc', 'top_ad_alc': 'pkg_top_alc',
     'ad_alc': 'pkg_adult_alc', 'adult_alc': 'pkg_adult_alc', 'alc': 'pkg_adult_alc', 'alcoholic': 'pkg_adult_alc', 'ad alc': 'pkg_adult_alc',
     'vip_ch': 'pkg_vip_child', 'vip_child': 'pkg_vip_child', 'vip ch': 'pkg_vip_child',
     'vip_ad': 'pkg_vip_adult', 'vip_adult': 'pkg_vip_adult', 'vip ad': 'pkg_vip_adult',
     'vip_alc_pkg': 'pkg_vip_alc', 'vip_adult_alc': 'pkg_vip_alc', 'adult_vip_alc': 'pkg_vip_alc', 'vip ad alc': 'pkg_vip_alc', 'vip alc': 'pkg_vip_alc',
-    'ryl_ch': 'pkg_royal_child', 'royal_child': 'pkg_royal_child', 'royal ch': 'pkg_royal_child', 'ryl ch': 'pkg_royal_child',
-    'ryl_ad': 'pkg_royal_adult', 'royal_adult': 'pkg_royal_adult', 'royal ad': 'pkg_royal_adult', 'ryl ad': 'pkg_royal_adult',
-    'ryl_alc': 'pkg_royal_alc', 'royal_alc': 'pkg_royal_alc', 'royal ad alc': 'pkg_royal_alc', 'ryl alc': 'pkg_royal_alc', 'royal alc': 'pkg_royal_alc',
+    'ryl_ch': 'pkg_royale_child', 'royal_child': 'pkg_royale_child', 'royal ch': 'pkg_royale_child', 'ryl ch': 'pkg_royale_child',
+    'ryl_ad': 'pkg_royale_adult', 'royal_adult': 'pkg_royale_adult', 'royal ad': 'pkg_royale_adult', 'ryl ad': 'pkg_royale_adult',
+    'ryl_alc': 'pkg_royale_alc', 'royal_alc': 'pkg_royale_alc', 'royal ad alc': 'pkg_royale_alc', 'ryl alc': 'pkg_royale_alc', 'royal alc': 'pkg_royale_alc',
     'basic': 'pkg_basic',
     'std': 'pkg_standard', 'standard': 'pkg_standard',
     'prem': 'pkg_premium', 'premium': 'pkg_premium',
@@ -78,9 +78,9 @@ export const leadCsvHeaderMapping: Record<string, any> = {
 
     // Package SQL structure mappings (Directly map to pkg_ internal keys)
     'pkg_child': 'pkg_child', 'pkg_adult': 'pkg_adult', 'pkg_adult_alc': 'pkg_adult_alc',
-    'pkg_child_top_deck': 'pkg_child_top_deck', 'pkg_adult_top_deck': 'pkg_adult_top_deck', 'pkg_adult_top_deck_alc': 'pkg_adult_top_deck_alc',
+    'pkg_child_top_deck': 'pkg_top_child', 'pkg_adult_top_deck': 'pkg_top_adult', 'pkg_adult_top_deck_alc': 'pkg_top_alc',
     'pkg_vip_child': 'pkg_vip_child', 'pkg_vip_adult': 'pkg_vip_adult', 'pkg_vip_alc': 'pkg_vip_alc',
-    'pkg_royal_child': 'pkg_royal_child', 'pkg_royal_adult': 'pkg_royal_adult', 'pkg_royal_alc': 'pkg_royal_alc',
+    'pkg_royal_child': 'pkg_royale_child', 'pkg_royal_adult': 'pkg_royale_adult', 'pkg_royal_alc': 'pkg_royale_alc',
     'yacht_name': 'yacht', 'booking_ref_id': 'bookingRefNo', 'agency_name': 'agent', 'guest_name': 'clientName',
     'grand_total': 'paidAmount', 'total_amount_aed': 'totalAmount', 'booking_remarks': 'notes',
 
@@ -432,8 +432,8 @@ function applyMasterFileLogic(row: { [key: string]: any }) {
     // High Tier Lotus/Royal
     process('master_qty_vip_child', 'Lotus Royale', 'pkg_vip_child');
     process('master_qty_vip_adult', 'Lotus Royale', 'pkg_vip_adult');
-    process('master_qty_royale_child', 'Lotus Royale', 'pkg_royal_child');
-    process('master_qty_royale_adult', 'Lotus Royale', 'pkg_royal_adult');
+    process('master_qty_royale_child', 'Lotus Royale', 'pkg_royale_child');
+    process('master_qty_royale_adult', 'Lotus Royale', 'pkg_royale_adult');
 
 
     if (masterYachtFound) {
@@ -481,19 +481,19 @@ function applyMasterFileLogic(row: { [key: string]: any }) {
     else if (lowerRaw.startsWith('vip') || lowerRaw.startsWith('royale')) {
         row.yacht = 'Lotus Royale';
         if (lowerRaw.includes('child')) {
-            if (lowerRaw.includes('royale')) row.pkg_royal_child = quantity;
+            if (lowerRaw.includes('royale')) row.pkg_royale_child = quantity;
             else row.pkg_vip_child = quantity;
         } else if (lowerRaw.includes('alc') || lowerRaw.includes('alcohol')) {
-            if (lowerRaw.includes('royale')) row.pkg_royal_alc = quantity;
+            if (lowerRaw.includes('royale')) row.pkg_royale_alc = quantity;
             else row.pkg_vip_alc = quantity;
         } else {
-            if (lowerRaw.includes('royale')) row.pkg_royal_adult = quantity;
+            if (lowerRaw.includes('royale')) row.pkg_royale_adult = quantity;
             else row.pkg_vip_adult = quantity;
         }
         // Specific user request overrides: "Royale Adult 999 - royale adult alc"
         if (lowerRaw.includes('royale adult') || lowerRaw.includes('royale adult 999')) {
-            row.pkg_royal_alc = quantity;
-            row.pkg_royal_adult = 0;
+            row.pkg_royale_alc = quantity;
+            row.pkg_royale_adult = 0;
         }
     }
 }
@@ -657,30 +657,30 @@ export function applyPackageTypeDetection(
     // 1. Specific Fix: Ocean Emporess / Top Deck (Typo & Missing Keyword handling)
     if (yachtNameFromCsv && /ocean\s*empo?ress\s*top/i.test(yachtNameFromCsv)) {
         if (adultQty > 0) {
-            if (/alc|alcohol|drink/i.test(yachtNameFromCsv)) parsedRow.pkg_adult_top_deck_alc = adultQty;
-            else parsedRow.pkg_adult_top_deck = adultQty;
+            if (/alc|alcohol|drink/i.test(yachtNameFromCsv)) parsedRow.pkg_top_alc = adultQty;
+            else parsedRow.pkg_top_adult = adultQty;
         }
-        if (childQty > 0) parsedRow.pkg_child_top_deck = childQty;
+        if (childQty > 0) parsedRow.pkg_top_child = childQty;
         parsedRow.yacht = 'OCEAN EMPRESS';
         return;
     }
 
     // 2. Fuzzy Top Deck Detection
     if (rawLower.includes('top') && (rawLower.includes('alc') || rawLower.includes('alcohol'))) {
-        if (adultQty > 0) parsedRow.pkg_adult_top_deck_alc = adultQty;
-        if (childQty > 0) parsedRow.pkg_child_top_deck = childQty;
+        if (adultQty > 0) parsedRow.pkg_top_alc = adultQty;
+        if (childQty > 0) parsedRow.pkg_top_child = childQty;
         parsedRow.yacht = 'OCEAN EMPRESS';
         return;
     }
     if (rawLower.includes('top') && (rawLower.includes('ad') || rawLower.includes('adult'))) {
-        if (adultQty > 0) parsedRow.pkg_adult_top_deck = adultQty;
-        if (childQty > 0) parsedRow.pkg_child_top_deck = childQty;
+        if (adultQty > 0) parsedRow.pkg_top_adult = adultQty;
+        if (childQty > 0) parsedRow.pkg_top_child = childQty;
         parsedRow.yacht = 'OCEAN EMPRESS';
         return;
     }
     if (rawLower.includes('top') && (rawLower.includes('ch') || rawLower.includes('child'))) {
-        if (adultQty > 0) parsedRow.pkg_adult_top_deck = adultQty;
-        if (childQty > 0) parsedRow.pkg_child_top_deck = childQty;
+        if (adultQty > 0) parsedRow.pkg_top_adult = adultQty;
+        if (childQty > 0) parsedRow.pkg_top_child = childQty;
         parsedRow.yacht = 'OCEAN EMPRESS';
         return;
     }
@@ -709,21 +709,21 @@ export function applyPackageTypeDetection(
         } else if (packageTypeFromYachtName.includes('ROYAL')) {
             // Royal packages
             if (packageTypeFromYachtName.includes('ALCOHOL') || packageTypeFromYachtName.includes('ALC')) {
-                if (adultQty > 0) parsedRow.pkg_royal_alc = adultQty;
+                if (adultQty > 0) parsedRow.pkg_royale_alc = adultQty;
             } else {
-                if (adultQty > 0) parsedRow.pkg_royal_adult = adultQty;
-                if (childQty > 0) parsedRow.pkg_royal_child = childQty;
+                if (adultQty > 0) parsedRow.pkg_royale_adult = adultQty;
+                if (childQty > 0) parsedRow.pkg_royale_child = childQty;
             }
         } else if (yachtNameFromCsv.toUpperCase().includes('TOP DECK') || packageTypeFromYachtName.includes('TOP DECK')) {
             // Top Deck packages (Standard detection)
             if (adultQty > 0) {
                 if (packageTypeFromYachtName.includes('ALC') || packageTypeFromYachtName.includes('ALCOHOL') || yachtNameFromCsv.toUpperCase().includes('ALC')) {
-                    parsedRow.pkg_adult_top_deck_alc = adultQty;
+                    parsedRow.pkg_top_alc = adultQty;
                 } else {
-                    parsedRow.pkg_adult_top_deck = adultQty;
+                    parsedRow.pkg_top_adult = adultQty;
                 }
             }
-            if (childQty > 0) parsedRow.pkg_child_top_deck = childQty;
+            if (childQty > 0) parsedRow.pkg_top_child = childQty;
         } else if (packageTypeFromYachtName.includes('FOOD') || packageTypeFromYachtName.includes('SOFT') || packageTypeFromYachtName.includes('ONLY') || packageTypeFromYachtName.includes('STANDARD') || packageTypeFromYachtName.includes('REGULAR') || packageTypeFromYachtName.includes('DRINK')) {
             // "Food only", "Soft Drinks", "Standard", "Regular"
             if (adultQty > 0) parsedRow.pkg_adult = adultQty;

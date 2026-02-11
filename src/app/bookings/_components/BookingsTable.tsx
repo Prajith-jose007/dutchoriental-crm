@@ -138,7 +138,12 @@ export const generateBookingColumns = (allYachts: Yacht[]): BookingTableColumn[]
   const explicitPackageNames = new Set([
     ...dinnerCruisePackageDefinitions.map(p => p.actualPackageName.toUpperCase()),
     ...sightseeingPackageDefinitions.map(p => p.actualPackageName.toUpperCase()),
-    ...privateCharterPackageDefinitions.map(p => p.actualPackageName.toUpperCase())
+    ...privateCharterPackageDefinitions.map(p => p.actualPackageName.toUpperCase()),
+    // Exclude known legacy/duplicate/alias package names from the "Other" section
+    'CHILD TOP DECK', 'ADULT TOP DECK', 'ADULT TOP DECK ALC',
+    'TOP -CH', 'TOP -', 'TOP AD', 'TOP ALC',
+    'VIP ALC', // Ensure if defined in definitions it isn't duplicated
+    'ROYAL ALC'
   ]);
   const otherPackagesFound = new Map<string, { category?: string }>();
   allYachts.forEach(yacht => {

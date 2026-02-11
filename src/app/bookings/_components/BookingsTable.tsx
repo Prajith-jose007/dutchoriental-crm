@@ -44,24 +44,24 @@ export type BookingTableColumn = {
 };
 
 export const packageHeaderMap: { [fullPackageName: string]: string } = {
-  'CHILD': 'CH',
-  'ADULT': 'AD',
-  'ADULT ALC': 'AD ALC',
-  'VIP CHILD': 'VIP CH',
-  'VIP ADULT': 'VIP AD',
-  'VIP ADULT ALC': 'VIP ALC', // Matched to Definition
-  'VIP ALC': 'VIP ALC', // Fallback
-  'ROYALE CHILD': 'RYL CH', // Matched to Definition
-  'ROYAL CHILD': 'RYL CH', // Fallback
-  'ROYALE ADULT': 'RYL AD', // Matched to Definition
-  'ROYAL ADULT': 'RYL AD', // Fallback
-  'ROYAL ALC': 'RYL ALC',
-  'TOP CHILD': 'Top ch', // Matched to Definition
-  'CHILD TOP DECK': 'Top ch', // Fallback
-  'TOP ADULT': 'Top ad', // Matched to Definition
-  'ADULT TOP DECK': 'Top ad', // Fallback
-  'TOP ALC': 'Top alc', // Matched to Definition
-  'ADULT TOP DECK ALC': 'Top alc', // Fallback
+  'CHILD': 'Ch',
+  'ADULT': 'Ad',
+  'ADULT ALC': 'Ad alc',
+  'VIP CHILD': 'VIP ch',
+  'VIP ADULT': 'VIP ad',
+  'VIP ADULT ALC': 'VIP alc',
+  'VIP ALC': 'VIP alc',
+  'ROYALE CHILD': 'RYL ch',
+  'ROYAL CHILD': 'RYL ch',
+  'ROYALE ADULT': 'RYL ad',
+  'ROYAL ADULT': 'RYL ad',
+  'ROYAL ALC': 'RYL alc',
+  'CHILD TOP DECK': 'Top ch',
+  'ADULT TOP DECK': 'Top ad',
+  'ADULT TOP DECK ALC': 'Top alc',
+  'TOP CHILD': 'Top ch',
+  'TOP ADULT': 'Top ad',
+  'TOP ALC': 'Top alc',
   'BASIC': 'Basic',
   'STANDARD': 'Standard',
   'PREMIUM': 'PREM',

@@ -93,7 +93,7 @@ export const generateBookingColumns = (allYachts: Yacht[]): BookingTableColumn[]
 
   const addPackageColumns = (pkgDef: { actualPackageName: string; category: string }) => {
     if (allYachts.some(y => y.category === pkgDef.category && y.packages?.some(p => p.name.toUpperCase() === pkgDef.actualPackageName.toUpperCase()))) {
-      const shortHeader = packageHeaderMap[pkgDef.actualPackageName.toUpperCase()] || pkgDef.actualPackageName.substring(0, 6);
+      const shortHeader = packageHeaderMap[pkgDef.actualPackageName.toUpperCase()] || pkgDef.actualPackageName;
       const baseAccessorKey = pkgDef.actualPackageName.replace(/\s+/g, '_').toLowerCase();
 
       columns.push({
@@ -113,7 +113,7 @@ export const generateBookingColumns = (allYachts: Yacht[]): BookingTableColumn[]
     { actualPackageName: 'ADULT ALC', category: 'Dinner Cruise' },
     { actualPackageName: 'VIP CHILD', category: 'Dinner Cruise' },
     { actualPackageName: 'VIP ADULT', category: 'Dinner Cruise' },
-    { actualPackageName: 'VIP ALC', category: 'Dinner Cruise' }, // Standardized on VIP ALC
+    { actualPackageName: 'VIP ADULT ALC', category: 'Dinner Cruise' }, // Reverted to DB Name
     { actualPackageName: 'ROYALE CHILD', category: 'Dinner Cruise' },
     { actualPackageName: 'ROYALE ADULT', category: 'Dinner Cruise' },
     { actualPackageName: 'ROYAL ALC', category: 'Dinner Cruise' },
@@ -140,8 +140,7 @@ export const generateBookingColumns = (allYachts: Yacht[]): BookingTableColumn[]
     ...sightseeingPackageDefinitions.map(p => p.actualPackageName.toUpperCase()),
     ...privateCharterPackageDefinitions.map(p => p.actualPackageName.toUpperCase()),
     // Exclude garbage/alias names
-    'TOP -CH', 'TOP -', 'TOP AD', 'TOP ALC',
-    'VIP ADULT ALC' // Hide the long variant if we strictly use VIP ALC now
+    'TOP -CH', 'TOP -', 'TOP AD', 'TOP ALC'
   ]);
   const otherPackagesFound = new Map<string, { category?: string }>();
   allYachts.forEach(yacht => {

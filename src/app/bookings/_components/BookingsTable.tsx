@@ -140,7 +140,9 @@ export const generateBookingColumns = (allYachts: Yacht[]): BookingTableColumn[]
     ...sightseeingPackageDefinitions.map(p => p.actualPackageName.toUpperCase()),
     ...privateCharterPackageDefinitions.map(p => p.actualPackageName.toUpperCase()),
     // Exclude garbage/alias names
-    'TOP -CH', 'TOP -', 'TOP AD', 'TOP ALC'
+    // Exclude garbage/alias names
+    'TOP -CH', 'TOP -', 'TOP AD', 'TOP ALC',
+    'VIP ALC', 'ADULT VIP ALC' // Exclude duplicate/legacy variants to prevent repeated headers
   ]);
   const otherPackagesFound = new Map<string, { category?: string }>();
   allYachts.forEach(yacht => {

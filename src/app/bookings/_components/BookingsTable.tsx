@@ -86,8 +86,8 @@ export const generateBookingColumns = (allYachts: Yacht[]): BookingTableColumn[]
   columns.push(...baseInfoColumns);
 
   const addPackageColumns = (pkgDef: { actualPackageName: string; category: string }) => {
-    if (allYachts.some(y => y.category === pkgDef.category && y.packages?.some(p => p.name === pkgDef.actualPackageName))) {
-      const shortHeader = packageHeaderMap[pkgDef.actualPackageName] || pkgDef.actualPackageName.substring(0, 6);
+    if (allYachts.some(y => y.category === pkgDef.category && y.packages?.some(p => p.name.toUpperCase() === pkgDef.actualPackageName.toUpperCase()))) {
+      const shortHeader = packageHeaderMap[pkgDef.actualPackageName.toUpperCase()] || pkgDef.actualPackageName.substring(0, 6);
       const baseAccessorKey = pkgDef.actualPackageName.replace(/\s+/g, '_').toLowerCase();
 
       columns.push({
@@ -107,13 +107,13 @@ export const generateBookingColumns = (allYachts: Yacht[]): BookingTableColumn[]
     { actualPackageName: 'ADULT ALC', category: 'Dinner Cruise' },
     { actualPackageName: 'VIP CHILD', category: 'Dinner Cruise' },
     { actualPackageName: 'VIP ADULT', category: 'Dinner Cruise' },
-    { actualPackageName: 'VIP ALC', category: 'Dinner Cruise' },
-    { actualPackageName: 'ROYAL CHILD', category: 'Dinner Cruise' },
-    { actualPackageName: 'ROYAL ADULT', category: 'Dinner Cruise' },
+    { actualPackageName: 'VIP ADULT ALC', category: 'Dinner Cruise' }, // Changed from 'VIP ALC'
+    { actualPackageName: 'ROYALE CHILD', category: 'Dinner Cruise' }, // Changed from 'ROYAL CHILD'
+    { actualPackageName: 'ROYALE ADULT', category: 'Dinner Cruise' }, // Changed from 'ROYAL ADULT'
     { actualPackageName: 'ROYAL ALC', category: 'Dinner Cruise' },
-    { actualPackageName: 'CHILD TOP DECK', category: 'Dinner Cruise' },
-    { actualPackageName: 'ADULT TOP DECK', category: 'Dinner Cruise' },
-    { actualPackageName: 'ADULT TOP DECK ALC', category: 'Dinner Cruise' }
+    { actualPackageName: 'TOP CHILD', category: 'Dinner Cruise' }, // Changed from 'CHILD TOP DECK'
+    { actualPackageName: 'TOP ADULT', category: 'Dinner Cruise' }, // Changed from 'ADULT TOP DECK'
+    { actualPackageName: 'TOP ALC', category: 'Dinner Cruise' } // Changed from 'ADULT TOP DECK ALC'
   ];
   dinnerCruisePackageDefinitions.forEach(addPackageColumns);
 
@@ -130,14 +130,14 @@ export const generateBookingColumns = (allYachts: Yacht[]): BookingTableColumn[]
   privateCharterPackageDefinitions.forEach(addPackageColumns);
 
   const explicitPackageNames = new Set([
-    ...dinnerCruisePackageDefinitions.map(p => p.actualPackageName),
-    ...sightseeingPackageDefinitions.map(p => p.actualPackageName),
-    ...privateCharterPackageDefinitions.map(p => p.actualPackageName)
+    ...dinnerCruisePackageDefinitions.map(p => p.actualPackageName.toUpperCase()),
+    ...sightseeingPackageDefinitions.map(p => p.actualPackageName.toUpperCase()),
+    ...privateCharterPackageDefinitions.map(p => p.actualPackageName.toUpperCase())
   ]);
   const otherPackagesFound = new Map<string, { category?: string }>();
   allYachts.forEach(yacht => {
     yacht.packages?.forEach(pkg => {
-      if (pkg.name && !explicitPackageNames.has(pkg.name) && pkg.name !== "Soft Drinks Package pp") {
+      if (pkg.name && !explicitPackageNames.has(pkg.name.toUpperCase()) && pkg.name.toUpperCase() !== "SOFT DRINKS PACKAGE PP") { // Case-insensitive check for exclusion
         if (!otherPackagesFound.has(pkg.name)) {
           otherPackagesFound.set(pkg.name, { category: yacht.category });
         }

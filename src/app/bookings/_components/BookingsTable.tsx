@@ -103,13 +103,13 @@ export const generateBookingColumns = (allYachts: Yacht[]): BookingTableColumn[]
 
   const dinnerCruisePackageDefinitions = [
     { actualPackageName: 'CHILD', category: 'Dinner Cruise' }, { actualPackageName: 'ADULT', category: 'Dinner Cruise' },
-    { actualPackageName: 'CHILD TOP DECK', category: 'Dinner Cruise' }, { actualPackageName: 'ADULT TOP DECK', category: 'Dinner Cruise' },
-    { actualPackageName: 'ADULT TOP DECK ALC', category: 'Dinner Cruise' },
     { actualPackageName: 'ADULT ALC', category: 'Dinner Cruise' },
     { actualPackageName: 'VIP CHILD', category: 'Dinner Cruise' }, { actualPackageName: 'VIP ADULT', category: 'Dinner Cruise' },
     { actualPackageName: 'VIP ALC', category: 'Dinner Cruise' },
     { actualPackageName: 'ROYAL CHILD', category: 'Dinner Cruise' }, { actualPackageName: 'ROYAL ADULT', category: 'Dinner Cruise' },
-    { actualPackageName: 'ROYAL ALC', category: 'Dinner Cruise' }
+    { actualPackageName: 'ROYAL ALC', category: 'Dinner Cruise' },
+    { actualPackageName: 'CHILD TOP DECK', category: 'Dinner Cruise' }, { actualPackageName: 'ADULT TOP DECK', category: 'Dinner Cruise' },
+    { actualPackageName: 'ADULT TOP DECK ALC', category: 'Dinner Cruise' }
   ];
   dinnerCruisePackageDefinitions.forEach(addPackageColumns);
 

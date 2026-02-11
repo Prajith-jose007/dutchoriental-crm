@@ -49,13 +49,19 @@ export const packageHeaderMap: { [fullPackageName: string]: string } = {
   'ADULT ALC': 'AD ALC',
   'VIP CHILD': 'VIP CH',
   'VIP ADULT': 'VIP AD',
-  'VIP ALC': 'VIP ALC',
-  'ROYAL CHILD': 'RYL CH',
-  'ROYAL ADULT': 'RYL AD',
+  'VIP ADULT ALC': 'VIP ALC', // Matched to Definition
+  'VIP ALC': 'VIP ALC', // Fallback
+  'ROYALE CHILD': 'RYL CH', // Matched to Definition
+  'ROYAL CHILD': 'RYL CH', // Fallback
+  'ROYALE ADULT': 'RYL AD', // Matched to Definition
+  'ROYAL ADULT': 'RYL AD', // Fallback
   'ROYAL ALC': 'RYL ALC',
-  'CHILD TOP DECK': 'Top -ch',
-  'ADULT TOP DECK': 'Top ad',
-  'ADULT TOP DECK ALC': 'Top alc',
+  'TOP CHILD': 'Top -ch', // Matched to Definition
+  'CHILD TOP DECK': 'Top -ch', // Fallback
+  'TOP ADULT': 'Top ad', // Matched to Definition
+  'ADULT TOP DECK': 'Top ad', // Fallback
+  'TOP ALC': 'Top alc', // Matched to Definition
+  'ADULT TOP DECK ALC': 'Top alc', // Fallback
   'BASIC': 'Basic',
   'STANDARD': 'Standard',
   'PREMIUM': 'PREM',

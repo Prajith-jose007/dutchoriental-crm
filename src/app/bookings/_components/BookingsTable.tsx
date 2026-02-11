@@ -146,7 +146,12 @@ export const generateBookingColumns = (allYachts: Yacht[]): BookingTableColumn[]
   const otherPackagesFound = new Map<string, { category?: string }>();
   allYachts.forEach(yacht => {
     yacht.packages?.forEach(pkg => {
-      if (pkg.name && !explicitPackageNames.has(pkg.name.toUpperCase()) && pkg.name.toUpperCase() !== "SOFT DRINKS PACKAGE PP") { // Case-insensitive check for exclusion
+      const pName = pkg.name ? pkg.name.toUpperCase() : '';
+      if (pName &&
+        !explicitPackageNames.has(pName) &&
+        pName !== "SOFT DRINKS PACKAGE PP" &&
+        !pName.startsWith('TOP -') // Aggressively exclude any "Top -" variants that cause header issues
+      ) {
         if (!otherPackagesFound.has(pkg.name)) {
           otherPackagesFound.set(pkg.name, { category: yacht.category });
         }

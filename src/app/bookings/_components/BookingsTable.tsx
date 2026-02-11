@@ -46,9 +46,9 @@ export type BookingTableColumn = {
 export const packageHeaderMap: { [fullPackageName: string]: string } = {
   'CHILD': 'CH',
   'ADULT': 'AD',
-  'CHILD TOP DECK': 'TOP-CH',
-  'ADULT TOP DECK': 'TOP-AD',
-  'ADULT TOP DECK ALC': 'TOP-ALC',
+  'CHILD TOP DECK': 'Top Child',
+  'ADULT TOP DECK': 'Top Adult',
+  'ADULT TOP DECK ALC': 'Top Alc',
   'ADULT ALC': 'AD ALC',
   'VIP CHILD': 'VIP CH',
   'VIP ADULT': 'VIP AD',

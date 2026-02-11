@@ -56,8 +56,8 @@ export const packageHeaderMap: { [fullPackageName: string]: string } = {
   'ROYALE ADULT': 'RYL AD', // Matched to Definition
   'ROYAL ADULT': 'RYL AD', // Fallback
   'ROYAL ALC': 'RYL ALC',
-  'TOP CHILD': 'Top -ch', // Matched to Definition
-  'CHILD TOP DECK': 'Top -ch', // Fallback
+  'TOP CHILD': 'Top ch', // Matched to Definition
+  'CHILD TOP DECK': 'Top ch', // Fallback
   'TOP ADULT': 'Top ad', // Matched to Definition
   'ADULT TOP DECK': 'Top ad', // Fallback
   'TOP ALC': 'Top alc', // Matched to Definition

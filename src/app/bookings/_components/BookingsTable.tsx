@@ -113,13 +113,13 @@ export const generateBookingColumns = (allYachts: Yacht[]): BookingTableColumn[]
     { actualPackageName: 'ADULT ALC', category: 'Dinner Cruise' },
     { actualPackageName: 'VIP CHILD', category: 'Dinner Cruise' },
     { actualPackageName: 'VIP ADULT', category: 'Dinner Cruise' },
-    { actualPackageName: 'VIP ADULT ALC', category: 'Dinner Cruise' }, // Changed from 'VIP ALC'
-    { actualPackageName: 'ROYALE CHILD', category: 'Dinner Cruise' }, // Changed from 'ROYAL CHILD'
-    { actualPackageName: 'ROYALE ADULT', category: 'Dinner Cruise' }, // Changed from 'ROYAL ADULT'
+    { actualPackageName: 'VIP ALC', category: 'Dinner Cruise' }, // Standardized on VIP ALC
+    { actualPackageName: 'ROYALE CHILD', category: 'Dinner Cruise' },
+    { actualPackageName: 'ROYALE ADULT', category: 'Dinner Cruise' },
     { actualPackageName: 'ROYAL ALC', category: 'Dinner Cruise' },
-    { actualPackageName: 'TOP CHILD', category: 'Dinner Cruise' }, // Changed from 'CHILD TOP DECK'
-    { actualPackageName: 'TOP ADULT', category: 'Dinner Cruise' }, // Changed from 'ADULT TOP DECK'
-    { actualPackageName: 'TOP ALC', category: 'Dinner Cruise' } // Changed from 'ADULT TOP DECK ALC'
+    { actualPackageName: 'CHILD TOP DECK', category: 'Dinner Cruise' }, // Using DB Name
+    { actualPackageName: 'ADULT TOP DECK', category: 'Dinner Cruise' }, // Using DB Name
+    { actualPackageName: 'ADULT TOP DECK ALC', category: 'Dinner Cruise' } // Using DB Name
   ];
   dinnerCruisePackageDefinitions.forEach(addPackageColumns);
 
@@ -139,11 +139,9 @@ export const generateBookingColumns = (allYachts: Yacht[]): BookingTableColumn[]
     ...dinnerCruisePackageDefinitions.map(p => p.actualPackageName.toUpperCase()),
     ...sightseeingPackageDefinitions.map(p => p.actualPackageName.toUpperCase()),
     ...privateCharterPackageDefinitions.map(p => p.actualPackageName.toUpperCase()),
-    // Exclude known legacy/duplicate/alias package names from the "Other" section
-    'CHILD TOP DECK', 'ADULT TOP DECK', 'ADULT TOP DECK ALC',
+    // Exclude garbage/alias names
     'TOP -CH', 'TOP -', 'TOP AD', 'TOP ALC',
-    'VIP ALC', // Ensure if defined in definitions it isn't duplicated
-    'ROYAL ALC'
+    'VIP ADULT ALC' // Hide the long variant if we strictly use VIP ALC now
   ]);
   const otherPackagesFound = new Map<string, { category?: string }>();
   allYachts.forEach(yacht => {

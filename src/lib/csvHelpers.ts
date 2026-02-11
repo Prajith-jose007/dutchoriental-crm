@@ -656,30 +656,30 @@ export function applyPackageTypeDetection(
 
     if (yachtNameFromCsv && /ocean\s*empo?ress\s*top/i.test(yachtNameFromCsv)) {
         if (adultQty > 0) {
-            if (/alc|alcohol|drink/i.test(yachtNameFromCsv)) parsedRow.pkg_top_alc = adultQty;
-            else parsedRow.pkg_top_adult = adultQty;
+            if (/alc|alcohol|drink/i.test(yachtNameFromCsv)) parsedRow.pkg_adult_top_deck_alc = adultQty;
+            else parsedRow.pkg_adult_top_deck = adultQty;
         }
-        if (childQty > 0) parsedRow.pkg_top_child = childQty;
+        if (childQty > 0) parsedRow.pkg_child_top_deck = childQty;
         parsedRow.yacht = 'OCEAN EMPRESS';
         return;
     }
 
     // 2. Fuzzy Top Deck Detection
     if (rawLower.includes('top') && (rawLower.includes('alc') || rawLower.includes('alcohol'))) {
-        if (adultQty > 0) parsedRow.pkg_top_alc = adultQty;
-        if (childQty > 0) parsedRow.pkg_top_child = childQty;
+        if (adultQty > 0) parsedRow.pkg_adult_top_deck_alc = adultQty;
+        if (childQty > 0) parsedRow.pkg_child_top_deck = childQty;
         parsedRow.yacht = 'OCEAN EMPRESS';
         return;
     }
     if (rawLower.includes('top') && (rawLower.includes('ad') || rawLower.includes('adult'))) {
-        if (adultQty > 0) parsedRow.pkg_top_adult = adultQty;
-        if (childQty > 0) parsedRow.pkg_top_child = childQty;
+        if (adultQty > 0) parsedRow.pkg_adult_top_deck = adultQty;
+        if (childQty > 0) parsedRow.pkg_child_top_deck = childQty;
         parsedRow.yacht = 'OCEAN EMPRESS';
         return;
     }
     if (rawLower.includes('top') && (rawLower.includes('ch') || rawLower.includes('child'))) {
-        if (adultQty > 0) parsedRow.pkg_top_adult = adultQty;
-        if (childQty > 0) parsedRow.pkg_top_child = childQty;
+        if (adultQty > 0) parsedRow.pkg_adult_top_deck = adultQty;
+        if (childQty > 0) parsedRow.pkg_child_top_deck = childQty;
         parsedRow.yacht = 'OCEAN EMPRESS';
         return;
     }
@@ -717,12 +717,12 @@ export function applyPackageTypeDetection(
             // Top Deck packages (Standard detection)
             if (adultQty > 0) {
                 if (packageTypeFromYachtName.includes('ALC') || packageTypeFromYachtName.includes('ALCOHOL') || yachtNameFromCsv.toUpperCase().includes('ALC')) {
-                    parsedRow.pkg_top_alc = adultQty;
+                    parsedRow.pkg_adult_top_deck_alc = adultQty;
                 } else {
-                    parsedRow.pkg_top_adult = adultQty;
+                    parsedRow.pkg_adult_top_deck = adultQty;
                 }
             }
-            if (childQty > 0) parsedRow.pkg_top_child = childQty;
+            if (childQty > 0) parsedRow.pkg_child_top_deck = childQty;
         } else if (packageTypeFromYachtName.includes('FOOD') || packageTypeFromYachtName.includes('SOFT') || packageTypeFromYachtName.includes('ONLY') || packageTypeFromYachtName.includes('STANDARD') || packageTypeFromYachtName.includes('REGULAR') || packageTypeFromYachtName.includes('DRINK')) {
             // "Food only", "Soft Drinks", "Standard", "Regular"
             if (adultQty > 0) parsedRow.pkg_adult = adultQty;

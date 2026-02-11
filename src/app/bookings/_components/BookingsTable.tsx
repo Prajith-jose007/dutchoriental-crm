@@ -46,9 +46,6 @@ export type BookingTableColumn = {
 export const packageHeaderMap: { [fullPackageName: string]: string } = {
   'CHILD': 'CH',
   'ADULT': 'AD',
-  'CHILD TOP DECK': 'Top Child',
-  'ADULT TOP DECK': 'Top Adult',
-  'ADULT TOP DECK ALC': 'Top Alc',
   'ADULT ALC': 'AD ALC',
   'VIP CHILD': 'VIP CH',
   'VIP ADULT': 'VIP AD',
@@ -56,8 +53,11 @@ export const packageHeaderMap: { [fullPackageName: string]: string } = {
   'ROYAL CHILD': 'RYL CH',
   'ROYAL ADULT': 'RYL AD',
   'ROYAL ALC': 'RYL ALC',
-  'BASIC': 'BASIC',
-  'STANDARD': 'STD',
+  'CHILD TOP DECK': 'Top -ch',
+  'ADULT TOP DECK': 'Top ad',
+  'ADULT TOP DECK ALC': 'Top alc',
+  'BASIC': 'Basic',
+  'STANDARD': 'Standard',
   'PREMIUM': 'PREM',
   'VIP': 'VIP',
   'HOUR CHARTER': 'HrChtr',
@@ -102,20 +102,25 @@ export const generateBookingColumns = (allYachts: Yacht[]): BookingTableColumn[]
   };
 
   const dinnerCruisePackageDefinitions = [
-    { actualPackageName: 'CHILD', category: 'Dinner Cruise' }, { actualPackageName: 'ADULT', category: 'Dinner Cruise' },
+    { actualPackageName: 'CHILD', category: 'Dinner Cruise' },
+    { actualPackageName: 'ADULT', category: 'Dinner Cruise' },
     { actualPackageName: 'ADULT ALC', category: 'Dinner Cruise' },
-    { actualPackageName: 'VIP CHILD', category: 'Dinner Cruise' }, { actualPackageName: 'VIP ADULT', category: 'Dinner Cruise' },
+    { actualPackageName: 'VIP CHILD', category: 'Dinner Cruise' },
+    { actualPackageName: 'VIP ADULT', category: 'Dinner Cruise' },
     { actualPackageName: 'VIP ALC', category: 'Dinner Cruise' },
-    { actualPackageName: 'ROYAL CHILD', category: 'Dinner Cruise' }, { actualPackageName: 'ROYAL ADULT', category: 'Dinner Cruise' },
+    { actualPackageName: 'ROYAL CHILD', category: 'Dinner Cruise' },
+    { actualPackageName: 'ROYAL ADULT', category: 'Dinner Cruise' },
     { actualPackageName: 'ROYAL ALC', category: 'Dinner Cruise' },
-    { actualPackageName: 'CHILD TOP DECK', category: 'Dinner Cruise' }, { actualPackageName: 'ADULT TOP DECK', category: 'Dinner Cruise' },
+    { actualPackageName: 'CHILD TOP DECK', category: 'Dinner Cruise' },
+    { actualPackageName: 'ADULT TOP DECK', category: 'Dinner Cruise' },
     { actualPackageName: 'ADULT TOP DECK ALC', category: 'Dinner Cruise' }
   ];
   dinnerCruisePackageDefinitions.forEach(addPackageColumns);
 
   const sightseeingPackageDefinitions = [
-    { actualPackageName: 'BASIC', category: 'Superyacht Sightseeing Cruise' }, { actualPackageName: 'STANDARD', category: 'Superyacht Sightseeing Cruise' },
-    { actualPackageName: 'PREMIUM', category: 'Superyacht Sightseeing Cruise' }, { actualPackageName: 'VIP', category: 'Superyacht Sightseeing Cruise' }
+    { actualPackageName: 'BASIC', category: 'Superyacht Sightseeing Cruise' },
+    { actualPackageName: 'STANDARD', category: 'Superyacht Sightseeing Cruise' },
+    { actualPackageName: 'VIP', category: 'Superyacht Sightseeing Cruise' }
   ];
   sightseeingPackageDefinitions.forEach(addPackageColumns);
 

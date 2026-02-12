@@ -51,21 +51,25 @@ export const packageHeaderMap: { [fullPackageName: string]: string } = {
   'VIP ADULT': 'VIP ad',
   'VIP ADULT ALC': 'VIP alc',
   'VIP ALC': 'VIP alc',
-  'ROYALE CHILD': 'RYL ch',
-  'ROYAL CHILD': 'RYL ch',
-  'ROYALE ADULT': 'RYL ad',
-  'ROYAL ADULT': 'RYL ad',
-  'ROYAL ALC': 'RYL alc',
-  'CHILD TOP DECK': 'Top ch',
-  'ADULT TOP DECK': 'Top ad',
-  'ADULT TOP DECK ALC': 'Top alc',
-  'TOP CHILD': 'Top ch',
-  'TOP ADULT': 'Top ad',
-  'TOP ALC': 'Top alc',
-  'BASIC': 'Basic',
-  'STANDARD': 'Standard',
-  'PREMIUM': 'PREM',
-  'VIP': 'VIP',
+  'VIP ALCOHOLIC': 'VIP alc',
+  'ROYALE CHILD': 'royale ch',
+  'ROYAL CHILD': 'royale ch',
+  'ROYALE ADULT': 'royale ad',
+  'ROYAL ADULT': 'royale ad',
+  'ROYAL ALC': 'royale alc',
+  'CHILD TOP DECK': 'top ch',
+  'ADULT TOP DECK': 'top ad',
+  'ALC TOP DECK': 'top alc',
+  'TOP CHILD': 'top ch',
+  'TOP ADULT': 'top ad',
+  'TOP ALC': 'top alc',
+  'TOP - CHILD': 'top ch',
+  'TOP - ADULT': 'top ad',
+  'TOP - ALC': 'top alc',
+  'BASIC': 'basic',
+  'STANDARD': 'std',
+  'PREMIUM': 'premium',
+  'VIP': 'vip',
   'HOUR CHARTER': 'HrChtr',
 };
 
@@ -77,17 +81,17 @@ export const generateBookingColumns = (allYachts: Yacht[]): BookingTableColumn[]
     { accessorKey: 'select', header: '' },
     { accessorKey: 'id', header: 'ID' },
     { accessorKey: 'status', header: 'Status' },
-    { accessorKey: 'checkInStatus', header: 'Check-In' },
-    { accessorKey: 'month', header: 'Date', isShortDate: true },
-    { accessorKey: 'yacht', header: 'Yacht', isYachtLookup: true },
-    { accessorKey: 'agent', header: 'Agent', isAgentLookup: true },
-    { accessorKey: 'clientName', header: 'Client' },
-    { accessorKey: 'paymentConfirmationStatus', header: 'Confirmed' },
-    { accessorKey: 'type', header: 'Type' },
-    { accessorKey: 'transactionId', header: 'Trans ID' },
-    { accessorKey: 'bookingRefNo', header: 'REF' },
-    { accessorKey: 'modeOfPayment', header: 'Mode' },
-    { accessorKey: 'freeGuestCount', header: 'Free', isNumeric: true },
+    { accessorKey: 'checkInStatus', header: 'check-in' },
+    { accessorKey: 'month', header: 'travel date', isShortDate: true },
+    { accessorKey: 'yacht', header: 'yacht', isYachtLookup: true },
+    { accessorKey: 'agent', header: 'agent', isAgentLookup: true },
+    { accessorKey: 'clientName', header: 'client' },
+    // { accessorKey: 'paymentConfirmationStatus', header: 'Confirmed' }, // Removed as per request
+    // { accessorKey: 'type', header: 'Type' }, // Removed as per request
+    { accessorKey: 'transactionId', header: 'trans ID' },
+    { accessorKey: 'bookingRefNo', header: 'ref' },
+    { accessorKey: 'modeOfPayment', header: 'mode of payment' },
+    { accessorKey: 'freeGuestCount', header: 'free', isNumeric: true },
   ];
   columns.push(...baseInfoColumns);
 
@@ -113,13 +117,19 @@ export const generateBookingColumns = (allYachts: Yacht[]): BookingTableColumn[]
     { actualPackageName: 'ADULT ALC', category: 'Dinner Cruise' },
     { actualPackageName: 'VIP CHILD', category: 'Dinner Cruise' },
     { actualPackageName: 'VIP ADULT', category: 'Dinner Cruise' },
-    { actualPackageName: 'VIP ADULT ALC', category: 'Dinner Cruise' }, // Reverted to DB Name
-    { actualPackageName: 'ROYALE CHILD', category: 'Dinner Cruise' },
-    { actualPackageName: 'ROYALE ADULT', category: 'Dinner Cruise' },
-    { actualPackageName: 'ROYAL ALC', category: 'Dinner Cruise' },
+    { actualPackageName: 'VIP ADULT ALC', category: 'Dinner Cruise' },
     { actualPackageName: 'CHILD TOP DECK', category: 'Dinner Cruise' },
     { actualPackageName: 'ADULT TOP DECK', category: 'Dinner Cruise' },
-    { actualPackageName: 'ADULT TOP DECK ALC', category: 'Dinner Cruise' }
+    { actualPackageName: 'ALC TOP DECK', category: 'Dinner Cruise' },
+    { actualPackageName: 'TOP CHILD', category: 'Dinner Cruise' },
+    { actualPackageName: 'TOP ADULT', category: 'Dinner Cruise' },
+    { actualPackageName: 'TOP ALC', category: 'Dinner Cruise' },
+    { actualPackageName: 'TOP - CHILD', category: 'Dinner Cruise' },
+    { actualPackageName: 'TOP - ADULT', category: 'Dinner Cruise' },
+    { actualPackageName: 'TOP - ALC', category: 'Dinner Cruise' },
+    { actualPackageName: 'ROYALE CHILD', category: 'Dinner Cruise' },
+    { actualPackageName: 'ROYALE ADULT', category: 'Dinner Cruise' },
+    { actualPackageName: 'ROYAL ALC', category: 'Dinner Cruise' }
   ];
   dinnerCruisePackageDefinitions.forEach(addPackageColumns);
 
@@ -141,7 +151,6 @@ export const generateBookingColumns = (allYachts: Yacht[]): BookingTableColumn[]
     ...privateCharterPackageDefinitions.map(p => p.actualPackageName.toUpperCase()),
     // Exclude garbage/alias names
     // Exclude garbage/alias names
-    'TOP -CH', 'TOP -', 'TOP AD', 'TOP ALC',
     'VIP ALC', 'ADULT VIP ALC' // Exclude duplicate/legacy variants to prevent repeated headers
   ]);
   const otherPackagesFound = new Map<string, { category?: string }>();
@@ -150,8 +159,8 @@ export const generateBookingColumns = (allYachts: Yacht[]): BookingTableColumn[]
       const pName = pkg.name ? pkg.name.toUpperCase() : '';
       if (pName &&
         !explicitPackageNames.has(pName) &&
-        pName !== "SOFT DRINKS PACKAGE PP" &&
-        !pName.startsWith('TOP -') // Aggressively exclude any "Top -" variants that cause header issues
+        pName !== "SOFT DRINKS PACKAGE PP"
+        // !pName.startsWith('TOP -') // Removed exclusion to allow Top Deck packages
       ) {
         if (!otherPackagesFound.has(pkg.name)) {
           otherPackagesFound.set(pkg.name, { category: yacht.category });
@@ -165,31 +174,31 @@ export const generateBookingColumns = (allYachts: Yacht[]): BookingTableColumn[]
 
 
   const accountsColumns: BookingTableColumn[] = [
-    { accessorKey: 'totalGuestsCalculated', header: 'Booked', isNumeric: true },
-    { accessorKey: 'arrivedGuestsCalculated', header: 'Arrived', isNumeric: true },
-    { accessorKey: 'perTicketRate', header: 'Addon', isCurrency: true },
-    { accessorKey: 'totalAmount', header: 'Total Amt', isCurrency: true },
-    { accessorKey: 'averageRateCalculated', header: 'Rate', isCurrency: true },
-    { accessorKey: 'commissionPercentage', header: 'Disc %', isPercentage: true },
-    { accessorKey: 'commissionAmount', header: 'Comm.', isCurrency: true },
-    { accessorKey: 'netAmount', header: 'Net', isCurrency: true },
-    { accessorKey: 'paidAmount', header: 'Paid', isCurrency: true },
-    { accessorKey: 'collectedAtCheckIn', header: 'Coll. @ Check-in', isCurrency: true },
-    { accessorKey: 'balanceAmount', header: 'Bal', isCurrency: true },
+    // { accessorKey: 'totalGuestsCalculated', header: 'Booked', isNumeric: true }, // Removed as per request (not in list)
+    { accessorKey: 'arrivedGuestsCalculated', header: 'arrived', isNumeric: true },
+    { accessorKey: 'perTicketRate', header: 'addon', isCurrency: true },
+    { accessorKey: 'totalAmount', header: 'total amt', isCurrency: true },
+    { accessorKey: 'averageRateCalculated', header: 'rate', isCurrency: true },
+    { accessorKey: 'commissionPercentage', header: 'discount %', isPercentage: true },
+    { accessorKey: 'commissionAmount', header: 'comm.', isCurrency: true },
+    { accessorKey: 'netAmount', header: 'net', isCurrency: true },
+    { accessorKey: 'paidAmount', header: 'paid', isCurrency: true },
+    // { accessorKey: 'collectedAtCheckIn', header: 'Coll. @ Check-in', isCurrency: true }, // Absent in user list
+    { accessorKey: 'balanceAmount', header: 'balance', isCurrency: true },
   ];
   columns.push(...accountsColumns);
 
   const referencesAndCommentsColumns: BookingTableColumn[] = [
-    { accessorKey: 'notes', header: 'Note', isNotes: true },
-    { accessorKey: 'ownerUserId', header: 'Lead Owner', isUserLookup: true },
-    { accessorKey: 'lastModifiedByUserId', header: 'Modified By', isUserLookup: true },
-    { accessorKey: 'createdAt', header: 'Date of Creation', isDate: true },
-    { accessorKey: 'updatedAt', header: 'Date of Modification', isDate: true },
+    { accessorKey: 'notes', header: 'description', isNotes: true },
+    { accessorKey: 'ownerUserId', header: 'lead owner', isUserLookup: true },
+    { accessorKey: 'lastModifiedByUserId', header: 'modified by', isUserLookup: true },
+    { accessorKey: 'createdAt', header: 'date of creation', isDate: true },
+    { accessorKey: 'updatedAt', header: 'date of modification', isDate: true },
     { accessorKey: 'package_quantities_json', header: 'Package Details (JSON)', isJsonDetails: true },
   ];
   columns.push(...referencesAndCommentsColumns);
 
-  columns.push({ accessorKey: 'actions', header: 'Actions' });
+  columns.push({ accessorKey: 'actions', header: 'action' });
   return columns;
 };
 

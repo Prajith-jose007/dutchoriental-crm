@@ -221,7 +221,29 @@ export async function POST(request: NextRequest) {
       newLeadData.freeGuestDetails ? JSON.stringify(newLeadData.freeGuestDetails) : null,
     ];
 
-    await query(sql, params);
+    let attempt = 0;
+    const maxRetries = 3;
+    while (attempt < maxRetries) {
+      try {
+        await query(sql, params);
+        break; // Success
+      } catch (err: any) {
+        if (err.code === 'ER_DUP_ENTRY' && (err.message.includes('transactionId') || err.message.includes('leads.transactionId_unique'))) {
+          console.warn(`[API POST] Duplicate transactionId detected (${finalTransactionId}). Regenerating...`);
+          // Regenerate Transaction ID
+          const leadYear = getFullYear(parseISO(formattedMonth));
+          // Re-fetch current max to ensure freshness
+          const allCurrentLeads = await query<DbLead[]>('SELECT transactionId FROM leads WHERE transactionId LIKE ?', [`TRN-${leadYear}-%`]);
+          finalTransactionId = generateNewLeadTransactionId(allCurrentLeads.map(l => ({ transactionId: l.transactionId } as Lead)), leadYear);
+          // Update params
+          params[9] = finalTransactionId;
+          attempt++;
+          if (attempt === maxRetries) throw new Error(`Failed to generate unique Transaction ID after ${maxRetries} attempts.`);
+        } else {
+          throw err; // Re-throw other errors
+        }
+      }
+    }
 
     const insertedLeadData = await query<any[]>('SELECT * FROM leads WHERE id = ?', [leadId]);
     if (insertedLeadData.length > 0) {

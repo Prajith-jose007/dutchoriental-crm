@@ -16,9 +16,7 @@ The system **intelligently detects** the package type from your YachtName column
 | Adult: 3 | → | **VIP ADULT: 3** |
 | Child: 1 | → | **VIP CHILD: 1** |
 
-**Examples:**
 - `LOTUS ROYALE - VIP SOFT`
-- `OCEAN EMPRESS - VIP SOFT`
 
 ---
 
@@ -32,7 +30,6 @@ The system **intelligently detects** the package type from your YachtName column
 
 **Examples:**
 - `LOTUS ROYALE - VIP PREMIUM ALCOHOLIC DRINKS`
-- `OCEAN EMPRESS - VIP UNLIMITED ALCOHOLIC DRINKS`
 
 ---
 
@@ -59,8 +56,6 @@ The system **intelligently detects** the package type from your YachtName column
 
 **Examples:**
 - `LOTUS ROYALE - FOOD AND SOFT DRINKS`
-- `OE TOP DECK - FOOD & SOFT DRINKS`
-- `OCEAN EMPRESS DINNER - SOFT DRINKS`
 - `AL MANSOUR DINNER - SOFT DRINKS`
 
 ---

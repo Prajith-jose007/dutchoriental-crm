@@ -10,8 +10,6 @@ YACHT NAME - PACKAGE TYPE
 
 **Examples:**
 - `LOTUS ROYALE - FOOD AND SOFT DRINKS`
-- `OE TOP DECK - FOOD & SOFT DRINKS`
-- `OCEAN EMPRESS - VIP PREMIUM ALCOHOLIC DRINKS`
 - `AL MANSOUR DINNER - SOFT DRINKS`
 
 The system automatically **parses** this format to extract:
@@ -79,25 +77,6 @@ Super Charters,LOTUS ROYALE - FOOD AND SOFT DRINKS,4,2,720.00
 
 ---
 
-### Example 2: OE TOP DECK
-
-**Your CSV:**
-```csv
-Company Name,YachtName,Adult,Child,Sales Amount(AED)
-Premium Tours,OE TOP DECK - FOOD & SOFT DRINKS,6,0,850.00
-```
-
-**System Process:**
-1. Parse: Yacht = `OE TOP DECK` (Ocean Empress Top Deck)
-2. Look up `OE TOP DECK` yacht (or maps to full name)
-3. Get ADULT TOP DECK rate: AED 200
-4. Calculate:
-   - Base: 6 × 200 = 1200
-   - Discount (15%): 180
-   - Expected: 1020
-5. Compare with CSV: 850
-6. ❌ INVALID - Difference: 170
-
 ---
 
 ### Example 3: VIP PACKAGES
@@ -151,10 +130,7 @@ Your ticketing system uses these yacht names:
 | CSV Yacht Name | Full Name | Mapping |
 |----------------|-----------|---------|
 | LOTUS ROYALE | LOTUS ROYALE | Direct match |
-| OE TOP DECK | OCEAN EMPRESS TOP DECK | Maps to OCEAN EMPRESS |
-| OCEAN EMPRESS DINNER | OCEAN EMPRESS DINNER CRUISE | Direct match |
 | AL MANSOUR DINNER | AL MANSOUR DHOW | Maps to AL MANSOUR |
-| OCEAN EMPRESS | OCEAN EMPRESS | Direct match |
 
 The system automatically finds the correct yacht even if names are abbreviated.
 
@@ -221,14 +197,6 @@ From your CSV data, these package types are recognized:
 Expected: 720.00, CSV: 720.00, Agent Discount: 10%
 ```
 
-**Invalid Entry:**
-```
-[CSV Import] Parsed yacht from ticketing format:
-"OE TOP DECK - FOOD & SOFT DRINKS" → Yacht: "OE TOP DECK"
-
-❌ [CSV Validation Warning] Row 3 (Jane Smith): Payment mismatch:
-Expected 1020.00 (Base: 1200.00 - Discount: 180.00)
-but CSV shows 850.00. Difference: 170.00
 ```
 
 ---

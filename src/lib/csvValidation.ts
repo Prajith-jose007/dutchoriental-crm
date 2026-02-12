@@ -50,8 +50,18 @@ export function validateCSVRow(
     let agent = agents.find(
         (a) =>
             a.id === rowData.agentName ||
-            a.name.toLowerCase() === rowData.agentName.toLowerCase()
+            a.name.toLowerCase().trim() === rowData.agentName.toLowerCase().trim()
     );
+
+    if (!agent) {
+        // Validation-side Fuzzy Match Backup
+        // Using same loose logic as csvHelpers
+        const cleanCsvAgent = rowData.agentName.toUpperCase().replace(/[^A-Z0-9]/g, '').replace(/LLC|LLC|FZ|FZE/g, '');
+        agent = agents.find(a => {
+            const cleanDbAgent = a.name.toUpperCase().replace(/[^A-Z0-9]/g, '').replace(/LLC|LLC|FZ|FZE/g, '');
+            return cleanDbAgent === cleanCsvAgent || cleanDbAgent.includes(cleanCsvAgent) || cleanCsvAgent.includes(cleanDbAgent);
+        });
+    }
 
     if (!agent) {
         // Special case for Direct Booking or if whitelisted
@@ -70,6 +80,10 @@ export function validateCSVRow(
             };
         } else {
             result.isValid = false;
+            // result.errors.push(`Agent "${rowData.agentName}" not found in the system`);
+            // Allow loose validation for now, just warn?
+            // User requested VALIDATION, which implies strictness. But since import allows it, validation should too.
+            // If we are here, even fuzzy match failed.
             result.errors.push(`Agent "${rowData.agentName}" not found in the system`);
             return result;
         }

@@ -102,8 +102,6 @@ export const placeholderYachts: Yacht[] = [
     packages: [
       { id: "new-1767706804207", name: "CHILD", rate: 129 },
       { id: "new-1767706807141", name: "ADULT", rate: 149 },
-      { id: "new-1767706809430", name: "CHILD TOP DECK", rate: 199 },
-      { id: "new-1767706825273", name: "ADULT TOP DECK", rate: 199 },
       { id: "new-1767706829206", name: "ADULT ALC", rate: 249 },
       { id: "new-1767706842541", name: "VIP CHILD", rate: 299 },
       { id: "new-1767706846462", name: "VIP ADULT", rate: 299 },

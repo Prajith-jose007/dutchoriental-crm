@@ -309,8 +309,6 @@ Test Customer,Nonexistent Agent,TEST YACHT,10,900.00
 **Package Columns:**
 - `ch` → CHILD
 - `ad` → ADULT
-- `chd_top` → CHILD TOP DECK
-- `adt_top` → ADULT TOP DECK
 - `ad_alc` → ADULT ALC
 - `vip_ch` → VIP CHILD
 - `vip_ad` → VIP ADULT

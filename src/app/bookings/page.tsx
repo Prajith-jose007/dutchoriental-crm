@@ -98,7 +98,7 @@ function generateNewLeadTransactionId(existingLeads: Lead[], forYear: number, cu
 }
 
 interface CalculatedPackageCounts {
-  child: number; adult: number; childTopDeck: number; adultTopDeck: number; adultAlc: number;
+  child: number; adult: number; adultAlc: number;
   vipChild: number; vipAdult: number; vipAlc: number;
   royalChild: number; royalAdult: number; royalAlc: number;
   basicSY: number; standardSY: number; premiumSY: number; vipSY: number;
@@ -107,7 +107,7 @@ interface CalculatedPackageCounts {
 }
 
 const packageCountLabels: Record<keyof CalculatedPackageCounts, string> = {
-  child: 'CHILD', adult: 'ADULT', childTopDeck: 'CHILD TOP DECK', adultTopDeck: 'ADULT TOP DECK', adultAlc: 'ADULT ALC',
+  child: 'CHILD', adult: 'ADULT', adultAlc: 'ADULT ALC',
   vipChild: 'VIP CHILD', vipAdult: 'VIP ADULT', vipAlc: 'VIP ALC',
   royalChild: 'ROYAL CHILD', royalAdult: 'ROYAL ADULT', royalAlc: 'ROYAL ALC',
   basicSY: 'BASIC (SY)', standardSY: 'STANDARD (SY)', premiumSY: 'PREMIUM (SY)', vipSY: 'VIP (SY)',
@@ -797,17 +797,13 @@ export default function BookingsPage() {
 
                   // 1. Basic vs Premium Tiers
                   if ((actualPackageName === 'ADULT' || actualPackageName === 'CHILD') &&
-                    (n.includes('VIP') || n.includes('ROYAL') || n.includes('TOP DECK'))) {
+                    (n.includes('VIP') || n.includes('ROYAL'))) {
                     return false;
                   }
 
                   // 2. VIP vs Royal
                   if (actualPackageName.includes('VIP') && n.includes('ROYAL')) return false;
                   if (actualPackageName.includes('ROYAL') && n.includes('VIP') && !n.includes('VIP ROOM')) return false; // Allow VIP Room if unrelated to tier? safely exclude for now.
-
-                  // 3. Top Deck Isolation
-                  if (actualPackageName.includes('TOP DECK') && !n.includes('TOP DECK')) return false;
-                  if (!actualPackageName.includes('TOP DECK') && n.includes('TOP DECK')) return false;
 
                   // 4. Alcohol vs Non-Alcohol (Basic)
                   const isAlcPackage = actualPackageName.includes('ALC') || actualPackageName.includes('ALCOHOL');
@@ -820,6 +816,22 @@ export default function BookingsPage() {
                     // If NOT looking for alcohol, avoid Alcohol packages
                     if (n.includes('ALC') || n.includes('ALCOHOL')) return false;
                   }
+
+                  // 5. Token-Based Matching (Final Fallback)
+                  // Split actualPackageName into words (e.g. "VIP ALC" -> ["VIP", "ALC"])
+                  const tokens = actualPackageName.split(/\s+/);
+                  const targetName = n;
+
+                  const allTokensMatch = tokens.every(token => {
+                    if (token === 'ALC' || token === 'ALCOHOL') {
+                      return targetName.includes('ALC') || targetName.includes('ALCOHOL') || targetName.includes('DRINKS') || targetName.includes('HARD');
+                    }
+                    if (token === 'ADULT') return targetName.includes('ADULT') || targetName.includes('PP') || !targetName.includes('CHILD'); // 'PP' often implies adult/per person
+                    if (token === 'CHILD') return targetName.includes('CHILD') || targetName.includes('KID');
+                    return targetName.includes(token);
+                  });
+
+                  if (allTokensMatch) return true;
 
                   return n.includes(actualPackageName) || actualPackageName.includes(n);
                 });
@@ -1446,7 +1458,7 @@ export default function BookingsPage() {
 
   const calculatedPackageCounts = useMemo(() => {
     const counts: CalculatedPackageCounts = {
-      child: 0, adult: 0, childTopDeck: 0, adultTopDeck: 0, adultAlc: 0,
+      child: 0, adult: 0, adultAlc: 0,
       vipChild: 0, vipAdult: 0, vipAlc: 0,
       royalChild: 0, royalAdult: 0, royalAlc: 0,
       basicSY: 0, standardSY: 0, premiumSY: 0, vipSY: 0,
@@ -1470,8 +1482,6 @@ export default function BookingsPage() {
           if (category === 'Dinner Cruise' || category === 'Superyacht Sightseeing Cruise') {
             if (pkgNameUpper === 'CHILD') counts.child += qty;
             else if (pkgNameUpper === 'ADULT') counts.adult += qty;
-            else if (pkgNameUpper.includes('CHILD TOP DECK')) counts.childTopDeck += qty;
-            else if (pkgNameUpper.includes('ADULT TOP DECK')) counts.adultTopDeck += qty;
             else if (pkgNameUpper === 'ADULT ALC' || pkgNameUpper === 'ADULT ALCOHOLIC') counts.adultAlc += qty;
             else if (pkgNameUpper === 'VIP CHILD') counts.vipChild += qty;
             else if (pkgNameUpper === 'VIP ADULT') counts.vipAdult += qty;

@@ -95,8 +95,6 @@ Expected: 800 - 120 = 680
 | `ch` | CHILD |
 | `ad` | ADULT |
 | `vip_ad` | VIP ADULT |
-| `chd_top` | CHILD TOP DECK |
-| `adt_top` | ADULT TOP DECK |
 | `ad_alc` | ADULT ALC |
 | `basic` | BASIC |
 | `std` | STANDARD |

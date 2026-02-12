@@ -3,7 +3,8 @@
 
 import { useState, useRef, useCallback, useEffect } from 'react'; // Added useEffect to keep fetchAgents call
 import { Button } from '@/components/ui/button';
-import { PlusCircle, Upload, Download, Trash2 } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { PlusCircle, Upload, Download, Trash2, Search } from 'lucide-react';
 import { PageHeader } from '@/components/PageHeader';
 import { AgentsTable } from './_components/AgentsTable';
 import { AgentFormDialog } from './_components/AgentFormDialog';
@@ -19,6 +20,7 @@ export default function AgentsPage() {
   const [agents, setAgents] = useState<Agent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isImporting, setIsImporting] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -519,6 +521,16 @@ export default function AgentsPage() {
   }
 
 
+  const filteredAgents = agents.filter(agent => {
+    const query = searchQuery.toLowerCase();
+    return (
+      agent.name.toLowerCase().includes(query) ||
+      (agent.agency_code && agent.agency_code.toLowerCase().includes(query)) ||
+      (agent.email && agent.email.toLowerCase().includes(query)) ||
+      (agent.phone_no && agent.phone_no.includes(query))
+    );
+  });
+
   return (
     <div className="container mx-auto py-2">
       <PageHeader
@@ -562,8 +574,21 @@ export default function AgentsPage() {
           </div>
         }
       />
+
+      <div className="flex items-center py-4">
+        <div className="relative w-full max-w-sm">
+          <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search agents..."
+            value={searchQuery}
+            onChange={(event: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(event.target.value)}
+            className="pl-8"
+          />
+        </div>
+      </div>
+
       <AgentsTable
-        agents={agents}
+        agents={filteredAgents}
         onEditAgent={handleEditAgentClick}
         onDeleteAgent={handleDeleteAgent}
         isAdmin={isAdmin} // Retained 

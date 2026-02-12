@@ -433,17 +433,21 @@ export function BookingFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess,
           ((packagesTotal * agentDiscountRate) / 100).toFixed(2)
         );
 
-        // Net Amount = Total (Gross) - Commission
-        // (Since Total = Pkgs + Addon, and Comm = Pkgs * %, Net = (Pkgs - Comm) + Addon, which matches req)
+        // User Rule: Total Amount = Yacht Total (Packages only) - AddOns excluded
+        calculatedTotalAmount = Number(packagesTotal.toFixed(2));
+
+        // User Rule: Net Amount = Total after discount - AddOns excluded
         const calculatedNetAmount = Number(
           (calculatedTotalAmount - calculatedCommissionAmount).toFixed(2)
         );
+
+        // User Rule: Balance = (Net + Additional) - Paid
+        const effectivePayable = calculatedNetAmount + addOnTotal;
         const actualSignedBalanceAmount = Number(
-          (calculatedNetAmount - (paidAmount || 0)).toFixed(2)
+          (effectivePayable - (paidAmount || 0)).toFixed(2)
         );
 
         form.setValue('totalAmount', calculatedTotalAmount, { shouldValidate: true });
-        // Discount % is manually editable, so we don't overwrite it here unless agent changed (handled above)
         form.setValue('commissionAmount', calculatedCommissionAmount, { shouldValidate: true });
         form.setValue('netAmount', calculatedNetAmount, { shouldValidate: true });
         form.setValue('balanceAmount', actualSignedBalanceAmount, { shouldValidate: true });
@@ -503,30 +507,37 @@ export function BookingFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess,
       onOpenChange(false);
       return;
     }
-    let rawFinalTotalAmount = 0;
+    let rawPackagesTotal = 0;
 
     if (data.packageQuantities && Array.isArray(data.packageQuantities)) {
       data.packageQuantities.forEach(pqItem => {
         const quantity = Number(pqItem.quantity || 0);
         const rate = Number(Number(pqItem.rate || 0).toFixed(2));
         if (quantity > 0 && rate >= 0) {
-          rawFinalTotalAmount += quantity * rate;
+          rawPackagesTotal += quantity * rate;
         }
       });
     }
 
-    // if (data.perTicketRate && Number(data.perTicketRate) > 0) {
-    //   rawFinalTotalAmount += Number(data.perTicketRate);
-    // }
+    const addOnTotal = Number(data.perTicketRate || 0);
 
-    const finalTotalAmount = Number(rawFinalTotalAmount.toFixed(2));
+    // User Rule: Total Amount = Yacht Total (Packages only)
+    const finalTotalAmount = Number(rawPackagesTotal.toFixed(2));
 
     // Use the form's commission percentage (which allows manual override), fallback to agent default only if missing
     const finalCommissionPercentage = Number(data.commissionPercentage);
-    const finalCommissionAmount = Number(((finalTotalAmount * finalCommissionPercentage) / 100).toFixed(2));
+
+    // Commission applies ONLY to package total, not addons
+    const finalCommissionAmount = Number(((rawPackagesTotal * finalCommissionPercentage) / 100).toFixed(2));
+
+    // User Rule: Net Amount = Total after discount (Packages - Commission)
     const finalNetAmount = Number((finalTotalAmount - finalCommissionAmount).toFixed(2));
+
+    // User Rule: Balance = (Net + Additional) - Paid
+    const effectiveFinalPayable = finalNetAmount + addOnTotal;
+
     const finalPaidAmount = Number(Number(data.paidAmount || 0).toFixed(2));
-    const actualSignedBalanceAmount = Number((finalNetAmount - finalPaidAmount).toFixed(2));
+    const actualSignedBalanceAmount = Number((effectiveFinalPayable - finalPaidAmount).toFixed(2));
 
     const finalPackageQuantities = (data.packageQuantities && Array.isArray(data.packageQuantities))
       ? data.packageQuantities.map(pq => {
@@ -838,7 +849,7 @@ export function BookingFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess,
                     name="perTicketRate"
                     render={({ field }) => (
                       <FormItem className="md:w-1/3">
-                        <FormLabel className="text-xs font-bold uppercase text-muted-foreground">Other Package Amount (Excluded from Total)</FormLabel>
+                        <FormLabel className="text-xs font-bold uppercase text-muted-foreground">Other Package Amount (Added to Balance Due)</FormLabel>
                         <FormControl><Input type="number" step="0.01" placeholder="0.00" {...field} value={field.value === null ? '' : field.value} /></FormControl>
                         <FormMessage />
                       </FormItem>

@@ -46,9 +46,9 @@ export const leadCsvHeaderMapping: Record<string, any> = {
     'ryl_ch': 'pkg_royal_child', 'royal_child': 'pkg_royal_child', 'royal ch': 'pkg_royal_child', 'ryl ch': 'pkg_royal_child',
     'ryl_ad': 'pkg_royal_adult', 'royal_adult': 'pkg_royal_adult', 'royal ad': 'pkg_royal_adult', 'ryl ad': 'pkg_royal_adult',
     'ryl_alc': 'pkg_royal_alc', 'royal_alc': 'pkg_royal_alc', 'royal ad alc': 'pkg_royal_alc', 'ryl alc': 'pkg_royal_alc', 'royal alc': 'pkg_royal_alc',
-    'top_ch': 'pkg_top_-_child', 'top_child': 'pkg_top_-_child', 'top child': 'pkg_top_-_child', 'top deck child': 'pkg_top_-_child', 'top_deck_child': 'pkg_top_-_child',
-    'top_ad': 'pkg_top_-_adult', 'top_adult': 'pkg_top_-_adult', 'top adult': 'pkg_top_-_adult', 'top deck adult': 'pkg_top_-_adult', 'top_deck_adult': 'pkg_top_-_adult',
-    'top_alc': 'pkg_top_-_alc', 'top_alcohol': 'pkg_top_-_alc', 'top alc': 'pkg_top_-_alc', 'top deck alc': 'pkg_top_-_alc', 'top_deck_alc': 'pkg_top_-_alc',
+    'top_ch': 'pkg_top_child', 'top_child': 'pkg_top_child', 'top child': 'pkg_top_child', 'top deck child': 'pkg_top_child', 'top_deck_child': 'pkg_top_child',
+    'top_ad': 'pkg_top_adult', 'top_adult': 'pkg_top_adult', 'top adult': 'pkg_top_adult', 'top deck adult': 'pkg_top_adult', 'top_deck_adult': 'pkg_top_adult',
+    'top_alc': 'pkg_top_alc', 'top_alcohol': 'pkg_top_alc', 'top alc': 'pkg_top_alc', 'top deck alc': 'pkg_top_alc', 'top_deck_alc': 'pkg_top_alc',
     'basic': 'pkg_basic',
     'std': 'pkg_standard', 'standard': 'pkg_standard',
     'prem': 'pkg_premium', 'premium': 'pkg_premium',
@@ -138,8 +138,8 @@ export const convertLeadCsvValue = (
         const num = parseInt(trimmedValue, 10);
         return isNaN(num) || num < 0 ? 0 : num;
     }
-    // Handle generic 'pkg_top_-_' pattern if needed - but logic above handles standard 'pkg_'.
-    // The key in mapping is 'pkg_top_-_adult', which starts with 'pkg_', so it will fall into standard int parsing.
+    // Handle generic 'pkg_top_' pattern if needed - but logic above handles standard 'pkg_'.
+    // The key in mapping is 'pkg_top_adult', which starts with 'pkg_', so it will fall into standard int parsing.
 
     if (key === 'package_quantities_json_string') {
         if (!trimmedValue) return null;
@@ -514,13 +514,14 @@ function applyRuzinnLogic(row: { [key: string]: any }, rawYachtString: string) {
     // Rules: VIP ALCOHOL > VIP SOFT > ROYALE > FOOD+UNLIMITED ALC > SOFT DRINKS > FOOD AND SOFT DRINKS > DEFAULT
 
     // Rule 0: OCEAN EMPRESS TOP DECK (or just TOP)
-    if (targetString.includes("OCEAN EMPRESS") && (targetString.includes("TOP"))) {
+    // Rule 0: TOP DECK (or just TOP) - Applies to Ocean Empress usually, but if package says TOP, map it.
+    if (targetString.includes("TOP")) {
         // If it specifies ALCOHOL/ALU
         if (targetString.includes("ALCOHOL") || targetString.includes("ALC") || targetString.includes("HARD")) {
-            row['pkg_top_-_alc'] = adultQty;
+            if (adultQty > 0) row['pkg_top_alc'] = adultQty;
         } else {
-            row['pkg_top_-_adult'] = adultQty;
-            if (childQty > 0) row['pkg_top_-_child'] = childQty;
+            if (adultQty > 0) row['pkg_top_adult'] = adultQty;
+            if (childQty > 0) row['pkg_top_child'] = childQty;
         }
     }
     // Rule 5: VIP UNLIMITED ALCOHOLIC DRINKS / HARD DRINKS
@@ -686,17 +687,21 @@ export function applyPackageTypeDetection(
     const rawLower = yachtNameFromCsv ? yachtNameFromCsv.toLowerCase() : '';
 
     // 3. Standard Package Logic based on packageTypeFromYachtName
-    if (packageTypeFromYachtName) {
-        if (packageTypeFromYachtName.includes('TOP')) {
-            if (packageTypeFromYachtName.includes('ALC') || packageTypeFromYachtName.includes('ALCOHOLIC')) {
-                if (adultQty > 0) parsedRow['pkg_top_-_alc'] = adultQty;
-            } else {
-                // "Top Deck" standard
-                if (adultQty > 0) parsedRow['pkg_top_-_adult'] = adultQty;
-                if (childQty > 0) parsedRow['pkg_top_-_child'] = adultQty; // User often puts total in adult col if not split, but childQty is distinct.
-                if (childQty > 0) parsedRow['pkg_top_-_child'] = childQty;
-            }
-        } else if (packageTypeFromYachtName.includes('VIP') && (packageTypeFromYachtName.includes('SOFT') || packageTypeFromYachtName.includes('DRINK') || packageTypeFromYachtName.includes('ONLY'))) {
+    // 3. Standard Package Logic based on packageTypeFromYachtName
+    const upperYachtName = yachtNameFromCsv ? yachtNameFromCsv.toUpperCase() : '';
+
+    // Priority Check: TOP Deck (Check both package part and full yacht string)
+    if (packageTypeFromYachtName.includes('TOP') || upperYachtName.includes('TOP')) {
+        if (packageTypeFromYachtName.includes('ALC') || packageTypeFromYachtName.includes('ALCOHOLIC') || upperYachtName.includes('ALC') || upperYachtName.includes('ALCOHOLIC')) {
+            if (adultQty > 0) parsedRow['pkg_top_alc'] = adultQty;
+        } else {
+            // "Top Deck" standard
+            if (adultQty > 0) parsedRow['pkg_top_adult'] = adultQty;
+            if (childQty > 0) parsedRow['pkg_top_child'] = childQty;
+        }
+    }
+    else if (packageTypeFromYachtName) {
+        if (packageTypeFromYachtName.includes('VIP') && (packageTypeFromYachtName.includes('SOFT') || packageTypeFromYachtName.includes('DRINK') || packageTypeFromYachtName.includes('ONLY'))) {
             // VIP tickets with soft (Handle both if quantities map, defaulting Adult header to VIP Adult)
             if (adultQty > 0) parsedRow.pkg_vip_adult = adultQty;
             if (childQty > 0) parsedRow.pkg_vip_child = childQty;
@@ -819,15 +824,27 @@ export const normalizeYachtName = (rawName: string): string => {
     const clean = upper.replace(/[,.-]/g, ' ').replace(/\s+/g, ' ').trim();
 
     if (clean.includes('LOTUS')) {
-        return 'Lotus Royale';
+        return 'LOTUS ROYALE';
     }
     if (clean.includes('DESERT ROSE')) {
-        return 'Desert Rose';
+        return 'DESERT ROSE';
     }
-    if (clean.includes('MANSOUR') || clean.includes('AL MANSOUR') || clean.includes('DHOW')) {
-        return 'Al Mansour';
+    if (clean.includes('ROSE ROYALE') || clean === 'ROSE') {
+        return 'ROSE ROYALE';
+    }
+    if (clean.includes('MANSOUR') || clean.includes('DHOW') || clean.includes('CREEK')) {
+        return 'AL MANSOUR';
+    }
+    if (clean.includes('OCEAN') || clean.includes('EMPRESS')) {
+        return 'OCEAN EMPRESS'; // DB has "Ocean Empress", but we normalize to UPPER for comparison
+    }
+    if (clean.includes('CALYPSO') || clean.includes('SUNSET')) {
+        return 'CALYPSO SUNSET';
+    }
+    if (clean.includes('SIGHTSEEING') || clean.includes('SUPERYACHT')) {
+        return 'SUPERYACHT SIGHTSEEING';
     }
 
-    // Default: return Title Case of input 
-    return rawName; // Or valid yacht ID if unmatched
+    // Default: return Uppercase Cleaned Name
+    return clean;
 };

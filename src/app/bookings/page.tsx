@@ -1434,7 +1434,14 @@ export default function BookingsPage() {
       else if (!startDate && !endDate) {
       }
 
-      if (selectedYachtId !== 'all' && lead.yacht !== selectedYachtId) return false;
+      if (selectedYachtId !== 'all') {
+        const selectedYacht = allYachts.find(y => y.id === selectedYachtId);
+        const isIdMatch = lead.yacht === selectedYachtId;
+        const leadYachtNorm = normalizeYachtName(lead.yacht || '');
+        const selectedYachtNorm = selectedYacht ? normalizeYachtName(selectedYacht.name) : '';
+        // Match if IDs match OR if normalized names match (handling cases where lead.yacht is a name string from CSV)
+        if (!isIdMatch && (!selectedYacht || leadYachtNorm !== selectedYachtNorm)) return false;
+      }
       if (selectedAgentId !== 'all' && lead.agent !== selectedAgentId) return false;
       if (selectedUserIdFilter !== 'all' && (lead.lastModifiedByUserId !== selectedUserIdFilter && lead.ownerUserId !== selectedUserIdFilter)) return false;
       if (selectedSourceFilter !== 'all' && lead.source !== selectedSourceFilter) return false;

@@ -369,6 +369,72 @@ export function BookingFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess,
   }, [isOpen, watchedYachtId, allYachts, replacePackageQuantities, isLoadingDropdowns]);
 
 
+  const recalculateFinancials = useCallback((triggerFieldName?: string) => {
+    const {
+      packageQuantities = [],
+      perTicketRate,
+      agent: agentId,
+      paidAmount,
+      durationHours,
+      yacht: yachtId,
+      type: leadType,
+      freeGuestCount,
+      commissionPercentage: currentCommission
+    } = form.getValues();
+
+    const selectedYacht = allYachts.find(y => y.id === yachtId);
+
+    // Logic: Use current form value for discount, unless Agent just changed
+    let agentDiscountRate = Number(currentCommission || 0);
+    if (triggerFieldName === 'agent') {
+      const selectedAgentForCalc = allAgents.find(a => a.id === agentId);
+      agentDiscountRate = selectedAgentForCalc ? Number(selectedAgentForCalc.discount || 0) : 0;
+      form.setValue('commissionPercentage', agentDiscountRate, { shouldValidate: true });
+    }
+
+    // Robust numerical conversion for all inputs
+    const parsedPaidAmount = parseFloat(String(paidAmount || 0).replace(/,/g, ''));
+    const parsedAddOnTotal = parseFloat(String(perTicketRate || 0).replace(/,/g, ''));
+    const parsedCommissionPercent = parseFloat(String(agentDiscountRate || 0));
+    const parsedDuration = parseFloat(String(durationHours || 0));
+
+    let packagesTotal = 0;
+    let tempTotalGuests = 0;
+
+    // Add Yacht Base price if Private Cruise
+    if (leadType === 'Private Cruise' && selectedYacht) {
+      const yachtRate = Number(selectedYacht.pricePerHour || 0);
+      const yachtTotal = yachtRate * parsedDuration;
+      if (yachtTotal > 0) {
+        packagesTotal += yachtTotal;
+      }
+    }
+
+    packageQuantities.forEach(pqItem => {
+      const quantity = parseFloat(String(pqItem.quantity || 0));
+      const rate = parseFloat(String(pqItem.rate || 0));
+      if (quantity > 0 && rate >= 0) {
+        packagesTotal += quantity * rate;
+      }
+      tempTotalGuests += quantity;
+    });
+
+    tempTotalGuests += Number(freeGuestCount || 0);
+    setCalculatedTotalGuests(tempTotalGuests);
+
+    const calculatedTotalAmount = Number(packagesTotal.toFixed(2));
+    const calculatedCommissionAmount = Number(((packagesTotal * parsedCommissionPercent) / 100).toFixed(2));
+    const calculatedNetAmount = Number((calculatedTotalAmount - calculatedCommissionAmount).toFixed(2));
+    const effectivePayable = calculatedNetAmount + parsedAddOnTotal;
+    const actualSignedBalanceAmount = Number((effectivePayable - parsedPaidAmount).toFixed(2));
+
+    const currentVals = form.getValues();
+    if (Number(currentVals.totalAmount) !== calculatedTotalAmount) form.setValue('totalAmount', calculatedTotalAmount, { shouldValidate: true });
+    if (Number(currentVals.commissionAmount) !== calculatedCommissionAmount) form.setValue('commissionAmount', calculatedCommissionAmount, { shouldValidate: true });
+    if (Number(currentVals.netAmount) !== calculatedNetAmount) form.setValue('netAmount', calculatedNetAmount, { shouldValidate: true });
+    if (Number(currentVals.balanceAmount) !== actualSignedBalanceAmount) form.setValue('balanceAmount', actualSignedBalanceAmount, { shouldValidate: true });
+  }, [form, allYachts, allAgents]);
+
   useEffect(() => {
     const subscription = form.watch((value, { name }) => {
       if (
@@ -382,83 +448,11 @@ export function BookingFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess,
         name === 'commissionPercentage' ||
         name === 'freeGuestCount'
       ) {
-        const {
-          packageQuantities = [],
-          perTicketRate,
-          agent: agentId,
-          paidAmount,
-          durationHours,
-          yacht: yachtId,
-          type: leadType,
-          freeGuestCount
-        } = form.getValues();
-
-        const selectedYacht = allYachts.find(y => y.id === yachtId);
-
-        // Logic: Use current form value for discount, unless Agent just changed
-        let agentDiscountRate = Number(form.getValues('commissionPercentage') || 0);
-        if (name === 'agent') {
-          const selectedAgentForCalc = allAgents.find(a => a.id === agentId);
-          agentDiscountRate = selectedAgentForCalc ? Number(selectedAgentForCalc.discount || 0) : 0;
-          form.setValue('commissionPercentage', agentDiscountRate, { shouldValidate: true });
-        }
-
-        // Robust numerical conversion for all inputs
-        const parsedPaidAmount = parseFloat(String(paidAmount || 0).replace(/,/g, ''));
-        const parsedAddOnTotal = parseFloat(String(perTicketRate || 0).replace(/,/g, ''));
-        const parsedCommissionPercent = parseFloat(String(agentDiscountRate || 0));
-        const parsedDuration = parseFloat(String(durationHours || 0));
-
-        let packagesTotal = 0;
-        let tempTotalGuests = 0;
-        const calculationDetails: any[] = [];
-
-        // Add Yacht Base price if Private Cruise
-        if (leadType === 'Private Cruise' && selectedYacht) {
-          const yachtRate = Number(selectedYacht.pricePerHour || 0);
-          const yachtTotal = yachtRate * parsedDuration;
-          if (yachtTotal > 0) {
-            packagesTotal += yachtTotal;
-            calculationDetails.push({ pkg: `Yacht: ${selectedYacht.name}`, qty: parsedDuration, rate: yachtRate, subtotal: yachtTotal });
-          }
-        }
-
-        packageQuantities.forEach(pqItem => {
-          const quantity = parseFloat(String(pqItem.quantity || 0));
-          const rate = parseFloat(String(pqItem.rate || 0));
-          if (quantity > 0 && rate >= 0) {
-            packagesTotal += quantity * rate;
-            calculationDetails.push({ pkg: pqItem.packageName, qty: quantity, rate, subtotal: quantity * rate });
-          }
-          tempTotalGuests += quantity;
-        });
-
-        tempTotalGuests += Number(freeGuestCount || 0);
-        setCalculatedTotalGuests(tempTotalGuests);
-
-        // 1. Total Amount = Gross Packages Total
-        const calculatedTotalAmount = Number(packagesTotal.toFixed(2));
-
-        // 2. Commission Amount = Total * Percent (only on packages)
-        const calculatedCommissionAmount = Number(((packagesTotal * parsedCommissionPercent) / 100).toFixed(2));
-
-        // 3. Net Amount = Total - Commission
-        const calculatedNetAmount = Number((calculatedTotalAmount - calculatedCommissionAmount).toFixed(2));
-
-        // 4. Balance Due = (Net + Addons) - Paid
-        const effectivePayable = calculatedNetAmount + parsedAddOnTotal;
-        const actualSignedBalanceAmount = Number((effectivePayable - parsedPaidAmount).toFixed(2));
-
-        // Use batching if possible or check for equality to prevent unnecessary rerenders
-        const currentVals = form.getValues();
-        if (Number(currentVals.totalAmount) !== calculatedTotalAmount) form.setValue('totalAmount', calculatedTotalAmount, { shouldValidate: true });
-        if (Number(currentVals.commissionAmount) !== calculatedCommissionAmount) form.setValue('commissionAmount', calculatedCommissionAmount, { shouldValidate: true });
-        if (Number(currentVals.netAmount) !== calculatedNetAmount) form.setValue('netAmount', calculatedNetAmount, { shouldValidate: true });
-        if (Number(currentVals.balanceAmount) !== actualSignedBalanceAmount) form.setValue('balanceAmount', actualSignedBalanceAmount, { shouldValidate: true });
+        recalculateFinancials(name);
       }
     });
     return () => subscription.unsubscribe();
-  }, [form, allAgents, allYachts]);
+  }, [form, recalculateFinancials]);
 
 
   useEffect(() => {
@@ -569,7 +563,11 @@ export function BookingFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess,
     initialYachtIdRef.current = initialValues.yacht || null;
     initialAgentIdRef.current = initialValues.agent || null;
     initialTypeIdRef.current = initialValues.type || null;
-  }, [lead, form, isOpen, isLoadingDropdowns, allAgents, allYachts, currentUserId, replacePackageQuantities]);
+
+    // Explicitly recalculate financials immediately after initialization to ensure balance is correct
+    // (Handles potential stale amounts or rounding differences from DB)
+    setTimeout(() => recalculateFinancials(), 100);
+  }, [lead, form, isOpen, isLoadingDropdowns, allAgents, allYachts, currentUserId, replacePackageQuantities, recalculateFinancials]);
 
 
   function onSubmit(data: BookingFormData) {
@@ -728,6 +726,32 @@ export function BookingFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess,
                         <FormItem>
                           <FormLabel>Client Name</FormLabel>
                           <FormControl><Input placeholder="Client Name" {...field} /></FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    {/* Customer Phone */}
+                    <FormField
+                      control={form.control}
+                      name="customerPhone"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Customer Phone</FormLabel>
+                          <FormControl><Input placeholder="Client Phone (e.g. +971...)" {...field} /></FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    {/* Customer Email */}
+                    <FormField
+                      control={form.control}
+                      name="customerEmail"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Customer Email</FormLabel>
+                          <FormControl><Input type="email" placeholder="client@example.com" {...field} /></FormControl>
                           <FormMessage />
                         </FormItem>
                       )}

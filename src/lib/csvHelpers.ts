@@ -185,7 +185,7 @@ export const convertLeadCsvValue = (
             case 'freeGuestCount': return 0;
             case 'perTicketRate': return null;
             case 'modeOfPayment': return 'CARD';
-            case 'status': return 'Confirmed';
+            case 'status': return 'Balance';
             case 'type': return 'Dinner Cruise';
             case 'paymentConfirmationStatus': return 'CONFIRMED';
             case 'notes': case 'bookingRefNo': return '';
@@ -279,7 +279,7 @@ export const convertLeadCsvValue = (
             return foundMop || 'CARD';
         case 'status':
             const lowerTrimmedStatusValue = trimmedValue.toLowerCase();
-            if (lowerTrimmedStatusValue === 'confirm') return 'Confirmed'; // Explicit mapping
+            if (lowerTrimmedStatusValue === 'confirm') return 'Balance'; // Explicit mapping
             const foundStatus = leadStatusOptions.find(opt => opt.toLowerCase() === lowerTrimmedStatusValue);
             return foundStatus || 'Balance';
         case 'type':

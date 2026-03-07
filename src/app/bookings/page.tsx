@@ -903,8 +903,8 @@ export default function BookingsPage() {
           const calculatedCommission = calculatedTotal * (discountPercentage / 100);
           const calculatedNet = calculatedTotal - calculatedCommission;
 
-          // Auto-calculate paid amount if status is confirmed (Assuming Full Payment)
-          if (primaryRow.status === 'Confirmed' && totalPaid === 0) {
+          // Auto-calculate paid amount if status is confirmed analogue (Assuming Full Payment)
+          if (primaryRow.status === 'Balance' && totalPaid === 0) {
             totalPaid = calculatedTotal;
           }
 
@@ -915,7 +915,7 @@ export default function BookingsPage() {
             clientName: primaryRow.clientName || 'N/A',
             agent: primaryRow.agent || 'Direct Booking',
             yacht: normalizeYachtName(primaryRow.yacht || ''),
-            status: primaryRow.status || 'Confirmed',
+            status: primaryRow.status || 'Balance',
             month: primaryRow.month || formatISO(new Date()),
             notes: additionalNotes,
             type: primaryRow.type || 'Dinner Cruise',

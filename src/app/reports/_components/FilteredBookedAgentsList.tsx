@@ -102,7 +102,7 @@ export function FilteredBookedAgentsList({ filteredLeads, allAgents, isLoading, 
 
     filteredLeads.forEach(lead => {
       // Include all statuses that imply a valid booking/sale
-      const validStatuses = ['Confirmed', 'Balance', 'Paid', 'Completed', 'Closed (Won)'];
+      const validStatuses = ['Balance', 'Paid', 'Completed', 'Closed (Won)'];
       if (validStatuses.includes(lead.status) && lead.agent) {
         const current = dataByAgent.get(lead.agent) || { count: 0, totalSale: 0, netNum: 0, paidNum: 0, balNum: 0 };
         dataByAgent.set(lead.agent, {
@@ -179,7 +179,7 @@ export function FilteredBookedAgentsList({ filteredLeads, allAgents, isLoading, 
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center"><Briefcase className="mr-2 h-5 w-5" /> Agent Sales Performance (Filtered)</CardTitle>
-          <CardDescription>Agents with &apos;Confirmed&apos; bookings based on current filters.</CardDescription>
+          <CardDescription>Agents with &apos;Balance&apos; or &apos;Closed (Won)&apos; bookings based on current filters.</CardDescription>
         </CardHeader>
         <CardContent>
           <p className="text-muted-foreground">No agent sales data found matching the current filters.</p>

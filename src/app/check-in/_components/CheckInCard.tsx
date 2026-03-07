@@ -88,7 +88,7 @@ export function CheckInCard({ leads: initialLeads, yachts }: CheckInCardProps) {
             // Fix for "Phantom Balance": 
             // If comm is still 0, but booking is Confirmed and Paid < Total, assume difference is agent commission.
             const paid = l.paidAmount || 0;
-            if (leadComm === 0 && (l.status === 'Confirmed' || l.paymentConfirmationStatus === 'CONFIRMED') && paid > 0 && paid < leadTotal) {
+            if (leadComm === 0 && (l.status === 'Balance' || l.paymentConfirmationStatus === 'CONFIRMED') && paid > 0 && paid < leadTotal) {
                 const impliedDiff = leadTotal - paid;
                 if (impliedDiff > 0) leadComm = impliedDiff;
             }
@@ -168,7 +168,7 @@ export function CheckInCard({ leads: initialLeads, yachts }: CheckInCardProps) {
             const calcComm = l.commissionPercentage ? (tot * l.commissionPercentage / 100) : 0;
             let finalComm = comm || calcComm;
 
-            if (finalComm === 0 && (l.status === 'Confirmed' || l.paymentConfirmationStatus === 'CONFIRMED') && paid > 0 && paid < tot) {
+            if (finalComm === 0 && (l.status === 'Balance' || l.paymentConfirmationStatus === 'CONFIRMED') && paid > 0 && paid < tot) {
                 const implied = tot - paid;
                 if (implied > 0) finalComm = implied;
             }
@@ -314,7 +314,7 @@ export function CheckInCard({ leads: initialLeads, yachts }: CheckInCardProps) {
                 else if (totChecked >= totBooked) lead.checkInStatus = 'Checked In';
                 else lead.checkInStatus = 'Partially Checked In';
 
-                if (totChecked > 0 && (lead.status === 'Confirmed' || lead.status === 'Closed (Won)')) {
+                if (totChecked > 0 && (lead.status === 'Balance' || lead.status === 'Closed (Won)')) {
                     lead.status = 'In Progress';
                 }
             }

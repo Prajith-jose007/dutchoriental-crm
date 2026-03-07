@@ -196,7 +196,7 @@ export const placeholderLeads: Lead[] = [
     clientName: 'Private Celebration Planners',
     agent: 'DO-001',
     yacht: 'DO-yacht-private1',
-    status: 'Confirmed',
+    status: 'Balance',
     month: formatISO(parseISO(`${currentYear}-08-10T16:00:00`)),
     notes: 'Birthday party, deposit paid. Awaiting event.',
     type: 'Private Cruise',

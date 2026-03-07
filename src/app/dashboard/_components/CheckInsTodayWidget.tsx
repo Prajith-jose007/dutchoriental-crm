@@ -22,7 +22,8 @@ export function CheckInsTodayWidget({ leads, yachts }: CheckInsTodayWidgetProps)
     const todaysTrips = useMemo(() => {
         return leads.filter(lead => {
             const eventDate = parseISO(lead.month);
-            return isValid(eventDate) && isToday(eventDate) && (lead.status === 'Confirmed' || lead.status === 'Checked In');
+            const isConfirmedAnalogue = lead.paymentConfirmationStatus === 'CONFIRMED' || lead.status === 'Checked In' || lead.status === 'Completed' || lead.status === 'Balance';
+            return isValid(eventDate) && isToday(eventDate) && isConfirmedAnalogue;
         }).sort((a, b) => a.month.localeCompare(b.month));
     }, [leads]);
 

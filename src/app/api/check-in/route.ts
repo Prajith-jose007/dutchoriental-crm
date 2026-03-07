@@ -84,7 +84,7 @@ const mapDbLeadToLeadObject = (dbLead: DbLead): Lead => {
         clientName: String(dbLead.clientName || ''),
         agent: String(dbLead.agent || ''),
         yacht: String(dbLead.yacht || ''),
-        status: (dbLead.status || 'Balance') as LeadStatus,
+        status: (dbLead.status === 'Canceled' || !dbLead.status ? 'Balance' : dbLead.status) as LeadStatus,
         month: ensureISOFormat(dbLead.month)!,
         notes: dbLead.notes || undefined,
         type: (dbLead.type || 'Private Cruise') as LeadType,
@@ -127,7 +127,7 @@ export async function GET(request: NextRequest) {
         const searchSql = `
             SELECT * FROM leads 
             WHERE (transactionId = ? OR bookingRefNo = ? OR id = ? OR transactionId LIKE ? OR bookingRefNo LIKE ?)
-            AND status != 'Canceled'
+            AND status NOT IN ('Canceled', 'Closed (Lost)')
         `;
         const qp = queryParam.trim();
         const initialMatches = await query<DbLead[]>(searchSql, [qp, qp, qp, `%${qp}`, `%${qp}`]);
@@ -146,7 +146,7 @@ export async function GET(request: NextRequest) {
         if (refNos.length > 0 || trnIds.length > 0) {
             // Build a query that finds anything sharing these identifiers
             // We use a simple OR approach for compatibility
-            let expandSql = `SELECT * FROM leads WHERE status != 'Canceled' AND (1=0`;
+            let expandSql = `SELECT * FROM leads WHERE status NOT IN ('Canceled', 'Closed (Lost)') AND (1=0`;
             const params: any[] = [];
 
             refNos.forEach(ref => {

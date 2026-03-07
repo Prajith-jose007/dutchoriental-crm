@@ -22,17 +22,17 @@ export async function POST(
         }
 
         // 1. Fetch unpaid/partially paid bookings for this agent
-        // Statuses: 'Confirmed', 'Balance', 'Closed (Won)' (Revenue generating)
+        // Statuses: 'Balance', 'Closed (Won)', 'Completed' (Revenue generating)
         // Ordered by Booking Date (month) ASC to pay oldest first
         const sql = `
       SELECT * FROM leads 
       WHERE agent = ? 
-      AND status IN ('Confirmed', 'Balance', 'Closed (Won)', 'Completed')
+      AND status IN ('Balance', 'Closed (Won)', 'Completed')
       AND (netAmount - paidAmount) > 0.01
       ORDER BY month ASC
     `;
 
-        // Note: 'Balance' status essentially means 'Confirmed' but waiting payment in some workflows?
+        // Note: 'Balance' status is the primary active status for confirmed bookings.
         // We target anything that owes money.
 
         const leads = (await query<Lead[]>(sql, [agentId]));

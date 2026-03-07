@@ -70,7 +70,7 @@ export function ManagementKPIs({ leads, isLoading }: ManagementKPIsProps) {
             }
 
             // Status filters
-            if (lead.status === 'Confirmed' || lead.status === 'Checked In' || lead.status === 'Completed') {
+            if (lead.status === 'Balance' || lead.status === 'Checked In' || lead.status === 'Completed' || lead.status === 'Closed (Won)') {
                 stats.confirmedBookings++;
             }
 
@@ -79,7 +79,7 @@ export function ManagementKPIs({ leads, isLoading }: ManagementKPIsProps) {
             }
 
             // Revenue (Closed/Completed)
-            if (lead.status === 'Confirmed' || lead.status === 'Checked In' || lead.status === 'Completed') {
+            if (lead.status === 'Balance' || lead.status === 'Checked In' || lead.status === 'Completed' || lead.status === 'Closed (Won)') {
                 if (isValid(eventDate)) {
                     if (isToday(eventDate)) stats.dailyRevenue += lead.netAmount;
                     if (isWithinInterval(eventDate, { start: monthStart, end: monthEnd })) stats.monthlyRevenue += lead.netAmount;
@@ -87,7 +87,7 @@ export function ManagementKPIs({ leads, isLoading }: ManagementKPIsProps) {
             }
 
             // Upcoming Trips
-            if (isValid(eventDate) && (lead.status === 'Confirmed')) {
+            if (isValid(eventDate) && (lead.status === 'Balance' || lead.status === 'Checked In' || lead.status === 'Closed (Won)')) {
                 if (isToday(eventDate)) stats.upcomingTripsToday++;
                 if (isWithinInterval(eventDate, { start: todayStart, end: next7DaysEnd })) stats.upcomingTripsWeek++;
             }

@@ -33,18 +33,17 @@ export function SalesFunnelWidget({ leads }: SalesFunnelWidgetProps) {
             { name: 'Follow-up', count: 0, color: '#818cf8' },
             { name: 'Quoted', count: 0, color: '#a78bfa' },
             { name: 'Negotiation', count: 0, color: '#fbbf24' },
-            { name: 'Confirmed', count: 0, color: '#22c55e' },
+            { name: 'Balance', count: 0, color: '#22c55e' },
             { name: 'Completed', count: 0, color: '#10b981' },
             { name: 'Lost', count: 0, color: '#ef4444' },
         ];
 
         leads.forEach(lead => {
-            const stage = stages.find(s => s.name === lead.status);
+            let statusToMap = lead.status;
+            if (statusToMap === 'Checked In') statusToMap = 'Balance';
+
+            const stage = stages.find(s => s.name === statusToMap);
             if (stage) stage.count++;
-            else if (lead.status === 'Checked In') {
-                const comp = stages.find(s => s.name === 'Completed');
-                if (comp) comp.count++;
-            }
         });
 
         return stages;

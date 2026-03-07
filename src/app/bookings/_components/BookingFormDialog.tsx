@@ -213,6 +213,19 @@ export function BookingFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess,
   const initialAgentIdRef = useRef<string | null>(null); // tracks the agent ID loaded at start
   const initialTypeIdRef = useRef<string | null>(null); // tracks the booking type loaded at start
 
+  // Sync state from props if they update in the parent
+  useEffect(() => {
+    if (propAllAgents && propAllAgents.length > 0) setAllAgents(propAllAgents);
+  }, [propAllAgents]);
+
+  useEffect(() => {
+    if (propAllYachts && propAllYachts.length > 0) setAllYachts(propAllYachts);
+  }, [propAllYachts]);
+
+  useEffect(() => {
+    if (propAllUsers && propAllUsers.length > 0) setAllUsers(propAllUsers);
+  }, [propAllUsers]);
+
   const form = useForm<BookingFormData>({
     resolver: zodResolver(leadFormSchema),
     defaultValues: getDefaultFormValues(lead, currentUserId),
@@ -257,17 +270,21 @@ export function BookingFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess,
 
   useEffect(() => {
     const fetchDropdownData = async () => {
-      // If we already have everything as props, don't bother fetching
-      if (propAllAgents && propAllYachts && propAllUsers) {
+      // Fetch only if not provided by prop AND we don't have it yet
+      const needsAgents = !propAllAgents || propAllAgents.length === 0;
+      const needsYachts = !propAllYachts || propAllYachts.length === 0;
+      const needsUsers = !propAllUsers || propAllUsers.length === 0;
+
+      if (!needsAgents && !needsYachts && !needsUsers) {
         setIsLoadingDropdowns(false);
         return;
       }
       setIsLoadingDropdowns(true);
       try {
         const [agentsRes, yachtsRes, usersRes] = await Promise.all([
-          !propAllAgents ? fetch('/api/agents') : Promise.resolve(null),
-          !propAllYachts ? fetch('/api/yachts') : Promise.resolve(null),
-          !propAllUsers ? fetch('/api/users') : Promise.resolve(null),
+          needsAgents ? fetch('/api/agents') : Promise.resolve(null),
+          needsYachts ? fetch('/api/yachts') : Promise.resolve(null),
+          needsUsers ? fetch('/api/users') : Promise.resolve(null),
         ]);
 
         if (agentsRes && !agentsRes.ok) throw new Error('Failed to fetch agents for form');

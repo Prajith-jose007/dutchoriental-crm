@@ -235,6 +235,12 @@ export function BookingFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess,
   const watchedPackageQuantities = form.watch('packageQuantities');
   const watchedPerTicketRate = form.watch('perTicketRate');
   const watchedStatus = form.watch('status');
+  const watchedCommissionPercentage = form.watch('commissionPercentage');
+
+  const { append: appendPackage, remove: removePackage } = useFieldArray({
+    control: form.control,
+    name: "packageQuantities",
+  });
 
   const isFormDisabled = useMemo(() => {
     // Form is disabled if the booking is already in a locked state (Closed, Completed, or Checked In)
@@ -372,27 +378,29 @@ export function BookingFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess,
           form.setValue('commissionPercentage', agentDiscountRate, { shouldValidate: true });
         }
 
-        let packagesTotal = 0;
-        let addOnTotal = 0;
-        let calculatedTotalAmount = 0;
-        let tempTotalGuests = 0;
+        // Robust numerical conversion for all inputs
+        const parsedPaidAmount = parseFloat(String(paidAmount || 0).replace(/,/g, ''));
+        const parsedAddOnTotal = parseFloat(String(perTicketRate || 0).replace(/,/g, ''));
+        const parsedCommissionPercent = parseFloat(String(agentDiscountRate || 0));
+        const parsedDuration = parseFloat(String(durationHours || 0));
 
+        let packagesTotal = 0;
+        let tempTotalGuests = 0;
         const calculationDetails: any[] = [];
 
         // Add Yacht Base price if Private Cruise
         if (leadType === 'Private Cruise' && selectedYacht) {
           const yachtRate = Number(selectedYacht.pricePerHour || 0);
-          const hours = Number(durationHours || 0);
-          const yachtTotal = yachtRate * hours;
+          const yachtTotal = yachtRate * parsedDuration;
           if (yachtTotal > 0) {
             packagesTotal += yachtTotal;
-            calculationDetails.push({ pkg: `Yacht: ${selectedYacht.name}`, qty: hours, rate: yachtRate, subtotal: yachtTotal });
+            calculationDetails.push({ pkg: `Yacht: ${selectedYacht.name}`, qty: parsedDuration, rate: yachtRate, subtotal: yachtTotal });
           }
         }
 
         packageQuantities.forEach(pqItem => {
-          const quantity = Number(pqItem.quantity || 0);
-          const rate = Number(pqItem.rate || 0);
+          const quantity = parseFloat(String(pqItem.quantity || 0));
+          const rate = parseFloat(String(pqItem.rate || 0));
           if (quantity > 0 && rate >= 0) {
             packagesTotal += quantity * rate;
             calculationDetails.push({ pkg: pqItem.packageName, qty: quantity, rate, subtotal: quantity * rate });
@@ -400,50 +408,28 @@ export function BookingFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess,
           tempTotalGuests += quantity;
         });
 
-        // Add Free Guests to Total Guest Count
         tempTotalGuests += Number(freeGuestCount || 0);
-
-
-        if (perTicketRate && Number(perTicketRate) > 0) {
-          addOnTotal = Number(perTicketRate);
-          calculationDetails.push({ pkg: 'Other Charges', qty: 1, rate: addOnTotal });
-        }
-
-        // Total Amount (Gross) = Packages + AddOns
-        calculatedTotalAmount = Number((packagesTotal + addOnTotal).toFixed(2));
-
-        console.log("[BookingForm] Calculation Update:", {
-          packagesTotal,
-          addOnTotal,
-          total: calculatedTotalAmount,
-          details: calculationDetails
-        });
-
         setCalculatedTotalGuests(tempTotalGuests);
 
-        // Commission is calculated ONLY on Packages, not AddOns
-        const calculatedCommissionAmount = Number(
-          ((packagesTotal * agentDiscountRate) / 100).toFixed(2)
-        );
+        // 1. Total Amount = Gross Packages Total
+        const calculatedTotalAmount = Number(packagesTotal.toFixed(2));
 
-        // User Rule: Total Amount = Yacht Total (Packages only) - AddOns excluded
-        calculatedTotalAmount = Number(packagesTotal.toFixed(2));
+        // 2. Commission Amount = Total * Percent (only on packages)
+        const calculatedCommissionAmount = Number(((packagesTotal * parsedCommissionPercent) / 100).toFixed(2));
 
-        // User Rule: Net Amount = Total after discount - AddOns excluded
-        const calculatedNetAmount = Number(
-          (calculatedTotalAmount - calculatedCommissionAmount).toFixed(2)
-        );
+        // 3. Net Amount = Total - Commission
+        const calculatedNetAmount = Number((calculatedTotalAmount - calculatedCommissionAmount).toFixed(2));
 
-        // User Rule: Balance = (Net + Additional) - Paid
-        const effectivePayable = calculatedNetAmount + addOnTotal;
-        const actualSignedBalanceAmount = Number(
-          (effectivePayable - (paidAmount || 0)).toFixed(2)
-        );
+        // 4. Balance Due = (Net + Addons) - Paid
+        const effectivePayable = calculatedNetAmount + parsedAddOnTotal;
+        const actualSignedBalanceAmount = Number((effectivePayable - parsedPaidAmount).toFixed(2));
 
-        form.setValue('totalAmount', calculatedTotalAmount, { shouldValidate: true });
-        form.setValue('commissionAmount', calculatedCommissionAmount, { shouldValidate: true });
-        form.setValue('netAmount', calculatedNetAmount, { shouldValidate: true });
-        form.setValue('balanceAmount', actualSignedBalanceAmount, { shouldValidate: true });
+        // Use batching if possible or check for equality to prevent unnecessary rerenders
+        const currentVals = form.getValues();
+        if (Number(currentVals.totalAmount) !== calculatedTotalAmount) form.setValue('totalAmount', calculatedTotalAmount, { shouldValidate: true });
+        if (Number(currentVals.commissionAmount) !== calculatedCommissionAmount) form.setValue('commissionAmount', calculatedCommissionAmount, { shouldValidate: true });
+        if (Number(currentVals.netAmount) !== calculatedNetAmount) form.setValue('netAmount', calculatedNetAmount, { shouldValidate: true });
+        if (Number(currentVals.balanceAmount) !== actualSignedBalanceAmount) form.setValue('balanceAmount', actualSignedBalanceAmount, { shouldValidate: true });
       }
     });
     return () => subscription.unsubscribe();
@@ -868,7 +854,18 @@ export function BookingFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess,
                   {/* --- PACKAGES GRID --- */}
                   <div className="border-t pt-4">
                     <div className="flex justify-between items-center mb-4">
-                      <label className="text-sm font-bold uppercase text-muted-foreground tracking-wider">Packages (As per Boat)</label>
+                      <div className="flex items-center gap-4">
+                        <label className="text-sm font-bold uppercase text-muted-foreground tracking-wider">Packages (As per Boat)</label>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-7 text-[10px] px-2"
+                          onClick={() => appendPackage({ packageId: `custom-${Date.now()}`, packageName: 'New Package', quantity: 1, rate: 0 })}
+                        >
+                          + Add Custom Item
+                        </Button>
+                      </div>
                       <span className="text-xs font-medium bg-primary/10 text-primary px-2 py-1 rounded">Total Guests: {calculatedTotalGuests}</span>
                     </div>
 
@@ -877,12 +874,42 @@ export function BookingFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess,
                     ) : (
                       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                         {packageQuantityFields.map((fieldItem, index) => (
-                          <div key={fieldItem.id} className="bg-muted/20 p-3 rounded-lg border hover:border-primary/50 transition-colors">
-                            <label className="text-[11px] font-bold text-muted-foreground uppercase mb-1 block truncate" title={fieldItem.packageName}>
-                              {fieldItem.packageName}
-                            </label>
+                          <div key={fieldItem.id} className="bg-muted/20 p-3 rounded-lg border hover:border-primary/50 transition-colors relative group">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="absolute -top-2 -right-2 h-5 w-5 rounded-full bg-red-100 text-red-600 opacity-0 group-hover:opacity-100 transition-opacity"
+                              onClick={() => removePackage(index)}
+                            >
+                              <XCircle className="h-3 w-3" />
+                            </Button>
+
+                            <FormField
+                              control={form.control}
+                              name={`packageQuantities.${index}.packageName`}
+                              render={({ field }) => (
+                                <input
+                                  className="text-[11px] font-bold text-muted-foreground uppercase mb-1 block truncate bg-transparent border-none w-full focus:outline-none focus:ring-1 focus:ring-primary/30 rounded"
+                                  title={field.value}
+                                  {...field}
+                                />
+                              )}
+                            />
+
                             <div className="flex gap-2 items-center mb-1">
-                              <span className="text-[10px] text-muted-foreground">AED {form.watch(`packageQuantities.${index}.rate`)}</span>
+                              <span className="text-[10px] text-muted-foreground shrink-0">AED</span>
+                              <FormField
+                                control={form.control}
+                                name={`packageQuantities.${index}.rate`}
+                                render={({ field }) => (
+                                  <input
+                                    type="number"
+                                    className="text-[10px] text-muted-foreground bg-transparent border-none w-16 focus:outline-none focus:ring-1 focus:ring-primary/30 rounded"
+                                    {...field}
+                                  />
+                                )}
+                              />
                             </div>
                             <FormField
                               control={form.control}
@@ -896,14 +923,6 @@ export function BookingFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess,
                                 </FormControl>
                               )}
                             />
-                            {/* Hidden Rate Field */}
-                            <div className="hidden">
-                              <FormField
-                                control={form.control}
-                                name={`packageQuantities.${index}.rate`}
-                                render={({ field }) => <Input {...field} />}
-                              />
-                            </div>
                           </div>
                         ))}
                       </div>

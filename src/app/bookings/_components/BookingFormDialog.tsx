@@ -126,6 +126,8 @@ interface BookingFormDialogProps {
   currentUserId?: string | null;
   isAdmin?: boolean;
   allUsers?: User[];
+  allYachts?: Yacht[];
+  allAgents?: Agent[];
 }
 
 const getDefaultFormValues = (existingLead?: Lead | null, currentUserId?: string | null): BookingFormData => {
@@ -198,12 +200,12 @@ const getDefaultFormValues = (existingLead?: Lead | null, currentUserId?: string
 };
 
 
-export function BookingFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, currentUserId, isAdmin, allUsers: propAllUsers }: BookingFormDialogProps) {
+export function BookingFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess, currentUserId, isAdmin, allUsers: propAllUsers, allYachts: propAllYachts, allAgents: propAllAgents }: BookingFormDialogProps) {
   const { toast } = useToast();
-  const [allAgents, setAllAgents] = useState<Agent[]>([]);
-  const [allYachts, setAllYachts] = useState<Yacht[]>([]);
+  const [allAgents, setAllAgents] = useState<Agent[]>(propAllAgents || []);
+  const [allYachts, setAllYachts] = useState<Yacht[]>(propAllYachts || []);
   const [allUsers, setAllUsers] = useState<User[]>(propAllUsers || []);
-  const [isLoadingDropdowns, setIsLoadingDropdowns] = useState(true);
+  const [isLoadingDropdowns, setIsLoadingDropdowns] = useState(!propAllYachts || !propAllAgents || !propAllUsers);
   const [calculatedTotalGuests, setCalculatedTotalGuests] = useState(0);
   const [cruiseScope, setCruiseScope] = useState<'private' | 'shared' | ''>('');
   const isInitializedRef = useRef(false); // tracks whether form has been initialized for current lead
@@ -249,20 +251,26 @@ export function BookingFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess,
 
   useEffect(() => {
     const fetchDropdownData = async () => {
+      // If we already have everything as props, don't bother fetching
+      if (propAllAgents && propAllYachts && propAllUsers) {
+        setIsLoadingDropdowns(false);
+        return;
+      }
       setIsLoadingDropdowns(true);
       try {
         const [agentsRes, yachtsRes, usersRes] = await Promise.all([
-          fetch('/api/agents'),
-          fetch('/api/yachts'),
-          fetch('/api/users'),
+          !propAllAgents ? fetch('/api/agents') : Promise.resolve(null),
+          !propAllYachts ? fetch('/api/yachts') : Promise.resolve(null),
+          !propAllUsers ? fetch('/api/users') : Promise.resolve(null),
         ]);
-        if (!agentsRes.ok) throw new Error('Failed to fetch agents for form');
-        if (!yachtsRes.ok) throw new Error('Failed to fetch yachts for form');
-        if (!usersRes.ok) throw new Error('Failed to fetch users for form');
 
-        const agentsData = await agentsRes.json();
-        const yachtsData = await yachtsRes.json();
-        const usersData = await usersRes.json();
+        if (agentsRes && !agentsRes.ok) throw new Error('Failed to fetch agents for form');
+        if (yachtsRes && !yachtsRes.ok) throw new Error('Failed to fetch yachts for form');
+        if (usersRes && !usersRes.ok) throw new Error('Failed to fetch users for form');
+
+        const agentsData = agentsRes ? await agentsRes.json() : propAllAgents;
+        const yachtsData = yachtsRes ? await yachtsRes.json() : propAllYachts;
+        const usersData = usersRes ? await usersRes.json() : propAllUsers;
 
         setAllAgents(Array.isArray(agentsData) ? agentsData : []);
         setAllYachts(Array.isArray(yachtsData) ? yachtsData : []);
@@ -278,7 +286,7 @@ export function BookingFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess,
     if (isOpen) {
       fetchDropdownData();
     }
-  }, [isOpen, toast]);
+  }, [isOpen, toast, propAllAgents, propAllYachts, propAllUsers]);
 
 
   const filteredYachts = useMemo(() => {
@@ -779,6 +787,10 @@ export function BookingFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess,
                             <FormControl><SelectTrigger><SelectValue placeholder="Select Type" /></SelectTrigger></FormControl>
                             <SelectContent>
                               {leadTypeOptions.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                              {/* Legacy Fallback if needed (e.g. from older data) */}
+                              {field.value && !leadTypeOptions.includes(field.value as any) && (
+                                <SelectItem value={field.value}>{field.value}</SelectItem>
+                              )}
                             </SelectContent>
                           </Select>
                           <FormMessage />
@@ -821,7 +833,15 @@ export function BookingFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess,
                           >
                             <FormControl><SelectTrigger><SelectValue placeholder="Select Yacht" /></SelectTrigger></FormControl>
                             <SelectContent>
-                              {filteredYachts.map((yacht) => (<SelectItem key={yacht.id} value={yacht.id}>{yacht.name}</SelectItem>))}
+                              {filteredYachts.map((yacht) => (
+                                <SelectItem key={yacht.id} value={yacht.id}>{yacht.name}</SelectItem>
+                              ))}
+                              {/* Fallback for cases where yacht ID in DB doesn't match current filter or list (e.g. from CSV) */}
+                              {field.value && !filteredYachts.some(y => y.id === field.value) && (
+                                <SelectItem value={field.value}>
+                                  {allYachts.find(y => y.id === field.value)?.name || field.value}
+                                </SelectItem>
+                              )}
                             </SelectContent>
                           </Select>
                           <FormMessage />

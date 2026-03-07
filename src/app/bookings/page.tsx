@@ -1921,6 +1921,8 @@ export default function BookingsPage() {
         currentUserId={currentUserId}
         isAdmin={canBypassClosed}
         allUsers={allUsers}
+        allYachts={allYachts}
+        allAgents={allAgents}
       />
 
       <Dialog open={isShowingImportPreview} onOpenChange={setIsShowingImportPreview}>

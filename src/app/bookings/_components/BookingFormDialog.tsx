@@ -300,13 +300,17 @@ export function BookingFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess,
       return allYachts;
     }
 
-    // Loosen filtering if no specific matches found to avoid empty dropdowns
-    const filtered = allYachts.filter(yacht => yacht.category === watchedLeadType);
+    // Normalize case and trimmed values for accurate matching
+    const targetCategory = watchedLeadType.trim().toLowerCase();
 
     // If user picks "Private Cruise", show all (as any yacht can be a private charter)
-    if (watchedLeadType === 'Private Cruise') {
+    if (targetCategory === 'private cruise') {
       return allYachts;
     }
+
+    const filtered = allYachts.filter(yacht =>
+      (yacht.category || '').trim().toLowerCase() === targetCategory
+    );
 
     // Fallback: if a specific category has NO yachts assigned yet, show all to prevent blocking the user
     return filtered.length > 0 ? filtered : allYachts;

@@ -299,13 +299,17 @@ export function BookingFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess,
     if (!watchedLeadType || allYachts.length === 0) {
       return allYachts;
     }
-    // For Private Cruise, allow any yacht (loose filtering) or specific logic.
-    // User complaint: "Private Boat name option is not available".
+
+    // Loosen filtering if no specific matches found to avoid empty dropdowns
+    const filtered = allYachts.filter(yacht => yacht.category === watchedLeadType);
+
+    // If user picks "Private Cruise", show all (as any yacht can be a private charter)
     if (watchedLeadType === 'Private Cruise') {
       return allYachts;
     }
-    const filtered = allYachts.filter(yacht => yacht.category === watchedLeadType);
-    return filtered; // Strict filtering avoids showing private yachts on shared cruise edits
+
+    // Fallback: if a specific category has NO yachts assigned yet, show all to prevent blocking the user
+    return filtered.length > 0 ? filtered : allYachts;
   }, [watchedLeadType, allYachts]);
 
   const filteredLeadTypeOptions = useMemo(() => {
@@ -479,10 +483,12 @@ export function BookingFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess,
       }
     }
 
-    // Set cruise scope BEFORE reset so yacht dropdown is enabled
-    if (initialValues.type === 'Private Cruise') {
+    // Ensure cruise scope is synchronized with the type
+    const currentType = initialValues.type;
+    console.log("[BookingForm] Initializing Scope for type:", currentType);
+    if (currentType === 'Private Cruise') {
       setCruiseScope('private');
-    } else if (initialValues.type) {
+    } else if (currentType) {
       setCruiseScope('shared');
     } else {
       setCruiseScope('');

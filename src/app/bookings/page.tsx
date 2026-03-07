@@ -973,10 +973,15 @@ export default function BookingsPage() {
           const validationResult = validateCSVRow(csvRowData, allAgents, allYachts);
           console.log(formatValidationResult(primaryRow._originalRowIndex || 0, validationResult, fullLead.clientName));
 
-          if (!validationResult.isValid) {
-            const w = validationResult.errors.join('; ');
-            console.warn(`[CSV Validation] Row ${primaryRow._originalRowIndex}: ${w}`);
-            fullLead.notes += `\n[VALIDATION WARNING]: ${w}`;
+          if (!validationResult.isValid || validationResult.warnings.length > 0) {
+            const allIssues = [...validationResult.errors, ...validationResult.warnings].join('; ');
+            if (validationResult.errors.length > 0) {
+              console.warn(`[CSV Validation] Row ${primaryRow._originalRowIndex} Errors: ${validationResult.errors.join('; ')}`);
+            }
+            if (validationResult.warnings.length > 0) {
+              console.log(`[CSV Validation] Row ${primaryRow._originalRowIndex} Warnings: ${validationResult.warnings.join('; ')}`);
+            }
+            fullLead.notes += `\n[VALIDATION ALERT]: ${allIssues}`;
           } else {
             console.log(`✅ [CSV Validation] Validated group/row ${primaryRow._originalRowIndex}`);
           }

@@ -135,9 +135,10 @@ export function validateCSVRow(
     const difference = Math.abs(result.calculatedTotal - rowData.paidAmount);
 
     if (difference > tolerance) {
-        result.isValid = false;
-        result.errors.push(
-            `Payment mismatch: Expected ${result.calculatedTotal.toFixed(2)} (Base: ${baseTotal.toFixed(2)} - Discount: ${discountAmount.toFixed(2)}) but CSV shows ${rowData.paidAmount.toFixed(2)}. Difference: ${difference.toFixed(2)}`
+        // Change from error to warning for payment mismatches
+        // This allows the row to be imported but alerts the user
+        result.warnings.push(
+            `Payment discrepancy: Expected ${result.calculatedTotal.toFixed(2)} (Base: ${baseTotal.toFixed(2)} - Discount: ${discountAmount.toFixed(2)}) but CSV shows ${rowData.paidAmount.toFixed(2)}. Difference: ${difference.toFixed(2)}`
         );
     }
 
@@ -203,10 +204,12 @@ export function formatValidationResult(
         : `Row ${rowNumber}`;
 
     if (result.isValid) {
-        return `✅ ${prefix}: VALID - Agent: ${result.agentName} (${result.discountPercentage}% discount), Yacht: ${result.yachtName}, Expected: ${result.calculatedTotal.toFixed(2)}, CSV: ${result.csvPaidAmount.toFixed(2)}`;
+        const warningSuffix = result.warnings.length > 0 ? ` (Warnings: ${result.warnings.join('; ')})` : '';
+        return `✅ ${prefix}: VALID - Agent: ${result.agentName} (${result.discountPercentage}% discount), Yacht: ${result.yachtName}, Expected: ${result.calculatedTotal.toFixed(2)}, CSV: ${result.csvPaidAmount.toFixed(2)}${warningSuffix}`;
     } else {
         const errorMessages = result.errors.join('; ');
-        return `❌ ${prefix}: INVALID - ${errorMessages}`;
+        const warningSuffix = result.warnings.length > 0 ? ` (Warnings: ${result.warnings.join('; ')})` : '';
+        return `❌ ${prefix}: INVALID - ${errorMessages}${warningSuffix}`;
     }
 }
 

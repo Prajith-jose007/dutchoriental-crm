@@ -296,19 +296,19 @@ export const convertLeadCsvValue = (
 
         case 'bookingRefNo':
             if (!trimmedValue) return '';
-            // Validation: Starts with DO and includes digits (e.g. DO010226133828)
-            const bookingRefRegex = /^DO[0-9]+$/;
-            if (!bookingRefRegex.test(trimmedValue)) {
-                console.warn(`[CSV Import] Invalid bookingRefNo format: "${trimmedValue}". Expected ^DO[0-9]+$`);
+            // Validation: Relaxed to allow various formats like DO numbers or GYG refs
+            const bookingRefRegex = /^(DO|GYG)[0-9A-Z]+$/i;
+            if (!bookingRefRegex.test(trimmedValue) && trimmedValue.length < 5) {
+                console.warn(`[CSV Import] Potentially invalid bookingRefNo format: "${trimmedValue}".`);
             }
             return trimmedValue;
 
         case 'transactionId':
             if (!trimmedValue) return '';
-            // Validation: Starts with RT and alphanumeric. Regex: ^RT[0-9A-Z]+$
-            const transactionIdRegex = /^RT[0-9A-Z]+$/;
+            // Validation: Relaxed to allow RT numbers, concatenated IDs (with |), or alphanumeric refs
+            const transactionIdRegex = /^[0-9A-Z\s|,-]+$/i;
             if (!transactionIdRegex.test(trimmedValue)) {
-                console.warn(`[CSV Import] Invalid transactionId format: "${trimmedValue}". Expected ^RT[0-9A-Z]+$`);
+                console.warn(`[CSV Import] Potentially invalid transactionId format: "${trimmedValue}".`);
             }
             return trimmedValue;
 

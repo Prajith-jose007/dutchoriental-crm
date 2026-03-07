@@ -597,7 +597,7 @@ export default function BookingsPage() {
         return;
       }
       try {
-        const lines = csvText.split(/\r\n|\n/).filter(line => line.trim() !== '');
+        const lines = csvText.split(/\r\n|\n|\r/).filter(line => line.trim() !== '');
         if (lines.length < 2) {
           toast({ title: 'Import Error', description: 'CSV must have a header and at least one data row.', variant: 'destructive' });
           setIsImporting(false);
@@ -1168,38 +1168,23 @@ export default function BookingsPage() {
         }
 
         if (finalLeadsToImport.length > 0) {
-          let importedCount = 0;
-          // Process sequentially to ensure order and avoid race conditions (optional, but safer)
-          // Or strictly batch if API supports it. Currently loop.
-          for (const lead of finalLeadsToImport) {
-            try {
-              const method = 'POST';
-              const endpoint = '/api/leads';
-              // ... existing fetch logic ...
-              const response = await fetch(endpoint, {
-                method,
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(lead),
-              });
+          setImportPreviewLeads(finalLeadsToImport);
+          setImportSkippedCount(currentSkippedCount);
+          setIsShowingImportPreview(true);
 
-              if (!response.ok) {
-                console.error(`Failed to import lead ${lead.clientName}:`, response.statusText);
-                setImportSkippedCount(prev => prev + 1);
-              } else {
-                importedCount++;
-              }
-            } catch (e) {
-              console.error(`Error importing lead ${lead.clientName}:`, e);
-              setImportSkippedCount(prev => prev + 1);
-            }
+          if (duplicateCount > 0) {
+            toast({
+              title: 'Duplicates Detected',
+              description: `${duplicateCount} bookings already exist and will be skipped.`,
+              variant: 'default',
+            });
           }
-          await fetchAllData(true);
-
-          setImportPreviewLeads([]);
-          setIsShowingImportPreview(false);
-          toast({ title: 'Import Successful', description: `Successfully imported ${importedCount} bookings. (${duplicateCount} skipped)` });
         } else {
-          toast({ title: 'Import Finished', description: `No new bookings to import. ${duplicateCount} duplicates skipped.` });
+          toast({
+            title: 'No New Bookings',
+            description: `No valid new bookings found in this CSV. ${duplicateCount > 0 ? `${duplicateCount} duplicates were ignored.` : ''}`,
+            variant: 'default'
+          });
           setIsShowingImportPreview(false);
         }
       } catch (error) {
@@ -1245,6 +1230,12 @@ export default function BookingsPage() {
         if (response.ok) {
           successCount++;
         } else {
+          try {
+            const errorJson = await response.json().catch(() => ({}));
+            console.error(`[CSV Import Fix] Failed to import lead row. Server says:`, errorJson.message || response.statusText, errorJson);
+          } catch (err) {
+            console.error(`[CSV Import Fix] Error reading 500 error response:`, err);
+          }
           failCount++;
         }
       } catch (e) {

@@ -6,7 +6,7 @@ import { query } from '@/lib/db';
 import { formatISO, parseISO, isValid } from 'date-fns';
 import { formatToMySQLDateTime } from '@/lib/utils';
 
-interface DbLead extends Omit<Lead, 'packageQuantities' | 'totalAmount' | 'commissionPercentage' | 'commissionAmount' | 'netAmount' | 'paidAmount' | 'balanceAmount' | 'freeGuestCount' | 'perTicketRate'> {
+interface DbLead extends Omit<Lead, 'packageQuantities' | 'totalAmount' | 'commissionPercentage' | 'commissionAmount' | 'netAmount' | 'paidAmount' | 'balanceAmount' | 'freeGuestCount' | 'perTicketRate' | 'perTicketRateReason' | 'checkInStatus' | 'checkInTime' | 'idVerified' | 'freeGuestDetails' | 'checkedInQuantities' | 'collectedAtCheckIn'> {
   package_quantities_json?: string;
   totalAmount: string | number;
   commissionPercentage: string | number;
@@ -16,6 +16,12 @@ interface DbLead extends Omit<Lead, 'packageQuantities' | 'totalAmount' | 'commi
   balanceAmount: string | number;
   freeGuestCount: string | number | null;
   perTicketRate?: string | number | null;
+  perTicketRateReason?: string | null;
+  checkInStatus?: string;
+  checkInTime?: string;
+  idVerified?: number | boolean;
+  free_guest_details_json?: string;
+  collectedAtCheckIn?: string | number;
 }
 
 const ensureISOFormat = (dateSource?: string | Date): string | null => {
@@ -41,12 +47,22 @@ const mapDbLeadToLeadObject = (dbLead: DbLead): Lead => {
     }
   }
 
+  let freeGuestDetails: any[] = [];
+  if (dbLead.free_guest_details_json && typeof dbLead.free_guest_details_json === 'string') {
+    try {
+      freeGuestDetails = JSON.parse(dbLead.free_guest_details_json);
+    } catch (e) {
+      console.warn(`[API Helper] Failed to parse free_guest_details_json for lead ${dbLead.id}`, e);
+    }
+  }
+
   const parsedTotalAmount = parseFloat(String(dbLead.totalAmount || 0));
   const parsedCommissionPercentage = parseFloat(String(dbLead.commissionPercentage || 0));
   const parsedCommissionAmount = parseFloat(String(dbLead.commissionAmount || 0));
   const parsedNetAmount = parseFloat(String(dbLead.netAmount || 0));
   const parsedPaidAmount = parseFloat(String(dbLead.paidAmount || 0));
   const parsedBalanceAmount = parseFloat(String(dbLead.balanceAmount || 0));
+  const parsedCollectedAtCheckIn = parseFloat(String(dbLead.collectedAtCheckIn || 0));
   const parsedFreeGuestCount = parseInt(String(dbLead.freeGuestCount || 0), 10);
   const parsedPerTicketRate = dbLead.perTicketRate !== null && dbLead.perTicketRate !== undefined ? parseFloat(String(dbLead.perTicketRate)) : undefined;
 
@@ -66,41 +82,79 @@ const mapDbLeadToLeadObject = (dbLead: DbLead): Lead => {
     packageQuantities,
     freeGuestCount: isNaN(parsedFreeGuestCount) ? 0 : parsedFreeGuestCount,
     perTicketRate: parsedPerTicketRate,
+    perTicketRateReason: dbLead.perTicketRateReason || undefined,
     totalAmount: isNaN(parsedTotalAmount) ? 0 : parsedTotalAmount,
     commissionPercentage: isNaN(parsedCommissionPercentage) ? 0 : parsedCommissionPercentage,
     commissionAmount: isNaN(parsedCommissionAmount) ? 0 : parsedCommissionAmount,
     netAmount: isNaN(parsedNetAmount) ? 0 : parsedNetAmount,
     paidAmount: isNaN(parsedPaidAmount) ? 0 : parsedPaidAmount,
     balanceAmount: isNaN(parsedBalanceAmount) ? 0 : parsedBalanceAmount,
+    collectedAtCheckIn: isNaN(parsedCollectedAtCheckIn) ? 0 : parsedCollectedAtCheckIn,
     createdAt: ensureISOFormat(dbLead.createdAt)!,
     updatedAt: ensureISOFormat(dbLead.updatedAt)!,
     lastModifiedByUserId: dbLead.lastModifiedByUserId || undefined,
     ownerUserId: dbLead.ownerUserId || undefined,
+    checkInStatus: (dbLead.checkInStatus as 'Checked In' | 'Not Checked In') || 'Not Checked In',
+    checkInTime: ensureISOFormat(dbLead.checkInTime) || undefined,
+    freeGuestDetails,
+
+    // CRM Extension Fields
+    customerPhone: dbLead.customerPhone || undefined,
+    customerEmail: dbLead.customerEmail || undefined,
+    nationality: dbLead.nationality || undefined,
+    language: dbLead.language || undefined,
+    source: dbLead.source as any,
+    inquiryDate: ensureISOFormat(dbLead.inquiryDate) || undefined,
+    yachtType: dbLead.yachtType as any,
+    adultsCount: dbLead.adultsCount ? Number(dbLead.adultsCount) : 0,
+    kidsCount: dbLead.kidsCount ? Number(dbLead.kidsCount) : 0,
+    durationHours: dbLead.durationHours ? Number(dbLead.durationHours) : undefined,
+    budgetRange: dbLead.budgetRange || undefined,
+    occasion: dbLead.occasion as any,
+    priority: dbLead.priority as any,
+    nextFollowUpDate: ensureISOFormat(dbLead.nextFollowUpDate) || undefined,
+    closingProbability: dbLead.closingProbability ? Number(dbLead.closingProbability) : 0,
+
+    // Operation fields
+    captainName: dbLead.captainName || undefined,
+    crewDetails: dbLead.crewDetails || undefined,
+    idVerified: Boolean(dbLead.idVerified),
+    extraHoursUsed: dbLead.extraHoursUsed ? Number(dbLead.extraHoursUsed) : 0,
+    extraCharges: dbLead.extraCharges ? Number(dbLead.extraCharges) : 0,
+    customerSignatureUrl: dbLead.customerSignatureUrl || undefined,
   };
 };
 
 function buildLeadUpdateSetClause(data: Partial<Omit<Lead, 'id' | 'createdAt' | 'packageQuantities'>> & { package_quantities_json?: string | null }): { clause: string, values: any[] } {
   const fieldsToUpdate: string[] = [];
   const valuesToUpdate: any[] = [];
-  const allowedKeys: (keyof Lead | 'package_quantities_json')[] = [
+  const allowedKeys: (keyof Lead | 'package_quantities_json' | 'free_guest_details_json')[] = [
     'clientName', 'agent', 'yacht', 'status', 'month', 'notes', 'type',
     'paymentConfirmationStatus', 'transactionId', 'bookingRefNo', 'modeOfPayment',
-    'package_quantities_json', 'freeGuestCount', 'perTicketRate',
+    'package_quantities_json', 'freeGuestCount', 'perTicketRate', 'perTicketRateReason',
     'totalAmount', 'commissionPercentage', 'commissionAmount', 'netAmount', 'paidAmount', 'balanceAmount',
-    'updatedAt', 'lastModifiedByUserId', 'ownerUserId'
+    'updatedAt', 'lastModifiedByUserId', 'ownerUserId',
+    'customerPhone', 'customerEmail', 'nationality', 'language', 'source', 'inquiryDate', 'yachtType', 'adultsCount', 'kidsCount',
+    'durationHours', 'budgetRange', 'occasion', 'priority', 'nextFollowUpDate', 'closingProbability',
+    'captainName', 'crewDetails', 'idVerified', 'extraHoursUsed', 'extraCharges', 'customerSignatureUrl',
+    'checkInStatus', 'checkInTime', 'free_guest_details_json', 'collectedAtCheckIn'
   ];
 
   Object.entries(data).forEach(([key, value]) => {
     if (allowedKeys.includes(key as keyof Lead | 'package_quantities_json') && value !== undefined) {
       fieldsToUpdate.push(`${key} = ?`);
-      if (['month', 'updatedAt'].includes(key)) {
+      if (['month', 'updatedAt', 'inquiryDate', 'nextFollowUpDate', 'checkInTime'].includes(key)) {
         valuesToUpdate.push(formatToMySQLDateTime(value as string) || null);
-      } else if (value === null && ['perTicketRate', 'notes', 'transactionId', 'bookingRefNo'].includes(key)) {
+      } else if (value === null && ['perTicketRate', 'perTicketRateReason', 'notes', 'transactionId', 'bookingRefNo', 'customerPhone', 'customerEmail', 'nationality', 'language', 'source', 'inquiryDate', 'yachtType', 'durationHours', 'budgetRange', 'occasion', 'priority', 'nextFollowUpDate', 'captainName', 'crewDetails', 'customerSignatureUrl', 'checkInTime', 'free_guest_details_json'].includes(key)) {
         valuesToUpdate.push(null);
       } else if (value === undefined && ['perTicketRate'].includes(key)) {
         valuesToUpdate.push(null);
       } else if (typeof value === 'number' && isNaN(value)) {
         valuesToUpdate.push(key === 'perTicketRate' ? null : 0);
+      } else if (key === 'idVerified') {
+        valuesToUpdate.push(value ? 1 : 0);
+      } else if (key === 'free_guest_details_json' && value !== null) {
+        valuesToUpdate.push(value);
       } else {
         valuesToUpdate.push(value);
       }
@@ -164,8 +218,8 @@ export async function PUT(
       return NextResponse.json({ message: 'Permission denied: You can only edit bookings you own, or you must be an admin/manager/account.' }, { status: 403 });
     }
 
-    const { packageQuantities, ...leadFields } = updatedLeadDataFromClient;
-    const dataToUpdate: Partial<Omit<Lead, 'id' | 'createdAt' | 'packageQuantities'>> & { package_quantities_json?: string | null } = {
+    const { packageQuantities, freeGuestDetails, ...leadFields } = updatedLeadDataFromClient;
+    const dataToUpdate: Partial<Omit<Lead, 'id' | 'createdAt' | 'packageQuantities' | 'freeGuestDetails'>> & { package_quantities_json?: string | null, free_guest_details_json?: string | null } = {
       ...leadFields,
       updatedAt: formatISO(new Date()),
       lastModifiedByUserId: requestingUserId,
@@ -173,6 +227,9 @@ export async function PUT(
 
     if (packageQuantities) {
       dataToUpdate.package_quantities_json = JSON.stringify(packageQuantities);
+    }
+    if (freeGuestDetails) {
+      dataToUpdate.free_guest_details_json = JSON.stringify(freeGuestDetails);
     }
 
     if (dataToUpdate.perTicketRate === undefined) delete dataToUpdate.perTicketRate;

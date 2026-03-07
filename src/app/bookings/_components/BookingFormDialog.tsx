@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useState, useMemo, useRef } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm, Controller, useFieldArray } from 'react-hook-form';
 import { z } from 'zod';
@@ -39,7 +40,6 @@ import { Switch } from '@/components/ui/switch';
 import type { Lead, Agent, Yacht, ModeOfPayment, LeadStatus, LeadType, YachtPackageItem, LeadPackageQuantity, PaymentConfirmationStatus, User } from '@/lib/types';
 import { leadStatusOptions, modeOfPaymentOptions, leadTypeOptions, paymentConfirmationStatusOptions, leadSourceOptions } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
-import { useEffect, useState, useMemo } from 'react';
 import { format, formatISO, parseISO, isValid, getYear } from 'date-fns';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Terminal, XCircle, Wallet, Percent } from 'lucide-react';
@@ -67,7 +67,7 @@ const leadFormSchema = z.object({
     quantity: z.number().min(0)
   })).optional(),
   yacht: z.string().min(1, 'Yacht selection is required'),
-  type: z.enum(leadTypeOptions, { required_error: "Booking type is required." }),
+  type: z.enum([...leadTypeOptions, 'Shared Cruise'] as [string, ...string[]], { required_error: "Booking type is required." }),
   paymentConfirmationStatus: z.enum(paymentConfirmationStatusOptions, { required_error: "Payment confirmation status is required." }),
   transactionId: z.string().optional(),
   bookingRefNo: z.string().min(1, "Portal DO Number is required"),
@@ -101,6 +101,7 @@ const leadFormSchema = z.object({
   packageQuantities: z.array(bookingPackageQuantitySchema).optional().default([]),
   freeGuestCount: z.coerce.number().min(0, "Free guest count must be non-negative").optional().default(0),
   perTicketRate: z.coerce.number().min(0, "Other charges must be non-negative").optional().nullable(),
+  perTicketRateReason: z.string().optional(),
 
   totalAmount: z.coerce.number().default(0),
   commissionPercentage: z.coerce.number().min(0).max(100).default(0),
@@ -146,7 +147,7 @@ const getDefaultFormValues = (existingLead?: Lead | null, currentUserId?: string
     status: existingLead?.status || 'Balance', // Default to Balance for new leads
     month: existingLead?.month && isValid(parseISO(existingLead.month)) ? parseISO(existingLead.month) : new Date(),
     yacht: existingLead?.yacht || '',
-    type: existingLead?.type || (undefined as any), // Force selection
+    type: (existingLead?.type === 'Shared Cruise' ? 'Dinner Cruise' : existingLead?.type) || (undefined as any), // Map legacy 'Shared Cruise' to 'Dinner Cruise'
     paymentConfirmationStatus: existingLead?.paymentConfirmationStatus || 'CONFIRMED',
     modeOfPayment: existingLead?.modeOfPayment || 'CARD',
     clientName: existingLead?.clientName || '',
@@ -181,6 +182,7 @@ const getDefaultFormValues = (existingLead?: Lead | null, currentUserId?: string
     packageQuantities: initialPackageQuantities,
     freeGuestCount: Number(existingLead?.freeGuestCount || 0),
     perTicketRate: existingLead?.perTicketRate !== undefined && existingLead.perTicketRate !== null ? Number(Number(existingLead.perTicketRate).toFixed(2)) : null,
+    perTicketRateReason: existingLead?.perTicketRateReason || '',
     totalAmount: Number(Number(existingLead?.totalAmount || 0).toFixed(2)),
     commissionPercentage: Number(existingLead?.commissionPercentage || 0),
     commissionAmount: Number(Number(existingLead?.commissionAmount || 0).toFixed(2)),
@@ -204,6 +206,10 @@ export function BookingFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess,
   const [isLoadingDropdowns, setIsLoadingDropdowns] = useState(true);
   const [calculatedTotalGuests, setCalculatedTotalGuests] = useState(0);
   const [cruiseScope, setCruiseScope] = useState<'private' | 'shared' | ''>('');
+  const isInitializedRef = useRef(false); // tracks whether form has been initialized for current lead
+  const initialYachtIdRef = useRef<string | null>(null); // tracks the yacht ID loaded at start
+  const initialAgentIdRef = useRef<string | null>(null); // tracks the agent ID loaded at start
+  const initialTypeIdRef = useRef<string | null>(null); // tracks the booking type loaded at start
 
   const form = useForm<BookingFormData>({
     resolver: zodResolver(leadFormSchema),
@@ -285,7 +291,7 @@ export function BookingFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess,
       return allYachts;
     }
     const filtered = allYachts.filter(yacht => yacht.category === watchedLeadType);
-    return filtered.length > 0 ? filtered : allYachts; // Fallback to all if none match category
+    return filtered; // Strict filtering avoids showing private yachts on shared cruise edits
   }, [watchedLeadType, allYachts]);
 
   const filteredLeadTypeOptions = useMemo(() => {
@@ -300,49 +306,28 @@ export function BookingFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess,
 
 
   useEffect(() => {
-    if (!isOpen || isLoadingDropdowns || !watchedYachtId) {
-      if (!watchedYachtId && form.getValues('packageQuantities')?.length > 0) {
-        replacePackageQuantities([]);
-      }
+    // This effect runs when the user MANUALLY changes the yacht selection.
+    // During initialization isInitializedRef.current is false, so we skip it.
+    // Only run if initialization is truly done AND the yacht changed from the initial loaded yacht
+    if (!isOpen || isLoadingDropdowns || !watchedYachtId || !isInitializedRef.current || watchedYachtId === initialYachtIdRef.current) {
       return;
     }
 
     const selectedYacht = allYachts.find(y => y.id === watchedYachtId);
 
-    // Check if the yacht selection has actually changed from the lead's original yacht
-    const yachtChanged = lead?.yacht !== watchedYachtId;
-
-    if (selectedYacht && selectedYacht.packages && Array.isArray(selectedYacht.packages)) {
-      if (yachtChanged) {
-        // Yacht has changed, so reset quantities to 0 and load new default rates
-        const newPQs = selectedYacht.packages.map(yachtPkg => ({
-          packageId: String(yachtPkg.id || `pkg-id-${Date.now()}-${Math.random()}`),
-          packageName: String(yachtPkg.name || 'Unnamed Package'),
-          quantity: 0,
-          rate: Number(Number(yachtPkg.rate || 0).toFixed(2)),
-        }));
-        replacePackageQuantities(newPQs);
-      } else {
-        // Yacht is the same as the initial one (or form is loading for the first time with a lead)
-        // Preserve existing quantities and rates from the lead data
-        const currentPQs = form.getValues('packageQuantities') || [];
-        const newPQs = selectedYacht.packages.map(yachtPkg => {
-          const existingPQ = currentPQs.find(lpq => lpq.packageId === yachtPkg.id);
-          return {
-            packageId: String(yachtPkg.id),
-            packageName: String(yachtPkg.name),
-            quantity: existingPQ?.quantity || 0,
-            // Always use the official rate from the yacht, not from existing data
-            rate: Number(Number(yachtPkg.rate || 0).toFixed(2)),
-          };
-        });
-        replacePackageQuantities(newPQs);
-      }
+    if (selectedYacht?.packages && Array.isArray(selectedYacht.packages)) {
+      // User changed yacht manually — reset quantities to 0 with new yacht's packages
+      const newPQs = selectedYacht.packages.map(yachtPkg => ({
+        packageId: String(yachtPkg.id),
+        packageName: String(yachtPkg.name),
+        quantity: 0,
+        rate: Number(Number(yachtPkg.rate || 0).toFixed(2)),
+      }));
+      replacePackageQuantities(newPQs);
     } else {
       replacePackageQuantities([]);
     }
-    form.trigger(['packageQuantities']);
-  }, [isOpen, watchedYachtId, allYachts, replacePackageQuantities, lead, isLoadingDropdowns, form]);
+  }, [isOpen, watchedYachtId, allYachts, replacePackageQuantities, isLoadingDropdowns]);
 
 
   useEffect(() => {
@@ -458,47 +443,112 @@ export function BookingFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess,
 
 
   useEffect(() => {
-    if (isOpen) {
-      const initialValues = getDefaultFormValues(lead, currentUserId);
-      form.reset(initialValues);
+    // Wait until both the dialog is open AND dropdown data has finished loading
+    if (!isOpen || isLoadingDropdowns) return;
 
-      if (initialValues.type === 'Private Cruise') {
-        setCruiseScope('private');
-      } else if (initialValues.type) {
-        setCruiseScope('shared');
-      } else {
-        setCruiseScope('');
+    // Helper for robust name matching (ignores special chars and case)
+    const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+    // Reset initialization status for this lead
+    isInitializedRef.current = false;
+
+    const initialValues = getDefaultFormValues(lead, currentUserId);
+
+    // Resolve agent/yacht from name to ID (handles CSV-imported data where only names are stored)
+    let resolvedYachtId: string | undefined;
+    if (lead) {
+      if (allAgents.length > 0 && lead.agent) {
+        const checkAgent = String(lead.agent).trim();
+        const checkAgentNormalized = normalize(checkAgent);
+        const matchedAgent = allAgents.find(a =>
+          normalize(String(a.id)) === checkAgentNormalized ||
+          normalize(String(a.name)) === checkAgentNormalized
+        );
+        if (matchedAgent) initialValues.agent = matchedAgent.id;
       }
 
-      if (initialValues.yacht && allYachts.length > 0) {
-        const selectedYachtOnReset = allYachts.find(y => y.id === initialValues.yacht);
-        if (selectedYachtOnReset?.packages) {
-          const newPQs = selectedYachtOnReset.packages.map(yachtPkg => {
-            const existingPQ = initialValues.packageQuantities?.find(lpq => lpq.packageId === yachtPkg.id);
-            return {
-              packageId: yachtPkg.id,
-              packageName: yachtPkg.name,
-              quantity: existingPQ?.quantity || 0,
-              rate: Number(Number(yachtPkg.rate || 0).toFixed(2)),
-            };
-          });
-          replacePackageQuantities(newPQs);
-        } else {
-          replacePackageQuantities([]);
+      if (allYachts.length > 0 && lead.yacht) {
+        const checkYacht = String(lead.yacht).trim();
+        const checkYachtNormalized = normalize(checkYacht);
+        const matchedYacht = allYachts.find(y =>
+          normalize(String(y.id)) === checkYachtNormalized ||
+          normalize(String(y.name)) === checkYachtNormalized
+        );
+        if (matchedYacht) {
+          initialValues.yacht = matchedYacht.id;
+          resolvedYachtId = matchedYacht.id;
         }
-      } else {
-        replacePackageQuantities([]);
       }
 
-      const agentIdForCommission = lead?.agent || form.getValues('agent');
+      if (lead.month && !isNaN(new Date(lead.month).getTime())) {
+        initialValues.month = new Date(lead.month);
+      }
+    }
+
+    // Set cruise scope BEFORE reset so yacht dropdown is enabled
+    if (initialValues.type === 'Private Cruise') {
+      setCruiseScope('private');
+    } else if (initialValues.type) {
+      setCruiseScope('shared');
+    } else {
+      setCruiseScope('');
+    }
+
+    form.reset(initialValues);
+
+    // Set packages for the resolved yacht, preserving saved quantities from DB
+    const yachtForPackages = resolvedYachtId
+      ? allYachts.find(y => y.id === resolvedYachtId)
+      : (initialValues.yacht ? allYachts.find(y => y.id === initialValues.yacht) : null);
+
+    if (yachtForPackages?.packages && Array.isArray(yachtForPackages.packages)) {
+      const savedPackages = lead?.packageQuantities || [];
+      const newPQs = yachtForPackages.packages.map(yachtPkg => {
+        // Match by ID or by name (case-insensitive) to handle CSV-imported data
+        const existingPQ = savedPackages.find(lpq =>
+          String(lpq.packageId) === String(yachtPkg.id) ||
+          String(lpq.packageName).trim().toLowerCase() === String(yachtPkg.name).trim().toLowerCase()
+        );
+        return {
+          packageId: String(yachtPkg.id),
+          packageName: String(yachtPkg.name),
+          quantity: existingPQ ? Number(existingPQ.quantity) : 0,
+          rate: Number(Number(yachtPkg.rate || 0).toFixed(2)), // always use live rate from DB
+        };
+      });
+      replacePackageQuantities(newPQs);
+    } else if (lead?.packageQuantities && lead.packageQuantities.length > 0) {
+      // Yacht not found in list but we have saved packages — restore them as-is
+      replacePackageQuantities(lead.packageQuantities.map(pq => ({
+        packageId: String(pq.packageId),
+        packageName: String(pq.packageName),
+        quantity: Number(pq.quantity),
+        rate: Number(pq.rate),
+      })));
+    } else {
+      replacePackageQuantities([]);
+    }
+
+    // Preserve saved commission value from DB; only fallback to agent default for new bookings
+    const savedCommission = lead?.commissionPercentage;
+    if (savedCommission !== undefined && savedCommission !== null) {
+      form.setValue('commissionPercentage', Number(savedCommission));
+    } else {
+      const agentIdForCommission = initialValues.agent;
       if (agentIdForCommission && allAgents.length > 0) {
         const selectedAgentOnReset = allAgents.find(a => a.id === agentIdForCommission);
         form.setValue('commissionPercentage', Number(selectedAgentOnReset?.discount || 0));
-      } else if (!agentIdForCommission) {
+      } else {
         form.setValue('commissionPercentage', 0);
       }
     }
-  }, [lead, form, isOpen, allAgents, allYachts, currentUserId, replacePackageQuantities]);
+
+    // Mark initialization complete — the yacht-change effect can now fire for user actions
+    isInitializedRef.current = true;
+    initialYachtIdRef.current = initialValues.yacht || null;
+    initialAgentIdRef.current = initialValues.agent || null;
+    initialTypeIdRef.current = initialValues.type || null;
+  }, [lead, form, isOpen, isLoadingDropdowns, allAgents, allYachts, currentUserId, replacePackageQuantities]);
 
 
   function onSubmit(data: BookingFormData) {
@@ -520,6 +570,19 @@ export function BookingFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess,
     }
 
     const addOnTotal = Number(data.perTicketRate || 0);
+
+    // Add Yacht Base price if Private Cruise (Synchronized with live calculation in useEffect)
+    if (data.type === 'Private Cruise') {
+      const selectedYachtForSubmit = allYachts.find(y => y.id === data.yacht);
+      if (selectedYachtForSubmit) {
+        const yachtRate = Number(selectedYachtForSubmit.pricePerHour || 0);
+        const hours = Number(data.durationHours || 0);
+        const yachtTotal = yachtRate * hours;
+        if (yachtTotal > 0) {
+          rawPackagesTotal += yachtTotal;
+        }
+      }
+    }
 
     // User Rule: Total Amount = Yacht Total (Packages only)
     const finalTotalAmount = Number(rawPackagesTotal.toFixed(2));
@@ -565,6 +628,7 @@ export function BookingFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess,
       paymentConfirmationStatus: data.paymentConfirmationStatus,
       freeGuestCount: Number(data.freeGuestCount || 0),
       perTicketRate: data.perTicketRate !== undefined && data.perTicketRate !== null ? Number(Number(data.perTicketRate).toFixed(2)) : undefined,
+      perTicketRateReason: data.perTicketRateReason,
       createdAt: lead?.createdAt || formatISO(new Date()),
       updatedAt: formatISO(new Date()),
       lastModifiedByUserId: currentUserId || undefined,
@@ -657,7 +721,12 @@ export function BookingFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess,
                           <Select onValueChange={field.onChange} value={field.value || undefined}>
                             <FormControl><SelectTrigger><SelectValue placeholder="Select Agent" /></SelectTrigger></FormControl>
                             <SelectContent>
+                              <SelectItem value="Direct">Direct / None</SelectItem>
                               {allAgents.map((agent) => (<SelectItem key={agent.id} value={agent.id}>{agent.name}</SelectItem>))}
+                              {/* If current agent name doesn't match ID, it might be a custom string from CSV */}
+                              {field.value && !allAgents.some(a => a.id === field.value) && field.value !== "Direct" && (
+                                <SelectItem value={field.value}>{field.value}</SelectItem>
+                              )}
                             </SelectContent>
                           </Select>
                           <FormMessage />
@@ -675,7 +744,7 @@ export function BookingFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess,
                           <Select onValueChange={field.onChange} value={field.value || undefined}>
                             <FormControl><SelectTrigger><SelectValue placeholder="Status" /></SelectTrigger></FormControl>
                             <SelectContent>
-                              {['New', 'Confirmed', 'Balance', 'Canceled'].map(status => (<SelectItem key={status} value={status}>{status}</SelectItem>))}
+                              {leadStatusOptions.map(status => (<SelectItem key={status} value={status}>{status}</SelectItem>))}
                             </SelectContent>
                           </Select>
                           <FormMessage />
@@ -683,23 +752,6 @@ export function BookingFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess,
                       )}
                     />
 
-                    {/* Source */}
-                    <FormField
-                      control={form.control}
-                      name="source"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Source</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value || undefined}>
-                            <FormControl><SelectTrigger><SelectValue placeholder="Select Source" /></SelectTrigger></FormControl>
-                            <SelectContent>
-                              {leadSourceOptions.map(source => (<SelectItem key={source} value={source}>{source}</SelectItem>))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
 
                     {/* Booking Type (Merging Scope & Type) */}
                     <FormField
@@ -710,11 +762,16 @@ export function BookingFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess,
                           <FormLabel>Booking Type</FormLabel>
                           <Select
                             onValueChange={(val) => {
+                              const prevVal = field.value;
                               field.onChange(val);
                               if (val === 'Private Cruise') setCruiseScope('private');
                               else setCruiseScope('shared');
-                              form.setValue('yacht', '');
-                              replacePackageQuantities([]);
+
+                              // Only reset if it's a genuine user change from the initial value
+                              if (val !== initialTypeIdRef.current || (isInitializedRef.current && val !== prevVal)) {
+                                form.setValue('yacht', '');
+                                replacePackageQuantities([]);
+                              }
                             }}
                             value={field.value || undefined}
                           >
@@ -784,19 +841,8 @@ export function BookingFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess,
                       )}
                     />
 
-                    {/* Free Guest Count */}
-                    <FormField
-                      control={form.control}
-                      name="freeGuestCount"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Free Guest (Child 0-3 yrs)</FormLabel>
-                          <FormControl><Input type="number" min="0" {...field} value={field.value ?? ''} onChange={e => field.onChange(e.target.value === '' ? null : parseInt(e.target.value))} /></FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
                   </div>
+
 
                   {/* --- PACKAGES GRID --- */}
                   <div className="border-t pt-4">
@@ -843,18 +889,30 @@ export function BookingFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess,
                     )}
                   </div>
 
-                  {/* --- OTHER PACKAGE / ADJUSTMENT --- */}
-                  <FormField
-                    control={form.control}
-                    name="perTicketRate"
-                    render={({ field }) => (
-                      <FormItem className="md:w-1/3">
-                        <FormLabel className="text-xs font-bold uppercase text-muted-foreground">Other Package Amount (Added to Balance Due)</FormLabel>
-                        <FormControl><Input type="number" step="0.01" placeholder="0.00" {...field} value={field.value === null ? '' : field.value} /></FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                  <div className="flex flex-col md:flex-row gap-4">
+                    <FormField
+                      control={form.control}
+                      name="perTicketRate"
+                      render={({ field }) => (
+                        <FormItem className="flex-1">
+                          <FormLabel className="text-xs font-bold uppercase text-muted-foreground">Other Package Amount (Added to Balance Due)</FormLabel>
+                          <FormControl><Input type="number" step="0.01" placeholder="0.00" {...field} value={field.value === null ? '' : field.value} /></FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="perTicketRateReason"
+                      render={({ field }) => (
+                        <FormItem className="flex-1">
+                          <FormLabel className="text-xs font-bold uppercase text-muted-foreground">Addon Reason</FormLabel>
+                          <FormControl><Input placeholder="Reason for charges..." {...field} value={field.value || ''} /></FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
 
                   {/* --- FINANCIALS --- */}
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 border p-6 rounded-xl mt-6 bg-slate-50/80">

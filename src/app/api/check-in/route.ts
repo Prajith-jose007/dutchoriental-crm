@@ -22,6 +22,7 @@ interface DbLead {
     package_quantities_json?: string;
     freeGuestCount: number;
     perTicketRate?: number | null;
+    perTicketRateReason?: string | null;
     totalAmount: number;
     commissionPercentage: number;
     commissionAmount: number;
@@ -94,6 +95,7 @@ const mapDbLeadToLeadObject = (dbLead: DbLead): Lead => {
         packageQuantities,
         freeGuestCount: Number(dbLead.freeGuestCount || 0),
         perTicketRate: dbLead.perTicketRate !== null && dbLead.perTicketRate !== undefined ? Number(dbLead.perTicketRate) : undefined,
+        perTicketRateReason: dbLead.perTicketRateReason || undefined,
         totalAmount: Number(dbLead.totalAmount || 0),
         commissionPercentage: Number(dbLead.commissionPercentage || 0),
         commissionAmount: Number(dbLead.commissionAmount || 0),
@@ -121,32 +123,43 @@ export async function GET(request: NextRequest) {
     }
 
     try {
-        // 1. Initial Search: Find leads matching the input (Transaction ID, Ref No, or ID)
-        // AND exclude Canceled bookings
-        const initialSearchSql = `
+        // 1. Initial Search: Find all leads that match the query in any ID/Ref field
+        const searchSql = `
             SELECT * FROM leads 
-            WHERE (transactionId = ? OR bookingRefNo = ? OR id = ?)
+            WHERE (transactionId = ? OR bookingRefNo = ? OR id = ? OR transactionId LIKE ? OR bookingRefNo LIKE ?)
             AND status != 'Canceled'
         `;
-        const initialMatches = await query<DbLead[]>(initialSearchSql, [queryParam, queryParam, queryParam]);
+        const qp = queryParam.trim();
+        const initialMatches = await query<DbLead[]>(searchSql, [qp, qp, qp, `%${qp}`, `%${qp}`]);
 
         if (initialMatches.length === 0) {
             return NextResponse.json({ message: 'Booking not found.' }, { status: 404 });
         }
 
-        // 2. Expand Search: If a Booking Ref exists, get ALL leads for that booking
-        //    (This ensures scanning one ticket shows the whole group if they are split)
-        const bookingRefNo = initialMatches[0].bookingRefNo;
-        let finalResults = initialMatches;
+        // 2. Expand Search: Get all leads that share the same Transaction IDs or Booking Ref Nos
+        // This ensures the entire group is shown together.
+        const refNos = Array.from(new Set(initialMatches.map(l => l.bookingRefNo).filter(Boolean)));
+        const trnIds = Array.from(new Set(initialMatches.map(l => l.transactionId).filter(Boolean)));
 
-        if (bookingRefNo) {
-            const groupSql = `
-                SELECT * FROM leads 
-                WHERE bookingRefNo = ?
-                AND status != 'Canceled'
-                ORDER BY id ASC
-            `;
-            finalResults = await query<DbLead[]>(groupSql, [bookingRefNo]);
+        let finalResults: DbLead[] = initialMatches;
+
+        if (refNos.length > 0 || trnIds.length > 0) {
+            // Build a query that finds anything sharing these identifiers
+            // We use a simple OR approach for compatibility
+            let expandSql = `SELECT * FROM leads WHERE status != 'Canceled' AND (1=0`;
+            const params: any[] = [];
+
+            refNos.forEach(ref => {
+                expandSql += ` OR bookingRefNo = ?`;
+                params.push(ref);
+            });
+            trnIds.forEach(trn => {
+                expandSql += ` OR transactionId = ?`;
+                params.push(trn);
+            });
+            expandSql += `) ORDER BY id ASC`;
+
+            finalResults = await query<DbLead[]>(expandSql, params);
         }
 
         const leads = finalResults.map(mapDbLeadToLeadObject);
@@ -182,7 +195,9 @@ export async function POST(request: NextRequest) {
                 status,
                 yacht,
                 clientName,
-                notes
+                notes,
+                perTicketRate,
+                perTicketRateReason
             } = leadData;
 
             const now = formatToMySQLDateTime(new Date());
@@ -202,6 +217,8 @@ export async function POST(request: NextRequest) {
                     yacht = ?,
                     clientName = ?,
                     notes = ?,
+                    perTicketRate = ?,
+                    perTicketRateReason = ?,
                     updatedAt = ?
                 WHERE id = ?
             `;
@@ -221,6 +238,8 @@ export async function POST(request: NextRequest) {
                 yacht,
                 clientName,
                 notes || null,
+                perTicketRate || 0,
+                perTicketRateReason || null,
                 now,
                 leadId
             ]);

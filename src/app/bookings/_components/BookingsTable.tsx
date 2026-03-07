@@ -44,14 +44,15 @@ export type BookingTableColumn = {
 };
 
 export const packageHeaderMap: { [fullPackageName: string]: string } = {
-  'CHILD': 'Ch',
-  'ADULT': 'Ad',
-  'ADULT ALC': 'Ad alc',
-  'VIP CHILD': 'VIP ch',
-  'VIP ADULT': 'VIP ad',
-  'VIP ADULT ALC': 'VIP alc',
-  'VIP ALC': 'VIP alc',
-  'VIP ALCOHOLIC': 'VIP alc',
+  'CHILD': 'CH',
+  'ADULT': 'AD',
+  'ADULT ALC': 'ALC',
+  'ALC': 'ALC',
+  'VIP CHILD': 'VIP CH',
+  'VIP ADULT': 'VIP AD',
+  'VIP ADULT ALC': 'VIP ALC',
+  'VIP ALC': 'VIP ALC',
+  'VIP ALCOHOLIC': 'VIP ALC',
   'ROYALE CHILD': 'royale ch',
   'ROYAL CHILD': 'royale ch',
   'ROYALE ADULT': 'royale ad',
@@ -87,11 +88,10 @@ export const generateBookingColumns = (allYachts: Yacht[]): BookingTableColumn[]
     { accessorKey: 'agent', header: 'agent', isAgentLookup: true },
     { accessorKey: 'clientName', header: 'client' },
     // { accessorKey: 'paymentConfirmationStatus', header: 'Confirmed' }, // Removed as per request
-    // { accessorKey: 'type', header: 'Type' }, // Removed as per request
+    { accessorKey: 'type', header: 'type' },
     { accessorKey: 'transactionId', header: 'trans ID' },
     { accessorKey: 'bookingRefNo', header: 'ref' },
     { accessorKey: 'modeOfPayment', header: 'mode of payment' },
-    { accessorKey: 'freeGuestCount', header: 'free', isNumeric: true },
   ];
   columns.push(...baseInfoColumns);
 
@@ -177,6 +177,7 @@ export const generateBookingColumns = (allYachts: Yacht[]): BookingTableColumn[]
     // { accessorKey: 'totalGuestsCalculated', header: 'Booked', isNumeric: true }, // Removed as per request (not in list)
     { accessorKey: 'arrivedGuestsCalculated', header: 'arrived', isNumeric: true },
     { accessorKey: 'perTicketRate', header: 'addon', isCurrency: true },
+    { accessorKey: 'perTicketRateReason', header: 'addon reason' },
     { accessorKey: 'totalAmount', header: 'total amt', isCurrency: true },
     { accessorKey: 'averageRateCalculated', header: 'rate', isCurrency: true },
     { accessorKey: 'commissionPercentage', header: 'discount %', isPercentage: true },
@@ -185,11 +186,19 @@ export const generateBookingColumns = (allYachts: Yacht[]): BookingTableColumn[]
     { accessorKey: 'paidAmount', header: 'paid', isCurrency: true },
     // { accessorKey: 'collectedAtCheckIn', header: 'Coll. @ Check-in', isCurrency: true }, // Absent in user list
     { accessorKey: 'balanceAmount', header: 'balance', isCurrency: true },
+    { accessorKey: 'extraHoursUsed', header: 'extra hrs', isNumeric: true },
+    { accessorKey: 'extraCharges', header: 'extra chg', isCurrency: true },
   ];
   columns.push(...accountsColumns);
 
   const referencesAndCommentsColumns: BookingTableColumn[] = [
     { accessorKey: 'notes', header: 'description', isNotes: true },
+    { accessorKey: 'occasion', header: 'occasion' },
+    { accessorKey: 'captainName', header: 'captain' },
+    { accessorKey: 'crewDetails', header: 'crew' },
+    { accessorKey: 'inquiryDate', header: 'inquiry date', isDate: true },
+    { accessorKey: 'nextFollowUpDate', header: 'next follow-up', isDate: true },
+    { accessorKey: 'checkInTime', header: 'check-in time', isDate: true },
     { accessorKey: 'ownerUserId', header: 'lead owner', isUserLookup: true },
     { accessorKey: 'lastModifiedByUserId', header: 'modified by', isUserLookup: true },
     { accessorKey: 'createdAt', header: 'date of creation', isDate: true },

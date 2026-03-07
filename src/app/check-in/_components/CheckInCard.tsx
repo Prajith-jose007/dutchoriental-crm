@@ -280,6 +280,7 @@ export function CheckInCard({ leads: initialLeads, yachts }: CheckInCardProps) {
             // If virtualData.perTicketRate is the GLOBAL addon amount:
             // We assign it to primary lead.
             primaryLead.perTicketRate = virtualData.perTicketRate;
+            primaryLead.perTicketRateReason = virtualData.perTicketRateReason;
             if (primaryLead.perTicketRate) pTotal += primaryLead.perTicketRate;
 
             primaryLead.totalAmount = pTotal;
@@ -548,6 +549,16 @@ export function CheckInCard({ leads: initialLeads, yachts }: CheckInCardProps) {
                             }}
                             disabled={isLocked}
                             className="bg-white font-mono font-bold"
+                        />
+                    </div>
+                    <div className="p-3 bg-muted/20 rounded-md border space-y-2">
+                        <p className="text-[10px] font-bold text-muted-foreground uppercase flex items-center gap-1">Add-on Reason</p>
+                        <Input
+                            placeholder="Reason for additional charges..."
+                            value={data.perTicketRateReason || ''}
+                            onChange={(e) => setVirtualData({ ...data, perTicketRateReason: e.target.value })}
+                            disabled={isLocked}
+                            className="bg-white font-medium"
                         />
                     </div>
                 </div>

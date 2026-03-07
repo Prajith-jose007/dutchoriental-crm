@@ -12,7 +12,7 @@ function buildYachtUpdateSetClause(data: Partial<Omit<Yacht, 'id' | 'packages'>>
   const fieldsToUpdate: string[] = [];
   const valuesToUpdate: any[] = [];
   const allowedKeys: (keyof Omit<Yacht, 'id' | 'packages'> | 'packages_json')[] = [
-    'name', 'imageUrl', 'capacity', 'status', 'category', 'packages_json', 'customPackageInfo'
+    'name', 'imageUrl', 'capacity', 'status', 'category', 'packages_json', 'customPackageInfo', 'pricePerHour', 'minHours'
   ];
 
   Object.entries(data).forEach(([key, value]) => {
@@ -63,6 +63,8 @@ export async function GET(
         category: (dbYacht.category || 'Private Cruise') as Yacht['category'],
         packages: packages,
         customPackageInfo: dbYacht.customPackageInfo || undefined,
+        pricePerHour: dbYacht.pricePerHour ? Number(dbYacht.pricePerHour) : undefined,
+        minHours: dbYacht.minHours ? Number(dbYacht.minHours) : undefined,
       };
       return NextResponse.json(yacht, { status: 200 });
     } else {
@@ -132,6 +134,8 @@ export async function PUT(
         category: (dbYacht.category || 'Private Cruise') as Yacht['category'],
         packages: packages,
         customPackageInfo: dbYacht.customPackageInfo || undefined,
+        pricePerHour: dbYacht.pricePerHour ? Number(dbYacht.pricePerHour) : undefined,
+        minHours: dbYacht.minHours ? Number(dbYacht.minHours) : undefined,
       };
       return NextResponse.json(finalYacht, { status: 200 });
     }

@@ -48,6 +48,7 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 
 
 const USER_ID_STORAGE_KEY = 'currentUserId';
@@ -159,8 +160,8 @@ export default function BookingsPage() {
   const [importSkippedCount, setImportSkippedCount] = useState(0);
 
 
-  const fetchAllData = async () => {
-    setIsLoading(true);
+  const fetchAllData = async (isBackground = false) => {
+    if (!isBackground) setIsLoading(true);
     setFetchError(null);
     try {
       const [leadsRes, agentsRes, yachtsRes, usersRes] = await Promise.all([
@@ -205,11 +206,14 @@ export default function BookingsPage() {
       console.error("Error fetching initial data for Bookings page:", error);
       setFetchError((error as Error).message);
       toast({ title: 'Error Fetching Data', description: (error as Error).message, variant: 'destructive' });
-      setAllLeads([]); setAllAgents([]); setAllYachts([]); setUserMap({}); setAgentMap({}); setYachtMap({});
+      if (!isBackground) {
+        setAllLeads([]); setAllAgents([]); setAllYachts([]); setUserMap({}); setAgentMap({}); setYachtMap({});
+      }
     } finally {
       setIsLoading(false);
     }
   };
+
 
   useEffect(() => {
     try {
@@ -219,6 +223,14 @@ export default function BookingsPage() {
       console.error("Error accessing localStorage for user details:", e);
     }
     fetchAllData();
+
+    // Auto-refresh every 2 minutes
+    const intervalId = setInterval(() => {
+      console.log("[BookingsPage] Auto-refreshing data...");
+      fetchAllData(true);
+    }, 120000); // 2 minutes
+
+    return () => clearInterval(intervalId);
   }, []);
 
   const handleAddBookingClick = () => {
@@ -325,9 +337,10 @@ export default function BookingsPage() {
         description: `Booking for ${submittedLeadData.clientName} has been saved.`,
       });
 
-      await fetchAllData();
       setIsLeadDialogOpen(false);
       setEditingLead(null);
+      await fetchAllData(true);
+
 
     } catch (error) {
       console.error("[BookingsPage] Error saving booking:", error);
@@ -383,8 +396,9 @@ export default function BookingsPage() {
         throw new Error(errorData.message + (errorData.details ? ` - Details: ${errorData.details}` : ''));
       }
       toast({ title: 'Booking Deleted', description: `Booking ${leadId} has been deleted.` });
-      await fetchAllData();
+      await fetchAllData(true);
       setSelectedLeadIds(prev => prev.filter(id => id !== leadId));
+
     } catch (error) {
       console.error("Error deleting booking:", error);
       toast({ title: 'Error Deleting Booking', description: (error as Error).message, variant: 'destructive' });
@@ -904,7 +918,7 @@ export default function BookingsPage() {
             status: primaryRow.status || 'Confirmed',
             month: primaryRow.month || formatISO(new Date()),
             notes: additionalNotes,
-            type: primaryRow.type || 'Shared Cruise',
+            type: primaryRow.type || 'Dinner Cruise',
             paymentConfirmationStatus: primaryRow.paymentConfirmationStatus || 'CONFIRMED',
             transactionId: transactionIdForRow,
             bookingRefNo: primaryRow.bookingRefNo || '',
@@ -922,6 +936,28 @@ export default function BookingsPage() {
             updatedAt: formatISO(new Date()),
             lastModifiedByUserId: currentUserId,
             ownerUserId: primaryRow.ownerUserId || currentUserId,
+
+            // Inclusion of CRM and Operational Fields from CSV
+            customerPhone: primaryRow.customerPhone,
+            customerEmail: primaryRow.customerEmail,
+            nationality: primaryRow.nationality,
+            language: primaryRow.language,
+            source: primaryRow.source,
+            inquiryDate: primaryRow.inquiryDate,
+            adultsCount: primaryRow.adultsCount,
+            kidsCount: primaryRow.kidsCount,
+            durationHours: primaryRow.durationHours,
+            budgetRange: primaryRow.budgetRange,
+            occasion: primaryRow.occasion,
+            priority: primaryRow.priority,
+            nextFollowUpDate: primaryRow.nextFollowUpDate,
+            closingProbability: primaryRow.closingProbability,
+            captainName: primaryRow.captainName,
+            crewDetails: primaryRow.crewDetails,
+            idVerified: Boolean(primaryRow.idVerified),
+            extraHoursUsed: primaryRow.extraHoursUsed,
+            extraCharges: primaryRow.extraCharges,
+            checkInTime: primaryRow.checkInTime,
           };
 
           // VALIDATION
@@ -1152,7 +1188,8 @@ export default function BookingsPage() {
               setImportSkippedCount(prev => prev + 1);
             }
           }
-          await fetchAllData(); // Refresh data
+          await fetchAllData(true);
+
           setImportPreviewLeads([]);
           setIsShowingImportPreview(false);
           toast({ title: 'Import Successful', description: `Successfully imported ${importedCount} bookings. (${duplicateCount} skipped)` });
@@ -1254,16 +1291,15 @@ export default function BookingsPage() {
     const generateTableHtml = (categoryTitle: string, leads: Lead[]) => {
       if (leads.length === 0) return '';
 
-      // Group leads by Booking Ref No
       const groupedLeadsMap: Record<string, {
         primary: Lead;
         aggregatedPackages: LeadPackageQuantity[];
         totalAddon: number;
+        latestAddonReason?: string;
         leads: Lead[];
       }> = {};
 
       leads.forEach(lead => {
-        // Use bookingRefNo as key, or fallback to lead ID if missing (treat as unique)
         const key = lead.bookingRefNo || `unique-${lead.id}`;
 
         if (!groupedLeadsMap[key]) {
@@ -1277,8 +1313,10 @@ export default function BookingsPage() {
         const group = groupedLeadsMap[key];
         group.leads.push(lead);
         group.totalAddon += (lead.perTicketRate || 0);
+        if ((lead.perTicketRate || 0) > 0 && lead.perTicketRateReason) {
+          group.latestAddonReason = lead.perTicketRateReason;
+        }
 
-        // Merge packages
         if (lead.packageQuantities) {
           lead.packageQuantities.forEach(pq => {
             const existingIdx = group.aggregatedPackages.findIndex(p =>
@@ -1289,7 +1327,6 @@ export default function BookingsPage() {
             if (existingIdx !== -1) {
               group.aggregatedPackages[existingIdx].quantity += pq.quantity;
             } else {
-              // Clone to avoid mutating original lead
               group.aggregatedPackages.push({ ...pq });
             }
           });
@@ -1297,8 +1334,6 @@ export default function BookingsPage() {
       });
 
       const groupedLeads = Object.values(groupedLeadsMap);
-
-      // Sort groups alphabetically by Client Name (using primary lead)
       groupedLeads.sort((a, b) => (a.primary.clientName || '').localeCompare(b.primary.clientName || ''));
 
       return `
@@ -1312,26 +1347,32 @@ export default function BookingsPage() {
                 <th>Client Name</th>
                 <th>Yacht</th>
                 <th>Booking Ref</th>
+                <th>Cruise Type</th>
                 <th>Package / Upgrades</th>
+                <th>Addon Reason</th>
                 <th>Travel Date</th>
               </tr>
             </thead>
             <tbody>
               ${groupedLeads.map((group, index) => {
         const lead = group.primary;
-        // Generate Package Summary from AGGREGATED packages
         const lines = group.aggregatedPackages
           .filter(pq => (Number(pq.quantity) || 0) > 0)
-          .map((pq, i) => {
-            const shortName = packageHeaderMap[pq.packageName?.toUpperCase()] || pq.packageName;
-            return `${i + 1}. ${shortName} - ${pq.quantity}`;
+          .map((pq) => {
+            const shortName = (packageHeaderMap[pq.packageName?.toUpperCase()] || pq.packageName).toUpperCase();
+            return `${shortName}- ${pq.quantity}`;
           });
 
+        const packageSummary = lines.join(', ') || '-';
+
+        const addonLines: string[] = [];
         if (group.totalAddon > 0) {
-          lines.push(`Addon: ${group.totalAddon} AED`);
+          addonLines.push(`Addon: ${group.totalAddon} AED`);
         }
 
-        const packSummary = lines.join('<br>') || '-';
+        const packSummary = addonLines.length > 0
+          ? `<strong>${packageSummary}</strong><br><span style="font-size: 10px; color: #555;">${addonLines.join('<br>')}</span>`
+          : `<strong>${packageSummary}</strong>`;
 
         return `
                   <tr>
@@ -1340,7 +1381,9 @@ export default function BookingsPage() {
                     <td>${lead.clientName || '-'}</td>
                     <td>${yachtMap[lead.yacht] || lead.yacht || '-'}</td>
                     <td>${lead.bookingRefNo || '-'}</td>
+                    <td>${lead.type || '-'}</td>
                     <td>${packSummary}</td>
+                    <td>${group.latestAddonReason || '-'}</td>
                     <td>${lead.month ? format(parseISO(lead.month), 'dd/MM/yyyy') : '-'}</td>
                   </tr>
                 `;
@@ -1361,15 +1404,12 @@ export default function BookingsPage() {
           .container { width: 100%; max-width: 100%; margin: 0 auto; }
           h1 { text-align: center; margin-bottom: 5px; }
           .meta { text-align: center; margin-bottom: 20px; font-size: 14px; color: #666; }
-          
           .category-section { margin-bottom: 30px; page-break-inside: avoid; }
           h2 { border-bottom: 2px solid #333; padding-bottom: 5px; margin-bottom: 10px; font-size: 16px; text-transform: uppercase; }
-          
           table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
           th, td { border: 1px solid #ddd; padding: 6px 8px; text-align: left; vertical-align: top; }
           th { background-color: #f2f2f2; font-weight: bold; font-size: 11px; }
           td { font-size: 11px; }
-          
           @media print {
             @page { margin: 1cm; size: landscape; }
             body { -webkit-print-color-adjust: exact; }
@@ -1385,11 +1425,9 @@ export default function BookingsPage() {
             Generated on: ${format(new Date(), 'dd MMM yyyy HH:mm')}<br>
             Total Records: ${filteredLeads.length}
           </div>
-          
           ${generateTableHtml('Royal Bookings', royalLeads)}
           ${generateTableHtml('VIP Bookings', vipLeads)}
           ${generateTableHtml('Standard Bookings', standardLeads)}
-          
         </div>
         <script>
           window.onload = function() { window.print(); window.close(); }
@@ -1685,8 +1723,16 @@ export default function BookingsPage() {
         onAddBookingClick={handleAddBookingClick}
         onCsvImport={handleCsvImport}
         onCsvExport={handleCsvExport}
+        onWordpressImport={async () => {
+          toast({ title: "WordPress Sync", description: "Fetching new orders from WordPress... (this may take a moment)" });
+          await fetchAllData(true);
+        }}
       />
-      <Button variant="outline" onClick={handlePrintDailyManifest} disabled={isImporting}>
+      <Button variant="outline" size="sm" className="h-9 px-3" onClick={() => fetchAllData(true)} disabled={isLoading}>
+        <span className={cn("inline-flex mr-2 h-2 w-2 rounded-full", isLoading ? "bg-amber-400 animate-pulse" : "bg-green-500")}></span>
+        {isLoading ? 'Loading...' : 'Refresh'}
+      </Button>
+      <Button variant="outline" onClick={handlePrintDailyManifest} disabled={isImporting} size="sm" className="h-9">
         <Printer className="mr-2 h-4 w-4" />
         Print Daily Manifest
       </Button>
@@ -1694,7 +1740,7 @@ export default function BookingsPage() {
   );
 
 
-  if (isLoading) {
+  if (isLoading && allLeads.length === 0) {
     return (
       <div className="container mx-auto py-2">
         <PageHeader
@@ -1745,7 +1791,7 @@ export default function BookingsPage() {
           <div className="relative">
             <Input
               id="search-bookings"
-              placeholder="Search by Booking Ref, Ticket No, Client Name, Email or Phone..."
+              placeholder="Search by Booking Ref, Ticket No, Client Name..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="max-w-md"
@@ -1907,6 +1953,7 @@ export default function BookingsPage() {
                       <TableHead>Client</TableHead>
                       <TableHead>Date</TableHead>
                       <TableHead>Yacht</TableHead>
+                      <TableHead>Type</TableHead>
                       <TableHead>Packages</TableHead>
                       <TableHead>Agent</TableHead>
                       <TableHead className="text-right">Total (AED)</TableHead>
@@ -1920,6 +1967,9 @@ export default function BookingsPage() {
                         <TableCell>{lead.month ? format(parseISO(lead.month), 'dd/MM/yyyy') : 'N/A'}</TableCell>
                         <TableCell>
                           <Badge variant="outline">{yachtMap[lead.yacht] || lead.yacht}</Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="secondary">{lead.type}</Badge>
                         </TableCell>
                         <TableCell>
                           <div className="flex flex-wrap gap-1">

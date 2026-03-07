@@ -32,7 +32,7 @@ export interface YachtPackageItem {
   rate: number;
 }
 
-export const yachtCategoryOptions = ['Dinner Cruise', 'Superyacht Sightseeing Cruise', 'Private Cruise', 'Shared Cruise'] as const;
+export const yachtCategoryOptions = ['Dinner Cruise', 'Sunset Cruise', 'Superyacht Sightseeing Cruise', 'Private Cruise'] as const;
 export type YachtCategory = typeof yachtCategoryOptions[number];
 
 
@@ -93,7 +93,7 @@ export type LeadPriority = typeof leadPriorityOptions[number];
 export const modeOfPaymentOptions = ['CARD', 'CASH', 'CASH / CARD', 'NOMOD', 'PAYMOD', 'RUZINN', 'CREDIT', 'OTHER'] as const;
 export type ModeOfPayment = typeof modeOfPaymentOptions[number];
 
-export const leadTypeOptions = ['Dinner Cruise', 'Superyacht Sightseeing Cruise', 'Private Cruise', 'Shared Cruise'] as const;
+export const leadTypeOptions = ['Dinner Cruise', 'Sunset Cruise', 'Superyacht Sightseeing Cruise', 'Private Cruise'] as const;
 export type LeadType = typeof leadTypeOptions[number];
 
 export const paymentConfirmationStatusOptions = ['CONFIRMED', 'UNCONFIRMED'] as const;
@@ -159,6 +159,7 @@ export interface Lead {
   packageQuantities?: LeadPackageQuantity[];
   freeGuestCount?: number;
   perTicketRate?: number;
+  perTicketRateReason?: string;
 
   totalAmount: number;
   commissionPercentage: number;

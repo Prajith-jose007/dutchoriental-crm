@@ -119,7 +119,7 @@ export const placeholderYachts: Yacht[] = [
   },
   {
     id: 'CALYPSO SUNSET', name: 'CALYPSO SUNSET', capacity: 100, status: 'Available', imageUrl: 'https://placehold.co/600x400.png?text=Calypso+Sunset',
-    category: 'Dinner Cruise',
+    category: 'Sunset Cruise',
     packages: [
       { id: 'cs-child', name: 'CHILD', rate: 150 },
       { id: 'cs-adult', name: 'ADULT', rate: 250 },

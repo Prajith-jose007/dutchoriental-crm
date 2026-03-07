@@ -19,9 +19,10 @@ interface ImportExportButtonsProps {
   onAddBookingClick: () => void;
   onCsvImport: (file: File, source: ImportSource) => void;
   onCsvExport: () => void;
+  onWordpressImport: () => void;
 }
 
-export function ImportExportButtons({ onAddBookingClick, onCsvImport, onCsvExport }: ImportExportButtonsProps) {
+export function ImportExportButtons({ onAddBookingClick, onCsvImport, onCsvExport, onWordpressImport }: ImportExportButtonsProps) {
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedSource, setSelectedSource] = useState<ImportSource>('DEFAULT');
@@ -76,6 +77,12 @@ export function ImportExportButtons({ onAddBookingClick, onCsvImport, onCsvExpor
         <Upload className="mr-2 h-4 w-4" />
         <span className="hidden sm:inline">Upload CSV</span>
         <span className="inline sm:hidden">Upload</span>
+      </Button>
+
+      <Button variant="outline" size="sm" className="h-9 bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200" onClick={onWordpressImport}>
+        <Download className="mr-2 h-4 w-4" />
+        <span className="hidden sm:inline">Fetch WordPress Orders</span>
+        <span className="inline sm:hidden">WP Sync</span>
       </Button>
 
       <Button variant="ghost" size="sm" className="h-9 hidden sm:flex" asChild>

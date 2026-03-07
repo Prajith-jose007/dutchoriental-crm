@@ -6,7 +6,7 @@ import { query } from '@/lib/db';
 import { formatISO, parseISO, isValid, getYear as getFullYear } from 'date-fns';
 import { formatToMySQLDateTime } from '@/lib/utils';
 
-interface DbLead extends Omit<Lead, 'packageQuantities' | 'totalAmount' | 'commissionPercentage' | 'commissionAmount' | 'netAmount' | 'paidAmount' | 'balanceAmount' | 'freeGuestCount' | 'perTicketRate' | 'checkInStatus' | 'collectedAtCheckIn'> {
+interface DbLead extends Omit<Lead, 'packageQuantities' | 'totalAmount' | 'commissionPercentage' | 'commissionAmount' | 'netAmount' | 'paidAmount' | 'balanceAmount' | 'freeGuestCount' | 'perTicketRate' | 'perTicketRateReason' | 'checkInStatus' | 'checkInTime' | 'collectedAtCheckIn' | 'freeGuestDetails' | 'checkedInQuantities' | 'idVerified'> {
   package_quantities_json?: string;
   totalAmount: string | number;
   commissionPercentage: string | number;
@@ -16,10 +16,12 @@ interface DbLead extends Omit<Lead, 'packageQuantities' | 'totalAmount' | 'commi
   balanceAmount: string | number;
   freeGuestCount: string | number | null;
   perTicketRate?: string | number | null;
+  perTicketRateReason?: string | null;
   checkInStatus?: string;
   checkInTime?: string;
   free_guest_details_json?: string;
   collectedAtCheckIn?: string | number;
+  idVerified?: number | boolean;
 }
 
 const ensureISOFormat = (dateSource?: string | Date): string | null => {
@@ -80,6 +82,7 @@ const mapDbLeadToLeadObject = (dbLead: DbLead): Lead => {
     packageQuantities,
     freeGuestCount: isNaN(parsedFreeGuestCount) ? 0 : parsedFreeGuestCount,
     perTicketRate: parsedPerTicketRate,
+    perTicketRateReason: dbLead.perTicketRateReason || undefined,
     totalAmount: isNaN(parsedTotalAmount) ? 0 : parsedTotalAmount,
     commissionPercentage: isNaN(parsedCommissionPercentage) ? 0 : parsedCommissionPercentage,
     commissionAmount: isNaN(parsedCommissionAmount) ? 0 : parsedCommissionAmount,
@@ -94,6 +97,31 @@ const mapDbLeadToLeadObject = (dbLead: DbLead): Lead => {
     checkInStatus: (dbLead.checkInStatus as 'Checked In' | 'Not Checked In') || 'Not Checked In',
     checkInTime: ensureISOFormat(dbLead.checkInTime) || undefined,
     freeGuestDetails,
+
+    // CRM Extension Fields
+    customerPhone: dbLead.customerPhone || undefined,
+    customerEmail: dbLead.customerEmail || undefined,
+    nationality: dbLead.nationality || undefined,
+    language: dbLead.language || undefined,
+    source: dbLead.source as any,
+    inquiryDate: ensureISOFormat(dbLead.inquiryDate) || undefined,
+    yachtType: dbLead.yachtType as any,
+    adultsCount: dbLead.adultsCount ? Number(dbLead.adultsCount) : 0,
+    kidsCount: dbLead.kidsCount ? Number(dbLead.kidsCount) : 0,
+    durationHours: dbLead.durationHours ? Number(dbLead.durationHours) : undefined,
+    budgetRange: dbLead.budgetRange || undefined,
+    occasion: dbLead.occasion as any,
+    priority: dbLead.priority as any,
+    nextFollowUpDate: ensureISOFormat(dbLead.nextFollowUpDate) || undefined,
+    closingProbability: dbLead.closingProbability ? Number(dbLead.closingProbability) : 0,
+
+    // Operation fields
+    captainName: dbLead.captainName || undefined,
+    crewDetails: dbLead.crewDetails || undefined,
+    idVerified: Boolean(dbLead.idVerified),
+    extraHoursUsed: dbLead.extraHoursUsed ? Number(dbLead.extraHoursUsed) : 0,
+    extraCharges: dbLead.extraCharges ? Number(dbLead.extraCharges) : 0,
+    customerSignatureUrl: dbLead.customerSignatureUrl || undefined,
   };
 };
 
@@ -185,11 +213,14 @@ export async function POST(request: NextRequest) {
     const sql = `
       INSERT INTO leads (
         id, clientName, agent, yacht, status, month, notes, type, paymentConfirmationStatus, transactionId, bookingRefNo, modeOfPayment,
-        package_quantities_json, freeGuestCount, perTicketRate,
+        package_quantities_json, freeGuestCount, perTicketRate, perTicketRateReason,
         totalAmount, commissionPercentage, commissionAmount, netAmount,
         paidAmount, balanceAmount,
-        createdAt, updatedAt, lastModifiedByUserId, ownerUserId, free_guest_details_json
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        createdAt, updatedAt, lastModifiedByUserId, ownerUserId, free_guest_details_json,
+        customerPhone, customerEmail, nationality, language, source, inquiryDate, yachtType, adultsCount, kidsCount, 
+        durationHours, budgetRange, occasion, priority, nextFollowUpDate, closingProbability,
+        captainName, crewDetails, idVerified, extraHoursUsed, extraCharges, customerSignatureUrl
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     const params = [
@@ -208,6 +239,7 @@ export async function POST(request: NextRequest) {
       newLeadData.packageQuantities ? JSON.stringify(newLeadData.packageQuantities) : null,
       Number(newLeadData.freeGuestCount || 0),
       newLeadData.perTicketRate !== undefined && newLeadData.perTicketRate !== null ? Number(newLeadData.perTicketRate) : null,
+      newLeadData.perTicketRateReason || null,
       Number(newLeadData.totalAmount || 0),
       Number(newLeadData.commissionPercentage || 0),
       Number(newLeadData.commissionAmount || 0),
@@ -219,6 +251,31 @@ export async function POST(request: NextRequest) {
       requestingUserId,
       newLeadData.ownerUserId || requestingUserId,
       newLeadData.freeGuestDetails ? JSON.stringify(newLeadData.freeGuestDetails) : null,
+
+      // CRM Extension Fields
+      newLeadData.customerPhone || null,
+      newLeadData.customerEmail || null,
+      newLeadData.nationality || null,
+      newLeadData.language || null,
+      newLeadData.source || null,
+      formatToMySQLDateTime(newLeadData.inquiryDate) || null,
+      newLeadData.yachtType || null,
+      Number(newLeadData.adultsCount || 0),
+      Number(newLeadData.kidsCount || 0),
+      newLeadData.durationHours !== undefined ? Number(newLeadData.durationHours) : null,
+      newLeadData.budgetRange || null,
+      newLeadData.occasion || null,
+      newLeadData.priority || null,
+      formatToMySQLDateTime(newLeadData.nextFollowUpDate) || null,
+      Number(newLeadData.closingProbability || 0),
+
+      // Operation fields
+      newLeadData.captainName || null,
+      newLeadData.crewDetails || null,
+      newLeadData.idVerified ? 1 : 0,
+      Number(newLeadData.extraHoursUsed || 0),
+      Number(newLeadData.extraCharges || 0),
+      newLeadData.customerSignatureUrl || null,
     ];
 
     let attempt = 0;

@@ -69,6 +69,23 @@ export const leadCsvHeaderMapping: Record<string, any> = {
     'date_of_modification': 'updatedAt', 'modification_date': 'updatedAt',
     'contactno': 'customerPhone', 'contact_no': 'customerPhone', 'phone': 'customerPhone', 'mobile': 'customerPhone',
     'email': 'customerEmail', 'customer_email': 'customerEmail', 'guest_email': 'customerEmail', 'client_email': 'customerEmail', 'contact_email': 'customerEmail',
+    'nationality': 'nationality', 'country': 'nationality',
+    'language': 'language',
+    'source': 'source', 'lead_source': 'source',
+    'inquiry_date': 'inquiryDate', 'inquiry date': 'inquiryDate',
+    'adults': 'adultsCount', 'adultCount': 'adultsCount', 'adultsCount': 'adultsCount',
+    'kids': 'kidsCount', 'kidsCount': 'kidsCount', 'child_count': 'kidsCount',
+    'duration': 'durationHours', 'hours': 'durationHours', 'duration_hours': 'durationHours',
+    'budget': 'budgetRange', 'budget_range': 'budgetRange',
+    'occasion': 'occasion',
+    'priority': 'priority',
+    'next_follow_up': 'nextFollowUpDate', 'follow_up_date': 'nextFollowUpDate',
+    'probability': 'closingProbability', 'closing_probability': 'closingProbability',
+    'captain': 'captainName', 'captain_name': 'captainName',
+    'crew': 'crewDetails', 'crew_details': 'crewDetails',
+    'id_verified': 'idVerified',
+    'extra_hours': 'extraHoursUsed',
+    'extra_charges': 'extraCharges',
     'scanned_on': 'checkInTime', 'scannedon': 'checkInTime',
 
     // New generic text capture for specific import logic
@@ -169,7 +186,7 @@ export const convertLeadCsvValue = (
             case 'perTicketRate': return null;
             case 'modeOfPayment': return 'CARD';
             case 'status': return 'Confirmed';
-            case 'type': return 'Shared Cruise';
+            case 'type': return 'Dinner Cruise';
             case 'paymentConfirmationStatus': return 'CONFIRMED';
             case 'notes': case 'bookingRefNo': return '';
             case 'month': return formatISO(new Date());
@@ -391,9 +408,10 @@ export function parseCsvLine(line: string, delimiter = ','): string[] {
 
 
 
+
 function applyMasterFileLogic(row: { [key: string]: any }) {
-    // Force Shared Cruise type
-    row.type = 'Shared Cruise';
+    // Base default; will be refined based on yacht below
+    row.type = 'Dinner Cruise';
 
     // 1. Check for Specific Master File Columns first
     // If we find counts in these columns, they dictate the yacht and package.
@@ -435,6 +453,15 @@ function applyMasterFileLogic(row: { [key: string]: any }) {
     process('master_qty_vip_adult', 'Lotus Royale', 'pkg_vip_adult');
     process('master_qty_royale_child', 'Lotus Royale', 'pkg_royal_child');
     process('master_qty_royale_adult', 'Lotus Royale', 'pkg_royal_adult');
+
+    // Set type based on yacht identified for Master file
+    if (row.yacht) {
+        if (row.yacht.toUpperCase().includes('SUNSET') || row.yacht.toUpperCase().includes('CALYPSO')) {
+            row.type = 'Sunset Cruise';
+        } else if (['LOTUS ROYALE', 'OCEAN EMPRESS', 'AL MANSOUR', 'AL MANSOUR DHOW'].includes(row.yacht.toUpperCase())) {
+            row.type = 'Dinner Cruise';
+        }
+    }
 
 
     if (masterYachtFound) {
@@ -492,7 +519,6 @@ function applyMasterFileLogic(row: { [key: string]: any }) {
         }
     }
 }
-
 function applyRuzinnLogic(row: { [key: string]: any }, rawYachtString: string) {
     // rawYachtString comes from the original CSV column before any splitting.
     // We also append any secondary product text (e.g. from 'Product Name' column) to catch details.
@@ -589,14 +615,82 @@ function applyRuzinnLogic(row: { [key: string]: any }, rawYachtString: string) {
     // Ruzinn format is "YACHT NAME - PACKAGE"
     if (targetString.includes(' - ')) {
         const parts = targetString.split(' - ');
-        const baseName = parts[0].trim();
-        // Update row.yacht only if it wasn't already mapped to an ID or cleaned
-        // convertLeadCsvValue likely did this, but we force consistency here.
-        // We use Title Case for display if we are setting it raw
-        row.yacht = baseName.charAt(0).toUpperCase() + baseName.slice(1).toLowerCase();
+        let baseName = parts[0].trim();
+        const packagePart = parts[1].trim().toUpperCase();
 
-        // Fix known casing for Lotus
-        if (row.yacht.toUpperCase() === 'LOTUS ROYALE') row.yacht = 'Lotus Royale';
+        // 3a. Specific Website API Mapping logic requested:
+        // "Megayacht Cruise" -> Lotus Royale
+        if (baseName.toUpperCase().includes("MEGAYACHT CRUISE")) {
+            baseName = "Lotus Royale";
+            row.yacht = "Lotus Royale";
+        }
+
+        // Update row.yacht only if it wasn't already mapped to an ID or cleaned
+        if (!row.yacht || row.yacht === 'Unknown Yacht' || row.yacht.toUpperCase().includes("MEGAYACHT")) {
+            row.yacht = baseName.charAt(0).toUpperCase() + baseName.slice(1).toLowerCase();
+            if (row.yacht.toUpperCase() === 'LOTUS ROYALE') row.yacht = 'Lotus Royale';
+        }
+
+        // 3b. Specific Package Logic over-ride based on User Request for website API
+        // "standard goes child, adult, adult alc pack"
+        // "vip goes to vip child, vip adult, vip adult alc"
+        // "royal child, royal adult royal adult alcohol pack"
+
+        // Reset previously assigned buckets if we are re-evaluating based on precise package name
+        // (Only if we haven't already assigned specifics in step 2 - but step 2 is fuzzy. Let's force specific matches here)
+
+        const isLotus = row.yacht === 'Lotus Royale';
+
+        if (isLotus) {
+            // STANDARD
+            if (packagePart.includes("STANDARD") || packagePart === "ADULT" || packagePart === "CHILD" || packagePart === "FOOD AND SOFT DRINKS") {
+                // Map to standard Adult/Child
+                if (packagePart.includes("ALC") || packagePart.includes("ALCOHOL")) {
+                    if (adultQty > 0) row.pkg_adult_alc = adultQty;
+                    // Reset others if they were set
+                    row.pkg_adult = 0;
+                } else {
+                    if (adultQty > 0) row.pkg_adult = adultQty;
+                    if (childQty > 0) row.pkg_child = childQty;
+                }
+            }
+            // VIP
+            else if (packagePart.includes("VIP")) {
+                // "vip goes to vip child, vip adult, vip adult alc"
+                if (packagePart.includes("ALC") || packagePart.includes("ALCOHOL")) {
+                    if (adultQty > 0) row.pkg_vip_alc = adultQty; // "vip adult alc"
+                    // VIP Child usually doesn't have alcohol, so child stays as VIP Child? 
+                    // Or does VIP ALC imply VIP Child access too? usually yes.
+                    if (childQty > 0) row.pkg_vip_child = childQty;
+
+                    // Clear others
+                    row.pkg_vip_adult = 0;
+                } else {
+                    if (adultQty > 0) row.pkg_vip_adult = adultQty;
+                    if (childQty > 0) row.pkg_vip_child = childQty;
+                }
+            }
+            // ROYAL
+            else if (packagePart.includes("ROYAL") || packagePart.includes("ROYALE")) {
+                // "royal child, royal adult royal adult alcohol pack"
+                if (packagePart.includes("ALC") || packagePart.includes("ALCOHOL")) {
+                    if (adultQty > 0) row.pkg_royal_alc = adultQty;
+                    // Royal Child matches Royal Adult Alc? Usually child is just Royal Child.
+                    if (childQty > 0) row.pkg_royal_child = childQty; // Assuming Royal Child exists
+
+                    row.pkg_royal_adult = 0;
+                } else {
+                    if (adultQty > 0) row.pkg_royal_adult = adultQty;
+                    if (childQty > 0) row.pkg_royal_child = childQty;
+                }
+            }
+        }
+    } else {
+        // Handle cases without " - " separator but potentially with keywords in the single string (e.g. "Lotus Royale VIP")
+        // ... (Existing logic handles this reasonably well in Step 2, but we could enforce "Megayacht" -> "Lotus" here too)
+        if (targetString.includes("MEGAYACHT CRUISE")) {
+            row.yacht = "Lotus Royale";
+        }
     }
 }
 
@@ -652,14 +746,32 @@ export function applyPackageTypeDetection(
         console.log(`[CSV Import] Fallback yacht from product: "${yachtNameFromCsv}" -> "${cleanName}"`);
     }
 
-    // Last Resort: If yacht is STILL missing but we have a valid ticket/reference, try to guess or default
     if (!parsedRow.yacht && (parsedRow.transactionId || parsedRow.bookingRefNo)) {
         const txt = (parsedRow.temp_package_text || '').toLowerCase();
         if (txt.includes('dhow') || txt.includes('creek')) parsedRow.yacht = 'Al Mansour Dhow';
         else if (txt.includes('sunset')) parsedRow.yacht = 'Calypso Sunset';
+        else if (txt.includes('megayacht') || txt.includes('lotus')) parsedRow.yacht = 'Lotus Royale';
         else parsedRow.yacht = 'Lotus Royale'; // Default for Dutch Oriental
 
         console.log(`[CSV Import] Last resort yacht assignment: ${parsedRow.yacht}`);
+    }
+
+    // Auto-assign Type based on Yacht if Type is not explicitly provided OR if it's currently a generic shared type
+    if (parsedRow.yacht) {
+        const yName = String(parsedRow.yacht).toUpperCase();
+        if (yName.includes('SUNSET') || yName.includes('CALYPSO')) {
+            parsedRow.type = 'Sunset Cruise';
+        } else if (['LOTUS ROYALE', 'OCEAN EMPRESS', 'AL MANSOUR', 'AL MANSOUR DHOW'].includes(yName)) {
+            // Only overwrite if it was a default or missing dinner-like type, to preserve "Private Cruise" if manually specified
+            if (!parsedRow.type || parsedRow.type === 'Dinner Cruise' || parsedRow.type === 'Shared Cruise' || parsedRow.type === 'Superyacht Sightseeing Cruise') {
+                parsedRow.type = 'Dinner Cruise';
+            }
+        }
+    }
+
+    // Auto-assign Addon Reason if perTicketRate exists
+    if (parsedRow.perTicketRate && Number(parsedRow.perTicketRate) > 0 && !parsedRow.perTicketRateReason) {
+        parsedRow.perTicketRateReason = parsedRow.temp_package_text || 'Other Charges';
     }
 
     let packageTypeFromYachtName = '';

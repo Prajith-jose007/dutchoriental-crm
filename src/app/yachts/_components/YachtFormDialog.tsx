@@ -53,6 +53,8 @@ const yachtFormSchema = z.object({
   category: z.enum(yachtCategoryOptions, { required_error: "Yacht category is required."}),
   packages: z.array(yachtPackageItemSchema).optional().default([]),
   customPackageInfo: z.string().optional(),
+  pricePerHour: z.coerce.number().min(0).optional().default(0),
+  minHours: z.coerce.number().min(0).optional().default(0),
 });
 
 export type YachtFormData = z.infer<typeof yachtFormSchema>;
@@ -76,6 +78,8 @@ const getDefaultYachtFormValues = (): YachtFormData => ({
   category: 'Private Cruise',
   packages: [],
   customPackageInfo: '',
+  pricePerHour: 0,
+  minHours: 0,
 });
 
 export function YachtFormDialog({ isOpen, onOpenChange, yacht, onSubmitSuccess, isAdmin }: YachtFormDialogProps) {
@@ -266,6 +270,46 @@ export function YachtFormDialog({ isOpen, onOpenChange, yacht, onSubmitSuccess, 
                           ))}
                         </SelectContent>
                       </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="pricePerHour"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Price Per Hour (AED)</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          placeholder="0"
+                          min="0"
+                          {...field}
+                          readOnly={!isAdmin}
+                          className={!isAdmin ? "bg-muted/50 cursor-not-allowed" : ""}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="minHours"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Min Hours</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          placeholder="0"
+                          min="0"
+                          {...field}
+                          readOnly={!isAdmin}
+                          className={!isAdmin ? "bg-muted/50 cursor-not-allowed" : ""}
+                        />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}

@@ -65,7 +65,6 @@ export const leadStatusOptions = [
   'Follow-up',
   'Quoted',
   'Negotiation',
-  'Confirmed',
   'Closed (Won)',
   'Unconfirmed',
   'Balance',
@@ -73,8 +72,7 @@ export const leadStatusOptions = [
   'Checked In',
   'Completed',
   'Lost',
-  'Closed (Lost)',
-  'Canceled'
+  'Closed (Lost)'
 ] as const;
 export type LeadStatus = typeof leadStatusOptions[number];
 

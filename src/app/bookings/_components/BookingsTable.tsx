@@ -266,15 +266,13 @@ export function BookingsTable({
       case 'Follow-up':
       case 'Quoted':
       case 'Negotiation':
-      case 'In Progress':
-      case 'Confirmed': return 'secondary';
+      case 'In Progress': return 'secondary';
       case 'Unconfirmed': return 'destructive';
       case 'Closed (Won)':
       case 'Checked In':
       case 'Completed': return 'success';
       case 'Closed (Lost)':
       case 'Lost': return 'outline';
-      case 'Canceled': return 'destructive';
       default: return 'outline';
     }
   };

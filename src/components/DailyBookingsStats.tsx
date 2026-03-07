@@ -80,7 +80,7 @@ export function DailyBookingsStats({ leads, yachts, date = new Date(), title = "
                 }
                 statsEntry.totalPax += pax;
 
-                if (lead.status === 'Confirmed' || lead.paymentConfirmationStatus === 'CONFIRMED') {
+                if (lead.paymentConfirmationStatus === 'CONFIRMED') {
                     statsEntry.confirmedPax += pax;
                 }
 

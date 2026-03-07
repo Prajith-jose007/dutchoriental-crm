@@ -60,19 +60,10 @@ export interface Invoice {
 }
 
 export const leadStatusOptions = [
-  'New',
-  'Contacted',
-  'Follow-up',
-  'Quoted',
-  'Negotiation',
-  'Closed (Won)',
-  'Unconfirmed',
-  'Balance',
-  'In Progress',
-  'Checked In',
-  'Completed',
-  'Lost',
-  'Closed (Lost)'
+  'Confirmed',
+  'Pending',
+  'Canceled',
+  'Booked'
 ] as const;
 export type LeadStatus = typeof leadStatusOptions[number];
 

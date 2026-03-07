@@ -24,6 +24,7 @@ import {
 import type { Lead, LeadStatus, Yacht, YachtPackageItem, PaymentConfirmationStatus } from '@/lib/types';
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { format, parseISO, isValid } from 'date-fns';
+import { cn } from '@/lib/utils';
 
 export type BookingTableColumn = {
   accessorKey: string;
@@ -263,18 +264,10 @@ export function BookingsTable({
   const getStatusVariant = (status?: LeadStatus) => {
     if (!status) return 'outline';
     switch (status) {
-      case 'New': return 'default';
-      case 'Contacted':
-      case 'Follow-up':
-      case 'Quoted':
-      case 'Negotiation':
-      case 'In Progress': return 'secondary';
-      case 'Unconfirmed': return 'destructive';
-      case 'Closed (Won)':
-      case 'Checked In':
-      case 'Completed': return 'success';
-      case 'Closed (Lost)':
-      case 'Lost': return 'outline';
+      case 'Confirmed': return 'success';
+      case 'Pending': return 'secondary'; // Will override with className for orange
+      case 'Canceled': return 'destructive';
+      case 'Booked': return 'outline';
       default: return 'outline';
     }
   };
@@ -375,7 +368,7 @@ export function BookingsTable({
       );
     }
     if (column.accessorKey === 'id') {
-      const canEdit = isAdmin || (!lead.status.startsWith('Closed') && lead.status !== 'Completed');
+      const canEdit = isAdmin || lead.status !== 'Canceled';
       return (
         <Button variant="link" className="p-0 h-auto font-medium" onClick={() => onEditLead(lead)} disabled={!canEdit}>
           {String(lead.id).length > 10 ? String(lead.id).substring(0, 4) + '...' + String(lead.id).substring(String(lead.id).length - 4) : lead.id}
@@ -383,7 +376,20 @@ export function BookingsTable({
       );
     }
     if (column.accessorKey === 'status') {
-      return <Badge variant={getStatusVariant(lead.status)}>{lead.status}</Badge>;
+      const variant = getStatusVariant(lead.status);
+      return (
+        <Badge
+          variant={variant}
+          className={cn(
+            lead.status === 'Confirmed' && "bg-green-600 hover:bg-green-700 text-white border-transparent",
+            lead.status === 'Pending' && "bg-[#F4A460] hover:bg-[#E69138] text-white border-transparent", // Saffron / SandyBrown
+            lead.status === 'Canceled' && "bg-red-600 hover:bg-red-700 text-white border-transparent",
+            lead.status === 'Booked' && "bg-gray-200 text-gray-800 hover:bg-gray-300 border-transparent dark:bg-gray-700 dark:text-gray-200"
+          )}
+        >
+          {lead.status}
+        </Badge>
+      );
     }
     if (column.accessorKey === 'paymentConfirmationStatus') {
       return <Badge variant={getPaymentConfirmationStatusVariant(lead.paymentConfirmationStatus)}>{lead.paymentConfirmationStatus}</Badge>;

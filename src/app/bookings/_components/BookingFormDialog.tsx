@@ -146,7 +146,7 @@ const getDefaultFormValues = (existingLead?: Lead | null, currentUserId?: string
     agent: existingLead?.agent || '',
     customAgentName: existingLead?.customAgentName || '',
     customAgentPhone: existingLead?.customAgentPhone || '',
-    status: existingLead?.status || 'Balance', // Default to Balance for new leads
+    status: existingLead?.status || 'Pending', // Default to Pending for new leads
     month: existingLead?.month && isValid(parseISO(existingLead.month)) ? parseISO(existingLead.month) : new Date(),
     yacht: existingLead?.yacht || '',
     type: ((existingLead?.type as any) === 'Shared Cruise' ? 'Dinner Cruise' : existingLead?.type) || (undefined as any), // Map legacy 'Shared Cruise' to 'Dinner Cruise'
@@ -261,10 +261,10 @@ export function BookingFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess,
     // We check the ORIGINAL lead status (lead.status), not the current form status, to allow users to transition TO a locked status.
     if (!lead) return false;
 
-    const isClosed = lead.status.startsWith('Closed') || lead.status === 'Completed';
-    const isCheckedIn = lead.status === 'Checked In' || lead.checkInStatus === 'Checked In';
+    const isLocked = lead.status === 'Canceled';
+    const isCheckedIn = (lead as any).checkInStatus === 'Checked In';
 
-    return (isClosed || isCheckedIn) && !isAdmin;
+    return (isLocked || isCheckedIn) && !isAdmin;
   }, [lead, isAdmin]);
 
 

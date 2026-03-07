@@ -223,14 +223,6 @@ export default function BookingsPage() {
       console.error("Error accessing localStorage for user details:", e);
     }
     fetchAllData();
-
-    // Auto-refresh every 2 minutes
-    const intervalId = setInterval(() => {
-      console.log("[BookingsPage] Auto-refreshing data...");
-      fetchAllData(true);
-    }, 120000); // 2 minutes
-
-    return () => clearInterval(intervalId);
   }, []);
 
   const handleAddBookingClick = () => {

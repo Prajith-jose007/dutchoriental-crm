@@ -20,7 +20,7 @@ const USER_EMAIL_STORAGE_KEY = 'currentUserEmail';
 const USER_NAME_STORAGE_KEY = 'currentUserName';
 const USER_ID_STORAGE_KEY = 'currentUserId';
 
-const IDLE_TIMEOUT = 5 * 60 * 1000; // 5 minutes in milliseconds
+const IDLE_TIMEOUT = 24 * 60 * 60 * 1000; // 24 hours (Increased from 5m, effectively disabled)
 
 export function AppShell({ children }: AppShellProps) {
   const router = useRouter();
@@ -74,7 +74,8 @@ export function AppShell({ children }: AppShellProps) {
     }
   }, [pathname, router]);
 
-  // Idle session management
+  // Idle session management - DISABLED to prevent auto-logout
+  /*
   useEffect(() => {
     if (!isAuthenticated || pathname === '/login') {
       if (idleTimeoutRef.current) {
@@ -104,6 +105,7 @@ export function AppShell({ children }: AppShellProps) {
       });
     };
   }, [isAuthenticated, pathname, resetIdleTimer]);
+  */
 
   if (isAuthLoading) {
     return (

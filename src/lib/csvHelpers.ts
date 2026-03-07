@@ -67,8 +67,8 @@ export const leadCsvHeaderMapping: Record<string, any> = {
     'modified_by': 'lastModifiedByUserId', 'modified by': 'lastModifiedByUserId', 'updated_by': 'lastModifiedByUserId', 'updated by': 'lastModifiedByUserId',
     'date_of_creation': 'createdAt', 'creation_date': 'createdAt', 'sales_date': 'createdAt', 'salesdate': 'createdAt', 'purchase_dat': 'createdAt',
     'date_of_modification': 'updatedAt', 'modification_date': 'updatedAt',
-    'contactno': 'customerPhone', 'contact_no': 'customerPhone', 'phone': 'customerPhone', 'mobile': 'customerPhone',
-    'email': 'customerEmail', 'customer_email': 'customerEmail', 'guest_email': 'customerEmail', 'client_email': 'customerEmail', 'contact_email': 'customerEmail',
+    'contactno': 'customerPhone', 'contact_no': 'customerPhone', 'phone': 'customerPhone', 'mobile': 'customerPhone', 'contact phone': 'customerPhone', 'phone number': 'customerPhone', 'phone_number': 'customerPhone',
+    'email': 'customerEmail', 'customer_email': 'customerEmail', 'guest_email': 'customerEmail', 'client_email': 'customerEmail', 'contact_email': 'customerEmail', 'customer email': 'customerEmail', 'guest email': 'customerEmail', 'client email': 'customerEmail', 'contact email': 'customerEmail', 'e-mail': 'customerEmail', 'email address': 'customerEmail', 'email_address': 'customerEmail',
     'nationality': 'nationality', 'country': 'nationality',
     'language': 'language',
     'source': 'source', 'lead_source': 'source',
@@ -314,7 +314,16 @@ export const convertLeadCsvValue = (
 
         case 'customerPhone':
             if (['#ERROR!', '#REF!', 'nan', 'null'].includes(trimmedValue.toLowerCase())) return '';
-            return trimmedValue; // Keep as text to preserve leading zeros, spaces
+            // Handle scientific notation (e.g. 9.71589E+11 from Excel)
+            if (trimmedValue.toLowerCase().includes('e+') || (trimmedValue.includes('.') && trimmedValue.toLowerCase().includes('e'))) {
+                try {
+                    const num = Number(trimmedValue);
+                    if (!isNaN(num)) {
+                        return num.toFixed(0);
+                    }
+                } catch (e) { /* fall through to return as-is */ }
+            }
+            return trimmedValue;
 
         case 'month':
         case 'createdAt':

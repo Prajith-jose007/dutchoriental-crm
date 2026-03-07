@@ -1651,6 +1651,15 @@ export default function BookingsPage() {
             } else if (col.accessorKey === 'freeGuestCount') {
               cellValue = formatNumericForCsv(lead.freeGuestCount);
             }
+            else if (col.accessorKey === 'customerPhone') {
+              const valStr = String(lead.customerPhone || '');
+              if (valStr.toLowerCase().includes('e+') || (valStr.includes('.') && valStr.toLowerCase().includes('e'))) {
+                const num = Number(valStr);
+                cellValue = !isNaN(num) ? num.toFixed(0) : valStr;
+              } else {
+                cellValue = valStr;
+              }
+            }
             else {
               cellValue = lead[col.accessorKey as keyof Lead];
             }

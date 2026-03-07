@@ -439,6 +439,14 @@ export function BookingsTable({
       const userId = value as string | undefined;
       return userId ? userMap[userId] || userId : '-';
     }
+    if (column.accessorKey === 'customerPhone') {
+      const valStr = String(value || '');
+      if (valStr.toLowerCase().includes('e+') || (valStr.includes('.') && valStr.toLowerCase().includes('e'))) {
+        const num = Number(valStr);
+        if (!isNaN(num)) return num.toFixed(0);
+      }
+      return valStr || '-';
+    }
     return value !== undefined && value !== null && String(value).trim() !== '' ? String(value) : '-';
   };
 

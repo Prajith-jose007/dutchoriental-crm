@@ -1720,10 +1720,6 @@ export default function BookingsPage() {
         onCsvImport={handleCsvImport}
         onCsvExport={handleCsvExport}
       />
-      <Button variant="outline" size="sm" className="h-9 px-3" onClick={() => fetchAllData(true)} disabled={isLoading}>
-        <span className={cn("inline-flex mr-2 h-2 w-2 rounded-full", isLoading ? "bg-amber-400 animate-pulse" : "bg-green-500")}></span>
-        {isLoading ? 'Loading...' : 'Refresh'}
-      </Button>
       <Button variant="outline" onClick={handlePrintDailyManifest} disabled={isImporting} size="sm" className="h-9">
         <Printer className="mr-2 h-4 w-4" />
         Print Daily Manifest

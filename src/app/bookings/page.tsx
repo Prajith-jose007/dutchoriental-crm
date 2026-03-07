@@ -495,7 +495,7 @@ export default function BookingsPage() {
       }
       toast({ title: 'Status Update Complete', description: toastDescription });
 
-      await fetchAllData();
+      await fetchAllData(true);
       setSelectedLeadIds([]);
 
     } catch (error) {
@@ -557,7 +557,7 @@ export default function BookingsPage() {
       }
       toast({ title: 'Bulk Delete Complete', description: toastDescription });
 
-      await fetchAllData();
+      await fetchAllData(true);
       setSelectedLeadIds([]);
 
     } catch (error) {
@@ -1257,7 +1257,7 @@ export default function BookingsPage() {
     setIsShowingImportPreview(false);
     setImportPreviewLeads([]);
     setIsImporting(false);
-    fetchAllData();
+    fetchAllData(true);
   };
 
   const handlePrintDailyManifest = () => {
@@ -1723,10 +1723,6 @@ export default function BookingsPage() {
         onAddBookingClick={handleAddBookingClick}
         onCsvImport={handleCsvImport}
         onCsvExport={handleCsvExport}
-        onWordpressImport={async () => {
-          toast({ title: "WordPress Sync", description: "Fetching new orders from WordPress... (this may take a moment)" });
-          await fetchAllData(true);
-        }}
       />
       <Button variant="outline" size="sm" className="h-9 px-3" onClick={() => fetchAllData(true)} disabled={isLoading}>
         <span className={cn("inline-flex mr-2 h-2 w-2 rounded-full", isLoading ? "bg-amber-400 animate-pulse" : "bg-green-500")}></span>

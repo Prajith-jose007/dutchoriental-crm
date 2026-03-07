@@ -147,7 +147,7 @@ const getDefaultFormValues = (existingLead?: Lead | null, currentUserId?: string
     status: existingLead?.status || 'Balance', // Default to Balance for new leads
     month: existingLead?.month && isValid(parseISO(existingLead.month)) ? parseISO(existingLead.month) : new Date(),
     yacht: existingLead?.yacht || '',
-    type: (existingLead?.type === 'Shared Cruise' ? 'Dinner Cruise' : existingLead?.type) || (undefined as any), // Map legacy 'Shared Cruise' to 'Dinner Cruise'
+    type: ((existingLead?.type as any) === 'Shared Cruise' ? 'Dinner Cruise' : existingLead?.type) || (undefined as any), // Map legacy 'Shared Cruise' to 'Dinner Cruise'
     paymentConfirmationStatus: existingLead?.paymentConfirmationStatus || 'CONFIRMED',
     modeOfPayment: existingLead?.modeOfPayment || 'CARD',
     clientName: existingLead?.clientName || '',
@@ -616,6 +616,7 @@ export function BookingFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess,
     const { agent: formAgent, ...restOfFormData } = data;
     const submittedLead: Lead = {
       ...restOfFormData,
+      type: data.type as any,
       agent: formAgent || data.customAgentName || '',
       id: lead?.id || `temp-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
       transactionId: lead?.id && data.transactionId === "Pending Generation" ? lead.transactionId : (data.transactionId === "Pending Generation" ? undefined : data.transactionId),

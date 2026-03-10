@@ -39,6 +39,10 @@ export async function query<T = unknown>(sql: string, params?: unknown[]): Promi
   const connection = await getPool().getConnection();
   try {
     const safeParams = params ? params.map(p => p === undefined ? null : p) : undefined;
+    const poolConfig = (getPool() as any).pool?.config?.connectionConfig || (getPool() as any).config?.connectionConfig;
+    if (poolConfig) {
+      console.log(`[DB] Using Database: ${poolConfig.database} on ${poolConfig.host}:${poolConfig.port}`);
+    }
     console.log(`Executing SQL: ${sql}`, safeParams || '');
     const [results] = await connection.execute(sql, safeParams);
     console.log(`SQL executed successfully. Result count: ${(results as unknown[]).length}`);

@@ -908,7 +908,7 @@ export default function BookingsPage() {
           });
 
           // Get Agent Discount
-          const agentId = primaryRow.agent;
+          const agentId = primaryRow.agent || 'Direct Booking';
           const agentForLead = allAgents.find(a => a.id === agentId);
           const discountPercentage = agentForLead ? agentForLead.discount : 0;
 
@@ -922,10 +922,15 @@ export default function BookingsPage() {
 
           const calculatedBalance = calculatedNet - totalPaid;
 
+          // Handle Agent Logic: If the agent name doesn't match a system ID, it's stored as plain text.
+          // We also want to mirror it to customAgentName for better reporting.
+          const isSystemAgent = allAgents.some(a => a.id === agentId);
+          const finalCustomAgentName = primaryRow.customAgentName || (!isSystemAgent && agentId !== 'Direct Booking' ? agentId : undefined);
+
           const fullLead: Lead = {
             id: primaryRow.id || `imported-${Date.now()}-${primaryRow._originalRowIndex}`,
             clientName: primaryRow.clientName || 'N/A',
-            agent: primaryRow.agent || 'Direct Booking',
+            agent: agentId,
             yacht: normalizeYachtName(primaryRow.yacht || ''),
             status: primaryRow.status || 'Balance',
             month: primaryRow.month || formatISO(new Date()),
@@ -938,38 +943,45 @@ export default function BookingsPage() {
             packageQuantities: packageQuantities,
             freeGuestCount: primaryRow.freeGuestCount || 0,
             perTicketRate: primaryRow.perTicketRate,
+            perTicketRateReason: primaryRow.perTicketRateReason || undefined,
             totalAmount: calculatedTotal,
             commissionPercentage: discountPercentage,
             commissionAmount: calculatedCommission,
             netAmount: calculatedNet,
-            paidAmount: totalPaid, // CSV aggregated paid amount
+            paidAmount: totalPaid,
             balanceAmount: calculatedBalance,
             createdAt: primaryRow.createdAt || formatISO(new Date()),
             updatedAt: formatISO(new Date()),
             lastModifiedByUserId: currentUserId,
             ownerUserId: primaryRow.ownerUserId || currentUserId,
 
-            // Inclusion of CRM and Operational Fields from CSV
-            customerPhone: primaryRow.customerPhone,
-            customerEmail: primaryRow.customerEmail,
-            nationality: primaryRow.nationality,
-            language: primaryRow.language,
-            source: primaryRow.source,
-            inquiryDate: primaryRow.inquiryDate,
-            adultsCount: primaryRow.adultsCount,
-            kidsCount: primaryRow.kidsCount,
-            durationHours: primaryRow.durationHours,
-            budgetRange: primaryRow.budgetRange,
-            occasion: primaryRow.occasion,
-            priority: primaryRow.priority,
-            nextFollowUpDate: primaryRow.nextFollowUpDate,
-            closingProbability: primaryRow.closingProbability,
-            captainName: primaryRow.captainName,
-            crewDetails: primaryRow.crewDetails,
+            // New CRM Extension Fields from CSV
+            customerPhone: primaryRow.customerPhone || undefined,
+            customerEmail: primaryRow.customerEmail || undefined,
+            nationality: primaryRow.nationality || undefined,
+            language: primaryRow.language || undefined,
+            source: primaryRow.source as any,
+            customAgentName: finalCustomAgentName,
+            customAgentPhone: primaryRow.customAgentPhone || undefined,
+            inquiryDate: primaryRow.inquiryDate || undefined,
+            yachtType: primaryRow.yachtType as any,
+            adultsCount: primaryRow.adultsCount || 0,
+            kidsCount: primaryRow.kidsCount || 0,
+            noShowCount: primaryRow.noShowCount || 0,
+            durationHours: primaryRow.durationHours || undefined,
+            budgetRange: primaryRow.budgetRange || undefined,
+            occasion: primaryRow.occasion as any,
+            priority: primaryRow.priority as any,
+            nextFollowUpDate: primaryRow.nextFollowUpDate || undefined,
+            closingProbability: primaryRow.closingProbability || 0,
+
+            // Operation fields
+            captainName: primaryRow.captainName || undefined,
+            crewDetails: primaryRow.crewDetails || undefined,
             idVerified: Boolean(primaryRow.idVerified),
-            extraHoursUsed: primaryRow.extraHoursUsed,
-            extraCharges: primaryRow.extraCharges,
-            checkInTime: primaryRow.checkInTime,
+            extraHoursUsed: primaryRow.extraHoursUsed || 0,
+            extraCharges: primaryRow.extraCharges || 0,
+            checkInTime: primaryRow.checkInTime || undefined,
           };
 
           // VALIDATION

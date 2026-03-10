@@ -304,6 +304,18 @@ export async function POST(request: NextRequest) {
           params[9] = finalTransactionId;
           attempt++;
           if (attempt === maxRetries) throw new Error(`Failed to generate unique Transaction ID after ${maxRetries} attempts.`);
+        } else if (err.code === 'ER_BAD_FIELD_ERROR' && err.message.includes('customAgentName')) {
+          console.error(`[API POST] Missing columns detected. Attempting auto-migration...`);
+          try {
+            await query("ALTER TABLE leads ADD COLUMN customAgentName VARCHAR(255) AFTER source");
+            await query("ALTER TABLE leads ADD COLUMN customAgentPhone VARCHAR(50) AFTER customAgentName");
+            console.log(`[API POST] Auto-migration successful. Retrying insert...`);
+            attempt++;
+            continue; // Retry after migration
+          } catch (migErr) {
+            console.error(`[API POST] Auto-migration failed:`, migErr);
+            throw err; // Throw original error
+          }
         } else {
           throw err; // Re-throw other errors
         }

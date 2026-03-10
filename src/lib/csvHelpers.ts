@@ -131,11 +131,13 @@ export const leadCsvHeaderMapping: Record<string, any> = {
     'vip_child_399_': 'master_qty_vip_child', // Potential trailing
     'vip_499': 'master_qty_vip_adult',
     'royale_child_799': 'master_qty_royale_child',
-    'royale_adult_999': 'master_qty_royale_adult',
+    'master_qty_royale_adult': 'master_qty_royale_adult',
     'others_amt_(cake)': 'master_amt_cake',
     'others_amt(cake)': 'master_amt_cake', // Variation
-
     '1': 'pkg_adult', '2': 'pkg_child', '3': 'freeGuestCount',
+
+    'custom_agent': 'customAgentName', 'custom_agent_name': 'customAgentName', 'manual_agent': 'customAgentName',
+    'custom_agent_phone': 'customAgentPhone', 'manual_agent_phone': 'customAgentPhone',
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

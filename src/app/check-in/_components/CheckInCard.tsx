@@ -88,7 +88,7 @@ export function CheckInCard({ leads: initialLeads, yachts }: CheckInCardProps) {
             // Fix for "Phantom Balance": 
             // If comm is still 0, but booking is Confirmed and Paid < Total, assume difference is agent commission.
             const paid = l.paidAmount || 0;
-            if (leadComm === 0 && (l.status === 'Balance' || l.paymentConfirmationStatus === 'CONFIRMED') && paid > 0 && paid < leadTotal) {
+            if (leadComm === 0 && (l.status === 'Confirmed' || l.status === 'Balance' || l.paymentConfirmationStatus === 'CONFIRMED') && paid > 0 && paid < leadTotal) {
                 const impliedDiff = leadTotal - paid;
                 if (impliedDiff > 0) leadComm = impliedDiff;
             }
@@ -105,7 +105,7 @@ export function CheckInCard({ leads: initialLeads, yachts }: CheckInCardProps) {
 
         // Determine overall status
         const isAllCheckedIn = currentLeads.every(l => l.checkInStatus === 'Checked In');
-        const isAllCompleted = currentLeads.every(l => l.status === 'Completed');
+        const isAllConfirmed = currentLeads.every(l => l.status === 'Confirmed');
         const isSomeCheckedIn = currentLeads.some(l => l.checkedInQuantities && l.checkedInQuantities.some(q => q.quantity > 0));
 
         let compositeCheckInStatus: Lead['checkInStatus'] = 'Not Checked In';
@@ -124,7 +124,7 @@ export function CheckInCard({ leads: initialLeads, yachts }: CheckInCardProps) {
             commissionAmount: totalComm, // Store aggregated commission
             perTicketRate: addonAmt,
             checkInStatus: compositeCheckInStatus,
-            status: isAllCompleted ? 'Completed' : (isAllCheckedIn ? 'Checked In' : primary.status),
+            status: isAllConfirmed ? 'Confirmed' : (isAllCheckedIn ? 'Confirmed' : primary.status),
             // Join IDs for display
             transactionId: currentLeads.map(l => l.transactionId).filter(Boolean)[0], // Show single TRN as per request
             bookingRefNo: Array.from(new Set(currentLeads.map(l => l.bookingRefNo).filter(Boolean))).join(', '),
@@ -168,7 +168,9 @@ export function CheckInCard({ leads: initialLeads, yachts }: CheckInCardProps) {
             const calcComm = l.commissionPercentage ? (tot * l.commissionPercentage / 100) : 0;
             let finalComm = comm || calcComm;
 
-            if (finalComm === 0 && (l.status === 'Balance' || l.paymentConfirmationStatus === 'CONFIRMED') && paid > 0 && paid < tot) {
+            const isConfirmedAnalogue = l.status === 'Confirmed' || l.status === 'Balance' || l.paymentConfirmationStatus === 'CONFIRMED';
+
+            if (finalComm === 0 && isConfirmedAnalogue && paid > 0 && paid < tot) {
                 const implied = tot - paid;
                 if (implied > 0) finalComm = implied;
             }
@@ -308,14 +310,14 @@ export function CheckInCard({ leads: initialLeads, yachts }: CheckInCardProps) {
 
             if (finalLock) {
                 lead.checkInStatus = 'Checked In';
-                lead.status = 'Checked In';
+                lead.status = 'Confirmed';
             } else {
                 if (totChecked === 0) lead.checkInStatus = 'Not Checked In';
                 else if (totChecked >= totBooked) lead.checkInStatus = 'Checked In';
                 else lead.checkInStatus = 'Partially Checked In';
 
-                if (totChecked > 0 && (lead.status === 'Balance' || lead.status === 'Closed (Won)')) {
-                    lead.status = 'In Progress';
+                if (totChecked > 0 && (lead.status === 'Balance')) {
+                    lead.status = 'Confirmed';
                 }
             }
         });
@@ -427,7 +429,7 @@ export function CheckInCard({ leads: initialLeads, yachts }: CheckInCardProps) {
     };
 
 
-    const isLocked = virtualData.status === 'Checked In' || virtualData.status === 'Completed';
+    const isLocked = virtualData.status === 'Confirmed' && virtualData.checkInStatus === 'Checked In';
     const netAdjustment = virtualData.netAmount - (originalVirtualData?.netAmount || virtualData.netAmount);
 
     // Balance Due = (Current Total - Commission) - (Original Paid + Collected Now)

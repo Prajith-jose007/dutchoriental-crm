@@ -36,7 +36,7 @@ export function YachtUtilizationWidget({ leads, yachts }: YachtUtilizationWidget
         }));
 
         leads.forEach(lead => {
-            const isConfirmedAnalogue = lead.paymentConfirmationStatus === 'CONFIRMED' || lead.status === 'Checked In' || lead.status === 'Completed' || lead.status === 'Balance';
+            const isConfirmedAnalogue = lead.paymentConfirmationStatus === 'CONFIRMED' || lead.status === 'Confirmed' || lead.status === 'Balance';
             if (isConfirmedAnalogue && isValid(parseISO(lead.month))) {
                 if (isThisWeek(parseISO(lead.month))) {
                     const stat = yachtStats.find(s => s.id === lead.yacht);

@@ -44,7 +44,7 @@ export function MonthlyRevenueChart({ leads, isLoading, error }: MonthlyRevenueC
     }
 
     leads.forEach(lead => {
-      if (lead.status === 'Closed (Won)' && lead.month && typeof lead.netAmount === 'number') {
+      if ((lead.status === 'Confirmed' || lead.status === 'Balance') && lead.month && typeof lead.netAmount === 'number') {
         try {
           const eventDate = parseISO(lead.month);
           if (isValid(eventDate)) {

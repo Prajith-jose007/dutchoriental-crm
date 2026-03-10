@@ -34,8 +34,8 @@ export function SalesByYachtPieChart({ leads, allYachts, isLoading, error }: Sal
   const chartData: PieChartDataItem[] = useMemo(() => {
     const salesByYachtMap = new Map<string, number>();
     leads.forEach(lead => {
-      // Sales revenue is now calculated from 'Closed (Won)' leads only
-      if (lead.status === 'Closed (Won)' && typeof lead.netAmount === 'number') {
+      // Sales revenue is now calculated from 'Confirmed' and 'Balance' leads only
+      if ((lead.status === 'Confirmed' || lead.status === 'Balance') && typeof lead.netAmount === 'number') {
         const currentSales = salesByYachtMap.get(lead.yacht) || 0;
         salesByYachtMap.set(lead.yacht, currentSales + lead.netAmount);
       }

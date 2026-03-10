@@ -102,7 +102,7 @@ export function FilteredBookedAgentsList({ filteredLeads, allAgents, isLoading, 
 
     filteredLeads.forEach(lead => {
       // Include all statuses that imply a valid booking/sale
-      const validStatuses = ['Balance', 'Paid', 'Completed', 'Closed (Won)'];
+      const validStatuses = ['Confirmed', 'Balance', 'Pending'];
       if (validStatuses.includes(lead.status) && lead.agent) {
         const current = dataByAgent.get(lead.agent) || { count: 0, totalSale: 0, netNum: 0, paidNum: 0, balNum: 0 };
         dataByAgent.set(lead.agent, {

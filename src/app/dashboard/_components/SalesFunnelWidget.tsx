@@ -28,21 +28,14 @@ interface SalesFunnelWidgetProps {
 export function SalesFunnelWidget({ leads }: SalesFunnelWidgetProps) {
     const data = useMemo(() => {
         const stages = [
-            { name: 'New', count: 0, color: '#94a3b8' },
-            { name: 'Contacted', count: 0, color: '#60a5fa' },
-            { name: 'Follow-up', count: 0, color: '#818cf8' },
-            { name: 'Quoted', count: 0, color: '#a78bfa' },
-            { name: 'Negotiation', count: 0, color: '#fbbf24' },
-            { name: 'Balance', count: 0, color: '#22c55e' },
-            { name: 'Completed', count: 0, color: '#10b981' },
-            { name: 'Lost', count: 0, color: '#ef4444' },
+            { name: 'Pending', count: 0, color: '#fbbf24' },
+            { name: 'Balance', count: 0, color: '#3b82f6' },
+            { name: 'Confirmed', count: 0, color: '#22c55e' },
+            { name: 'Canceled', count: 0, color: '#ef4444' },
         ];
 
         leads.forEach(lead => {
-            let statusToMap = lead.status;
-            if (statusToMap === 'Checked In') statusToMap = 'Balance';
-
-            const stage = stages.find(s => s.name === statusToMap);
+            const stage = stages.find(s => s.name === lead.status);
             if (stage) stage.count++;
         });
 

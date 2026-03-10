@@ -22,7 +22,7 @@ export function CheckInsTodayWidget({ leads, yachts }: CheckInsTodayWidgetProps)
     const todaysTrips = useMemo(() => {
         return leads.filter(lead => {
             const eventDate = parseISO(lead.month);
-            const isConfirmedAnalogue = lead.paymentConfirmationStatus === 'CONFIRMED' || lead.status === 'Checked In' || lead.status === 'Completed' || lead.status === 'Balance';
+            const isConfirmedAnalogue = lead.paymentConfirmationStatus === 'CONFIRMED' || lead.status === 'Confirmed' || lead.status === 'Balance';
             return isValid(eventDate) && isToday(eventDate) && isConfirmedAnalogue;
         }).sort((a, b) => a.month.localeCompare(b.month));
     }, [leads]);
@@ -50,8 +50,8 @@ export function CheckInsTodayWidget({ leads, yachts }: CheckInsTodayWidgetProps)
                                         <span className="flex items-center gap-1 font-semibold text-primary"><Anchor className="h-3 w-3" /> {getYachtName(trip.yacht)}</span>
                                     </div>
                                 </div>
-                                <Badge variant={trip.status === 'Checked In' ? 'default' : 'outline'} className={trip.status === 'Checked In' ? 'bg-green-600' : ''}>
-                                    {trip.status}
+                                <Badge variant={trip.checkInStatus === 'Checked In' ? 'default' : 'outline'} className={trip.checkInStatus === 'Checked In' ? 'bg-green-600' : ''}>
+                                    {trip.checkInStatus || trip.status}
                                 </Badge>
                             </div>
                         ))}

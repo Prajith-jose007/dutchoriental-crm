@@ -65,8 +65,8 @@ export function RevenueSummary({ leads, isLoading, error }: RevenueSummaryProps)
     let thisYearsRevenue = 0;
 
     leads.forEach(lead => {
-      // Revenue is now calculated from 'Closed (Won)' leads only
-      if (lead.status === 'Closed (Won)' && typeof lead.netAmount === 'number') {
+      // Revenue is now calculated from 'Confirmed' and 'Balance' leads only
+      if ((lead.status === 'Confirmed' || lead.status === 'Balance') && typeof lead.netAmount === 'number') {
         try {
           let eventDate: Date | null = null;
           if (lead.month && isValid(parseISO(lead.month))) {

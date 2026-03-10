@@ -70,16 +70,16 @@ export function ManagementKPIs({ leads, isLoading }: ManagementKPIsProps) {
             }
 
             // Status filters
-            if (lead.status === 'Balance' || lead.status === 'Checked In' || lead.status === 'Completed' || lead.status === 'Closed (Won)') {
+            if (lead.status === 'Confirmed' || lead.status === 'Balance' || lead.status === 'Pending') {
                 stats.confirmedBookings++;
             }
 
-            if (lead.status === 'Lost' || lead.status === 'Balance') {
-                // This is a bit subjective, usually 'Lost' or some other state
+            if (lead.status === 'Canceled' || lead.status === 'Balance') {
+                // This is a bit subjective, usually 'Canceled' or some other state
             }
 
-            // Revenue (Closed/Completed)
-            if (lead.status === 'Balance' || lead.status === 'Checked In' || lead.status === 'Completed' || lead.status === 'Closed (Won)') {
+            // Revenue (Confirmed / Active)
+            if (lead.status === 'Confirmed' || lead.status === 'Balance') {
                 if (isValid(eventDate)) {
                     if (isToday(eventDate)) stats.dailyRevenue += lead.netAmount;
                     if (isWithinInterval(eventDate, { start: monthStart, end: monthEnd })) stats.monthlyRevenue += lead.netAmount;
@@ -87,7 +87,7 @@ export function ManagementKPIs({ leads, isLoading }: ManagementKPIsProps) {
             }
 
             // Upcoming Trips
-            if (isValid(eventDate) && (lead.status === 'Balance' || lead.status === 'Checked In' || lead.status === 'Closed (Won)')) {
+            if (isValid(eventDate) && (lead.status === 'Confirmed' || lead.status === 'Balance')) {
                 if (isToday(eventDate)) stats.upcomingTripsToday++;
                 if (isWithinInterval(eventDate, { start: todayStart, end: next7DaysEnd })) stats.upcomingTripsWeek++;
             }

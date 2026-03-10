@@ -40,7 +40,7 @@ interface ReportSummaryStatsProps {
 
 export function ReportSummaryStats({ filteredLeads, isLoading, error }: ReportSummaryStatsProps) {
   const summaryData = useMemo(() => {
-    const closedLeads = filteredLeads.filter(lead => lead.status === 'Closed (Won)');
+    const closedLeads = filteredLeads.filter(lead => lead.status === 'Confirmed' || lead.status === 'Balance');
     const balanceLeads = filteredLeads.filter(lead => lead.status === 'Balance');
 
     const totalRevenue = closedLeads.reduce((sum, lead) => sum + (lead.netAmount || 0), 0);
@@ -60,14 +60,14 @@ export function ReportSummaryStats({ filteredLeads, isLoading, error }: ReportSu
 
   if (error) {
     return (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 mb-6">
-            {[...Array(5)].map((_, i) => (
-                 <Card key={i}>
-                    <CardHeader className="pb-2"><CardTitle className="text-sm font-medium">Stat Error</CardTitle></CardHeader>
-                    <CardContent><p className="text-destructive text-xs">{error}</p></CardContent>
-                </Card>
-            ))}
-        </div>
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 mb-6">
+        {[...Array(5)].map((_, i) => (
+          <Card key={i}>
+            <CardHeader className="pb-2"><CardTitle className="text-sm font-medium">Stat Error</CardTitle></CardHeader>
+            <CardContent><p className="text-destructive text-xs">{error}</p></CardContent>
+          </Card>
+        ))}
+      </div>
     )
   }
 

@@ -22,12 +22,12 @@ export async function POST(
         }
 
         // 1. Fetch unpaid/partially paid bookings for this agent
-        // Statuses: 'Balance', 'Closed (Won)', 'Completed' (Revenue generating)
+        // Statuses: 'Balance', 'Confirmed' (Revenue generating)
         // Ordered by Booking Date (month) ASC to pay oldest first
         const sql = `
       SELECT * FROM leads 
       WHERE agent = ? 
-      AND status IN ('Balance', 'Closed (Won)', 'Completed')
+      AND status IN ('Balance', 'Confirmed')
       AND (netAmount - paidAmount) > 0.01
       ORDER BY month ASC
     `;

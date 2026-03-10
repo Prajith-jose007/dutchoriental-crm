@@ -79,7 +79,7 @@ export type LeadOccasion = typeof leadOccasionOptions[number];
 export const leadPriorityOptions = ['Low', 'Medium', 'High'] as const;
 export type LeadPriority = typeof leadPriorityOptions[number];
 
-export const modeOfPaymentOptions = ['CARD', 'CASH', 'CASH / CARD', 'NOMOD', 'PAYMOD', 'RUZINN', 'CREDIT', 'OTHER'] as const;
+export const modeOfPaymentOptions = ['CARD', 'CASH', 'CASH / CARD', 'ONLINE', 'NOMOD', 'PAYMOD', 'RUZINN', 'CREDIT', 'OTHER'] as const;
 export type ModeOfPayment = typeof modeOfPaymentOptions[number];
 
 export const leadTypeOptions = ['Dinner Cruise', 'Sunset Cruise', 'Superyacht Sightseeing Cruise', 'Private Cruise'] as const;

@@ -271,10 +271,7 @@ export const convertLeadCsvValue = (
             return isNaN(numRate) ? null : numRate;
 
         case 'modeOfPayment':
-            // Map 'Credit' and 'Online' to 'CARD' if they don't match exactly
             const lowerVal = trimmedValue.toLowerCase();
-            if (lowerVal === 'credit' || lowerVal === 'online') return 'CARD';
-
             const foundMop = modeOfPaymentOptions.find(opt => opt.toLowerCase() === lowerVal);
             return foundMop || 'CARD';
         case 'status':

@@ -240,7 +240,7 @@ export async function POST(request: NextRequest) {
       newLeadData.paymentConfirmationStatus || 'CONFIRMED',
       finalTransactionId,
       newLeadData.bookingRefNo || null,
-      newLeadData.modeOfPayment || 'Online',
+      newLeadData.modeOfPayment || 'ONLINE',
       newLeadData.packageQuantities ? JSON.stringify(newLeadData.packageQuantities) : null,
       Number(newLeadData.freeGuestCount || 0),
       newLeadData.perTicketRate !== undefined && newLeadData.perTicketRate !== null ? Number(newLeadData.perTicketRate) : null,

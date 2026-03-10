@@ -110,6 +110,7 @@ const leadFormSchema = z.object({
   netAmount: z.coerce.number().default(0),
   paidAmount: z.coerce.number().min(0, "Paid amount must be non-negative").default(0),
   balanceAmount: z.coerce.number().default(0),
+  collectedAtCheckIn: z.coerce.number().optional().default(0),
 
   createdAt: z.string().optional(),
   updatedAt: z.string().optional(),
@@ -193,11 +194,12 @@ const getDefaultFormValues = (existingLead?: Lead | null, currentUserId?: string
     netAmount: Number(Number(existingLead?.netAmount || 0).toFixed(2)),
     paidAmount: 0, // Always starts at 0 to collect new payment
     balanceAmount: Number(Number(existingLead?.balanceAmount || 0).toFixed(2)),
+    collectedAtCheckIn: Number(existingLead?.collectedAtCheckIn || 0),
+    freeGuestDetails: existingLead?.freeGuestDetails || [],
     lastModifiedByUserId: existingLead?.lastModifiedByUserId || currentUserId || undefined,
     ownerUserId: existingLead?.ownerUserId || currentUserId || undefined,
     createdAt: existingLead?.createdAt || undefined,
     updatedAt: existingLead?.updatedAt || undefined,
-    freeGuestDetails: existingLead?.freeGuestDetails || [],
   };
 };
 
@@ -661,8 +663,9 @@ export function BookingFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess,
       ownerUserId: lead?.ownerUserId || currentUserId || undefined,
       customAgentName: data.customAgentName,
       customAgentPhone: data.customAgentPhone,
-
       packageQuantities: finalPackageQuantities,
+      collectedAtCheckIn: data.collectedAtCheckIn || 0,
+      noShowCount: data.noShowCount || 0,
       totalAmount: finalTotalAmount,
       commissionPercentage: finalCommissionPercentage,
       commissionAmount: finalCommissionAmount,

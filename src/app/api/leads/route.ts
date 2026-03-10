@@ -125,6 +125,8 @@ const mapDbLeadToLeadObject = (dbLead: DbLead): Lead => {
     extraHoursUsed: dbLead.extraHoursUsed ? Number(dbLead.extraHoursUsed) : 0,
     extraCharges: dbLead.extraCharges ? Number(dbLead.extraCharges) : 0,
     customerSignatureUrl: dbLead.customerSignatureUrl || undefined,
+    customAgentName: dbLead.customAgentName || undefined,
+    customAgentPhone: dbLead.customAgentPhone || undefined,
   };
 };
 
@@ -220,10 +222,10 @@ export async function POST(request: NextRequest) {
         totalAmount, commissionPercentage, commissionAmount, netAmount,
         paidAmount, balanceAmount,
         createdAt, updatedAt, lastModifiedByUserId, ownerUserId, free_guest_details_json,
-        customerPhone, customerEmail, nationality, language, source, inquiryDate, yachtType, adultsCount, kidsCount, noShowCount,
+        customerPhone, customerEmail, nationality, language, source, customAgentName, customAgentPhone, inquiryDate, yachtType, adultsCount, kidsCount, noShowCount,
         durationHours, budgetRange, occasion, priority, nextFollowUpDate, closingProbability,
         captainName, crewDetails, idVerified, extraHoursUsed, extraCharges, customerSignatureUrl
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     const params = [
@@ -261,7 +263,9 @@ export async function POST(request: NextRequest) {
       newLeadData.nationality || null,
       newLeadData.language || null,
       newLeadData.source || null,
-      formatToMySQLDateTime(newLeadData.inquiryDate) || null,
+      newLeadData.customAgentName || null,
+      newLeadData.customAgentPhone || null,
+      newLeadData.inquiryDate ? formatToMySQLDateTime(ensureISOFormat(newLeadData.inquiryDate)) : null,
       newLeadData.yachtType || null,
       Number(newLeadData.adultsCount || 0),
       Number(newLeadData.kidsCount || 0),

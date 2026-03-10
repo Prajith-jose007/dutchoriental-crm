@@ -38,6 +38,7 @@ interface DbLead {
     free_guest_details_json?: string;
     checked_in_quantities_json?: string;
     collectedAtCheckIn?: number;
+    noShowCount?: number;
 }
 
 const ensureISOFormat = (dateSource?: string | Date): string | null => {
@@ -111,6 +112,7 @@ const mapDbLeadToLeadObject = (dbLead: DbLead): Lead => {
         checkInTime: ensureISOFormat(dbLead.checkInTime) || undefined,
         freeGuestDetails,
         checkedInQuantities,
+        noShowCount: Number(dbLead.noShowCount || 0),
     };
 };
 
@@ -197,7 +199,8 @@ export async function POST(request: NextRequest) {
                 clientName,
                 notes,
                 perTicketRate,
-                perTicketRateReason
+                perTicketRateReason,
+                noShowCount
             } = leadData;
 
             const now = formatToMySQLDateTime(new Date());
@@ -219,6 +222,7 @@ export async function POST(request: NextRequest) {
                     notes = ?,
                     perTicketRate = ?,
                     perTicketRateReason = ?,
+                    noShowCount = ?,
                     updatedAt = ?
                 WHERE id = ?
             `;
@@ -240,6 +244,7 @@ export async function POST(request: NextRequest) {
                 notes || null,
                 perTicketRate || 0,
                 perTicketRateReason || null,
+                noShowCount || 0,
                 now,
                 leadId
             ]);

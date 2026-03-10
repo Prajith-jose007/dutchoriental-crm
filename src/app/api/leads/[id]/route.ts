@@ -125,6 +125,8 @@ const mapDbLeadToLeadObject = (dbLead: DbLead): Lead => {
     extraHoursUsed: dbLead.extraHoursUsed ? Number(dbLead.extraHoursUsed) : 0,
     extraCharges: dbLead.extraCharges ? Number(dbLead.extraCharges) : 0,
     customerSignatureUrl: dbLead.customerSignatureUrl || undefined,
+    customAgentName: dbLead.customAgentName || undefined,
+    customAgentPhone: dbLead.customAgentPhone || undefined,
   };
 };
 
@@ -140,7 +142,8 @@ function buildLeadUpdateSetClause(data: Partial<Omit<Lead, 'id' | 'createdAt' | 
     'customerPhone', 'customerEmail', 'nationality', 'language', 'source', 'inquiryDate', 'yachtType', 'adultsCount', 'kidsCount', 'noShowCount',
     'durationHours', 'budgetRange', 'occasion', 'priority', 'nextFollowUpDate', 'closingProbability',
     'captainName', 'crewDetails', 'idVerified', 'extraHoursUsed', 'extraCharges', 'customerSignatureUrl',
-    'checkInStatus', 'checkInTime', 'free_guest_details_json', 'collectedAtCheckIn'
+    'checkInStatus', 'checkInTime', 'free_guest_details_json', 'collectedAtCheckIn',
+    'customAgentName', 'customAgentPhone'
   ];
 
   Object.entries(data).forEach(([key, value]) => {

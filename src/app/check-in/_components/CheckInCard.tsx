@@ -308,6 +308,9 @@ export function CheckInCard({ leads: initialLeads, yachts }: CheckInCardProps) {
             const totBooked = (lead.packageQuantities || []).reduce((s, p) => s + p.quantity, 0);
             const totChecked = (lead.checkedInQuantities || []).reduce((s, c) => s + c.quantity, 0);
 
+            // Capture no-show count: Total booked - Total checked in
+            lead.noShowCount = Math.max(0, totBooked - totChecked);
+
             if (finalLock) {
                 lead.checkInStatus = 'Checked In';
                 lead.status = 'Confirmed';
@@ -507,16 +510,25 @@ export function CheckInCard({ leads: initialLeads, yachts }: CheckInCardProps) {
 
                 {/* ... Package List ... */}
                 <div className="space-y-2">
-                    <div className="flex items-center justify-between text-[10px] font-bold text-muted-foreground uppercase px-2"><span>Package Name</span><div className="flex gap-12 mr-16"><span className="w-20 text-center">Booked</span><span className="w-20 text-center text-green-700">Arrived</span></div></div>
+                    <div className="flex items-center justify-between text-[10px] font-bold text-muted-foreground uppercase px-2"><span>Package Name</span><div className="flex gap-12 mr-16"><span className="w-16 text-center">Booked</span><span className="w-16 text-center text-green-700">Arrived</span><span className="w-16 text-center text-red-600">No-Show</span></div></div>
                     <div className="space-y-1.5">
                         {data.packageQuantities?.filter(p => p.quantity > 0 || (data.checkedInQuantities?.find(c => c.packageId === p.packageId)?.quantity || 0) > 0).map((pkg) => {
                             const checkedIn = (data.checkedInQuantities || []).find((c: any) => c.packageId === pkg.packageId)?.quantity || 0;
                             return (
                                 <div key={pkg.packageId} className="px-3 py-2 bg-white dark:bg-slate-900 rounded-md border shadow-sm flex items-center justify-between group">
                                     <div className="flex-1 min-w-0"><p className="text-sm font-semibold truncate">{pkg.packageName}</p><p className="text-[10px] text-muted-foreground whitespace-nowrap">AED {pkg.rate}/ea</p></div>
-                                    <div className="flex items-center gap-4">
-                                        <div className="flex items-center bg-muted/30 rounded border p-0.5"><Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => updateBookedQty(pkg.packageId, -1)} disabled={isLocked || pkg.quantity <= 0}>-</Button><span className="w-7 text-center text-xs font-bold">{pkg.quantity}</span><Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => updateBookedQty(pkg.packageId, 1)} disabled={isLocked}><Plus className="h-3 w-3" /></Button></div>
-                                        <div className="flex items-center bg-green-50 dark:bg-green-950/30 rounded border border-green-200 p-0.5"><Button size="icon" variant="ghost" className="h-6 w-6 text-green-700" onClick={() => updateCheckedInQty(pkg.packageId, -1)} disabled={isLocked || checkedIn <= 0}>-</Button><span className="w-7 text-center text-xs font-bold text-green-700">{checkedIn}</span><Button size="icon" variant="ghost" className="h-6 w-6 text-green-700" onClick={() => updateCheckedInQty(pkg.packageId, 1)} disabled={isLocked || checkedIn >= pkg.quantity}><Plus className="h-3 w-3" /></Button></div>
+                                    <div className="flex items-center gap-2">
+                                        <div className="flex flex-col items-center">
+                                            <div className="flex items-center bg-muted/30 rounded border p-0.5"><Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => updateBookedQty(pkg.packageId, -1)} disabled={isLocked || pkg.quantity <= 0}>-</Button><span className="w-7 text-center text-xs font-bold">{pkg.quantity}</span><Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => updateBookedQty(pkg.packageId, 1)} disabled={isLocked}><Plus className="h-3 w-3" /></Button></div>
+                                        </div>
+                                        <div className="flex flex-col items-center">
+                                            <div className="flex items-center bg-green-50 dark:bg-green-950/30 rounded border border-green-200 p-0.5"><Button size="icon" variant="ghost" className="h-6 w-6 text-green-700" onClick={() => updateCheckedInQty(pkg.packageId, -1)} disabled={isLocked || checkedIn <= 0}>-</Button><span className="w-7 text-center text-xs font-bold text-green-700">{checkedIn}</span><Button size="icon" variant="ghost" className="h-6 w-6 text-green-700" onClick={() => updateCheckedInQty(pkg.packageId, 1)} disabled={isLocked || checkedIn >= pkg.quantity}><Plus className="h-3 w-3" /></Button></div>
+                                        </div>
+                                        <div className="w-16 flex flex-col items-center justify-center">
+                                            <span className={`text-sm font-bold ${pkg.quantity - checkedIn > 0 ? 'text-red-600' : 'text-slate-300'}`}>
+                                                {pkg.quantity - checkedIn}
+                                            </span>
+                                        </div>
                                     </div>
                                 </div>
                             );

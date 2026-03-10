@@ -250,7 +250,7 @@ export default function BookingsPage() {
       let finalTransactionId = submittedLeadData.transactionId;
 
       if (isNewLead && (!finalTransactionId || String(finalTransactionId).trim() === "" || finalTransactionId === "Pending Generation")) {
-        const leadYear = submittedLeadData.month ? getFullYear(parseISO(submittedLeadData.month)) : new Date().getFullYear();
+        const leadYear = submittedLeadData.month ? getFullYear(submittedLeadData.month) : new Date().getFullYear();
         finalTransactionId = generateNewLeadTransactionId(allLeads, leadYear);
       }
 
@@ -259,7 +259,7 @@ export default function BookingsPage() {
         transactionId: finalTransactionId,
         lastModifiedByUserId: currentUserId,
         updatedAt: new Date().toISOString(),
-        month: submittedLeadData.month ? formatISO(parseISO(submittedLeadData.month)) : formatISO(new Date()),
+        month: submittedLeadData.month ? formatISO(submittedLeadData.month) : formatISO(new Date()),
         paymentConfirmationStatus: submittedLeadData.paymentConfirmationStatus,
         packageQuantities: submittedLeadData.packageQuantities?.map(pq => ({
           ...pq,

@@ -641,10 +641,18 @@ export function BookingFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess,
       : [];
 
     const { agent: formAgent, ...restOfFormData } = data;
+
+    // Determine the final agent identifier to store in the 'agent' column
+    // Priority: 1. Selected system agent ID, 2. Custom Agent Name, 3. 'Direct'
+    let finalAgentValue = formAgent || 'Direct';
+    if (finalAgentValue === 'Direct' && data.customAgentName) {
+      finalAgentValue = data.customAgentName;
+    }
+
     const submittedLead: Lead = {
       ...restOfFormData,
       type: data.type as any,
-      agent: formAgent || data.customAgentName || '',
+      agent: finalAgentValue,
       id: lead?.id || `temp-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
       transactionId: lead?.id && data.transactionId === "Pending Generation" ? lead.transactionId : (data.transactionId === "Pending Generation" ? undefined : data.transactionId),
       bookingRefNo: data.bookingRefNo || undefined,
@@ -766,28 +774,60 @@ export function BookingFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess,
                       )}
                     />
 
-                    {/* Agent */}
-                    <FormField
-                      control={form.control}
-                      name="agent"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Agent</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value || undefined}>
-                            <FormControl><SelectTrigger><SelectValue placeholder="Select Agent" /></SelectTrigger></FormControl>
-                            <SelectContent>
-                              <SelectItem value="Direct">Direct / None</SelectItem>
-                              {allAgents.map((agent) => (<SelectItem key={agent.id} value={agent.id}>{agent.name}</SelectItem>))}
-                              {/* If current agent name doesn't match ID, it might be a custom string from CSV */}
-                              {field.value && !allAgents.some(a => a.id === field.value) && field.value !== "Direct" && (
-                                <SelectItem value={field.value}>{field.value}</SelectItem>
-                              )}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
+                    {/* Agent Section */}
+                    <div className="space-y-4 rounded-lg border border-slate-200 p-4 bg-slate-50/50">
+                      <FormField
+                        control={form.control}
+                        name="agent"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="flex justify-between items-center">
+                              <span>Agent</span>
+                              <span className="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">System Registered</span>
+                            </FormLabel>
+                            <Select onValueChange={field.onChange} value={field.value || undefined}>
+                              <FormControl><SelectTrigger><SelectValue placeholder="Select Agent" /></SelectTrigger></FormControl>
+                              <SelectContent>
+                                <SelectItem value="Direct">Direct / None</SelectItem>
+                                {allAgents.map((agent) => (<SelectItem key={agent.id} value={agent.id}>{agent.name}</SelectItem>))}
+                                {field.value && !allAgents.some(a => a.id === field.value) && field.value !== "Direct" && (
+                                  <SelectItem value={field.value}>{field.value}</SelectItem>
+                                )}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      {/* Custom Agent Name (Always show as optional backup or if Direct is selected) */}
+                      {(form.watch('agent') === 'Direct' || !form.watch('agent')) && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t border-slate-100">
+                          <FormField
+                            control={form.control}
+                            name="customAgentName"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Custom Agent Name</FormLabel>
+                                <FormControl><Input placeholder="Name for manual agent" {...field} /></FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          <FormField
+                            control={form.control}
+                            name="customAgentPhone"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Custom Agent Phone</FormLabel>
+                                <FormControl><Input placeholder="+971..." {...field} /></FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
                       )}
-                    />
+                    </div>
 
                     {/* Status */}
                     <FormField

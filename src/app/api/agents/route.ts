@@ -40,8 +40,10 @@ export async function POST(request: NextRequest) {
 
     const existingAgentCheck = (await query<Agent[]>('SELECT id FROM agents WHERE id = ? OR email = ?', [newAgentData.id, newAgentData.email]));
     if (existingAgentCheck.length > 0) {
+      console.warn(`[API POST /api/agents] Agent with ID "${newAgentData.id}" or email "${newAgentData.email}" already exists.`);
       return NextResponse.json({ message: 'Agent with this ID or email already exists.' }, { status: 409 });
     }
+    console.log(`[API POST /api/agents] Creating agent:`, newAgentData);
 
     const agentToStore = {
       id: newAgentData.id,

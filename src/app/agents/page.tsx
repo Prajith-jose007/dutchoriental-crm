@@ -123,17 +123,6 @@ export default function AgentsPage() {
           toast({ title: "Access Denied", description: "You cannot add agents.", variant: "destructive" });
           return;
         }
-        // Check if agent with this ID already exists before POSTing
-        const checkResponse = await fetch(`/api/agents/${submittedAgentData.id}`);
-        if (checkResponse.ok && !editingAgent) {
-          toast({
-            title: 'Error Adding Agent',
-            description: `Agent with ID ${submittedAgentData.id} already exists.`,
-            variant: 'destructive',
-          });
-          return;
-        }
-
         if (submittedAgentData.email) {
           const allAgentsResponse = await fetch('/api/agents');
           if (allAgentsResponse.ok) {

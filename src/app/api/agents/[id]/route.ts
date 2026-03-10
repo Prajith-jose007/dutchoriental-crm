@@ -11,8 +11,10 @@ export async function GET(
   try {
     const { id } = await params;
     if (!id) {
+      console.warn('[API GET /api/agents/[id]] Agent ID is missing from params');
       return NextResponse.json({ message: 'Agent ID is required' }, { status: 400 });
     }
+    console.log(`[API GET /api/agents/[id]] Fetching agent with ID: "${id}"`);
 
     const agentDataDb = (await query<Agent[]>('SELECT * FROM agents WHERE id = ?', [id]));
 
@@ -72,6 +74,7 @@ export async function PUT(
 
     const existingAgentResult = (await query<any[]>('SELECT email FROM agents WHERE id = ?', [id]));
     if (existingAgentResult.length === 0) {
+      console.warn(`[API PUT /api/agents/[id]] Agent not found for ID: "${id}"`);
       return NextResponse.json({ message: 'Agent not found' }, { status: 404 });
     }
     const existingAgentEmail = existingAgentResult[0].email;

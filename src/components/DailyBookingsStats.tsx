@@ -33,6 +33,7 @@ export function DailyBookingsStats({ leads, yachts, date = new Date(), title = "
             totalPax: number;
             totalAmount: number;
             confirmedPax: number;
+            noShowCount: number;
         }> = {};
 
         // Initialize yacht stats
@@ -42,7 +43,8 @@ export function DailyBookingsStats({ leads, yachts, date = new Date(), title = "
                 bookingsCount: 0,
                 totalPax: 0,
                 totalAmount: 0,
-                confirmedPax: 0
+                confirmedPax: 0,
+                noShowCount: 0
             };
         });
 
@@ -64,7 +66,8 @@ export function DailyBookingsStats({ leads, yachts, date = new Date(), title = "
                         bookingsCount: 0,
                         totalPax: 0,
                         totalAmount: 0,
-                        confirmedPax: 0
+                        confirmedPax: 0,
+                        noShowCount: 0
                     };
                     statsEntry = yachtStats[yachtId];
                 }
@@ -85,6 +88,8 @@ export function DailyBookingsStats({ leads, yachts, date = new Date(), title = "
                     statsEntry.confirmedPax += pax;
                 }
 
+                statsEntry.noShowCount += (Number(lead.noShowCount) || 0);
+
                 statsEntry.totalAmount += (lead.totalAmount || 0);
             }
         });
@@ -98,6 +103,7 @@ export function DailyBookingsStats({ leads, yachts, date = new Date(), title = "
 
     const totalBookings = stats.reduce((acc, curr) => acc + curr.bookingsCount, 0);
     const totalguests = stats.reduce((acc, curr) => acc + curr.totalPax, 0);
+    const totalNoShows = stats.reduce((acc, curr) => acc + curr.noShowCount, 0);
     const totalRevenue = stats.reduce((acc, curr) => acc + curr.totalAmount, 0);
 
     return (
@@ -106,7 +112,7 @@ export function DailyBookingsStats({ leads, yachts, date = new Date(), title = "
                 <CardTitle className="text-lg flex justify-between items-center">
                     <span>{title} for {format(date, 'dd MMM yyyy')}</span>
                     <span className="text-sm font-normal text-muted-foreground">
-                        Total: {totalBookings} Bkgs | {totalguests} Pax | {totalRevenue.toLocaleString()} AED
+                        Total: {totalBookings} Bkgs | {totalguests} Pax | {totalNoShows > 0 ? `${totalNoShows} No-Shows | ` : ''} {totalRevenue.toLocaleString()} AED
                     </span>
                 </CardTitle>
             </CardHeader>
@@ -121,6 +127,7 @@ export function DailyBookingsStats({ leads, yachts, date = new Date(), title = "
                                     <TableHead>Yacht</TableHead>
                                     <TableHead className="text-center">Bookings</TableHead>
                                     <TableHead className="text-center">Total Pax</TableHead>
+                                    <TableHead className="text-center">No-Show</TableHead>
                                     <TableHead className="text-right">Revenue (AED)</TableHead>
                                 </TableRow>
                             </TableHeader>
@@ -130,6 +137,7 @@ export function DailyBookingsStats({ leads, yachts, date = new Date(), title = "
                                         <TableCell className="font-medium">{stat.name}</TableCell>
                                         <TableCell className="text-center">{stat.bookingsCount}</TableCell>
                                         <TableCell className="text-center">{stat.totalPax}</TableCell>
+                                        <TableCell className="text-center text-red-600 font-bold">{stat.noShowCount || 0}</TableCell>
                                         <TableCell className="text-right font-mono">{stat.totalAmount.toLocaleString()}</TableCell>
                                     </TableRow>
                                 ))}

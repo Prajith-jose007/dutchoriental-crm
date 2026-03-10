@@ -76,8 +76,9 @@ export function TicketDialog({
     const guests = (lead.packageQuantities?.reduce((acc, curr) => acc + curr.quantity, 0) || 0) + (Number(lead.freeGuestCount) || 0);
 
     const handleWhatsApp = () => {
-        const text = `Hi ${lead.clientName},\n\nHere is your booking confirmation.\n\nTicket Code: *${codeStr}*\nDate: ${formattedDate}\nCruise: ${yachtName}\nGuests: ${guests}\n\nPlease show this code upon arrival to check in.\nThank you!`;
-        window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+        const text = `Hi ${lead.clientName},\n\nHere is your booking confirmation.\n\nTicket Code: *${codeStr}*\nDate: ${formattedDate}\nCruise: ${yachtName || lead.yacht}\nGuests: ${guests}\n\nPlease show this code upon arrival to check in.\nThank you!`;
+        const phone = lead.customerPhone ? lead.customerPhone.replace(/[^0-9]/g, '') : '';
+        window.open(`https://wa.me/${phone}?text=${encodeURIComponent(text)}`, '_blank');
     };
 
     const handleEmail = () => {

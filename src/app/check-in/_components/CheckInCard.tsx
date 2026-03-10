@@ -98,8 +98,12 @@ export function CheckInCard({ leads: initialLeads, yachts }: CheckInCardProps) {
         const netAmt = totalAmt - totalComm; // Derived Net
 
         const paidAmt = currentLeads.reduce((sum, l) => sum + (l.paidAmount || 0), 0);
+        const freeGuestTotal = currentLeads.reduce((sum, l) => sum + (Number(l.freeGuestCount) || 0), 0);
+        const kidsTotal = currentLeads.reduce((sum, l) => sum + (Number(l.kidsCount) || 0), 0);
+        const adultsTotal = currentLeads.reduce((sum, l) => sum + (Number(l.adultsCount) || 0), 0);
+        const noShowTotal = currentLeads.reduce((sum, l) => sum + (Number(l.noShowCount) || 0), 0);
+
         // Balance is Net - Paid (or Total - Paid? Standard is Net - Paid for Agent, Total - Paid for Direct?)
-        // Assuming Net Amount is the receivable.
         const balAmt = netAmt - paidAmt;
         const collectedAtCheckInTotal = currentLeads.reduce((sum, l) => sum + (l.collectedAtCheckIn || 0), 0);
 
@@ -124,6 +128,10 @@ export function CheckInCard({ leads: initialLeads, yachts }: CheckInCardProps) {
             commissionAmount: totalComm, // Store aggregated commission
             perTicketRate: addonAmt,
             checkInStatus: compositeCheckInStatus,
+            freeGuestCount: freeGuestTotal,
+            kidsCount: kidsTotal,
+            adultsCount: adultsTotal,
+            noShowCount: noShowTotal,
             status: isAllConfirmed ? 'Confirmed' : (isAllCheckedIn ? 'Confirmed' : primary.status),
             // Join IDs for display
             transactionId: currentLeads.map(l => l.transactionId).filter(Boolean)[0], // Show single TRN as per request
@@ -498,7 +506,7 @@ export function CheckInCard({ leads: initialLeads, yachts }: CheckInCardProps) {
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg border mb-2">
                     <div><p className="text-[10px] font-bold text-muted-foreground uppercase">Boat Name</p><p className="font-semibold text-sm truncate" title={yachts.find(y => y.id === data.yacht)?.name || data.yacht}>{yachts.find(y => y.id === data.yacht)?.name || data.yacht || 'Not Selected'}</p></div>
                     <div><p className="text-[10px] font-bold text-muted-foreground uppercase">Guest Name</p><p className="font-semibold text-sm truncate" title={data.clientName}>{data.clientName}</p></div>
-                    <div><p className="text-[10px] font-bold text-muted-foreground uppercase">No. of Tickets</p><div className="flex items-baseline gap-1"><p className="font-semibold text-sm">{(data.packageQuantities || []).reduce((sum, p) => sum + p.quantity, 0)}</p><span className="text-[10px] text-muted-foreground">Pax</span></div></div>
+                    <div><p className="text-[10px] font-bold text-muted-foreground uppercase">Total Pax</p><div className="flex items-baseline gap-1"><p className="font-semibold text-sm">{(data.packageQuantities || []).reduce((sum, p) => sum + p.quantity, 0) + (Number(data.freeGuestCount) || 0)}</p><span className="text-[10px] text-muted-foreground">Pax ({data.freeGuestCount || 0} Free)</span></div></div>
                     <div><p className="text-[10px] font-bold text-muted-foreground uppercase">Ticket Number</p><p className="font-mono text-sm font-medium">{data.transactionId || 'N/A'}</p>{data.bookingRefNo && data.bookingRefNo !== data.transactionId && (<p className="text-[10px] text-muted-foreground">Ref: {data.bookingRefNo}</p>)}</div>
                 </div>
 

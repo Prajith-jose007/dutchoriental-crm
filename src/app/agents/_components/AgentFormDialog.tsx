@@ -110,12 +110,13 @@ export function AgentFormDialog({ isOpen, onOpenChange, agent, onSubmitSuccess }
   function onSubmit(data: AgentFormData) {
     const submittedAgent: Agent = {
       ...data,
+      id: data.id.trim(),
       websiteUrl: data.websiteUrl || undefined,
-      agency_code: data.agency_code || undefined,
-      address: data.address || undefined,
-      phone_no: data.phone_no || undefined,
-      TRN_number: data.TRN_number || undefined,
-      customer_type_id: data.customer_type_id || undefined, // Added
+      agency_code: data.agency_code?.trim() || undefined,
+      address: data.address?.trim() || undefined,
+      phone_no: data.phone_no?.trim() || undefined,
+      TRN_number: data.TRN_number?.trim() || undefined,
+      customer_type_id: data.customer_type_id?.trim() || undefined, // Added
     };
     onSubmitSuccess(submittedAgent);
     // Toast handled by parent page now

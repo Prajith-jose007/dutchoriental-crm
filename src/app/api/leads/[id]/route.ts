@@ -6,6 +6,8 @@ import { query } from '@/lib/db';
 import { formatISO, parseISO, isValid } from 'date-fns';
 import { formatToMySQLDateTime } from '@/lib/utils';
 
+export const dynamic = 'force-dynamic';
+
 interface DbLead extends Omit<Lead, 'packageQuantities' | 'totalAmount' | 'commissionPercentage' | 'commissionAmount' | 'netAmount' | 'paidAmount' | 'balanceAmount' | 'freeGuestCount' | 'perTicketRate' | 'perTicketRateReason' | 'checkInStatus' | 'checkInTime' | 'idVerified' | 'freeGuestDetails' | 'checkedInQuantities' | 'collectedAtCheckIn'> {
   package_quantities_json?: string;
   totalAmount: string | number;
@@ -108,6 +110,7 @@ const mapDbLeadToLeadObject = (dbLead: DbLead): Lead => {
     yachtType: dbLead.yachtType as any,
     adultsCount: dbLead.adultsCount ? Number(dbLead.adultsCount) : 0,
     kidsCount: dbLead.kidsCount ? Number(dbLead.kidsCount) : 0,
+    noShowCount: dbLead.noShowCount ? Number(dbLead.noShowCount) : 0,
     durationHours: dbLead.durationHours ? Number(dbLead.durationHours) : undefined,
     budgetRange: dbLead.budgetRange || undefined,
     occasion: dbLead.occasion as any,
@@ -134,7 +137,7 @@ function buildLeadUpdateSetClause(data: Partial<Omit<Lead, 'id' | 'createdAt' | 
     'package_quantities_json', 'freeGuestCount', 'perTicketRate', 'perTicketRateReason',
     'totalAmount', 'commissionPercentage', 'commissionAmount', 'netAmount', 'paidAmount', 'balanceAmount',
     'updatedAt', 'lastModifiedByUserId', 'ownerUserId',
-    'customerPhone', 'customerEmail', 'nationality', 'language', 'source', 'inquiryDate', 'yachtType', 'adultsCount', 'kidsCount',
+    'customerPhone', 'customerEmail', 'nationality', 'language', 'source', 'inquiryDate', 'yachtType', 'adultsCount', 'kidsCount', 'noShowCount',
     'durationHours', 'budgetRange', 'occasion', 'priority', 'nextFollowUpDate', 'closingProbability',
     'captainName', 'crewDetails', 'idVerified', 'extraHoursUsed', 'extraCharges', 'customerSignatureUrl',
     'checkInStatus', 'checkInTime', 'free_guest_details_json', 'collectedAtCheckIn'

@@ -6,6 +6,8 @@ import { query } from '@/lib/db';
 import { formatISO, parseISO, isValid, getYear as getFullYear } from 'date-fns';
 import { formatToMySQLDateTime } from '@/lib/utils';
 
+export const dynamic = 'force-dynamic';
+
 interface DbLead extends Omit<Lead, 'packageQuantities' | 'totalAmount' | 'commissionPercentage' | 'commissionAmount' | 'netAmount' | 'paidAmount' | 'balanceAmount' | 'freeGuestCount' | 'perTicketRate' | 'perTicketRateReason' | 'checkInStatus' | 'checkInTime' | 'collectedAtCheckIn' | 'freeGuestDetails' | 'checkedInQuantities' | 'idVerified'> {
   package_quantities_json?: string;
   totalAmount: string | number;
@@ -108,6 +110,7 @@ const mapDbLeadToLeadObject = (dbLead: DbLead): Lead => {
     yachtType: dbLead.yachtType as any,
     adultsCount: dbLead.adultsCount ? Number(dbLead.adultsCount) : 0,
     kidsCount: dbLead.kidsCount ? Number(dbLead.kidsCount) : 0,
+    noShowCount: dbLead.noShowCount ? Number(dbLead.noShowCount) : 0,
     durationHours: dbLead.durationHours ? Number(dbLead.durationHours) : undefined,
     budgetRange: dbLead.budgetRange || undefined,
     occasion: dbLead.occasion as any,
@@ -217,10 +220,10 @@ export async function POST(request: NextRequest) {
         totalAmount, commissionPercentage, commissionAmount, netAmount,
         paidAmount, balanceAmount,
         createdAt, updatedAt, lastModifiedByUserId, ownerUserId, free_guest_details_json,
-        customerPhone, customerEmail, nationality, language, source, inquiryDate, yachtType, adultsCount, kidsCount, 
+        customerPhone, customerEmail, nationality, language, source, inquiryDate, yachtType, adultsCount, kidsCount, noShowCount,
         durationHours, budgetRange, occasion, priority, nextFollowUpDate, closingProbability,
         captainName, crewDetails, idVerified, extraHoursUsed, extraCharges, customerSignatureUrl
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     const params = [
@@ -262,6 +265,7 @@ export async function POST(request: NextRequest) {
       newLeadData.yachtType || null,
       Number(newLeadData.adultsCount || 0),
       Number(newLeadData.kidsCount || 0),
+      Number(newLeadData.noShowCount || 0),
       newLeadData.durationHours !== undefined ? Number(newLeadData.durationHours) : null,
       newLeadData.budgetRange || null,
       newLeadData.occasion || null,

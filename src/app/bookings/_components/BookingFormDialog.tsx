@@ -84,6 +84,7 @@ const leadFormSchema = z.object({
   yachtType: z.string().optional(),
   adultsCount: z.coerce.number().min(0).optional().default(0),
   kidsCount: z.coerce.number().min(0).optional().default(0),
+  noShowCount: z.coerce.number().min(0).optional().default(0),
   durationHours: z.coerce.number().min(0).optional().default(0),
   budgetRange: z.string().optional(),
   occasion: z.string().optional(),
@@ -142,6 +143,7 @@ const getDefaultFormValues = (existingLead?: Lead | null, currentUserId?: string
   }
 
   return {
+    noShowCount: Number(existingLead?.noShowCount || 0),
     id: existingLead?.id || undefined,
     agent: existingLead?.agent || '',
     customAgentName: existingLead?.customAgentName || '',
@@ -189,7 +191,7 @@ const getDefaultFormValues = (existingLead?: Lead | null, currentUserId?: string
     commissionPercentage: Number(existingLead?.commissionPercentage || 0),
     commissionAmount: Number(Number(existingLead?.commissionAmount || 0).toFixed(2)),
     netAmount: Number(Number(existingLead?.netAmount || 0).toFixed(2)),
-    paidAmount: Number(Number(existingLead?.paidAmount || 0).toFixed(2)),
+    paidAmount: 0, // Always starts at 0 to collect new payment
     balanceAmount: Number(Number(existingLead?.balanceAmount || 0).toFixed(2)),
     lastModifiedByUserId: existingLead?.lastModifiedByUserId || currentUserId || undefined,
     ownerUserId: existingLead?.ownerUserId || currentUserId || undefined,
@@ -256,7 +258,7 @@ export function BookingFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess,
   });
 
   const isFormDisabled = useMemo(() => {
-    // Form is disabled if the booking is already in a locked state (Closed, Completed, or Checked In)
+    // Form is disabled if the booking is already in a locked state (Canceled or Checked In)
     // and the user is not an admin.
     // We check the ORIGINAL lead status (lead.status), not the current form status, to allow users to transition TO a locked status.
     if (!lead) return false;
@@ -422,18 +424,21 @@ export function BookingFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess,
     tempTotalGuests += Number(freeGuestCount || 0);
     setCalculatedTotalGuests(tempTotalGuests);
 
+    // Total Amount and Net Amount are strictly for Packages
     const calculatedTotalAmount = Number(packagesTotal.toFixed(2));
     const calculatedCommissionAmount = Number(((packagesTotal * parsedCommissionPercent) / 100).toFixed(2));
     const calculatedNetAmount = Number((calculatedTotalAmount - calculatedCommissionAmount).toFixed(2));
-    const effectivePayable = calculatedNetAmount + parsedAddOnTotal;
-    const actualSignedBalanceAmount = Number((effectivePayable - parsedPaidAmount).toFixed(2));
+
+    // Addons are added to the Balance Due directly
+    const previousTotalPaid = lead ? Number(lead.paidAmount || 0) : 0;
+    const actualSignedBalanceAmount = Number(((calculatedNetAmount + parsedAddOnTotal) - (previousTotalPaid + parsedPaidAmount)).toFixed(2));
 
     const currentVals = form.getValues();
     if (Number(currentVals.totalAmount) !== calculatedTotalAmount) form.setValue('totalAmount', calculatedTotalAmount, { shouldValidate: true });
     if (Number(currentVals.commissionAmount) !== calculatedCommissionAmount) form.setValue('commissionAmount', calculatedCommissionAmount, { shouldValidate: true });
     if (Number(currentVals.netAmount) !== calculatedNetAmount) form.setValue('netAmount', calculatedNetAmount, { shouldValidate: true });
     if (Number(currentVals.balanceAmount) !== actualSignedBalanceAmount) form.setValue('balanceAmount', actualSignedBalanceAmount, { shouldValidate: true });
-  }, [form, allYachts, allAgents]);
+  }, [form, allYachts, allAgents, lead]);
 
   useEffect(() => {
     const subscription = form.watch((value, { name }) => {
@@ -572,7 +577,7 @@ export function BookingFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess,
 
   function onSubmit(data: BookingFormData) {
     if (isFormDisabled) {
-      toast({ title: "Action Denied", description: "This booking is closed and cannot be modified by non-administrators.", variant: "destructive" });
+      toast({ title: "Action Denied", description: "This booking is canceled and cannot be modified by non-administrators.", variant: "destructive" });
       onOpenChange(false);
       return;
     }
@@ -603,7 +608,7 @@ export function BookingFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess,
       }
     }
 
-    // User Rule: Total Amount = Yacht Total (Packages only)
+    // Total Amount includes packages ONLY
     const finalTotalAmount = Number(rawPackagesTotal.toFixed(2));
 
     // Use the form's commission percentage (which allows manual override), fallback to agent default only if missing
@@ -612,14 +617,15 @@ export function BookingFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess,
     // Commission applies ONLY to package total, not addons
     const finalCommissionAmount = Number(((rawPackagesTotal * finalCommissionPercentage) / 100).toFixed(2));
 
-    // User Rule: Net Amount = Total after discount (Packages - Commission)
+    // Net Amount = Total - Commission
     const finalNetAmount = Number((finalTotalAmount - finalCommissionAmount).toFixed(2));
 
-    // User Rule: Balance = (Net + Additional) - Paid
-    const effectiveFinalPayable = finalNetAmount + addOnTotal;
+    const previousTotalPaid = lead ? Number(lead.paidAmount || 0) : 0;
+    const newPaidAmount = Number(Number(data.paidAmount || 0).toFixed(2));
+    const finalPaidAmount = Number((previousTotalPaid + newPaidAmount).toFixed(2));
 
-    const finalPaidAmount = Number(Number(data.paidAmount || 0).toFixed(2));
-    const actualSignedBalanceAmount = Number((effectiveFinalPayable - finalPaidAmount).toFixed(2));
+    // Balance = Net + Addon - Paid
+    const actualSignedBalanceAmount = Number(((finalNetAmount + addOnTotal) - finalPaidAmount).toFixed(2));
 
     const finalPackageQuantities = (data.packageQuantities && Array.isArray(data.packageQuantities))
       ? data.packageQuantities.map(pq => {
@@ -698,16 +704,16 @@ export function BookingFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess,
         <DialogHeader>
           <DialogTitle>{lead ? (isFormDisabled ? 'View Booking Details' : 'Edit Booking') : 'Add New Booking'}</DialogTitle>
           <DialogDescription>
-            {lead ? (isFormDisabled ? 'This booking is closed and cannot be edited by non-administrators.' : 'Update the details for this booking.') : 'Fill in the details for the new booking.'}
+            {lead ? (isFormDisabled ? 'This booking is canceled and cannot be edited by non-administrators.' : 'Update the details for this booking.') : 'Fill in the details for the new booking.'}
           </DialogDescription>
         </DialogHeader>
         <ScrollArea className="max-h-[70vh] p-1">
           {isFormDisabled && (
             <Alert variant="destructive" className="mb-4">
               <Terminal className="h-4 w-4" />
-              <AlertTitle>Booking Closed</AlertTitle>
+              <AlertTitle>Booking Canceled</AlertTitle>
               <AlertDescription>
-                This booking is closed and cannot be edited by non-administrators.
+                This booking is canceled and cannot be edited by non-administrators.
               </AlertDescription>
             </Alert>
           )}
@@ -886,7 +892,6 @@ export function BookingFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess,
                       )}
                     />
 
-                    {/* Ticket No / Ref */}
                     <FormField
                       control={form.control}
                       name="bookingRefNo"
@@ -894,6 +899,28 @@ export function BookingFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess,
                         <FormItem>
                           <FormLabel>Portal DO Number <span className="text-red-500">*</span></FormLabel>
                           <FormControl><Input placeholder="Ticket No" {...field} value={field.value || ''} /></FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    {/* No-Show Count */}
+                    <FormField
+                      control={form.control}
+                      name="noShowCount"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>No-Show Count</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              min="0"
+                              placeholder="0"
+                              {...field}
+                              value={field.value !== undefined ? String(field.value) : '0'}
+                              onChange={(e) => field.onChange(parseInt(e.target.value, 10) || 0)}
+                            />
+                          </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -1069,6 +1096,16 @@ export function BookingFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess,
                       )}
                     />
 
+                    {/* Previous Total Paid Amount */}
+                    <div className="flex flex-col space-y-2">
+                      <label className="text-sm font-medium leading-none flex items-center gap-2">
+                        <Wallet className="h-4 w-4 text-muted-foreground" /> Total Paid (History)
+                      </label>
+                      <div className="flex h-10 w-full rounded-md border border-input bg-slate-100 px-3 py-2 text-sm text-slate-500 font-bold">
+                        AED {(lead ? Number(lead.paidAmount || 0) : 0).toLocaleString()}
+                      </div>
+                    </div>
+
                     {/* Paid Amount */}
                     <FormField
                       control={form.control}
@@ -1076,9 +1113,9 @@ export function BookingFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess,
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel className="text-green-700 font-bold flex items-center gap-2">
-                            <Wallet className="h-4 w-4" /> Paid Amount
+                            <Wallet className="h-4 w-4" /> Collect New Payment
                           </FormLabel>
-                          <FormControl><Input type="number" step="0.01" {...field} className="border-green-200 bg-green-50 text-green-800 font-bold" /></FormControl>
+                          <FormControl><Input type="number" step="0.01" {...field} className="border-green-300 bg-green-50 text-green-900 font-bold placeholder:text-green-300" placeholder="0.00" /></FormControl>
                           <FormMessage />
                         </FormItem>
                       )}

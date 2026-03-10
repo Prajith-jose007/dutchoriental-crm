@@ -62,8 +62,8 @@ export interface Invoice {
 export const leadStatusOptions = [
   'Confirmed',
   'Pending',
-  'Canceled',
-  'Booked'
+  'Balance',
+  'Canceled'
 ] as const;
 export type LeadStatus = typeof leadStatusOptions[number];
 
@@ -138,6 +138,7 @@ export interface Lead {
   yachtType?: YachtType;
   adultsCount?: number;
   kidsCount?: number;
+  noShowCount?: number;
   durationHours?: number;
   budgetRange?: string;
   occasion?: LeadOccasion;

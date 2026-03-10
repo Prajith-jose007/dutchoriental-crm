@@ -179,6 +179,7 @@ export const generateBookingColumns = (allYachts: Yacht[]): BookingTableColumn[]
   const accountsColumns: BookingTableColumn[] = [
     // { accessorKey: 'totalGuestsCalculated', header: 'Booked', isNumeric: true }, // Removed as per request (not in list)
     { accessorKey: 'arrivedGuestsCalculated', header: 'arrived', isNumeric: true },
+    { accessorKey: 'noShowCount', header: 'no-show', isNumeric: true },
     { accessorKey: 'perTicketRate', header: 'addon', isCurrency: true },
     { accessorKey: 'perTicketRateReason', header: 'addon reason' },
     { accessorKey: 'totalAmount', header: 'total amt', isCurrency: true },
@@ -229,6 +230,7 @@ interface BookingsTableProps {
   selectedLeadIds: string[];
   onSelectLead: (leadId: string, isSelected: boolean) => void;
   onSelectAllLeads: (isSelected: boolean) => void;
+  onViewTicket: (lead: Lead) => void;
 }
 
 export function BookingsTable({
@@ -245,6 +247,7 @@ export function BookingsTable({
   selectedLeadIds,
   onSelectLead,
   onSelectAllLeads,
+  onViewTicket,
 }: BookingsTableProps) {
 
   const leadColumns = useMemo(() => generateBookingColumns(allYachts), [allYachts]);
@@ -265,9 +268,9 @@ export function BookingsTable({
     if (!status) return 'outline';
     switch (status) {
       case 'Confirmed': return 'success';
-      case 'Pending': return 'secondary'; // Will override with className for orange
+      case 'Pending': return 'secondary';
+      case 'Balance': return 'default';
       case 'Canceled': return 'destructive';
-      case 'Booked': return 'outline';
       default: return 'outline';
     }
   };
@@ -382,9 +385,9 @@ export function BookingsTable({
           variant={variant}
           className={cn(
             lead.status === 'Confirmed' && "bg-green-600 hover:bg-green-700 text-white border-transparent",
-            lead.status === 'Pending' && "bg-[#F4A460] hover:bg-[#E69138] text-white border-transparent", // Saffron / SandyBrown
-            lead.status === 'Canceled' && "bg-red-600 hover:bg-red-700 text-white border-transparent",
-            lead.status === 'Booked' && "bg-gray-200 text-gray-800 hover:bg-gray-300 border-transparent dark:bg-gray-700 dark:text-gray-200"
+            lead.status === 'Pending' && "bg-[#F4A460] hover:bg-[#E69138] text-white border-transparent",
+            lead.status === 'Balance' && "bg-blue-600 hover:bg-blue-700 text-white border-transparent",
+            lead.status === 'Canceled' && "bg-red-600 hover:bg-red-700 text-white border-transparent"
           )}
         >
           {lead.status}
@@ -517,9 +520,12 @@ export function BookingsTable({
                               <DropdownMenuLabel>Actions</DropdownMenuLabel>
                               <DropdownMenuItem
                                 onClick={() => onEditLead(lead)}
-                                disabled={!isAdmin && lead.status.startsWith('Closed')}
+                                disabled={!isAdmin && lead.status === 'Canceled'}
                               >
-                                {lead.status.startsWith('Closed') && !isAdmin ? 'View Details' : 'Edit Booking'}
+                                {lead.status === 'Canceled' && !isAdmin ? 'View Details' : 'Edit Booking'}
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => onViewTicket(lead)}>
+                                View Ticket
                               </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => onGenerateInvoice(lead)}>
                                 Generate Invoice
@@ -528,7 +534,7 @@ export function BookingsTable({
                               <DropdownMenuItem
                                 className="text-destructive"
                                 onClick={() => onDeleteLead(lead.id)}
-                                disabled={!isAdmin && lead.status.startsWith('Closed')}
+                                disabled={!isAdmin && lead.status === 'Canceled'}
                               >
                                 Delete Booking
                               </DropdownMenuItem>

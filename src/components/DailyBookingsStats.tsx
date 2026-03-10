@@ -78,6 +78,7 @@ export function DailyBookingsStats({ leads, yachts, date = new Date(), title = "
                 if (lead.packageQuantities) {
                     pax = lead.packageQuantities.reduce((sum, pq) => sum + (Number(pq.quantity) || 0), 0);
                 }
+                pax += Number(lead.freeGuestCount || 0);
                 statsEntry.totalPax += pax;
 
                 if (lead.paymentConfirmationStatus === 'CONFIRMED') {

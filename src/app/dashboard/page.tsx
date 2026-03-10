@@ -49,10 +49,10 @@ export default function DashboardPage() {
       setError(null);
       try {
         const [leadsRes, invoicesRes, yachtsRes, agentsRes] = await Promise.all([
-          fetch('/api/leads'),
-          fetch('/api/invoices'),
-          fetch('/api/yachts'),
-          fetch('/api/agents'),
+          fetch('/api/leads', { cache: 'no-store' }),
+          fetch('/api/invoices', { cache: 'no-store' }),
+          fetch('/api/yachts', { cache: 'no-store' }),
+          fetch('/api/agents', { cache: 'no-store' }),
         ]);
 
         if (!leadsRes.ok || !invoicesRes.ok || !yachtsRes.ok || !agentsRes.ok) {
@@ -75,6 +75,7 @@ export default function DashboardPage() {
         setIsLoading(false);
       }
     };
+
     fetchData();
   }, [isAuthLoading]);
 

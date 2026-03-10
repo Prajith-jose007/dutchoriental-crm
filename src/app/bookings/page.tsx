@@ -49,6 +49,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { TicketDialog } from './_components/TicketDialog';
 
 
 const USER_ID_STORAGE_KEY = 'currentUserId';
@@ -159,16 +160,19 @@ export default function BookingsPage() {
   const [isShowingImportPreview, setIsShowingImportPreview] = useState(false);
   const [importSkippedCount, setImportSkippedCount] = useState(0);
 
+  const [ticketLead, setTicketLead] = useState<Lead | null>(null);
+  const [isTicketDialogOpen, setIsTicketDialogOpen] = useState(false);
+
 
   const fetchAllData = async (isBackground = false) => {
     if (!isBackground) setIsLoading(true);
     setFetchError(null);
     try {
       const [leadsRes, agentsRes, yachtsRes, usersRes] = await Promise.all([
-        fetch('/api/leads?limit=3500'),
-        fetch('/api/agents'),
-        fetch('/api/yachts'),
-        fetch('/api/users'),
+        fetch('/api/leads?limit=3500', { cache: 'no-store' }),
+        fetch('/api/agents', { cache: 'no-store' }),
+        fetch('/api/yachts', { cache: 'no-store' }),
+        fetch('/api/users', { cache: 'no-store' }),
       ]);
 
       if (!leadsRes.ok) throw new Error(`Failed to fetch bookings: ${leadsRes.statusText}`);
@@ -284,11 +288,11 @@ export default function BookingsPage() {
       } else if (editingLead) {
         payloadToSubmit.ownerUserId = editingLead.ownerUserId || currentUserId;
         payloadToSubmit.createdAt = editingLead.createdAt || new Date().toISOString();
-        const isClosed = editingLead.status.startsWith('Closed') || editingLead.status === 'Completed';
-        const isCheckedIn = editingLead.status === 'Checked In' || (editingLead as any).checkInStatus === 'Checked In';
+        const isCanceled = editingLead.status === 'Canceled';
+        const isCheckedIn = (editingLead as any).checkInStatus === 'Checked In';
 
-        if ((isClosed || isCheckedIn) && !canBypassClosed) {
-          throw new Error("Action Denied: Locked bookings (Closed, Completed, or Checked In) cannot be modified by non-administrators.");
+        if ((isCanceled || isCheckedIn) && !canBypassClosed) {
+          throw new Error("Action Denied: Locked bookings (Canceled or Checked In) cannot be modified by non-administrators.");
         }
       }
 
@@ -324,6 +328,13 @@ export default function BookingsPage() {
         throw new Error(finalErrorMessage);
       }
 
+      // If it is a new booking, we can grab the created booking from the API response
+      // to display the boarding pass/ticket!
+      let returnedData = null;
+      try {
+        returnedData = await response.json();
+      } catch (e) { }
+
       toast({
         title: editingLead ? 'Booking Updated' : 'Booking Added',
         description: `Booking for ${submittedLeadData.clientName} has been saved.`,
@@ -332,6 +343,13 @@ export default function BookingsPage() {
       setIsLeadDialogOpen(false);
       setEditingLead(null);
       await fetchAllData(true);
+
+      // Show ticket strictly for new direct bookings or edits if they want to. 
+      // It's highly desired for new bookings.
+      if (!editingLead && returnedData && returnedData.id) {
+        setTicketLead(returnedData);
+        setIsTicketDialogOpen(true);
+      }
 
 
     } catch (error) {
@@ -353,11 +371,12 @@ export default function BookingsPage() {
       return;
     }
     const leadToDelete = allLeads.find(l => l.id === leadId);
-    const isClosed = leadToDelete?.status.startsWith('Closed') || leadToDelete?.status === 'Completed';
-    const isCheckedIn = leadToDelete?.status === 'Checked In' || (leadToDelete as any).checkInStatus === 'Checked In';
+    if (!leadToDelete) return;
+    const isCanceled = leadToDelete.status === 'Canceled';
+    const isCheckedIn = (leadToDelete as any).checkInStatus === 'Checked In';
 
-    if ((isClosed || isCheckedIn) && !canBypassClosed) {
-      toast({ title: "Action Denied", description: "Locked bookings (Closed, Completed, or Checked In) cannot be deleted by non-administrators.", variant: "destructive" });
+    if ((isCanceled || isCheckedIn) && !canBypassClosed) {
+      toast({ title: "Action Denied", description: "Locked bookings (Canceled or Checked In) cannot be deleted by non-administrators.", variant: "destructive" });
       return;
     }
 
@@ -519,10 +538,11 @@ export default function BookingsPage() {
 
       for (const leadId of selectedLeadIds) {
         const leadToDelete = allLeads.find(l => l.id === leadId);
-        const isClosed = leadToDelete?.status.startsWith('Closed') || leadToDelete?.status === 'Completed';
-        const isCheckedIn = leadToDelete?.status === 'Checked In' || (leadToDelete as any).checkInStatus === 'Checked In';
+        if (!leadToDelete) continue;
+        const isCanceled = leadToDelete.status === 'Canceled';
+        const isCheckedIn = (leadToDelete as any).checkInStatus === 'Checked In';
 
-        if ((isClosed || isCheckedIn) && !canBypassClosed) {
+        if ((isCanceled || isCheckedIn) && !canBypassClosed) {
           failedDeletes++;
           continue;
         }
@@ -1264,16 +1284,52 @@ export default function BookingsPage() {
 
     // Helper to categorize items
     const categorizeBooking = (lead: Lead) => {
-      const packageNames = lead.packageQuantities?.map(pq => pq.packageName.toUpperCase()) || [];
-      // Assign highest tier found
-      if (packageNames.some(n => n.includes('ROYAL'))) return 'ROYAL';
-      if (packageNames.some(n => n.includes('VIP'))) return 'VIP';
+      // PREVIOUS BUG: It was searching ALL possible packages for the boat even if quantity was 0.
+      // FIX: Only search packages that were ACTUALLY BOOKED (qty > 0).
+      const bookedPackages = (lead.packageQuantities || []).filter(pq => (Number(pq.quantity) || 0) > 0);
+      const packageNames = bookedPackages.map(pq => pq.packageName.toUpperCase());
+      const yachtName = (yachtMap[lead.yacht] || lead.yacht || '').toUpperCase();
+
+      // Variants of the yacht name to strip to avoid false positives (e.g. Lotus Royale vs Royal package)
+      const stripList = [yachtName];
+      if (yachtName.includes('ROYALE')) stripList.push(yachtName.replace('ROYALE', 'ROYAL'));
+      if (yachtName.includes('ROYAL')) stripList.push(yachtName.replace('ROYAL', 'ROYALE'));
+      if (yachtName.includes('LOTUS')) stripList.push('LOTUS');
+
+      const isRoyal = packageNames.some(n => {
+        let cleanName = n;
+        stripList.forEach(s => {
+          if (s && s.length > 2) {
+            cleanName = cleanName.split(s).join(''); // Global replace
+          }
+        });
+        cleanName = cleanName.replace('-', '').trim();
+        // Check for 'ROYAL' but NOT 'ROYALE' if 'ROYALE' or 'ROYAL' is just boat name fragment
+        return cleanName.includes('ROYAL');
+      });
+      if (isRoyal) return 'ROYAL';
+
+      const isVIP = packageNames.some(n => {
+        let cleanName = n;
+        stripList.forEach(s => {
+          if (s && s.length > 2) {
+            cleanName = cleanName.split(s).join('');
+          }
+        });
+        cleanName = cleanName.replace('-', '').trim();
+        return cleanName.includes('VIP');
+      });
+      if (isVIP) return 'VIP';
+
       return 'STANDARD';
     };
 
-    const royalLeads = filteredLeads.filter(l => categorizeBooking(l) === 'ROYAL');
-    const vipLeads = filteredLeads.filter(l => categorizeBooking(l) === 'VIP');
-    const standardLeads = filteredLeads.filter(l => categorizeBooking(l) === 'STANDARD');
+    const activeLeads = filteredLeads.filter(l => l.status !== 'Canceled');
+    const canceledLeads = filteredLeads.filter(l => l.status === 'Canceled');
+
+    const royalLeads = activeLeads.filter(l => categorizeBooking(l) === 'ROYAL');
+    const vipLeads = activeLeads.filter(l => categorizeBooking(l) === 'VIP');
+    const standardLeads = activeLeads.filter(l => categorizeBooking(l) === 'STANDARD');
 
 
     const generateTableHtml = (categoryTitle: string, leads: Lead[]) => {
@@ -1283,6 +1339,8 @@ export default function BookingsPage() {
         primary: Lead;
         aggregatedPackages: LeadPackageQuantity[];
         totalAddon: number;
+        totalPax: number;
+        totalNoShow: number;
         latestAddonReason?: string;
         leads: Lead[];
       }> = {};
@@ -1295,12 +1353,20 @@ export default function BookingsPage() {
             primary: lead,
             aggregatedPackages: [],
             totalAddon: 0,
+            totalPax: 0,
+            totalNoShow: 0,
             leads: []
           };
         }
         const group = groupedLeadsMap[key];
         group.leads.push(lead);
         group.totalAddon += (lead.perTicketRate || 0);
+        group.totalNoShow += Number(lead.noShowCount || 0);
+
+        // Add current lead's pax to the group total
+        const leadPax = (lead.packageQuantities?.reduce((sum, pq) => sum + (Number(pq.quantity) || 0), 0) || 0) + Number(lead.freeGuestCount || 0);
+        group.totalPax += leadPax;
+
         if ((lead.perTicketRate || 0) > 0 && lead.perTicketRateReason) {
           group.latestAddonReason = lead.perTicketRateReason;
         }
@@ -1324,9 +1390,11 @@ export default function BookingsPage() {
       const groupedLeads = Object.values(groupedLeadsMap);
       groupedLeads.sort((a, b) => (a.primary.clientName || '').localeCompare(b.primary.clientName || ''));
 
+      const categoryTotalPax = groupedLeads.reduce((sum, g) => sum + g.totalPax, 0);
+
       return `
         <div class="category-section">
-          <h2>${categoryTitle} (${groupedLeads.length})</h2>
+          <h2>${categoryTitle} (Bookings: ${groupedLeads.length} | Total Pax: ${categoryTotalPax})</h2>
           <table>
             <thead>
               <tr>
@@ -1336,6 +1404,8 @@ export default function BookingsPage() {
                 <th>Yacht</th>
                 <th>Booking Ref</th>
                 <th>Cruise Type</th>
+                <th>Total Pax</th>
+                <th>No-Show</th>
                 <th>Package / Upgrades</th>
                 <th>Addon Reason</th>
                 <th>Travel Date</th>
@@ -1370,6 +1440,8 @@ export default function BookingsPage() {
                     <td>${yachtMap[lead.yacht] || lead.yacht || '-'}</td>
                     <td>${lead.bookingRefNo || '-'}</td>
                     <td>${lead.type || '-'}</td>
+                    <td><strong>${group.totalPax}</strong></td>
+                    <td style="${group.totalNoShow > 0 ? 'color: red; font-weight: bold;' : ''}">${group.totalNoShow || 0}</td>
                     <td>${packSummary}</td>
                     <td>${group.latestAddonReason || '-'}</td>
                     <td>${lead.month ? format(parseISO(lead.month), 'dd/MM/yyyy') : '-'}</td>
@@ -1377,6 +1449,13 @@ export default function BookingsPage() {
                 `;
       }).join('')}
             </tbody>
+            <tfoot>
+              <tr style="background-color: #f9f9f9; font-weight: bold;">
+                <td colspan="6" style="text-align: right;">Category Totals:</td>
+                <td>${categoryTotalPax}</td>
+                <td colspan="4"></td>
+              </tr>
+            </tfoot>
           </table>
         </div>
       `;
@@ -1411,11 +1490,13 @@ export default function BookingsPage() {
           <h1>${title}</h1>
           <div class="meta">
             Generated on: ${format(new Date(), 'dd MMM yyyy HH:mm')}<br>
-            Total Records: ${filteredLeads.length}
+            Total Bookings: ${filteredLeads.length} | 
+            Total Pax Across All: ${filteredLeads.reduce((sum, l) => sum + (l.packageQuantities?.reduce((s, pq) => s + (Number(pq.quantity) || 0), 0) || 0) + (Number(l.freeGuestCount) || 0), 0)}
           </div>
           ${generateTableHtml('Royal Bookings', royalLeads)}
           ${generateTableHtml('VIP Bookings', vipLeads)}
           ${generateTableHtml('Standard Bookings', standardLeads)}
+          ${generateTableHtml('Canceled Bookings', canceledLeads)}
         </div>
         <script>
           window.onload = function() { window.print(); window.close(); }
@@ -1909,6 +1990,10 @@ export default function BookingsPage() {
         selectedLeadIds={selectedLeadIds}
         onSelectLead={handleSelectLead}
         onSelectAllLeads={handleSelectAllLeads}
+        onViewTicket={(lead) => {
+          setTicketLead(lead);
+          setIsTicketDialogOpen(true);
+        }}
       />
       <BookingFormDialog
         isOpen={isLeadDialogOpen}
@@ -1920,6 +2005,13 @@ export default function BookingsPage() {
         allUsers={allUsers}
         allYachts={allYachts}
         allAgents={allAgents}
+      />
+
+      <TicketDialog
+        isOpen={isTicketDialogOpen}
+        onOpenChange={setIsTicketDialogOpen}
+        lead={ticketLead}
+        yachtName={ticketLead ? yachtMap[ticketLead.yacht] || ticketLead.yacht : ''}
       />
 
       <Dialog open={isShowingImportPreview} onOpenChange={setIsShowingImportPreview}>

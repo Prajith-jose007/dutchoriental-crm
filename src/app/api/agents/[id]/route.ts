@@ -92,7 +92,39 @@ export async function PUT(
     }
     values.push(id); // For the WHERE clause
 
-    await query(`UPDATE agents SET ${clause} WHERE id = ?`, values);
+    let attempt = 0;
+    const maxRetries = 2;
+    while (attempt < maxRetries) {
+      try {
+        await query(`UPDATE agents SET ${clause} WHERE id = ?`, values);
+        break;
+      } catch (err: any) {
+        if (err.code === 'ER_BAD_FIELD_ERROR') {
+          console.error(`[API PUT /api/agents] Missing columns detected. Attempting auto-migration...`);
+          try {
+            const currentCols = await query<any[]>(`DESCRIBE agents`);
+            const existingNames = currentCols.map(c => c.Field);
+            const columnsToAdd = [
+              { name: 'customer_type_id', def: 'VARCHAR(255) NULL' },
+              { name: 'websiteUrl', def: 'VARCHAR(255) NULL' },
+              { name: 'discount', def: 'DECIMAL(5,2) DEFAULT 0.00' }
+            ];
+            for (const col of columnsToAdd) {
+              if (!existingNames.includes(col.name)) {
+                await query(`ALTER TABLE agents ADD COLUMN ${col.name} ${col.def}`);
+              }
+            }
+            console.log(`[API PUT /api/agents] Auto-migration successful. Retrying update...`);
+            attempt++;
+            continue;
+          } catch (migErr) {
+            throw err;
+          }
+        } else {
+          throw err;
+        }
+      }
+    }
 
     const finalUpdatedAgentQuery = (await query<any[]>('SELECT * FROM agents WHERE id = ?', [id]));
     if (finalUpdatedAgentQuery.length > 0) {

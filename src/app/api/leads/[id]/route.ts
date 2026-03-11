@@ -151,7 +151,7 @@ function buildLeadUpdateSetClause(data: Partial<Omit<Lead, 'id' | 'createdAt' | 
       fieldsToUpdate.push(`${key} = ?`);
       if (['month', 'updatedAt', 'inquiryDate', 'nextFollowUpDate', 'checkInTime'].includes(key)) {
         valuesToUpdate.push(formatToMySQLDateTime(value as string) || null);
-      } else if (value === null && ['perTicketRate', 'perTicketRateReason', 'notes', 'transactionId', 'bookingRefNo', 'customerPhone', 'customerEmail', 'nationality', 'language', 'source', 'inquiryDate', 'yachtType', 'durationHours', 'budgetRange', 'occasion', 'priority', 'nextFollowUpDate', 'captainName', 'crewDetails', 'customerSignatureUrl', 'checkInTime', 'free_guest_details_json'].includes(key)) {
+      } else if (value === null && ['perTicketRate', 'perTicketRateReason', 'notes', 'transactionId', 'bookingRefNo', 'customerPhone', 'customerEmail', 'nationality', 'language', 'source', 'inquiryDate', 'yachtType', 'durationHours', 'budgetRange', 'occasion', 'priority', 'nextFollowUpDate', 'captainName', 'crewDetails', 'customerSignatureUrl', 'checkInTime', 'free_guest_details_json', 'customAgentName', 'customAgentPhone'].includes(key)) {
         valuesToUpdate.push(null);
       } else if (value === undefined && ['perTicketRate'].includes(key)) {
         valuesToUpdate.push(null);
@@ -247,7 +247,39 @@ export async function PUT(
     }
     updateValues.push(id);
 
-    await query(`UPDATE leads SET ${clause} WHERE id = ?`, updateValues);
+    let attempt = 0;
+    const maxRetries = 2;
+    while (attempt < maxRetries) {
+      try {
+        await query(`UPDATE leads SET ${clause} WHERE id = ?`, updateValues);
+        break;
+      } catch (err: any) {
+        if (err.code === 'ER_BAD_FIELD_ERROR') {
+          console.error(`[API PUT] Missing columns detected. Attempting auto-migration...`);
+          try {
+            const currentCols = await query<any[]>(`DESCRIBE leads`);
+            const existingNames = currentCols.map(c => c.Field);
+            const columnsToAdd = [
+              { name: 'customAgentName', def: 'VARCHAR(255) NULL' },
+              { name: 'customAgentPhone', def: 'VARCHAR(50) NULL' },
+              { name: 'noShowCount', def: 'INT DEFAULT 0' }
+            ];
+            for (const col of columnsToAdd) {
+              if (!existingNames.includes(col.name)) {
+                await query(`ALTER TABLE leads ADD COLUMN ${col.name} ${col.def}`);
+              }
+            }
+            console.log(`[API PUT] Auto-migration successful. Retrying update...`);
+            attempt++;
+            continue;
+          } catch (migErr) {
+            throw err;
+          }
+        } else {
+          throw err;
+        }
+      }
+    }
 
     const updatedLeadFromDbResult = await query<any[]>('SELECT * FROM leads WHERE id = ?', [id]);
     if (updatedLeadFromDbResult.length === 0) {
@@ -260,7 +292,7 @@ export async function PUT(
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : String(err);
     console.error(`[API PUT /api/leads] Error:`, errorMessage);
-    return NextResponse.json({ message: `Failed to update booking: ${errorMessage}` }, { status: 500 });
+    return NextResponse.json({ message: `Failed to update booking: ${errorMessage}`, error: err }, { status: 500 });
   }
 }
 

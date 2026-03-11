@@ -43,7 +43,39 @@ export async function POST(req: NextRequest) {
             formatToMySQLDateTime(body.nextFollowUpDate), body.notes
         ].map(p => p === undefined ? null : p);
 
-        await query(sql, params);
+        let attempt = 0;
+        const maxRetries = 2;
+        while (attempt < maxRetries) {
+            try {
+                await query(sql, params);
+                break;
+            } catch (err: any) {
+                if (err.code === 'ER_BAD_FIELD_ERROR') {
+                    console.error(`[PC Leads POST] Missing columns detected. Attempting auto-migration...`);
+                    try {
+                        const currentCols = await query<any[]>(`DESCRIBE pc_leads`);
+                        const existingNames = currentCols.map(c => c.Field);
+                        const columnsToAdd = [
+                            { name: 'customAgentName', def: 'VARCHAR(255) NULL' },
+                            { name: 'customAgentPhone', def: 'VARCHAR(50) NULL' },
+                            { name: 'noShowCount', def: 'INT DEFAULT 0' }
+                        ];
+                        for (const col of columnsToAdd) {
+                            if (!existingNames.includes(col.name)) {
+                                await query(`ALTER TABLE pc_leads ADD COLUMN ${col.name} ${col.def}`);
+                            }
+                        }
+                        console.log(`[PC Leads POST] Auto-migration successful. Retrying insert...`);
+                        attempt++;
+                        continue;
+                    } catch (migErr) {
+                        throw err;
+                    }
+                } else {
+                    throw err;
+                }
+            }
+        }
 
         return NextResponse.json({ message: 'Lead created successfully', id }, { status: 201 });
     } catch (error) {

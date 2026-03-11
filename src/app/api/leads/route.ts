@@ -304,17 +304,30 @@ export async function POST(request: NextRequest) {
           params[9] = finalTransactionId;
           attempt++;
           if (attempt === maxRetries) throw new Error(`Failed to generate unique Transaction ID after ${maxRetries} attempts.`);
-        } else if (err.code === 'ER_BAD_FIELD_ERROR' && err.message.includes('customAgentName')) {
+        } else if (err.code === 'ER_BAD_FIELD_ERROR') {
           console.error(`[API POST] Missing columns detected. Attempting auto-migration...`);
           try {
-            await query("ALTER TABLE leads ADD COLUMN customAgentName VARCHAR(255) AFTER source");
-            await query("ALTER TABLE leads ADD COLUMN customAgentPhone VARCHAR(50) AFTER customAgentName");
+            const currentCols = await query<any[]>(`DESCRIBE leads`);
+            const existingNames = currentCols.map(c => c.Field);
+
+            const columnsToAdd = [
+              { name: 'customAgentName', def: 'VARCHAR(255) NULL' },
+              { name: 'customAgentPhone', def: 'VARCHAR(50) NULL' },
+              { name: 'noShowCount', def: 'INT DEFAULT 0' }
+            ];
+
+            for (const col of columnsToAdd) {
+              if (!existingNames.includes(col.name)) {
+                await query(`ALTER TABLE leads ADD COLUMN ${col.name} ${col.def}`);
+              }
+            }
+
             console.log(`[API POST] Auto-migration successful. Retrying insert...`);
             attempt++;
-            continue; // Retry after migration
+            continue;
           } catch (migErr) {
             console.error(`[API POST] Auto-migration failed:`, migErr);
-            throw err; // Throw original error
+            throw err;
           }
         } else {
           throw err; // Re-throw other errors

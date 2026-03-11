@@ -47,15 +47,20 @@ export async function query<T = unknown>(sql: string, params?: unknown[]): Promi
     const [results] = await connection.execute(sql, safeParams);
     console.log(`SQL executed successfully. Result count: ${(results as unknown[]).length}`);
     return results as T;
-  } catch (error) {
+  } catch (error: any) {
     const errorMessage = error instanceof Error ? error.message : 'An unknown database error occurred.';
     console.error('DATABASE QUERY FAILED:');
     console.error('SQL:', sql);
     console.error('Params:', params);
     console.error('Error Message:', errorMessage);
-    console.error('Full Error Object:', error);
-    // Re-throw a standardized error to be caught by the API route handlers
-    throw new Error(`Database Query Failed: ${errorMessage}`);
+
+    // Create a new error that preserves the code if available
+    const enhancedError = new Error(`Database Query Failed: ${errorMessage}`);
+    if (error.code) (enhancedError as any).code = error.code;
+    if (error.errno) (enhancedError as any).errno = error.errno;
+    if (error.sqlState) (enhancedError as any).sqlState = error.sqlState;
+
+    throw enhancedError;
   } finally {
     if (connection) {
       connection.release();

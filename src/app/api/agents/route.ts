@@ -59,25 +59,61 @@ export async function POST(request: NextRequest) {
       websiteUrl: newAgentData.websiteUrl || null,
     };
 
-    const result = (await query<{ affectedRows: number }>(
-      `INSERT INTO agents (id, name, agency_code, address, phone_no, email, status, TRN_number, customer_type_id, discount, websiteUrl) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        agentToStore.id, agentToStore.name, agentToStore.agency_code, agentToStore.address,
-        agentToStore.phone_no, agentToStore.email, agentToStore.status, agentToStore.TRN_number,
-        agentToStore.customer_type_id, agentToStore.discount, agentToStore.websiteUrl
-      ]
-    ));
+    let attempt = 0;
+    const maxRetries = 2;
+    while (attempt < maxRetries) {
+      try {
+        const result = (await query<{ affectedRows: number }>(
+          `INSERT INTO agents (id, name, agency_code, address, phone_no, email, status, TRN_number, customer_type_id, discount, websiteUrl) 
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [
+            agentToStore.id, agentToStore.name, agentToStore.agency_code, agentToStore.address,
+            agentToStore.phone_no, agentToStore.email, agentToStore.status, agentToStore.TRN_number,
+            agentToStore.customer_type_id, agentToStore.discount, agentToStore.websiteUrl
+          ]
+        ));
 
-    if (result.affectedRows === 1) {
-      const createdAgentDb = (await query<Agent[]>('SELECT * FROM agents WHERE id = ?', [agentToStore.id]));
-      if (createdAgentDb.length > 0) {
-        const dbAgent = createdAgentDb[0];
-        const createdAgent: Agent = {
-          ...dbAgent,
-          discount: Number(dbAgent.discount || 0)
-        };
-        return NextResponse.json(createdAgent, { status: 201 });
+        if (result.affectedRows === 1) {
+          const createdAgentDb = (await query<Agent[]>('SELECT * FROM agents WHERE id = ?', [agentToStore.id]));
+          if (createdAgentDb.length > 0) {
+            const dbAgent = createdAgentDb[0];
+            const createdAgent: Agent = {
+              ...dbAgent,
+              discount: Number(dbAgent.discount || 0)
+            };
+            return NextResponse.json(createdAgent, { status: 201 });
+          }
+        }
+        break;
+      } catch (err: any) {
+        if (err.code === 'ER_BAD_FIELD_ERROR') {
+          console.error(`[API POST /api/agents] Missing columns detected. Attempting auto-migration...`);
+          try {
+            // Add potential missing columns
+            const columnsToAdd = [
+              { name: 'customer_type_id', def: 'VARCHAR(255) NULL' },
+              { name: 'websiteUrl', def: 'VARCHAR(255) NULL' },
+              { name: 'discount', def: 'DECIMAL(5,2) DEFAULT 0.00' }
+            ];
+
+            const currentCols = await query<any[]>(`DESCRIBE agents`);
+            const existingNames = currentCols.map(c => c.Field);
+
+            for (const col of columnsToAdd) {
+              if (!existingNames.includes(col.name)) {
+                await query(`ALTER TABLE agents ADD COLUMN ${col.name} ${col.def}`);
+              }
+            }
+
+            console.log(`[API POST /api/agents] Auto-migration successful. Retrying insert...`);
+            attempt++;
+            continue;
+          } catch (migErr) {
+            throw err;
+          }
+        } else {
+          throw err;
+        }
       }
     }
     throw new Error('Failed to insert agent into database');

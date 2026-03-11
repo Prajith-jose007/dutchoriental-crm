@@ -47,7 +47,10 @@ export async function GET() {
             ['idVerified', 'BOOLEAN DEFAULT FALSE'],
             ['extraHoursUsed', 'DECIMAL(5,2) DEFAULT 0'],
             ['extraCharges', 'DECIMAL(10,2) DEFAULT 0'],
-            ['customerSignatureUrl', 'TEXT']
+            ['customerSignatureUrl', 'TEXT'],
+            ['customAgentName', 'VARCHAR(255)'],
+            ['customAgentPhone', 'VARCHAR(50)'],
+            ['noShowCount', 'INT DEFAULT 0']
         ];
 
         for (const [col, def] of columnsToEnsure) {

@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input'; // Added Input
+import { Textarea } from '@/components/ui/textarea';
 import { DatePicker } from '@/components/ui/date-picker';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useUserRole } from '@/hooks/use-user-role';
@@ -36,6 +37,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  DialogDescription,
 } from '@/components/ui/dialog';
 import {
   Table,
@@ -162,6 +164,8 @@ export default function BookingsPage() {
 
   const [ticketLead, setTicketLead] = useState<Lead | null>(null);
   const [isTicketDialogOpen, setIsTicketDialogOpen] = useState(false);
+  const [isPrintRemarkDialogOpen, setIsPrintRemarkDialogOpen] = useState(false);
+  const [manifestRemark, setManifestRemark] = useState('');
 
 
   const fetchAllData = async (isBackground = false) => {
@@ -1307,7 +1311,7 @@ export default function BookingsPage() {
     fetchAllData(true);
   };
 
-  const handlePrintDailyManifest = () => {
+  const handlePrintDailyManifest = (generalRemark?: string) => {
     if (filteredLeads.length === 0) {
       toast({ title: "No Bookings", description: "There are no bookings to print with the current filters.", variant: "default" });
       return;
@@ -1377,6 +1381,7 @@ export default function BookingsPage() {
       const groupedLeadsMap: Record<string, {
         primary: Lead;
         aggregatedPackages: LeadPackageQuantity[];
+        aggregatedNotes: string[];
         totalAddon: number;
         totalPax: number;
         totalNoShow: number;
@@ -1391,6 +1396,7 @@ export default function BookingsPage() {
           groupedLeadsMap[key] = {
             primary: lead,
             aggregatedPackages: [],
+            aggregatedNotes: [],
             totalAddon: 0,
             totalPax: 0,
             totalNoShow: 0,
@@ -1408,6 +1414,12 @@ export default function BookingsPage() {
 
         if ((lead.perTicketRate || 0) > 0 && lead.perTicketRateReason) {
           group.latestAddonReason = lead.perTicketRateReason;
+        }
+
+        if (lead.notes && lead.notes.trim() !== '') {
+          if (!group.aggregatedNotes.includes(lead.notes.trim())) {
+            group.aggregatedNotes.push(lead.notes.trim());
+          }
         }
 
         if (lead.packageQuantities) {
@@ -1447,6 +1459,7 @@ export default function BookingsPage() {
                 <th>No-Show</th>
                 <th>Package / Upgrades</th>
                 <th>Addon Reason</th>
+                <th>Remarks</th>
                 <th>Travel Date</th>
               </tr>
             </thead>
@@ -1483,6 +1496,7 @@ export default function BookingsPage() {
                     <td style="${group.totalNoShow > 0 ? 'color: red; font-weight: bold;' : ''}">${group.totalNoShow || 0}</td>
                     <td>${packSummary}</td>
                     <td>${group.latestAddonReason || '-'}</td>
+                    <td>${group.aggregatedNotes.join('; ') || '-'}</td>
                     <td>${lead.month ? format(parseISO(lead.month), 'dd/MM/yyyy') : '-'}</td>
                   </tr>
                 `;
@@ -1532,6 +1546,12 @@ export default function BookingsPage() {
             Total Bookings: ${filteredLeads.length} | 
             Total Pax Across All: ${filteredLeads.reduce((sum, l) => sum + (l.packageQuantities?.reduce((s, pq) => s + (Number(pq.quantity) || 0), 0) || 0) + (Number(l.freeGuestCount) || 0), 0)}
           </div>
+          ${generalRemark ? `
+            <div style="margin: 15px 0; padding: 10px; border: 1px solid #B2904C; background-color: #fdfaf3; border-radius: 4px;">
+              <strong style="color: #B2904C; font-size: 13px; text-transform: uppercase;">Manifest Remarks:</strong>
+              <div style="margin-top: 5px; font-size: 13px; line-height: 1.4;">${generalRemark.replace(/\n/g, '<br>')}</div>
+            </div>
+          ` : ''}
           ${generateTableHtml('Royal Bookings', royalLeads)}
           ${generateTableHtml('VIP Bookings', vipLeads)}
           ${generateTableHtml('Standard Bookings', standardLeads)}
@@ -1841,7 +1861,7 @@ export default function BookingsPage() {
         onCsvImport={handleCsvImport}
         onCsvExport={handleCsvExport}
       />
-      <Button variant="outline" onClick={handlePrintDailyManifest} disabled={isImporting} size="sm" className="h-9">
+      <Button variant="outline" onClick={() => setIsPrintRemarkDialogOpen(true)} disabled={isImporting} size="sm" className="h-9">
         <Printer className="mr-2 h-4 w-4" />
         Print Daily Manifest
       </Button>
@@ -2052,6 +2072,40 @@ export default function BookingsPage() {
         lead={ticketLead}
         yachtName={ticketLead ? yachtMap[ticketLead.yacht] || ticketLead.yacht : ''}
       />
+
+      <Dialog open={isPrintRemarkDialogOpen} onOpenChange={setIsPrintRemarkDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add Manifest Remark</DialogTitle>
+            <DialogDescription>
+              Enter a general remark or note to be displayed at the top of the printed daily manifest.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Textarea
+              placeholder="e.g. Weather updates, Special events, General operational notes..."
+              className="min-h-[120px]"
+              value={manifestRemark}
+              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setManifestRemark(e.target.value)}
+            />
+          </div>
+          <DialogFooter className="flex flex-row justify-between sm:justify-end gap-2">
+            <Button variant="ghost" onClick={() => {
+              setManifestRemark('');
+              handlePrintDailyManifest();
+              setIsPrintRemarkDialogOpen(false);
+            }}>
+              Print Without Remark
+            </Button>
+            <Button onClick={() => {
+              handlePrintDailyManifest(manifestRemark);
+              setIsPrintRemarkDialogOpen(false);
+            }}>
+              Confirm & Print
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={isShowingImportPreview} onOpenChange={setIsShowingImportPreview}>
         <DialogContent className="max-w-7xl max-h-[90vh] flex flex-col">

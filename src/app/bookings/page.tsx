@@ -711,23 +711,42 @@ export default function BookingsPage() {
         }
 
         // 2. Grouping Logic
+        // We group rows together if they have the same Booking Reference (DO Number).
+        // If no booking reference is provided, we fallback to a combination of Client Name + Yacht + Month.
         const bookingGroups = new Map<string, typeof parsedRows>();
-        const ungroupedRows: typeof parsedRows = [];
 
         parsedRows.forEach(row => {
-          if (row.bookingRefNo) {
-            if (!bookingGroups.has(row.bookingRefNo)) {
-              bookingGroups.set(row.bookingRefNo, []);
-            }
-            bookingGroups.get(row.bookingRefNo)!.push(row);
-          } else {
-            ungroupedRows.push(row);
+          const bookingRef = row.bookingRefNo ? String(row.bookingRefNo).trim().toUpperCase() : '';
+          const fallbackKey = `${String(row.clientName || '').trim().toLowerCase()}_${String(row.yacht || '').trim().toLowerCase()}_${String(row.month || '').trim()}`;
+          const groupKey = bookingRef || fallbackKey;
+
+          if (!bookingGroups.has(groupKey)) {
+            bookingGroups.set(groupKey, []);
           }
+          bookingGroups.get(groupKey)!.push(row);
         });
 
         // 3. Process Groups into Leads
-        const processParsedRowToLead = (rows: typeof parsedRows, isGroup: boolean): Lead | null => {
-          const primaryRow = rows[0]; // Use first row as template
+        const processParsedRowToLead = (rowsInGroup: typeof parsedRows, isGroup: boolean): Lead | null => {
+          // FILTER DUPLICATE ROWS WITHIN THE SAME BOOKING
+          // Sometimes the same ticket number (RT) is repeated multiple times for the same DO in the file.
+          // Or the exact same row is duplicated.
+          const uniqueRows: typeof parsedRows = [];
+          const seenRowHashes = new Set<string>();
+
+          rowsInGroup.forEach(r => {
+            // Hash the row based on key fields: TicketNumber (RT), Client, Package Qty, and Paid Amount
+            const rowHash = `${r.transactionId || ''}|${r.clientName || ''}|${JSON.stringify(Object.entries(r).filter(([k]) => k.startsWith('pkg_')).sort())}|${r.paidAmount || 0}`;
+            if (!seenRowHashes.has(rowHash)) {
+              seenRowHashes.add(rowHash);
+              uniqueRows.push(r);
+            } else {
+              console.log(`[CSV Import] Filtering duplicate row within group: ${rowHash}`);
+            }
+          });
+
+          const rows = uniqueRows;
+          const primaryRow = rows[0];
           if (!primaryRow) return null;
 
           // Aggregate quantities
@@ -1148,37 +1167,45 @@ export default function BookingsPage() {
         };
 
         // Create Leads from Groups
-        bookingGroups.forEach((rows) => {
-          const lead = processParsedRowToLead(rows, true);
+        bookingGroups.forEach((rows, key) => {
+          const isActuallyGrouped = rows.length > 1 || !!(rows[0] && rows[0].bookingRefNo);
+          const lead = processParsedRowToLead(rows, isActuallyGrouped);
           if (lead) newLeadsFromCsv.push(lead);
           else currentSkippedCount += rows.length;
         });
 
-        // Create Leads from Ungrouped
-        ungroupedRows.forEach(row => {
-          const lead = processParsedRowToLead([row], false);
-          if (lead) newLeadsFromCsv.push(lead);
-          else currentSkippedCount++;
-        });
-
-        // Duplicate Key Check: TicketNumber + BookingRefNO
+        // Duplicate Key Check: TicketNumber + BookingRefNO + fallback (Client+Yacht+Date)
         const finalLeadsToImport: Lead[] = [];
         let duplicateCount = 0;
         const seenKeys = new Set<string>();
 
         // Pre-fill seenKeys with existing leads
         allLeads.forEach(l => {
-          const key = `${l.transactionId}_${l.bookingRefNo}`;
-          seenKeys.add(key.toUpperCase());
+          // Key 1: Ticket + DO Ref (Primary)
+          if (l.transactionId || l.bookingRefNo) {
+            const key1 = `${l.transactionId || ''}_${l.bookingRefNo || ''}`.toUpperCase();
+            seenKeys.add(key1);
+          }
+
+          // Key 2: Client + Yacht Name + Date (Secondary/Strict Fallback)
+          const datePart = l.month ? l.month.split('T')[0] : '';
+          const key2 = `STRICT_${String(l.clientName || '').toLowerCase().trim()}_${String(l.yacht || '').toLowerCase().trim()}_${datePart}`.toUpperCase();
+          seenKeys.add(key2);
         });
 
         newLeadsFromCsv.forEach(lead => {
-          const key = `${lead.transactionId}_${lead.bookingRefNo}`.toUpperCase();
-          if (seenKeys.has(key)) {
-            console.warn(`[CSV Import] Duplicate booking found (Ticket: ${lead.transactionId}, Ref: ${lead.bookingRefNo}). Skipping.`);
+          const key1 = `${lead.transactionId || ''}_${lead.bookingRefNo || ''}`.toUpperCase();
+          const datePart = lead.month ? lead.month.split('T')[0] : '';
+          const key2 = `STRICT_${String(lead.clientName || '').toLowerCase().trim()}_${String(lead.yacht || '').toLowerCase().trim()}_${datePart}`.toUpperCase();
+
+          const isDuplicate = ((lead.transactionId || lead.bookingRefNo) && seenKeys.has(key1)) || seenKeys.has(key2);
+
+          if (isDuplicate) {
+            console.warn(`[CSV Import] Duplicate booking found (Key1: ${key1}, Key2: ${key2}). Skipping.`);
             duplicateCount++;
           } else {
-            seenKeys.add(key);
+            if (lead.transactionId || lead.bookingRefNo) seenKeys.add(key1);
+            seenKeys.add(key2);
             finalLeadsToImport.push(lead);
           }
         });

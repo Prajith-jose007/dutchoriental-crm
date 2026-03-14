@@ -8,7 +8,7 @@ import { formatToMySQLDateTime } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
 
-interface DbLead extends Omit<Lead, 'packageQuantities' | 'totalAmount' | 'commissionPercentage' | 'commissionAmount' | 'netAmount' | 'paidAmount' | 'balanceAmount' | 'freeGuestCount' | 'perTicketRate' | 'perTicketRateReason' | 'printReason' | 'checkInStatus' | 'checkInTime' | 'collectedAtCheckIn' | 'freeGuestDetails' | 'checkedInQuantities' | 'idVerified'> {
+interface DbLead extends Omit<Lead, 'packageQuantities' | 'totalAmount' | 'commissionPercentage' | 'commissionAmount' | 'netAmount' | 'paidAmount' | 'balanceAmount' | 'freeGuestCount' | 'perTicketRate' | 'perTicketRateReason' | 'printReason' | 'payAtCounterAmount' | 'payAtCounterRemark' | 'checkInStatus' | 'checkInTime' | 'collectedAtCheckIn' | 'freeGuestDetails' | 'checkedInQuantities' | 'idVerified'> {
   package_quantities_json?: string;
   totalAmount: string | number;
   commissionPercentage: string | number;
@@ -20,6 +20,8 @@ interface DbLead extends Omit<Lead, 'packageQuantities' | 'totalAmount' | 'commi
   perTicketRate?: string | number | null;
   perTicketRateReason?: string | null;
   printReason?: string | null;
+  payAtCounterAmount?: string | number | null;
+  payAtCounterRemark?: string | null;
   checkInStatus?: string;
   checkInTime?: string;
   free_guest_details_json?: string;
@@ -68,6 +70,7 @@ const mapDbLeadToLeadObject = (dbLead: DbLead): Lead => {
   const parsedCollectedAtCheckIn = parseFloat(String(dbLead.collectedAtCheckIn || 0));
   const parsedFreeGuestCount = parseInt(String(dbLead.freeGuestCount || 0), 10);
   const parsedPerTicketRate = dbLead.perTicketRate !== null && dbLead.perTicketRate !== undefined ? parseFloat(String(dbLead.perTicketRate)) : undefined;
+  const parsedPayAtCounterAmount = dbLead.payAtCounterAmount !== null && dbLead.payAtCounterAmount !== undefined ? parseFloat(String(dbLead.payAtCounterAmount)) : undefined;
 
   return {
     id: String(dbLead.id || ''),
@@ -87,6 +90,8 @@ const mapDbLeadToLeadObject = (dbLead: DbLead): Lead => {
     perTicketRate: parsedPerTicketRate,
     perTicketRateReason: dbLead.perTicketRateReason || undefined,
     printReason: dbLead.printReason || undefined,
+    payAtCounterAmount: parsedPayAtCounterAmount,
+    payAtCounterRemark: dbLead.payAtCounterRemark || undefined,
     totalAmount: isNaN(parsedTotalAmount) ? 0 : parsedTotalAmount,
     commissionPercentage: isNaN(parsedCommissionPercentage) ? 0 : parsedCommissionPercentage,
     commissionAmount: isNaN(parsedCommissionAmount) ? 0 : parsedCommissionAmount,
@@ -220,14 +225,14 @@ export async function POST(request: NextRequest) {
     const sql = `
       INSERT INTO leads (
         id, clientName, agent, yacht, status, month, notes, type, paymentConfirmationStatus, transactionId, bookingRefNo, modeOfPayment,
-        package_quantities_json, freeGuestCount, perTicketRate, perTicketRateReason, printReason,
+        package_quantities_json, freeGuestCount, perTicketRate, perTicketRateReason, printReason, payAtCounterAmount, payAtCounterRemark,
         totalAmount, commissionPercentage, commissionAmount, netAmount,
         paidAmount, balanceAmount,
         createdAt, updatedAt, lastModifiedByUserId, ownerUserId, free_guest_details_json,
         customerPhone, customerEmail, nationality, language, source, customAgentName, customAgentPhone, inquiryDate, yachtType, adultsCount, kidsCount, noShowCount,
         durationHours, budgetRange, occasion, priority, nextFollowUpDate, closingProbability,
         captainName, crewDetails, idVerified, extraHoursUsed, extraCharges, customerSignatureUrl
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     const params = [
@@ -248,6 +253,8 @@ export async function POST(request: NextRequest) {
       newLeadData.perTicketRate !== undefined && newLeadData.perTicketRate !== null ? Number(newLeadData.perTicketRate) : null,
       newLeadData.perTicketRateReason || null,
       newLeadData.printReason || null,
+      newLeadData.payAtCounterAmount !== undefined && newLeadData.payAtCounterAmount !== null ? Number(newLeadData.payAtCounterAmount) : null,
+      newLeadData.payAtCounterRemark || null,
       Number(newLeadData.totalAmount || 0),
       Number(newLeadData.commissionPercentage || 0),
       Number(newLeadData.commissionAmount || 0),
@@ -317,7 +324,9 @@ export async function POST(request: NextRequest) {
               { name: 'customAgentName', def: 'VARCHAR(255) NULL' },
               { name: 'customAgentPhone', def: 'VARCHAR(50) NULL' },
               { name: 'noShowCount', def: 'INT DEFAULT 0' },
-              { name: 'printReason', def: 'TEXT NULL' }
+              { name: 'printReason', def: 'TEXT NULL' },
+              { name: 'payAtCounterAmount', def: 'DOUBLE NULL' },
+              { name: 'payAtCounterRemark', def: 'TEXT NULL' }
             ];
 
             for (const col of columnsToAdd) {

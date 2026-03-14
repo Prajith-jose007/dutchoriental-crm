@@ -151,6 +151,8 @@ export interface Lead {
   perTicketRate?: number;
   perTicketRateReason?: string;
   printReason?: string;
+  payAtCounterAmount?: number;
+  payAtCounterRemark?: string;
 
   totalAmount: number;
   commissionPercentage: number;

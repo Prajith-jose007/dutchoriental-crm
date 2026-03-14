@@ -164,12 +164,6 @@ export default function BookingsPage() {
 
   const [ticketLead, setTicketLead] = useState<Lead | null>(null);
   const [isTicketDialogOpen, setIsTicketDialogOpen] = useState(false);
-  const [isPrintRemarkDialogOpen, setIsPrintRemarkDialogOpen] = useState(false);
-  const [manifestRemark, setManifestRemark] = useState('');
-
-  const [isPayAtCounterReasonDialogOpen, setIsPayAtCounterReasonDialogOpen] = useState(false);
-  const [payAtCounterReason, setPayAtCounterReason] = useState('');
-  const [payAtCounterLead, setPayAtCounterLead] = useState<Lead | null>(null);
 
 
   const fetchAllData = async (isBackground = false) => {
@@ -468,54 +462,8 @@ export default function BookingsPage() {
   };
 
   const handlePrintPayAtCounter = (lead: Lead) => {
-    setPayAtCounterLead(lead);
-    setPayAtCounterReason('');
-    setIsPayAtCounterReasonDialogOpen(true);
-  };
-
-  const handleSavePrintReasonAndPrint = async () => {
-    if (!payAtCounterLead || !payAtCounterReason.trim()) {
-      toast({ title: 'Error', description: 'Please enter a reason.', variant: 'destructive' });
-      return;
-    }
-    if (!currentUserId || !currentUserRole) {
-      toast({ title: 'Authentication Error', description: 'User details missing.', variant: 'destructive' });
-      return;
-    }
-    
-    setIsLoading(true);
-    try {
-      const payload: any = {
-        ...payAtCounterLead,
-        printReason: payAtCounterReason,
-        requestingUserId: currentUserId,
-        requestingUserRole: currentUserRole,
-      };
-
-      const response = await fetch(`/api/leads/${payAtCounterLead.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) {
-        const err = await response.json();
-        throw new Error(err.message || 'Failed to save print reason.');
-      }
-
-      toast({ title: 'Success', description: 'Reason saved. Preparing ticket...' });
-      setIsPayAtCounterReasonDialogOpen(false);
-      
-      const updatedLead = await response.json();
-      setAllLeads(prev => prev.map(l => l.id === updatedLead.id ? updatedLead : l));
-      
-      setTicketLead(updatedLead);
-      setIsTicketDialogOpen(true);
-    } catch (error) {
-      toast({ title: 'Error', description: (error as Error).message, variant: 'destructive' });
-    } finally {
-      setIsLoading(false);
-    }
+    setTicketLead(lead);
+    setIsTicketDialogOpen(true);
   };
 
   const handleSelectLead = (leadId: string, isSelected: boolean) => {
@@ -1469,11 +1417,14 @@ export default function BookingsPage() {
 
         if ((lead.perTicketRate || 0) > 0 && lead.perTicketRateReason) {
           group.latestAddonReason = lead.perTicketRateReason;
+          const text = `Addon: ${lead.perTicketRateReason}`;
+          if (!group.aggregatedNotes.includes(text)) group.aggregatedNotes.push(text);
         }
 
-        if (lead.notes && lead.notes.trim() !== '') {
-          if (!group.aggregatedNotes.includes(lead.notes.trim())) {
-            group.aggregatedNotes.push(lead.notes.trim());
+        if ((lead.payAtCounterAmount || 0) > 0 || lead.payAtCounterRemark) {
+          const text = `Pay At Counter${lead.payAtCounterAmount ? ` [AED ${lead.payAtCounterAmount}]` : ''}${lead.payAtCounterRemark ? `: ${lead.payAtCounterRemark}` : ''}`;
+          if (!group.aggregatedNotes.includes(text)) {
+            group.aggregatedNotes.push(text);
           }
         }
 
@@ -1586,7 +1537,7 @@ export default function BookingsPage() {
           th { background-color: #f2f2f2; font-weight: bold; font-size: 11px; }
           td { font-size: 11px; }
           @media print {
-            @page { margin: 1cm; size: landscape; }
+            @page { margin: 1cm; size: A4 portrait; }
             body { -webkit-print-color-adjust: exact; }
             .category-section { page-break-inside: auto; }
             tr { page-break-inside: avoid; }
@@ -1916,7 +1867,7 @@ export default function BookingsPage() {
         onCsvImport={handleCsvImport}
         onCsvExport={handleCsvExport}
       />
-      <Button variant="outline" onClick={() => setIsPrintRemarkDialogOpen(true)} disabled={isImporting} size="sm" className="h-9">
+      <Button variant="outline" onClick={() => handlePrintDailyManifest()} disabled={isImporting} size="sm" className="h-9">
         <Printer className="mr-2 h-4 w-4" />
         Print Daily Manifest
       </Button>
@@ -2129,66 +2080,6 @@ export default function BookingsPage() {
         yachtName={ticketLead ? yachtMap[ticketLead.yacht] || ticketLead.yacht : ''}
       />
 
-      <Dialog open={isPrintRemarkDialogOpen} onOpenChange={setIsPrintRemarkDialogOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Add Manifest Remark</DialogTitle>
-            <DialogDescription>
-              Enter a general remark or note to be displayed at the top of the printed daily manifest.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="py-4">
-            <Textarea
-              placeholder="e.g. Weather updates, Special events, General operational notes..."
-              className="min-h-[120px]"
-              value={manifestRemark}
-              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setManifestRemark(e.target.value)}
-            />
-          </div>
-          <DialogFooter className="flex flex-row justify-between sm:justify-end gap-2">
-            <Button variant="ghost" onClick={() => {
-              setManifestRemark('');
-              handlePrintDailyManifest();
-              setIsPrintRemarkDialogOpen(false);
-            }}>
-              Print Without Remark
-            </Button>
-            <Button onClick={() => {
-              handlePrintDailyManifest(manifestRemark);
-              setIsPrintRemarkDialogOpen(false);
-            }}>
-              Confirm & Print
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={isPayAtCounterReasonDialogOpen} onOpenChange={setIsPayAtCounterReasonDialogOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Reason for Printing</DialogTitle>
-            <DialogDescription>
-              Please provide a reason for printing a pending ticket at the counter.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="py-4">
-            <Textarea
-              placeholder="Enter reason..."
-              className="min-h-[120px]"
-              value={payAtCounterReason}
-              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setPayAtCounterReason(e.target.value)}
-            />
-          </div>
-          <DialogFooter className="flex flex-row justify-between sm:justify-end gap-2">
-            <Button variant="ghost" onClick={() => setIsPayAtCounterReasonDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleSavePrintReasonAndPrint} disabled={isLoading}>
-              {isLoading ? 'Saving...' : 'Save & Print'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       <Dialog open={isShowingImportPreview} onOpenChange={setIsShowingImportPreview}>
         <DialogContent className="max-w-7xl max-h-[90vh] flex flex-col">

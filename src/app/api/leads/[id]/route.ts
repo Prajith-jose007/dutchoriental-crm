@@ -8,7 +8,7 @@ import { formatToMySQLDateTime } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
 
-interface DbLead extends Omit<Lead, 'packageQuantities' | 'totalAmount' | 'commissionPercentage' | 'commissionAmount' | 'netAmount' | 'paidAmount' | 'balanceAmount' | 'freeGuestCount' | 'perTicketRate' | 'perTicketRateReason' | 'printReason' | 'checkInStatus' | 'checkInTime' | 'idVerified' | 'freeGuestDetails' | 'checkedInQuantities' | 'collectedAtCheckIn'> {
+interface DbLead extends Omit<Lead, 'packageQuantities' | 'totalAmount' | 'commissionPercentage' | 'commissionAmount' | 'netAmount' | 'paidAmount' | 'balanceAmount' | 'freeGuestCount' | 'perTicketRate' | 'perTicketRateReason' | 'printReason' | 'payAtCounterAmount' | 'payAtCounterRemark' | 'checkInStatus' | 'checkInTime' | 'idVerified' | 'freeGuestDetails' | 'checkedInQuantities' | 'collectedAtCheckIn'> {
   package_quantities_json?: string;
   totalAmount: string | number;
   commissionPercentage: string | number;
@@ -20,6 +20,8 @@ interface DbLead extends Omit<Lead, 'packageQuantities' | 'totalAmount' | 'commi
   perTicketRate?: string | number | null;
   perTicketRateReason?: string | null;
   printReason?: string | null;
+  payAtCounterAmount?: string | number | null;
+  payAtCounterRemark?: string | null;
   checkInStatus?: string;
   checkInTime?: string;
   idVerified?: number | boolean;
@@ -68,6 +70,7 @@ const mapDbLeadToLeadObject = (dbLead: DbLead): Lead => {
   const parsedCollectedAtCheckIn = parseFloat(String(dbLead.collectedAtCheckIn || 0));
   const parsedFreeGuestCount = parseInt(String(dbLead.freeGuestCount || 0), 10);
   const parsedPerTicketRate = dbLead.perTicketRate !== null && dbLead.perTicketRate !== undefined ? parseFloat(String(dbLead.perTicketRate)) : undefined;
+  const parsedPayAtCounterAmount = dbLead.payAtCounterAmount !== null && dbLead.payAtCounterAmount !== undefined ? parseFloat(String(dbLead.payAtCounterAmount)) : undefined;
 
   return {
     id: String(dbLead.id || ''),
@@ -87,6 +90,8 @@ const mapDbLeadToLeadObject = (dbLead: DbLead): Lead => {
     perTicketRate: parsedPerTicketRate,
     perTicketRateReason: dbLead.perTicketRateReason || undefined,
     printReason: dbLead.printReason || undefined,
+    payAtCounterAmount: parsedPayAtCounterAmount,
+    payAtCounterRemark: dbLead.payAtCounterRemark || undefined,
     totalAmount: isNaN(parsedTotalAmount) ? 0 : parsedTotalAmount,
     commissionPercentage: isNaN(parsedCommissionPercentage) ? 0 : parsedCommissionPercentage,
     commissionAmount: isNaN(parsedCommissionAmount) ? 0 : parsedCommissionAmount,
@@ -138,7 +143,7 @@ function buildLeadUpdateSetClause(data: Partial<Omit<Lead, 'id' | 'createdAt' | 
   const allowedKeys: (keyof Lead | 'package_quantities_json' | 'free_guest_details_json')[] = [
     'clientName', 'agent', 'yacht', 'status', 'month', 'notes', 'type',
     'paymentConfirmationStatus', 'transactionId', 'bookingRefNo', 'modeOfPayment',
-    'package_quantities_json', 'freeGuestCount', 'perTicketRate', 'perTicketRateReason', 'printReason',
+    'package_quantities_json', 'freeGuestCount', 'perTicketRate', 'perTicketRateReason', 'printReason', 'payAtCounterAmount', 'payAtCounterRemark',
     'totalAmount', 'commissionPercentage', 'commissionAmount', 'netAmount', 'paidAmount', 'balanceAmount',
     'updatedAt', 'lastModifiedByUserId', 'ownerUserId',
     'customerPhone', 'customerEmail', 'nationality', 'language', 'source', 'inquiryDate', 'yachtType', 'adultsCount', 'kidsCount', 'noShowCount',
@@ -153,12 +158,12 @@ function buildLeadUpdateSetClause(data: Partial<Omit<Lead, 'id' | 'createdAt' | 
       fieldsToUpdate.push(`${key} = ?`);
       if (['month', 'updatedAt', 'inquiryDate', 'nextFollowUpDate', 'checkInTime'].includes(key)) {
         valuesToUpdate.push(formatToMySQLDateTime(value as string) || null);
-      } else if (value === null && ['perTicketRate', 'perTicketRateReason', 'printReason', 'notes', 'transactionId', 'bookingRefNo', 'customerPhone', 'customerEmail', 'nationality', 'language', 'source', 'inquiryDate', 'yachtType', 'durationHours', 'budgetRange', 'occasion', 'priority', 'nextFollowUpDate', 'captainName', 'crewDetails', 'customerSignatureUrl', 'checkInTime', 'free_guest_details_json', 'customAgentName', 'customAgentPhone'].includes(key)) {
+      } else if (value === null && ['perTicketRate', 'perTicketRateReason', 'printReason', 'payAtCounterAmount', 'payAtCounterRemark', 'notes', 'transactionId', 'bookingRefNo', 'customerPhone', 'customerEmail', 'nationality', 'language', 'source', 'inquiryDate', 'yachtType', 'durationHours', 'budgetRange', 'occasion', 'priority', 'nextFollowUpDate', 'captainName', 'crewDetails', 'customerSignatureUrl', 'checkInTime', 'free_guest_details_json', 'customAgentName', 'customAgentPhone'].includes(key)) {
         valuesToUpdate.push(null);
-      } else if (value === undefined && ['perTicketRate'].includes(key)) {
+      } else if (value === undefined && ['perTicketRate', 'payAtCounterAmount'].includes(key)) {
         valuesToUpdate.push(null);
       } else if (typeof value === 'number' && isNaN(value)) {
-        valuesToUpdate.push(key === 'perTicketRate' ? null : 0);
+        valuesToUpdate.push(key === 'perTicketRate' || key === 'payAtCounterAmount' ? null : 0);
       } else if (key === 'idVerified') {
         valuesToUpdate.push(value ? 1 : 0);
       } else if (key === 'free_guest_details_json' && value !== null) {
@@ -241,6 +246,7 @@ export async function PUT(
     }
 
     if (dataToUpdate.perTicketRate === undefined) delete dataToUpdate.perTicketRate;
+    if (dataToUpdate.payAtCounterAmount === undefined) delete dataToUpdate.payAtCounterAmount;
     if (dataToUpdate.notes === undefined) delete dataToUpdate.notes;
 
     const { clause, values: updateValues } = buildLeadUpdateSetClause(dataToUpdate);
@@ -265,7 +271,9 @@ export async function PUT(
               { name: 'customAgentName', def: 'VARCHAR(255) NULL' },
               { name: 'customAgentPhone', def: 'VARCHAR(50) NULL' },
               { name: 'noShowCount', def: 'INT DEFAULT 0' },
-              { name: 'printReason', def: 'TEXT NULL' }
+              { name: 'printReason', def: 'TEXT NULL' },
+              { name: 'payAtCounterAmount', def: 'DOUBLE NULL' },
+              { name: 'payAtCounterRemark', def: 'TEXT NULL' }
             ];
             for (const col of columnsToAdd) {
               if (!existingNames.includes(col.name)) {

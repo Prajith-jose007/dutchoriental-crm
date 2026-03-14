@@ -103,6 +103,8 @@ const leadFormSchema = z.object({
   freeGuestCount: z.coerce.number().min(0, "Free guest count must be non-negative").optional().default(0),
   perTicketRate: z.coerce.number().min(0, "Other charges must be non-negative").optional().nullable(),
   perTicketRateReason: z.string().optional(),
+  payAtCounterAmount: z.coerce.number().min(0).optional().nullable(),
+  payAtCounterRemark: z.string().optional(),
 
   totalAmount: z.coerce.number().default(0),
   commissionPercentage: z.coerce.number().min(0).max(100).default(0),
@@ -188,6 +190,8 @@ const getDefaultFormValues = (existingLead?: Lead | null, currentUserId?: string
     freeGuestCount: Number(existingLead?.freeGuestCount || 0),
     perTicketRate: existingLead?.perTicketRate !== undefined && existingLead.perTicketRate !== null ? Number(Number(existingLead.perTicketRate).toFixed(2)) : null,
     perTicketRateReason: existingLead?.perTicketRateReason || '',
+    payAtCounterAmount: existingLead?.payAtCounterAmount !== undefined && existingLead?.payAtCounterAmount !== null ? Number(Number(existingLead.payAtCounterAmount).toFixed(2)) : null,
+    payAtCounterRemark: existingLead?.payAtCounterRemark || '',
     totalAmount: Number(Number(existingLead?.totalAmount || 0).toFixed(2)),
     commissionPercentage: Number(existingLead?.commissionPercentage || 0),
     commissionAmount: Number(Number(existingLead?.commissionAmount || 0).toFixed(2)),
@@ -399,6 +403,7 @@ export function BookingFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess,
     // Robust numerical conversion for all inputs
     const parsedPaidAmount = parseFloat(String(paidAmount || 0).replace(/,/g, ''));
     const parsedAddOnTotal = parseFloat(String(perTicketRate || 0).replace(/,/g, ''));
+    const parsedPayAtCounter = parseFloat(String(form.getValues().payAtCounterAmount || 0).replace(/,/g, ''));
     const parsedCommissionPercent = parseFloat(String(agentDiscountRate || 0));
     const parsedDuration = parseFloat(String(durationHours || 0));
 
@@ -431,9 +436,9 @@ export function BookingFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess,
     const calculatedCommissionAmount = Number(((packagesTotal * parsedCommissionPercent) / 100).toFixed(2));
     const calculatedNetAmount = Number((calculatedTotalAmount - calculatedCommissionAmount).toFixed(2));
 
-    // Addons are added to the Balance Due directly
+    // Addons and Pay at Counter are added to the Balance Due directly
     const previousTotalPaid = lead ? Number(lead.paidAmount || 0) : 0;
-    const actualSignedBalanceAmount = Number(((calculatedNetAmount + parsedAddOnTotal) - (previousTotalPaid + parsedPaidAmount)).toFixed(2));
+    const actualSignedBalanceAmount = Number(((calculatedNetAmount + parsedAddOnTotal + parsedPayAtCounter) - (previousTotalPaid + parsedPaidAmount)).toFixed(2));
 
     const currentVals = form.getValues();
     if (Number(currentVals.totalAmount) !== calculatedTotalAmount) form.setValue('totalAmount', calculatedTotalAmount, { shouldValidate: true });
@@ -447,6 +452,7 @@ export function BookingFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess,
       if (
         name?.startsWith('packageQuantities') ||
         name === 'perTicketRate' ||
+        name === 'payAtCounterAmount' ||
         name === 'agent' ||
         name === 'paidAmount' ||
         name === 'durationHours' ||
@@ -596,6 +602,7 @@ export function BookingFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess,
     }
 
     const addOnTotal = Number(data.perTicketRate || 0);
+    const payAtCounterTotal = Number(data.payAtCounterAmount || 0);
 
     // Add Yacht Base price if Private Cruise (Synchronized with live calculation in useEffect)
     if (data.type === 'Private Cruise') {
@@ -626,8 +633,8 @@ export function BookingFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess,
     const newPaidAmount = Number(Number(data.paidAmount || 0).toFixed(2));
     const finalPaidAmount = Number((previousTotalPaid + newPaidAmount).toFixed(2));
 
-    // Balance = Net + Addon - Paid
-    const actualSignedBalanceAmount = Number(((finalNetAmount + addOnTotal) - finalPaidAmount).toFixed(2));
+    // Balance = Net + Addon + PayAtCounter - Paid
+    const actualSignedBalanceAmount = Number(((finalNetAmount + addOnTotal + payAtCounterTotal) - finalPaidAmount).toFixed(2));
 
     const finalPackageQuantities = (data.packageQuantities && Array.isArray(data.packageQuantities))
       ? data.packageQuantities.map(pq => {
@@ -665,6 +672,8 @@ export function BookingFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess,
       freeGuestCount: Number(data.freeGuestCount || 0),
       perTicketRate: data.perTicketRate !== undefined && data.perTicketRate !== null ? Number(Number(data.perTicketRate).toFixed(2)) : undefined,
       perTicketRateReason: data.perTicketRateReason,
+      payAtCounterAmount: data.payAtCounterAmount !== undefined && data.payAtCounterAmount !== null ? Number(Number(data.payAtCounterAmount).toFixed(2)) : undefined,
+      payAtCounterRemark: data.payAtCounterRemark,
       createdAt: lead?.createdAt || formatISO(new Date()),
       updatedAt: formatISO(new Date()),
       lastModifiedByUserId: currentUserId || undefined,
@@ -1069,6 +1078,32 @@ export function BookingFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess,
                         <FormItem className="flex-1">
                           <FormLabel className="text-xs font-bold uppercase text-muted-foreground">Addon Reason</FormLabel>
                           <FormControl><Input placeholder="Reason for charges..." {...field} value={field.value || ''} /></FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  {/* Pay At Counter fields */}
+                  <div className="flex flex-col md:flex-row gap-4 mt-4">
+                    <FormField
+                      control={form.control}
+                      name="payAtCounterAmount"
+                      render={({ field }) => (
+                        <FormItem className="flex-1">
+                          <FormLabel className="text-xs font-bold uppercase text-red-500">Pay at Counter Amount</FormLabel>
+                          <FormControl><Input type="number" step="0.01" placeholder="0.00" {...field} value={field.value === null ? '' : field.value} className="border-red-200" /></FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="payAtCounterRemark"
+                      render={({ field }) => (
+                        <FormItem className="flex-1">
+                          <FormLabel className="text-xs font-bold uppercase text-red-500">Pay at Counter Remark</FormLabel>
+                          <FormControl><Input placeholder="Remark..." {...field} value={field.value || ''} className="border-red-200" /></FormControl>
                           <FormMessage />
                         </FormItem>
                       )}

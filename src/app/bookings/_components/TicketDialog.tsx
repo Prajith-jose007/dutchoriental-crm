@@ -45,6 +45,10 @@ export function TicketDialog({
                         .guest-val { font-size: 18px; }
                         .qr-container { padding: 16px; border: 1px solid #eee; border-radius: 12px; margin-top: 10px; }
                         .footer { font-size: 11px; color: #888; text-transform: uppercase; margin-top: 10px; }
+                        @media print {
+                            @page { size: A4 portrait; margin: 1cm; }
+                            body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                        }
                     </style>
                 </head>
                 <body onload="window.print(); window.close();">

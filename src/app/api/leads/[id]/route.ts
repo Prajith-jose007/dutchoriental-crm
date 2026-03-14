@@ -8,7 +8,7 @@ import { formatToMySQLDateTime } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
 
-interface DbLead extends Omit<Lead, 'packageQuantities' | 'totalAmount' | 'commissionPercentage' | 'commissionAmount' | 'netAmount' | 'paidAmount' | 'balanceAmount' | 'freeGuestCount' | 'perTicketRate' | 'perTicketRateReason' | 'checkInStatus' | 'checkInTime' | 'idVerified' | 'freeGuestDetails' | 'checkedInQuantities' | 'collectedAtCheckIn'> {
+interface DbLead extends Omit<Lead, 'packageQuantities' | 'totalAmount' | 'commissionPercentage' | 'commissionAmount' | 'netAmount' | 'paidAmount' | 'balanceAmount' | 'freeGuestCount' | 'perTicketRate' | 'perTicketRateReason' | 'printReason' | 'checkInStatus' | 'checkInTime' | 'idVerified' | 'freeGuestDetails' | 'checkedInQuantities' | 'collectedAtCheckIn'> {
   package_quantities_json?: string;
   totalAmount: string | number;
   commissionPercentage: string | number;
@@ -19,6 +19,7 @@ interface DbLead extends Omit<Lead, 'packageQuantities' | 'totalAmount' | 'commi
   freeGuestCount: string | number | null;
   perTicketRate?: string | number | null;
   perTicketRateReason?: string | null;
+  printReason?: string | null;
   checkInStatus?: string;
   checkInTime?: string;
   idVerified?: number | boolean;
@@ -85,6 +86,7 @@ const mapDbLeadToLeadObject = (dbLead: DbLead): Lead => {
     freeGuestCount: isNaN(parsedFreeGuestCount) ? 0 : parsedFreeGuestCount,
     perTicketRate: parsedPerTicketRate,
     perTicketRateReason: dbLead.perTicketRateReason || undefined,
+    printReason: dbLead.printReason || undefined,
     totalAmount: isNaN(parsedTotalAmount) ? 0 : parsedTotalAmount,
     commissionPercentage: isNaN(parsedCommissionPercentage) ? 0 : parsedCommissionPercentage,
     commissionAmount: isNaN(parsedCommissionAmount) ? 0 : parsedCommissionAmount,
@@ -136,7 +138,7 @@ function buildLeadUpdateSetClause(data: Partial<Omit<Lead, 'id' | 'createdAt' | 
   const allowedKeys: (keyof Lead | 'package_quantities_json' | 'free_guest_details_json')[] = [
     'clientName', 'agent', 'yacht', 'status', 'month', 'notes', 'type',
     'paymentConfirmationStatus', 'transactionId', 'bookingRefNo', 'modeOfPayment',
-    'package_quantities_json', 'freeGuestCount', 'perTicketRate', 'perTicketRateReason',
+    'package_quantities_json', 'freeGuestCount', 'perTicketRate', 'perTicketRateReason', 'printReason',
     'totalAmount', 'commissionPercentage', 'commissionAmount', 'netAmount', 'paidAmount', 'balanceAmount',
     'updatedAt', 'lastModifiedByUserId', 'ownerUserId',
     'customerPhone', 'customerEmail', 'nationality', 'language', 'source', 'inquiryDate', 'yachtType', 'adultsCount', 'kidsCount', 'noShowCount',
@@ -151,7 +153,7 @@ function buildLeadUpdateSetClause(data: Partial<Omit<Lead, 'id' | 'createdAt' | 
       fieldsToUpdate.push(`${key} = ?`);
       if (['month', 'updatedAt', 'inquiryDate', 'nextFollowUpDate', 'checkInTime'].includes(key)) {
         valuesToUpdate.push(formatToMySQLDateTime(value as string) || null);
-      } else if (value === null && ['perTicketRate', 'perTicketRateReason', 'notes', 'transactionId', 'bookingRefNo', 'customerPhone', 'customerEmail', 'nationality', 'language', 'source', 'inquiryDate', 'yachtType', 'durationHours', 'budgetRange', 'occasion', 'priority', 'nextFollowUpDate', 'captainName', 'crewDetails', 'customerSignatureUrl', 'checkInTime', 'free_guest_details_json', 'customAgentName', 'customAgentPhone'].includes(key)) {
+      } else if (value === null && ['perTicketRate', 'perTicketRateReason', 'printReason', 'notes', 'transactionId', 'bookingRefNo', 'customerPhone', 'customerEmail', 'nationality', 'language', 'source', 'inquiryDate', 'yachtType', 'durationHours', 'budgetRange', 'occasion', 'priority', 'nextFollowUpDate', 'captainName', 'crewDetails', 'customerSignatureUrl', 'checkInTime', 'free_guest_details_json', 'customAgentName', 'customAgentPhone'].includes(key)) {
         valuesToUpdate.push(null);
       } else if (value === undefined && ['perTicketRate'].includes(key)) {
         valuesToUpdate.push(null);
@@ -262,7 +264,8 @@ export async function PUT(
             const columnsToAdd = [
               { name: 'customAgentName', def: 'VARCHAR(255) NULL' },
               { name: 'customAgentPhone', def: 'VARCHAR(50) NULL' },
-              { name: 'noShowCount', def: 'INT DEFAULT 0' }
+              { name: 'noShowCount', def: 'INT DEFAULT 0' },
+              { name: 'printReason', def: 'TEXT NULL' }
             ];
             for (const col of columnsToAdd) {
               if (!existingNames.includes(col.name)) {

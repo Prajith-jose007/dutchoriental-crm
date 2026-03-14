@@ -231,6 +231,7 @@ interface BookingsTableProps {
   onSelectLead: (leadId: string, isSelected: boolean) => void;
   onSelectAllLeads: (isSelected: boolean) => void;
   onViewTicket: (lead: Lead) => void;
+  onPrintPayAtCounter?: (lead: Lead) => void;
 }
 
 export function BookingsTable({
@@ -248,6 +249,7 @@ export function BookingsTable({
   onSelectLead,
   onSelectAllLeads,
   onViewTicket,
+  onPrintPayAtCounter,
 }: BookingsTableProps) {
 
   const leadColumns = useMemo(() => generateBookingColumns(allYachts), [allYachts]);
@@ -527,6 +529,11 @@ export function BookingsTable({
                               <DropdownMenuItem onClick={() => onViewTicket(lead)}>
                                 View Ticket
                               </DropdownMenuItem>
+                              {lead.status === 'Pending' && ['CASH', 'CASH / CARD', 'CARD'].includes(lead.modeOfPayment) && onPrintPayAtCounter && (
+                                <DropdownMenuItem onClick={() => onPrintPayAtCounter(lead)}>
+                                  Print (Pay at Counter)
+                                </DropdownMenuItem>
+                              )}
                               <DropdownMenuItem onClick={() => onGenerateInvoice(lead)}>
                                 Generate Invoice
                               </DropdownMenuItem>

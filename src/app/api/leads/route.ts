@@ -8,7 +8,7 @@ import { formatToMySQLDateTime } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
 
-interface DbLead extends Omit<Lead, 'packageQuantities' | 'totalAmount' | 'commissionPercentage' | 'commissionAmount' | 'netAmount' | 'paidAmount' | 'balanceAmount' | 'freeGuestCount' | 'perTicketRate' | 'perTicketRateReason' | 'checkInStatus' | 'checkInTime' | 'collectedAtCheckIn' | 'freeGuestDetails' | 'checkedInQuantities' | 'idVerified'> {
+interface DbLead extends Omit<Lead, 'packageQuantities' | 'totalAmount' | 'commissionPercentage' | 'commissionAmount' | 'netAmount' | 'paidAmount' | 'balanceAmount' | 'freeGuestCount' | 'perTicketRate' | 'perTicketRateReason' | 'printReason' | 'checkInStatus' | 'checkInTime' | 'collectedAtCheckIn' | 'freeGuestDetails' | 'checkedInQuantities' | 'idVerified'> {
   package_quantities_json?: string;
   totalAmount: string | number;
   commissionPercentage: string | number;
@@ -19,6 +19,7 @@ interface DbLead extends Omit<Lead, 'packageQuantities' | 'totalAmount' | 'commi
   freeGuestCount: string | number | null;
   perTicketRate?: string | number | null;
   perTicketRateReason?: string | null;
+  printReason?: string | null;
   checkInStatus?: string;
   checkInTime?: string;
   free_guest_details_json?: string;
@@ -85,6 +86,7 @@ const mapDbLeadToLeadObject = (dbLead: DbLead): Lead => {
     freeGuestCount: isNaN(parsedFreeGuestCount) ? 0 : parsedFreeGuestCount,
     perTicketRate: parsedPerTicketRate,
     perTicketRateReason: dbLead.perTicketRateReason || undefined,
+    printReason: dbLead.printReason || undefined,
     totalAmount: isNaN(parsedTotalAmount) ? 0 : parsedTotalAmount,
     commissionPercentage: isNaN(parsedCommissionPercentage) ? 0 : parsedCommissionPercentage,
     commissionAmount: isNaN(parsedCommissionAmount) ? 0 : parsedCommissionAmount,
@@ -218,14 +220,14 @@ export async function POST(request: NextRequest) {
     const sql = `
       INSERT INTO leads (
         id, clientName, agent, yacht, status, month, notes, type, paymentConfirmationStatus, transactionId, bookingRefNo, modeOfPayment,
-        package_quantities_json, freeGuestCount, perTicketRate, perTicketRateReason,
+        package_quantities_json, freeGuestCount, perTicketRate, perTicketRateReason, printReason,
         totalAmount, commissionPercentage, commissionAmount, netAmount,
         paidAmount, balanceAmount,
         createdAt, updatedAt, lastModifiedByUserId, ownerUserId, free_guest_details_json,
         customerPhone, customerEmail, nationality, language, source, customAgentName, customAgentPhone, inquiryDate, yachtType, adultsCount, kidsCount, noShowCount,
         durationHours, budgetRange, occasion, priority, nextFollowUpDate, closingProbability,
         captainName, crewDetails, idVerified, extraHoursUsed, extraCharges, customerSignatureUrl
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     const params = [
@@ -245,6 +247,7 @@ export async function POST(request: NextRequest) {
       Number(newLeadData.freeGuestCount || 0),
       newLeadData.perTicketRate !== undefined && newLeadData.perTicketRate !== null ? Number(newLeadData.perTicketRate) : null,
       newLeadData.perTicketRateReason || null,
+      newLeadData.printReason || null,
       Number(newLeadData.totalAmount || 0),
       Number(newLeadData.commissionPercentage || 0),
       Number(newLeadData.commissionAmount || 0),
@@ -313,7 +316,8 @@ export async function POST(request: NextRequest) {
             const columnsToAdd = [
               { name: 'customAgentName', def: 'VARCHAR(255) NULL' },
               { name: 'customAgentPhone', def: 'VARCHAR(50) NULL' },
-              { name: 'noShowCount', def: 'INT DEFAULT 0' }
+              { name: 'noShowCount', def: 'INT DEFAULT 0' },
+              { name: 'printReason', def: 'TEXT NULL' }
             ];
 
             for (const col of columnsToAdd) {

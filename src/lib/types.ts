@@ -150,6 +150,7 @@ export interface Lead {
   freeGuestCount?: number;
   perTicketRate?: number;
   perTicketRateReason?: string;
+  printReason?: string;
 
   totalAmount: number;
   commissionPercentage: number;

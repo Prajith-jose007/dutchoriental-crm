@@ -167,6 +167,10 @@ export default function BookingsPage() {
   const [isPrintRemarkDialogOpen, setIsPrintRemarkDialogOpen] = useState(false);
   const [manifestRemark, setManifestRemark] = useState('');
 
+  const [isPayAtCounterReasonDialogOpen, setIsPayAtCounterReasonDialogOpen] = useState(false);
+  const [payAtCounterReason, setPayAtCounterReason] = useState('');
+  const [payAtCounterLead, setPayAtCounterLead] = useState<Lead | null>(null);
+
 
   const fetchAllData = async (isBackground = false) => {
     if (!isBackground) setIsLoading(true);
@@ -460,6 +464,57 @@ export default function BookingsPage() {
     } catch (error) {
       console.error("Error generating invoice:", error);
       toast({ title: 'Error Generating Invoice', description: (error as Error).message, variant: 'destructive' });
+    }
+  };
+
+  const handlePrintPayAtCounter = (lead: Lead) => {
+    setPayAtCounterLead(lead);
+    setPayAtCounterReason('');
+    setIsPayAtCounterReasonDialogOpen(true);
+  };
+
+  const handleSavePrintReasonAndPrint = async () => {
+    if (!payAtCounterLead || !payAtCounterReason.trim()) {
+      toast({ title: 'Error', description: 'Please enter a reason.', variant: 'destructive' });
+      return;
+    }
+    if (!currentUserId || !currentUserRole) {
+      toast({ title: 'Authentication Error', description: 'User details missing.', variant: 'destructive' });
+      return;
+    }
+    
+    setIsLoading(true);
+    try {
+      const payload: any = {
+        ...payAtCounterLead,
+        printReason: payAtCounterReason,
+        requestingUserId: currentUserId,
+        requestingUserRole: currentUserRole,
+      };
+
+      const response = await fetch(`/api/leads/${payAtCounterLead.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.message || 'Failed to save print reason.');
+      }
+
+      toast({ title: 'Success', description: 'Reason saved. Preparing ticket...' });
+      setIsPayAtCounterReasonDialogOpen(false);
+      
+      const updatedLead = await response.json();
+      setAllLeads(prev => prev.map(l => l.id === updatedLead.id ? updatedLead : l));
+      
+      setTicketLead(updatedLead);
+      setIsTicketDialogOpen(true);
+    } catch (error) {
+      toast({ title: 'Error', description: (error as Error).message, variant: 'destructive' });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -2053,6 +2108,7 @@ export default function BookingsPage() {
           setTicketLead(lead);
           setIsTicketDialogOpen(true);
         }}
+        onPrintPayAtCounter={handlePrintPayAtCounter}
       />
       <BookingFormDialog
         isOpen={isLeadDialogOpen}
@@ -2102,6 +2158,33 @@ export default function BookingsPage() {
               setIsPrintRemarkDialogOpen(false);
             }}>
               Confirm & Print
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isPayAtCounterReasonDialogOpen} onOpenChange={setIsPayAtCounterReasonDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Reason for Printing</DialogTitle>
+            <DialogDescription>
+              Please provide a reason for printing a pending ticket at the counter.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Textarea
+              placeholder="Enter reason..."
+              className="min-h-[120px]"
+              value={payAtCounterReason}
+              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setPayAtCounterReason(e.target.value)}
+            />
+          </div>
+          <DialogFooter className="flex flex-row justify-between sm:justify-end gap-2">
+            <Button variant="ghost" onClick={() => setIsPayAtCounterReasonDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSavePrintReasonAndPrint} disabled={isLoading}>
+              {isLoading ? 'Saving...' : 'Save & Print'}
             </Button>
           </DialogFooter>
         </DialogContent>

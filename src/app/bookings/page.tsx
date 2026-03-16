@@ -1703,8 +1703,13 @@ export default function BookingsPage() {
   };
 
   const calculateTotalGuestsFromPackageQuantitiesForExport = (lead: Lead): number => {
-    if (!lead.packageQuantities || lead.packageQuantities.length === 0) return 0;
-    return lead.packageQuantities.reduce((sum, pq) => sum + (Number(pq.quantity) || 0), 0);
+    let total = 0;
+    if (lead.packageQuantities && lead.packageQuantities.length > 0) {
+      total += lead.packageQuantities.reduce((sum, pq) => sum + (Number(pq.quantity) || 0), 0);
+    }
+    total += Number(lead.freeGuestCount || 0);
+    total += Number(lead.infantCount || 0);
+    return total;
   };
 
   const handleCsvExport = () => {

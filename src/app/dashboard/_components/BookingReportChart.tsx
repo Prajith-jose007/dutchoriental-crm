@@ -43,8 +43,8 @@ export function BookingReportChart({ leads, isLoading, error }: BookingReportCha
     }
 
     leads.forEach(lead => {
-      // Assuming 'Confirmed' status now signifies a completed/successful booking for reporting
-      if (lead.status === 'Confirmed' && lead.month) {
+      // Assuming 'Confirmed' and 'Balance' status now signifies a completed/successful booking for reporting
+      if ((lead.status === 'Confirmed' || lead.status === 'Balance') && lead.month) {
         try {
           const eventDate = parseISO(lead.month);
           if (isValid(eventDate)) {

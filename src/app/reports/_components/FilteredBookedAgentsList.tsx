@@ -104,8 +104,12 @@ export function FilteredBookedAgentsList({ filteredLeads, allAgents, isLoading, 
       // Include all statuses that imply a valid booking/sale
       const validStatuses = ['Confirmed', 'Balance', 'Pending'];
       if (validStatuses.includes(lead.status) && lead.agent) {
-        const current = dataByAgent.get(lead.agent) || { count: 0, totalSale: 0, netNum: 0, paidNum: 0, balNum: 0 };
-        dataByAgent.set(lead.agent, {
+        // Try to find the canonical agent ID/Name
+        const foundAgent = allAgents.find(a => a.id === lead.agent || a.name.toLowerCase() === lead.agent.toLowerCase());
+        const agentKey = foundAgent ? foundAgent.id : lead.agent;
+
+        const current = dataByAgent.get(agentKey) || { count: 0, totalSale: 0, netNum: 0, paidNum: 0, balNum: 0 };
+        dataByAgent.set(agentKey, {
           count: current.count + 1,
           totalSale: current.totalSale + (Number(lead.totalAmount) || 0),
           netNum: current.netNum + (Number(lead.netAmount) || 0),
@@ -116,15 +120,18 @@ export function FilteredBookedAgentsList({ filteredLeads, allAgents, isLoading, 
     });
 
     return Array.from(dataByAgent.entries())
-      .map(([agentId, data]) => ({
-        agentId,
-        agentName: agentMap.get(agentId) || `Unknown (ID: ${agentId.substring(0, 6)})`,
-        closedBookingsCount: data.count,
-        totalSale: data.totalSale,
-        netAmount: data.netNum,
-        paidAmount: data.paidNum,
-        balance: data.balNum
-      }))
+      .map(([agentId, data]) => {
+        const foundAgent = allAgents.find(a => a.id === agentId);
+        return {
+          agentId,
+          agentName: foundAgent ? foundAgent.name : agentId,
+          closedBookingsCount: data.count,
+          totalSale: data.totalSale,
+          netAmount: data.netNum,
+          paidAmount: data.paidNum,
+          balance: data.balNum
+        };
+      })
       .sort((a, b) => b.totalSale - a.totalSale); // Sort by total sale value
   }, [filteredLeads, allAgents]);
 

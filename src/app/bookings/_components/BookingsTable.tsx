@@ -180,6 +180,7 @@ export const generateBookingColumns = (allYachts: Yacht[]): BookingTableColumn[]
     // { accessorKey: 'totalGuestsCalculated', header: 'Booked', isNumeric: true }, // Removed as per request (not in list)
     { accessorKey: 'arrivedGuestsCalculated', header: 'arrived', isNumeric: true },
     { accessorKey: 'noShowCount', header: 'no-show', isNumeric: true },
+    { accessorKey: 'infantCount', header: 'infants', isNumeric: true },
     { accessorKey: 'perTicketRate', header: 'addon', isCurrency: true },
     { accessorKey: 'perTicketRateReason', header: 'addon reason' },
     { accessorKey: 'totalAmount', header: 'total amt', isCurrency: true },
@@ -323,8 +324,13 @@ export function BookingsTable({
   }
 
   const calculateTotalGuestsFromPackageQuantities = (lead: Lead): number => {
-    if (!lead.packageQuantities || lead.packageQuantities.length === 0) return 0;
-    return lead.packageQuantities.reduce((sum, pq) => sum + (Number(pq.quantity) || 0), 0);
+    let total = 0;
+    if (lead.packageQuantities && lead.packageQuantities.length > 0) {
+      total += lead.packageQuantities.reduce((sum, pq) => sum + (Number(pq.quantity) || 0), 0);
+    }
+    total += Number(lead.freeGuestCount || 0);
+    total += Number(lead.infantCount || 0);
+    return total;
   };
 
   const calculateArrivedGuests = (lead: Lead): number => {

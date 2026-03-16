@@ -138,6 +138,8 @@ export interface Lead {
   yachtType?: YachtType;
   adultsCount?: number;
   kidsCount?: number;
+  infantCount?: number;
+  infantDetails?: string;
   noShowCount?: number;
   durationHours?: number;
   budgetRange?: string;

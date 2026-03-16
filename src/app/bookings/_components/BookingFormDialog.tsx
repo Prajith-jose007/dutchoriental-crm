@@ -84,6 +84,8 @@ const leadFormSchema = z.object({
   yachtType: z.string().optional(),
   adultsCount: z.coerce.number().min(0).optional().default(0),
   kidsCount: z.coerce.number().min(0).optional().default(0),
+  infantCount: z.coerce.number().min(0).optional().default(0),
+  infantDetails: z.string().optional(),
   noShowCount: z.coerce.number().min(0).optional().default(0),
   durationHours: z.coerce.number().min(0).optional().default(0),
   budgetRange: z.string().optional(),
@@ -172,6 +174,8 @@ const getDefaultFormValues = (existingLead?: Lead | null, currentUserId?: string
     yachtType: existingLead?.yachtType || '',
     adultsCount: Number(existingLead?.adultsCount || 0),
     kidsCount: Number(existingLead?.kidsCount || 0),
+    infantCount: Number(existingLead?.infantCount || 0),
+    infantDetails: existingLead?.infantDetails || '',
     durationHours: Number(existingLead?.durationHours || 2),
     budgetRange: existingLead?.budgetRange || '',
     occasion: existingLead?.occasion || '',
@@ -387,6 +391,7 @@ export function BookingFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess,
       yacht: yachtId,
       type: leadType,
       freeGuestCount,
+      infantCount,
       commissionPercentage: currentCommission
     } = form.getValues();
 
@@ -429,6 +434,7 @@ export function BookingFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess,
     });
 
     tempTotalGuests += Number(freeGuestCount || 0);
+    tempTotalGuests += Number(infantCount || 0);
     setCalculatedTotalGuests(tempTotalGuests);
 
     // Total Amount and Net Amount are strictly for Packages
@@ -459,7 +465,8 @@ export function BookingFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess,
         name === 'yacht' ||
         name === 'type' ||
         name === 'commissionPercentage' ||
-        name === 'freeGuestCount'
+        name === 'freeGuestCount' ||
+        name === 'infantCount'
       ) {
         recalculateFinancials(name);
       }
@@ -913,7 +920,7 @@ export function BookingFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess,
                   </div>
 
                   {/* --- ROW 2: CRUISE DETAILS (Conditional) --- */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 border-t pt-4">
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4 border-t pt-4">
                     {/* Yacht Name */}
                     <FormField
                       control={form.control}
@@ -978,7 +985,52 @@ export function BookingFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess,
                       )}
                     />
 
+                    {/* Infant Count */}
+                    <FormField
+                      control={form.control}
+                      name="infantCount"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Infant Count</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              min="0"
+                              placeholder="0"
+                              {...field}
+                              value={field.value !== undefined ? String(field.value) : '0'}
+                              onChange={(e) => field.onChange(parseInt(e.target.value, 10) || 0)}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
                   </div>
+                  
+                  {form.watch('infantCount') !== undefined && form.watch('infantCount') > 0 && (
+                    <div className="grid grid-cols-1 md:grid-cols-1 gap-4 mt-4">
+                      <FormField
+                        control={form.control}
+                        name="infantDetails"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Infant Details (Names, Ages)</FormLabel>
+                            <FormControl>
+                              <Textarea
+                                placeholder="E.g. John (1.5 yrs), Mary (6 months)"
+                                className="min-h-[60px]"
+                                {...field}
+                                value={field.value || ''}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  )}
 
 
                   {/* --- PACKAGES GRID --- */}

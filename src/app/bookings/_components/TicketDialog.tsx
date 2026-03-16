@@ -77,7 +77,7 @@ export function TicketDialog({
 
     const codeStr = lead.transactionId || lead.id;
     const formattedDate = lead.month ? format(parseISO(lead.month), 'dd MMM yyyy, hh:mm a') : 'TBD';
-    const guests = (lead.packageQuantities?.reduce((acc, curr) => acc + curr.quantity, 0) || 0) + (Number(lead.freeGuestCount) || 0);
+    const guests = (lead.packageQuantities?.reduce((acc, curr) => acc + curr.quantity, 0) || 0) + (Number(lead.freeGuestCount) || 0) + (Number(lead.infantCount) || 0);
 
     const handleWhatsApp = () => {
         const text = `Hi ${lead.clientName},\n\nHere is your booking confirmation.\n\nTicket Code: *${codeStr}*\nDate: ${formattedDate}\nCruise: ${yachtName || lead.yacht}\nGuests: ${guests}\n\nPlease show this code upon arrival to check in.\nThank you!`;

@@ -45,7 +45,7 @@ export function ReportSummaryStats({ filteredLeads, isLoading, error }: ReportSu
 
     const totalRevenue = closedLeads.reduce((sum, lead) => sum + (lead.netAmount || 0), 0);
     const totalBookings = filteredLeads.length;
-    const closedBookingsCount = filteredLeads.filter(l => l.status.startsWith('Closed')).length;
+    const closedBookingsCount = closedLeads.length;
     const balanceBookingsCount = balanceLeads.length;
     const totalOutstandingBalance = filteredLeads.reduce((sum, lead) => sum + (lead.balanceAmount || 0), 0);
 

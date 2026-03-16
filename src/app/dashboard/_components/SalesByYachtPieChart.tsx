@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/chart';
 import type { Lead, Yacht, PieChartDataItem } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
+import { normalizeYachtName } from '@/lib/csvHelpers';
 
 const chartConfigBase: Record<string, { label: string; color?: string }> = {
   value: {
@@ -36,15 +37,19 @@ export function SalesByYachtPieChart({ leads, allYachts, isLoading, error }: Sal
     leads.forEach(lead => {
       // Sales revenue is now calculated from 'Confirmed' and 'Balance' leads only
       if ((lead.status === 'Confirmed' || lead.status === 'Balance') && typeof lead.netAmount === 'number') {
-        const currentSales = salesByYachtMap.get(lead.yacht) || 0;
-        salesByYachtMap.set(lead.yacht, currentSales + lead.netAmount);
+        // Group by normalized name to handle both IDs and Name strings
+        const yacht = allYachts.find(y => y.id === lead.yacht);
+        const identifier = yacht ? normalizeYachtName(yacht.name) : normalizeYachtName(lead.yacht || '');
+        const currentSales = salesByYachtMap.get(identifier) || 0;
+        salesByYachtMap.set(identifier, currentSales + lead.netAmount);
       }
     });
 
-    return Array.from(salesByYachtMap.entries()).map(([yachtId, totalRevenue], index) => {
-      const yacht = allYachts.find(y => y.id === yachtId);
+    return Array.from(salesByYachtMap.entries()).map(([identifier, totalRevenue], index) => {
+      // Try to find a display name from the yachts list for this normalized identifier
+      const yacht = allYachts.find(y => normalizeYachtName(y.name) === identifier);
       return {
-        name: yacht ? yacht.name : `Yacht ID: ${yachtId.substring(0, 6)}...`,
+        name: yacht ? yacht.name : identifier,
         value: totalRevenue,
         fill: `hsl(var(--chart-${(index % 5) + 1}))`,
       };

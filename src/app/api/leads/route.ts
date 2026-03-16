@@ -117,6 +117,8 @@ const mapDbLeadToLeadObject = (dbLead: DbLead): Lead => {
     yachtType: dbLead.yachtType as any,
     adultsCount: dbLead.adultsCount ? Number(dbLead.adultsCount) : 0,
     kidsCount: dbLead.kidsCount ? Number(dbLead.kidsCount) : 0,
+    infantCount: dbLead.infantCount ? Number(dbLead.infantCount) : 0,
+    infantDetails: dbLead.infantDetails || undefined,
     noShowCount: dbLead.noShowCount ? Number(dbLead.noShowCount) : 0,
     durationHours: dbLead.durationHours ? Number(dbLead.durationHours) : undefined,
     budgetRange: dbLead.budgetRange || undefined,
@@ -229,10 +231,10 @@ export async function POST(request: NextRequest) {
         totalAmount, commissionPercentage, commissionAmount, netAmount,
         paidAmount, balanceAmount,
         createdAt, updatedAt, lastModifiedByUserId, ownerUserId, free_guest_details_json,
-        customerPhone, customerEmail, nationality, language, source, customAgentName, customAgentPhone, inquiryDate, yachtType, adultsCount, kidsCount, noShowCount,
+        customerPhone, customerEmail, nationality, language, source, customAgentName, customAgentPhone, inquiryDate, yachtType, adultsCount, kidsCount, infantCount, infantDetails, noShowCount,
         durationHours, budgetRange, occasion, priority, nextFollowUpDate, closingProbability,
         captainName, crewDetails, idVerified, extraHoursUsed, extraCharges, customerSignatureUrl
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     const params = [
@@ -279,6 +281,8 @@ export async function POST(request: NextRequest) {
       newLeadData.yachtType || null,
       Number(newLeadData.adultsCount || 0),
       Number(newLeadData.kidsCount || 0),
+      Number(newLeadData.infantCount || 0),
+      newLeadData.infantDetails || null,
       Number(newLeadData.noShowCount || 0),
       newLeadData.durationHours !== undefined ? Number(newLeadData.durationHours) : null,
       newLeadData.budgetRange || null,
@@ -324,6 +328,8 @@ export async function POST(request: NextRequest) {
               { name: 'customAgentName', def: 'VARCHAR(255) NULL' },
               { name: 'customAgentPhone', def: 'VARCHAR(50) NULL' },
               { name: 'noShowCount', def: 'INT DEFAULT 0' },
+              { name: 'infantCount', def: 'INT DEFAULT 0' },
+              { name: 'infantDetails', def: 'TEXT NULL' },
               { name: 'printReason', def: 'TEXT NULL' },
               { name: 'payAtCounterAmount', def: 'DOUBLE NULL' },
               { name: 'payAtCounterRemark', def: 'TEXT NULL' }

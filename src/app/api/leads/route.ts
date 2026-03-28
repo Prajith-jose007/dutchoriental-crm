@@ -371,15 +371,27 @@ export async function POST(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
   try {
-    const { ids, status: newStatus, requestingUserId, requestingUserRole } = await request.json() as { ids: string[]; status: LeadStatus; requestingUserId: string; requestingUserRole: string };
+    const { ids, status: newStatus, paymentConfirmationStatus, checkInStatus, requestingUserId, requestingUserRole } = await request.json() as any;
 
-    if (!ids || !Array.isArray(ids) || ids.length === 0 || !newStatus || !requestingUserId || !requestingUserRole) {
-      return NextResponse.json({ message: 'Missing required fields for bulk status update' }, { status: 400 });
+    if (!ids || !Array.isArray(ids) || ids.length === 0 || (!newStatus && !paymentConfirmationStatus && !checkInStatus) || !requestingUserId || !requestingUserRole) {
+      return NextResponse.json({ message: 'Missing required fields for bulk update' }, { status: 400 });
     }
 
     let updatedCount = 0;
     let failedCount = 0;
     const updateErrors: { id: string, reason: string }[] = [];
+
+    const updateFields: string[] = [];
+    const updateValues: any[] = [];
+    
+    if (newStatus) { updateFields.push('status = ?'); updateValues.push(newStatus); }
+    if (paymentConfirmationStatus) { updateFields.push('paymentConfirmationStatus = ?'); updateValues.push(paymentConfirmationStatus); }
+    if (checkInStatus) { updateFields.push('checkInStatus = ?'); updateValues.push(checkInStatus); }
+
+    updateFields.push('updatedAt = ?'); updateValues.push(formatToMySQLDateTime(new Date()));
+    updateFields.push('lastModifiedByUserId = ?'); updateValues.push(requestingUserId);
+
+    const updateSql = `UPDATE leads SET ${updateFields.join(', ')} WHERE id = ?`;
 
     for (const id of ids) {
       try {
@@ -402,8 +414,8 @@ export async function PATCH(request: NextRequest) {
         }
 
         if (canUpdate) {
-          const updateSql = 'UPDATE leads SET status = ?, updatedAt = ?, lastModifiedByUserId = ? WHERE id = ?';
-          const result = await query<any>(updateSql, [newStatus, formatToMySQLDateTime(new Date()), requestingUserId, id]);
+          const params = [...updateValues, id];
+          const result = await query<any>(updateSql, params);
           if (result.affectedRows > 0) updatedCount++;
           else {
             failedCount++;

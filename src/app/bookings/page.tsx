@@ -476,13 +476,13 @@ export default function BookingsPage() {
     setSelectedLeadIds(isSelected ? filteredLeads.map(lead => lead.id) : []);
   };
 
-  const handleChangeSelectedLeadsStatus = async (newStatus: LeadStatus) => {
+  const handleChangeSelectedLeadsBulk = async (updates: { status?: LeadStatus, paymentConfirmationStatus?: PaymentConfirmationStatus, checkInStatus?: any }, label: string) => {
     if (selectedLeadIds.length === 0) {
-      toast({ title: 'No Bookings Selected', description: 'Please select bookings to change their status.', variant: 'destructive' });
+      toast({ title: 'No Bookings Selected', description: 'Please select bookings to modify.', variant: 'destructive' });
       return;
     }
     if (!currentUserId || !currentUserRole) {
-      toast({ title: 'Authentication Error', description: 'Cannot change status. User details missing.', variant: 'destructive' });
+      toast({ title: 'Authentication Error', description: 'Cannot perform action. User details missing.', variant: 'destructive' });
       return;
     }
 
@@ -493,7 +493,7 @@ export default function BookingsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ids: selectedLeadIds,
-          status: newStatus,
+          ...updates,
           requestingUserId: currentUserId,
           requestingUserRole: currentUserRole,
         }),
@@ -502,23 +502,23 @@ export default function BookingsPage() {
       const responseData = await response.json();
 
       if (!response.ok) {
-        throw new Error(responseData.message || `Failed to update statuses: ${response.statusText}`);
+        throw new Error(responseData.message || `Failed to update: ${response.statusText}`);
       }
 
       const { updatedCount, failedCount, errors } = responseData;
-      let toastDescription = `${updatedCount} booking(s) updated to ${newStatus}.`;
+      let toastDescription = `${updatedCount} booking(s) updated to ${label}.`;
       if (failedCount > 0) {
-        toastDescription += ` ${failedCount} booking(s) could not be updated due to permissions or status.`;
-        console.warn("Bulk status update failures:", errors);
+        toastDescription += ` ${failedCount} booking(s) could not be updated due to permissions or rules.`;
+        console.warn("Bulk update failures:", errors);
       }
-      toast({ title: 'Status Update Complete', description: toastDescription });
+      toast({ title: 'Bulk Update Complete', description: toastDescription });
 
       await fetchAllData(true);
       setSelectedLeadIds([]);
 
     } catch (error) {
-      console.error("Error changing selected bookings status:", error);
-      toast({ title: 'Error Updating Statuses', description: (error as Error).message, variant: 'destructive' });
+      console.error(`Error performing bulk update for ${label}:`, error);
+      toast({ title: 'Error Updating Bookings', description: (error as Error).message, variant: 'destructive' });
     } finally {
       setIsLoading(false);
     }
@@ -1846,17 +1846,24 @@ export default function BookingsPage() {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" disabled={isImporting}>
-                Change Status <ChevronDown className="ml-2 h-4 w-4" />
+                Bulk Actions <ChevronDown className="ml-2 h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuLabel>Set status for selected ({selectedLeadIds.length})</DropdownMenuLabel>
               <DropdownMenuSeparator />
               {leadStatusOptions.map(status => (
-                <DropdownMenuItem key={status} onSelect={() => handleChangeSelectedLeadsStatus(status)}>
+                <DropdownMenuItem key={status} onSelect={() => handleChangeSelectedLeadsBulk({ status }, `Status: ${status}`)}>
                   Set to {status}
                 </DropdownMenuItem>
               ))}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onSelect={() => handleChangeSelectedLeadsBulk({ paymentConfirmationStatus: 'CONFIRMED', status: 'Confirmed' }, 'Paid')}>
+                Set to Paid
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => handleChangeSelectedLeadsBulk({ checkInStatus: 'Checked In', status: 'Confirmed' }, 'Checked In')}>
+                Set to Checked In
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
           {canDelete && (

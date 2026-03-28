@@ -63,7 +63,8 @@ export const leadStatusOptions = [
   'Confirmed',
   'Pending',
   'Balance',
-  'Canceled'
+  'Canceled',
+  'Paid'
 ] as const;
 export type LeadStatus = typeof leadStatusOptions[number];
 

@@ -117,4 +117,4 @@ export const mainNavItems: NavItem[] = [
   },
 ];
 
-export const AppName = "Desert Rose Yacht CRM";
+export const AppName = "IBS - Internal Booking System";

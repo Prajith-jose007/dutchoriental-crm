@@ -223,15 +223,8 @@ export async function PUT(
     }
     const { ownerUserId: existingOwner, status: existingStatus } = existingLeadResult[0];
 
+    // All users allowed to edit bookings
     const userRoleLower = requestingUserRole?.toLowerCase() || '';
-    const canEditAll = ['admin', 'super admin', 'system administrator', 'manager', 'accounts'].includes(userRoleLower);
-
-    if (existingStatus.startsWith('Closed') && !canEditAll) {
-      return NextResponse.json({ message: 'Permission denied: Closed bookings cannot be modified by unauthorized roles.' }, { status: 403 });
-    }
-    if (!canEditAll && existingOwner !== requestingUserId) {
-      return NextResponse.json({ message: 'Permission denied: You can only edit bookings you own, or you must be an admin/manager/account.' }, { status: 403 });
-    }
 
     const { packageQuantities, freeGuestDetails, ...leadFields } = updatedLeadDataFromClient;
     const dataToUpdate: Partial<Omit<Lead, 'id' | 'createdAt' | 'packageQuantities' | 'freeGuestDetails'>> & { package_quantities_json?: string | null, free_guest_details_json?: string | null } = {
@@ -334,15 +327,8 @@ export async function DELETE(
     }
     const { ownerUserId: existingOwner, status: existingStatus } = existingLeadResult[0];
 
+    // All users allowed to delete bookings
     const userRoleLower = requestingUserRole?.toLowerCase() || '';
-    const isSuperOrAdmin = ['admin', 'super admin', 'system administrator'].includes(userRoleLower);
-
-    if (existingStatus.startsWith('Closed') && !isSuperOrAdmin) {
-      return NextResponse.json({ message: 'Permission denied: Closed bookings cannot be deleted by unauthorized roles.' }, { status: 403 });
-    }
-    if (!isSuperOrAdmin && existingOwner !== requestingUserId) {
-      return NextResponse.json({ message: 'Permission denied: You can only delete bookings you own, or you must be an admin.' }, { status: 403 });
-    }
 
     const result = await query<{ affectedRows: number }>('DELETE FROM leads WHERE id = ?', [id]);
     if (result.affectedRows === 0) {

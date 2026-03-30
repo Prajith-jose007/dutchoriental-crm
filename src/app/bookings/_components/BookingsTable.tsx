@@ -379,7 +379,7 @@ export function BookingsTable({
       );
     }
     if (column.accessorKey === 'id') {
-      const canEdit = isAdmin || lead.status !== 'Canceled';
+      const canEdit = true;
       return (
         <Button variant="link" className="p-0 h-auto font-medium" onClick={() => onEditLead(lead)} disabled={!canEdit}>
           {String(lead.id).length > 10 ? String(lead.id).substring(0, 4) + '...' + String(lead.id).substring(String(lead.id).length - 4) : lead.id}
@@ -526,11 +526,8 @@ export function BookingsTable({
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                               <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                              <DropdownMenuItem
-                                onClick={() => onEditLead(lead)}
-                                disabled={!isAdmin && lead.status === 'Canceled'}
-                              >
-                                {lead.status === 'Canceled' && !isAdmin ? 'View Details' : 'Edit Booking'}
+                              <DropdownMenuItem onClick={() => onEditLead(lead)}>
+                                Edit Booking
                               </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => onViewTicket(lead)}>
                                 View Ticket
@@ -547,7 +544,6 @@ export function BookingsTable({
                               <DropdownMenuItem
                                 className="text-destructive"
                                 onClick={() => onDeleteLead(lead.id)}
-                                disabled={!isAdmin && lead.status === 'Canceled'}
                               >
                                 Delete Booking
                               </DropdownMenuItem>

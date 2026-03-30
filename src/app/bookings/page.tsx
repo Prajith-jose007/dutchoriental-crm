@@ -290,12 +290,7 @@ export default function BookingsPage() {
       } else if (editingLead) {
         payloadToSubmit.ownerUserId = editingLead.ownerUserId || currentUserId;
         payloadToSubmit.createdAt = editingLead.createdAt || new Date().toISOString();
-        const isCanceled = editingLead.status === 'Canceled';
-        const isCheckedIn = (editingLead as any).checkInStatus === 'Checked In';
-
-        if ((isCanceled || isCheckedIn) && !canBypassClosed) {
-          throw new Error("Action Denied: Locked bookings (Canceled or Checked In) cannot be modified by non-administrators.");
-        }
+        // UI locks removed according to spec: allow all users to edit bookings
       }
 
       console.log("[BookingsPage] Submitting booking payload:", JSON.stringify(payloadToSubmit, null, 2));
@@ -374,13 +369,6 @@ export default function BookingsPage() {
     }
     const leadToDelete = allLeads.find(l => l.id === leadId);
     if (!leadToDelete) return;
-    const isCanceled = leadToDelete.status === 'Canceled';
-    const isCheckedIn = (leadToDelete as any).checkInStatus === 'Checked In';
-
-    if ((isCanceled || isCheckedIn) && !canBypassClosed) {
-      toast({ title: "Action Denied", description: "Locked bookings (Canceled or Checked In) cannot be deleted by non-administrators.", variant: "destructive" });
-      return;
-    }
 
     if (!confirm(`Are you sure you want to delete booking ${leadId}? This action cannot be undone.`)) {
       return;
@@ -546,13 +534,7 @@ export default function BookingsPage() {
       for (const leadId of selectedLeadIds) {
         const leadToDelete = allLeads.find(l => l.id === leadId);
         if (!leadToDelete) continue;
-        const isCanceled = leadToDelete.status === 'Canceled';
-        const isCheckedIn = (leadToDelete as any).checkInStatus === 'Checked In';
 
-        if ((isCanceled || isCheckedIn) && !canBypassClosed) {
-          failedDeletes++;
-          continue;
-        }
         const response = await fetch(`/api/leads/${leadId}`, {
           method: 'DELETE',
           headers: { 'Content-Type': 'application/json' },
@@ -1852,7 +1834,7 @@ export default function BookingsPage() {
             <DropdownMenuContent align="end">
               <DropdownMenuLabel>Set status for selected ({selectedLeadIds.length})</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              {leadStatusOptions.map(status => (
+              {leadStatusOptions.filter(status => status !== 'Paid').map(status => (
                 <DropdownMenuItem key={status} onSelect={() => handleChangeSelectedLeadsBulk({ status }, `Status: ${status}`)}>
                   Set to {status}
                 </DropdownMenuItem>
@@ -1863,6 +1845,9 @@ export default function BookingsPage() {
               </DropdownMenuItem>
               <DropdownMenuItem onSelect={() => handleChangeSelectedLeadsBulk({ checkInStatus: 'Checked In', status: 'Confirmed' }, 'Checked In')}>
                 Set to Checked In
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => handleChangeSelectedLeadsBulk({ checkInStatus: 'Not Checked In' }, 'Not Checked In')}>
+                Undo Check In
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

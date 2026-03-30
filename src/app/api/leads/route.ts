@@ -403,15 +403,8 @@ export async function PATCH(request: NextRequest) {
         }
         const { ownerUserId, status } = existingLeadResults[0];
 
-        let canUpdate = false;
-        const normalizedRole = requestingUserRole?.toLowerCase() || '';
-        const isAdminOrManager = ['admin', 'super admin', 'system administrator', 'manager'].includes(normalizedRole);
-
-        if (isAdminOrManager) canUpdate = true;
-        else if (ownerUserId === requestingUserId && !status.startsWith('Closed')) canUpdate = true;
-        else {
-          updateErrors.push({ id, reason: status.startsWith('Closed') ? "Non-admins cannot change Closed bookings." : "Permission denied: Not owner." });
-        }
+        // All users are allowed to edit bookings
+        const canUpdate = true;
 
         if (canUpdate) {
           const params = [...updateValues, id];

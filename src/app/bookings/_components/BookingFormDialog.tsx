@@ -268,16 +268,9 @@ export function BookingFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess,
   });
 
   const isFormDisabled = useMemo(() => {
-    // Form is disabled if the booking is already in a locked state (Canceled or Checked In)
-    // and the user is not an admin.
-    // We check the ORIGINAL lead status (lead.status), not the current form status, to allow users to transition TO a locked status.
-    if (!lead) return false;
-
-    const isLocked = lead.status === 'Canceled';
-    const isCheckedIn = (lead as any).checkInStatus === 'Checked In';
-
-    return (isLocked || isCheckedIn) && !isAdmin;
-  }, [lead, isAdmin]);
+    // UI locks removed according to spec: allow all users to edit bookings
+    return false;
+  }, []);
 
 
   useEffect(() => {

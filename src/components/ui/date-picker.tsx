@@ -53,7 +53,7 @@ export function DatePicker({ date, setDate, placeholder = "Pick a date", classNa
           }}
           initialFocus
           disabled={disabled}
-          captionLayout="dropdown-buttons"
+          captionLayout="dropdown"
           fromYear={defaultFromYear}
           toYear={defaultToYear}
           {...props}

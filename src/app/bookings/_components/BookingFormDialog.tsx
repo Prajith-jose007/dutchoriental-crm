@@ -435,9 +435,9 @@ export function BookingFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess,
     const calculatedCommissionAmount = Number(((packagesTotal * parsedCommissionPercent) / 100).toFixed(2));
     const calculatedNetAmount = Number((calculatedTotalAmount - calculatedCommissionAmount).toFixed(2));
 
-    // Addons and Pay at Counter are added to the Balance Due directly
+    // Addons are added to the main Balance Due directly. Pay at Counter is separated completely from Total Balance.
     const previousTotalPaid = lead ? Number(lead.paidAmount || 0) : 0;
-    const actualSignedBalanceAmount = Number(((calculatedNetAmount + parsedAddOnTotal + parsedPayAtCounter) - (previousTotalPaid + parsedPaidAmount)).toFixed(2));
+    const actualSignedBalanceAmount = Number(((calculatedNetAmount + parsedAddOnTotal) - (previousTotalPaid + parsedPaidAmount)).toFixed(2));
 
     const currentVals = form.getValues();
     if (Number(currentVals.totalAmount) !== calculatedTotalAmount) form.setValue('totalAmount', calculatedTotalAmount, { shouldValidate: true });
@@ -633,8 +633,8 @@ export function BookingFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess,
     const newPaidAmount = Number(Number(data.paidAmount || 0).toFixed(2));
     const finalPaidAmount = Number((previousTotalPaid + newPaidAmount).toFixed(2));
 
-    // Balance = Net + Addon + PayAtCounter - Paid
-    const actualSignedBalanceAmount = Number(((finalNetAmount + addOnTotal + payAtCounterTotal) - finalPaidAmount).toFixed(2));
+    // Main Balance = Net + Addon - Paid
+    const actualSignedBalanceAmount = Number(((finalNetAmount + addOnTotal) - finalPaidAmount).toFixed(2));
 
     const finalPackageQuantities = (data.packageQuantities && Array.isArray(data.packageQuantities))
       ? data.packageQuantities.map(pq => {
@@ -1266,11 +1266,21 @@ export function BookingFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess,
 
                     {/* Balance Amount */}
                     <div className="flex flex-col space-y-2">
-                      <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex items-center gap-2">
-                        <Wallet className="h-4 w-4 text-muted-foreground" /> Balance Due
+                      <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex items-center gap-2 text-blue-700 font-bold">
+                        <Wallet className="h-4 w-4" /> Total Balance Due
                       </label>
-                      <div className="flex h-10 w-full rounded-md border border-input bg-slate-900 px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 text-white font-black">
-                        AED {form.watch('balanceAmount')?.toLocaleString() || '0.00'}
+                      <div className="flex h-10 w-full rounded-md border border-input bg-slate-900 px-3 py-2 text-sm text-white font-black">
+                        AED {form.watch('balanceAmount')?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}
+                      </div>
+                    </div>
+
+                    {/* Pay At Counter Balance */}
+                    <div className="flex flex-col space-y-2">
+                      <label className="text-sm font-medium leading-none flex items-center gap-2 text-red-700 font-bold">
+                        <Wallet className="h-4 w-4" /> Pay At Counter Balance
+                      </label>
+                      <div className="flex h-10 w-full rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-900 font-black">
+                        AED {Number((form.watch('payAtCounterAmount') || 0) - (lead?.collectedAtCheckIn || 0)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </div>
                     </div>
                   </div>

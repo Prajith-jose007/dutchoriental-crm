@@ -191,6 +191,7 @@ export const generateBookingColumns = (allYachts: Yacht[]): BookingTableColumn[]
     { accessorKey: 'paidAmount', header: 'paid', isCurrency: true },
     // { accessorKey: 'collectedAtCheckIn', header: 'Coll. @ Check-in', isCurrency: true }, // Absent in user list
     { accessorKey: 'balanceAmount', header: 'balance', isCurrency: true },
+    { accessorKey: 'payAtCounterAmount', header: 'PAC balance', isCurrency: true },
     { accessorKey: 'extraHoursUsed', header: 'extra hrs', isNumeric: true },
     { accessorKey: 'extraCharges', header: 'extra chg', isCurrency: true },
   ];

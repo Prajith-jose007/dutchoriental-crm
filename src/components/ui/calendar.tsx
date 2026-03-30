@@ -20,6 +20,7 @@ function Calendar({
       showOutsideDays={showOutsideDays}
       className={cn("p-3", className)}
       classNames={{
+        // ─── react-day-picker v8 classNames ────────────────────
         months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
         month: "space-y-4",
         caption: "flex justify-center pt-1 relative items-center gap-1",
@@ -28,7 +29,6 @@ function Calendar({
         dropdown: "relative inline-flex items-center cursor-pointer",
         dropdown_month: "relative inline-flex items-center",
         dropdown_year: "relative inline-flex items-center",
-        dropdown_icon: "ml-1",
         vhidden: "hidden",
         nav: "space-x-1 flex items-center",
         nav_button: cn(
@@ -38,10 +38,9 @@ function Calendar({
         nav_button_previous: "absolute left-1",
         nav_button_next: "absolute right-1",
         table: "w-full border-collapse",
-        head_row: "grid grid-cols-7",
-        head_cell:
-          "text-muted-foreground font-normal text-[0.8rem] flex items-center justify-center h-9 w-9",
-        row: "grid grid-cols-7 mt-1",
+        head_row: "flex",
+        head_cell: "text-muted-foreground font-normal text-[0.8rem] flex items-center justify-center h-9 w-9",
+        row: "flex w-full mt-1",
         cell: cn(
           "relative flex items-center justify-center h-9 w-9 text-center text-sm p-0",
           "[&:has([aria-selected].day-range-end)]:rounded-r-md",
@@ -53,20 +52,49 @@ function Calendar({
         ),
         day: cn(
           buttonVariants({ variant: "ghost" }),
-          "h-9 w-9 p-0 font-normal aria-selected:opacity-100 hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
+          "h-9 w-9 p-0 font-normal aria-selected:opacity-100"
         ),
         day_range_end: "day-range-end",
-        day_selected:
-          "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground",
+        day_selected: "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground",
         day_today: "bg-accent text-accent-foreground font-semibold",
-        day_outside:
-          "day-outside text-muted-foreground opacity-50 aria-selected:bg-accent/50 aria-selected:text-muted-foreground aria-selected:opacity-30",
+        day_outside: "day-outside text-muted-foreground opacity-50 aria-selected:bg-accent/50 aria-selected:text-muted-foreground aria-selected:opacity-30",
         day_disabled: "text-muted-foreground opacity-50 cursor-not-allowed",
-        day_range_middle:
-          "aria-selected:bg-accent aria-selected:text-accent-foreground",
+        day_range_middle: "aria-selected:bg-accent aria-selected:text-accent-foreground",
         day_hidden: "invisible",
+
+        // ─── react-day-picker v9 classNames ────────────────────
+        // (extra keys are safely ignored by v8; v9 ignores v8 keys)
+        month_caption: "flex justify-center pt-1 relative items-center gap-1",
+        dropdowns: "flex justify-center gap-1",
+        months_dropdown: "relative inline-flex items-center",
+        years_dropdown: "relative inline-flex items-center",
+        button_previous: cn(
+          buttonVariants({ variant: "outline" }),
+          "h-7 w-7 absolute left-1 bg-transparent p-0 opacity-50 hover:opacity-100"
+        ),
+        button_next: cn(
+          buttonVariants({ variant: "outline" }),
+          "h-7 w-7 absolute right-1 bg-transparent p-0 opacity-50 hover:opacity-100"
+        ),
+        month_grid: "w-full border-collapse",
+        weekdays: "flex",
+        weekday: "text-muted-foreground font-normal text-[0.8rem] flex items-center justify-center h-9 w-9",
+        week: "flex w-full mt-1",
+        // In v9: 'day' is the <td> cell, 'day_button' is the <button> inside
+        day_button: cn(
+          buttonVariants({ variant: "ghost" }),
+          "h-9 w-9 p-0 font-normal aria-selected:opacity-100"
+        ),
+        selected: "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground rounded-md",
+        today: "bg-accent text-accent-foreground font-semibold rounded-md",
+        outside: "text-muted-foreground opacity-50",
+        disabled: "text-muted-foreground opacity-50 cursor-not-allowed",
+        range_middle: "aria-selected:bg-accent aria-selected:text-accent-foreground",
+        range_end: "rounded-r-md",
+        range_start: "rounded-l-md",
+        hidden: "invisible",
         ...classNames,
-      }}
+      } as any}
       components={{
         IconLeft: ({ className: cls, ...rest }: any) => (
           <ChevronLeft className={cn("h-4 w-4", cls)} {...rest} />

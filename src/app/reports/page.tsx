@@ -58,53 +58,55 @@ export default function ReportsPage() {
   const authChecked = true;
 
 
-  useEffect(() => {
-    const fetchAllData = async () => {
-      setIsLoading(true);
-      setError(null);
-      try {
-        const [leadsRes, invoicesRes, yachtsRes, agentsRes, usersRes] = await Promise.all([
-          fetch('/api/leads'),
-          fetch('/api/invoices'),
-          fetch('/api/yachts'),
-          fetch('/api/agents'),
-          fetch('/api/users'),
-        ]);
+  const fetchAllData = async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const [leadsRes, invoicesRes, yachtsRes, agentsRes, usersRes] = await Promise.all([
+        fetch('/api/leads'),
+        fetch('/api/invoices'),
+        fetch('/api/yachts'),
+        fetch('/api/agents'),
+        fetch('/api/users'),
+      ]);
 
-        if (!leadsRes.ok) throw new Error(`Failed to fetch bookings: ${leadsRes.statusText}`);
-        if (!invoicesRes.ok) throw new Error(`Failed to fetch invoices: ${invoicesRes.statusText}`);
-        if (!yachtsRes.ok) throw new Error(`Failed to fetch yachts: ${yachtsRes.statusText}`);
-        if (!agentsRes.ok) throw new Error(`Failed to fetch agents: ${agentsRes.statusText}`);
-        if (!usersRes.ok) throw new Error(`Failed to fetch users: ${usersRes.statusText}`);
+      if (!leadsRes.ok) throw new Error(`Failed to fetch bookings: ${leadsRes.statusText}`);
+      if (!invoicesRes.ok) throw new Error(`Failed to fetch invoices: ${invoicesRes.statusText}`);
+      if (!yachtsRes.ok) throw new Error(`Failed to fetch yachts: ${yachtsRes.statusText}`);
+      if (!agentsRes.ok) throw new Error(`Failed to fetch agents: ${agentsRes.statusText}`);
+      if (!usersRes.ok) throw new Error(`Failed to fetch users: ${usersRes.statusText}`);
 
-        const leadsData = await leadsRes.json();
-        const invoicesData = await invoicesRes.json();
-        const yachtsData = await yachtsRes.json();
-        const agentsData = await agentsRes.json();
-        const usersData: User[] = await usersRes.json();
+      const leadsData = await leadsRes.json();
+      const invoicesData = await invoicesRes.json();
+      const yachtsData = await yachtsRes.json();
+      const agentsData = await agentsRes.json();
+      const usersData: User[] = await usersRes.json();
 
-        setAllLeads(Array.isArray(leadsData) ? leadsData : []);
-        setAllInvoices(Array.isArray(invoicesData) ? invoicesData : []);
-        setAllYachts(Array.isArray(yachtsData) ? yachtsData : []);
-        setAllAgents(Array.isArray(agentsData) ? agentsData : []);
+      setAllLeads(Array.isArray(leadsData) ? leadsData : []);
+      setAllInvoices(Array.isArray(invoicesData) ? invoicesData : []);
+      setAllYachts(Array.isArray(yachtsData) ? yachtsData : []);
+      setAllAgents(Array.isArray(agentsData) ? agentsData : []);
 
-        const map: { [id: string]: string } = {};
-        if (Array.isArray(usersData)) {
-          usersData.forEach(user => { map[user.id] = user.name; });
-        }
-        setUserMap(map);
-
-      } catch (err) {
-        console.error("Error fetching report data:", err);
-        setError((err as Error).message);
-        toast({ title: 'Error Fetching Report Data', description: (err as Error).message, variant: 'destructive' });
-        setAllLeads([]); setAllInvoices([]); setAllYachts([]); setAllAgents([]); setUserMap({});
-      } finally {
-        setIsLoading(false);
+      const map: { [id: string]: string } = {};
+      if (Array.isArray(usersData)) {
+        usersData.forEach(user => { map[user.id] = user.name; });
       }
-    };
+      setUserMap(map);
+
+    } catch (err) {
+      console.error("Error fetching report data:", err);
+      setError((err as Error).message);
+      toast({ title: 'Error Fetching Report Data', description: (err as Error).message, variant: 'destructive' });
+      setAllLeads([]); setAllInvoices([]); setAllYachts([]); setAllAgents([]); setUserMap({});
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchAllData();
-  }, [toast]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
 
   const filteredLeads = useMemo(() => {
@@ -560,7 +562,7 @@ export default function ReportsPage() {
           <BookingsByAgentBarChart leads={filteredLeads} allAgents={allAgents} isLoading={isLoading} error={error} />
         </div>
         <div className="grid gap-6 lg:grid-cols-1">
-          <FilteredBookedAgentsList filteredLeads={filteredLeads} allAgents={allAgents} isLoading={isLoading} error={error} />
+          <FilteredBookedAgentsList filteredLeads={filteredLeads} allAgents={allAgents} isLoading={isLoading} error={error} onRefresh={fetchAllData} />
         </div>
       </div>
     </div>

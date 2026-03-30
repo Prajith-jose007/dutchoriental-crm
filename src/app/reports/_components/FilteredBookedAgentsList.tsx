@@ -42,9 +42,10 @@ interface FilteredBookedAgentsListProps {
   allAgents: Agent[]; // To map agent IDs to names
   isLoading?: boolean;
   error?: string | null;
+  onRefresh?: () => void;
 }
 
-export function FilteredBookedAgentsList({ filteredLeads, allAgents, isLoading, error }: FilteredBookedAgentsListProps) {
+export function FilteredBookedAgentsList({ filteredLeads, allAgents, isLoading, error, onRefresh }: FilteredBookedAgentsListProps) {
   const { hasPermission } = useUserRole();
   const { toast } = useToast();
   const canAllocatePayment = hasPermission('manage_accounts') || hasPermission('manage_users'); // Adjust permission as needed
@@ -82,12 +83,10 @@ export function FilteredBookedAgentsList({ filteredLeads, allAgents, isLoading, 
       // Clear input
       setPaymentInputs(prev => ({ ...prev, [agentId]: '' }));
 
-      // Ideally, we should refresh the data here. 
-      // Since data comes from props, we might need to trigger a parent refresh or reload.
-      // For a quick fix, we reload window or wait for parent SWR revalidation if applicable.
-      // Assuming parent fetches on mount or via simple poll? 
-      // The prop `filteredLeads` needs to update.
-      window.location.reload(); // Simple but effective for report updates
+      // Refresh data from parent without a full page reload
+      if (onRefresh) {
+        onRefresh();
+      }
 
     } catch (err) {
       console.error(err);

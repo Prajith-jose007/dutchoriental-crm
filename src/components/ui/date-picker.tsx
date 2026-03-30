@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -22,9 +21,13 @@ interface DatePickerProps {
   disabled?: (date: Date) => boolean;
 }
 
-export function DatePicker({ date, setDate, placeholder = "Pick a date", className, disabled, ...props }: DatePickerProps & { [key: string]: any }) {
+export function DatePicker({ date, setDate, placeholder = "Pick a date", className, disabled, fromYear, toYear, ...props }: DatePickerProps & { fromYear?: number; toYear?: number; [key: string]: any }) {
+  const [open, setOpen] = React.useState(false);
+  const defaultFromYear = fromYear ?? 2022;
+  const defaultToYear = toYear ?? 2030;
+
   return (
-    <Popover modal={true}>
+    <Popover modal={true} open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button
           variant={'outline'}
@@ -38,13 +41,21 @@ export function DatePicker({ date, setDate, placeholder = "Pick a date", classNa
           {date ? format(date, 'PPP') : <span>{placeholder}</span>}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-auto p-0 z-[9999]" align="start">
+      <PopoverContent className="w-auto p-0 z-[9999] pointer-events-auto" align="start">
         <Calendar
           mode="single"
           selected={date}
-          onSelect={setDate}
+          onSelect={(newDate) => {
+            setDate(newDate);
+            if (newDate) {
+              setOpen(false);
+            }
+          }}
           initialFocus
           disabled={disabled}
+          captionLayout="dropdown-buttons"
+          fromYear={defaultFromYear}
+          toYear={defaultToYear}
           {...props}
         />
       </PopoverContent>

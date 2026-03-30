@@ -442,6 +442,14 @@ export function BookingsTable({
       if (column.accessorKey === 'perTicketRate' && (value === null || value === undefined)) {
         return '-';
       }
+      if (column.accessorKey === 'paidAmount') {
+        const totalReceived = (Number(lead.paidAmount) || 0) + (Number(lead.collectedAtCheckIn) || 0);
+        return formatCurrency(totalReceived);
+      }
+      if (column.accessorKey === 'payAtCounterAmount') {
+        const pacBalance = Math.max(0, (Number(lead.payAtCounterAmount) || 0) - (Number(lead.collectedAtCheckIn) || 0));
+        return formatCurrency(pacBalance);
+      }
       return formatCurrency(value as number | undefined | null);
     }
     if (column.isPercentage) {

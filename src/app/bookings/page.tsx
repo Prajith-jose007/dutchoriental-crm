@@ -1770,7 +1770,13 @@ export default function BookingsPage() {
               const dateVal = lead[col.accessorKey as keyof Lead] as string | undefined;
               cellValue = dateVal && isValid(parseISO(dateVal)) ? format(parseISO(dateVal), 'dd/MM/yyyy') : '';
             } else if (col.isCurrency) {
-              cellValue = formatCurrencyForCsv(lead[col.accessorKey as keyof Lead] as number | null | undefined);
+              if (col.accessorKey === 'paidAmount') {
+                cellValue = formatCurrencyForCsv((Number(lead.paidAmount) || 0) + (Number(lead.collectedAtCheckIn) || 0));
+              } else if (col.accessorKey === 'payAtCounterAmount') {
+                cellValue = formatCurrencyForCsv(Math.max(0, (Number(lead.payAtCounterAmount) || 0) - (Number(lead.collectedAtCheckIn) || 0)));
+              } else {
+                cellValue = formatCurrencyForCsv(lead[col.accessorKey as keyof Lead] as number | null | undefined);
+              }
             } else if (col.isPercentage) {
               cellValue = formatPercentageForCsv(lead[col.accessorKey as keyof Lead] as number | null | undefined);
             } else if (col.accessorKey === 'freeGuestCount') {

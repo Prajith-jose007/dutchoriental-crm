@@ -436,14 +436,38 @@ export function BookingFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess,
     const calculatedNetAmount = Number((calculatedTotalAmount - calculatedCommissionAmount).toFixed(2));
 
     // Addons are added to the main Balance Due directly. Pay at Counter is separated completely from Total Balance.
+    const pacTotal = parseFloat(String(form.getValues().payAtCounterAmount || 0).replace(/,/g, ''));
+    const existingCheckInColl = lead ? Number(lead.collectedAtCheckIn || 0) : 0;
+    const currentPacBalance = Math.max(0, pacTotal - existingCheckInColl);
+
+    let visuallyAllocatedToCheckIn = 0;
+    let visuallyAllocatedToMain = 0;
+
+    if (parsedPaidAmount > 0) {
+      if (currentPacBalance > 0) {
+        if (parsedPaidAmount <= currentPacBalance) {
+          visuallyAllocatedToCheckIn = parsedPaidAmount;
+        } else {
+          visuallyAllocatedToCheckIn = currentPacBalance;
+          visuallyAllocatedToMain = parsedPaidAmount - currentPacBalance;
+        }
+      } else {
+        visuallyAllocatedToMain = parsedPaidAmount;
+      }
+    }
+
     const previousTotalPaid = lead ? Number(lead.paidAmount || 0) : 0;
-    const actualSignedBalanceAmount = Number(((calculatedNetAmount + parsedAddOnTotal) - (previousTotalPaid + parsedPaidAmount)).toFixed(2));
+    const actualSignedBalanceAmount = Number(((calculatedNetAmount + parsedAddOnTotal) - (previousTotalPaid + visuallyAllocatedToMain)).toFixed(2));
 
     const currentVals = form.getValues();
     if (Number(currentVals.totalAmount) !== calculatedTotalAmount) form.setValue('totalAmount', calculatedTotalAmount, { shouldValidate: true });
     if (Number(currentVals.commissionAmount) !== calculatedCommissionAmount) form.setValue('commissionAmount', calculatedCommissionAmount, { shouldValidate: true });
     if (Number(currentVals.netAmount) !== calculatedNetAmount) form.setValue('netAmount', calculatedNetAmount, { shouldValidate: true });
     if (Number(currentVals.balanceAmount) !== actualSignedBalanceAmount) form.setValue('balanceAmount', actualSignedBalanceAmount, { shouldValidate: true });
+    
+    // Visually update the unsubmitted PAC allocation so the red block updates immediately when user types
+    const newVisualCollected = existingCheckInColl + visuallyAllocatedToCheckIn;
+    if (Number(currentVals.collectedAtCheckIn) !== newVisualCollected) form.setValue('collectedAtCheckIn', newVisualCollected, { shouldValidate: true });
   }, [form, allYachts, allAgents, lead]);
 
   useEffect(() => {
@@ -631,7 +655,28 @@ export function BookingFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess,
 
     const previousTotalPaid = lead ? Number(lead.paidAmount || 0) : 0;
     const newPaidAmount = Number(Number(data.paidAmount || 0).toFixed(2));
-    const finalPaidAmount = Number((previousTotalPaid + newPaidAmount).toFixed(2));
+
+    const existingCheckInColl = lead ? Number(lead.collectedAtCheckIn || 0) : 0;
+    const currentPacBalance = Math.max(0, payAtCounterTotal - existingCheckInColl);
+
+    let allocatedToCheckIn = 0;
+    let allocatedToMain = 0;
+
+    if (newPaidAmount > 0) {
+      if (currentPacBalance > 0) {
+        if (newPaidAmount <= currentPacBalance) {
+          allocatedToCheckIn = newPaidAmount;
+        } else {
+          allocatedToCheckIn = currentPacBalance;
+          allocatedToMain = newPaidAmount - currentPacBalance;
+        }
+      } else {
+        allocatedToMain = newPaidAmount;
+      }
+    }
+
+    const finalPaidAmount = Number((previousTotalPaid + allocatedToMain).toFixed(2));
+    const finalCollectedAtCheckIn = existingCheckInColl + allocatedToCheckIn;
 
     // Main Balance = Net + Addon - Paid
     const actualSignedBalanceAmount = Number(((finalNetAmount + addOnTotal) - finalPaidAmount).toFixed(2));
@@ -681,7 +726,7 @@ export function BookingFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess,
       customAgentName: data.customAgentName,
       customAgentPhone: data.customAgentPhone,
       packageQuantities: finalPackageQuantities,
-      collectedAtCheckIn: data.collectedAtCheckIn || 0,
+      collectedAtCheckIn: finalCollectedAtCheckIn,
       noShowCount: data.noShowCount || 0,
       totalAmount: finalTotalAmount,
       commissionPercentage: finalCommissionPercentage,
@@ -1222,10 +1267,10 @@ export function BookingFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess,
                     {/* Previous Total Paid Amount */}
                     <div className="flex flex-col space-y-2">
                       <label className="text-sm font-medium leading-none flex items-center gap-2">
-                        <Wallet className="h-4 w-4 text-muted-foreground" /> Total Paid (History)
+                        <Wallet className="h-4 w-4 text-muted-foreground" /> Total Received (History)
                       </label>
                       <div className="flex h-10 w-full rounded-md border border-input bg-slate-100 px-3 py-2 text-sm text-slate-500 font-bold">
-                        AED {(lead ? Number(lead.paidAmount || 0) : 0).toLocaleString()}
+                        AED {(lead ? Number(lead.paidAmount || 0) + Number(lead.collectedAtCheckIn || 0) : 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </div>
                     </div>
 

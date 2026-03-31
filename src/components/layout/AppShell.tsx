@@ -50,28 +50,33 @@ export function AppShell({ children }: AppShellProps) {
   }, [handleLogout]);
 
   useEffect(() => {
-    let authStatus = false;
-    try {
-      authStatus = !!localStorage.getItem(USER_ROLE_STORAGE_KEY);
-    } catch (e) {
-      console.error("Error accessing localStorage in AppShell for auth check:", e);
-    }
-
-    setIsAuthenticated(authStatus);
-
-    if (authStatus) {
-      if (pathname === '/login') {
-        router.replace('/dashboard');
-      } else {
-        setIsAuthLoading(false);
+    const checkAuth = () => {
+      let authStatus = false;
+      try {
+        const storedRole = localStorage.getItem(USER_ROLE_STORAGE_KEY);
+        authStatus = !!storedRole;
+      } catch (e) {
+        console.error("Error accessing localStorage in AppShell:", e);
       }
-    } else {
-      if (pathname !== '/login') {
-        router.replace('/login');
+
+      setIsAuthenticated(authStatus);
+
+      if (authStatus) {
+        if (pathname === '/login') {
+          router.replace('/dashboard');
+        } else {
+          setIsAuthLoading(false);
+        }
       } else {
-        setIsAuthLoading(false);
+        if (pathname !== '/login') {
+          router.replace('/login');
+        } else {
+          setIsAuthLoading(false);
+        }
       }
-    }
+    };
+
+    checkAuth();
   }, [pathname, router]);
 
   // Idle session management - DISABLED to prevent auto-logout
@@ -122,9 +127,9 @@ export function AppShell({ children }: AppShellProps) {
 
   return (
     <>
-      <Suspense fallback={null}>
+      {/* <Suspense fallback={null}>
         <ProgressBar />
-      </Suspense>
+      </Suspense> */}
       {isAuthenticated && pathname !== '/login' ? (
         <SidebarProvider defaultOpen={true}>
           <SidebarNav />

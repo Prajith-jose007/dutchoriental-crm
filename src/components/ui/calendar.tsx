@@ -112,6 +112,9 @@ function Calendar({
             {children}
           </select>
         ),
+        Button: ({ className, ...rest }: any) => (
+          <button type="button" className={cn(buttonVariants({ variant: "outline" }), className)} {...rest} />
+        ),
       } as any}
       {...props}
     />

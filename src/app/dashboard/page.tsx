@@ -24,15 +24,8 @@ export default function DashboardPage() {
   const [allAgents, setAllAgents] = useState<Agent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isAuthLoading, setIsAuthLoading] = useState(true);
-
+  const [isAuthLoading, setIsAuthLoading] = useState(false);
   useEffect(() => {
-    setIsAuthLoading(false);
-  }, []);
-
-  useEffect(() => {
-    if (isAuthLoading) return;
-
     const fetchData = async () => {
       setIsLoading(true);
       setError(null);
@@ -66,9 +59,9 @@ export default function DashboardPage() {
     };
 
     fetchData();
-  }, [isAuthLoading]);
+  }, []);
 
-  if (isAuthLoading || (isLoading && allLeads.length === 0)) {
+  if (isLoading && allLeads.length === 0) {
     return (
       <div className="container mx-auto py-6 space-y-6">
         <Skeleton className="h-10 w-64" />

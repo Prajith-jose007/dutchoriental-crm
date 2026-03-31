@@ -50,33 +50,24 @@ export function AppShell({ children }: AppShellProps) {
   }, [handleLogout]);
 
   useEffect(() => {
-    const checkAuth = () => {
-      let authStatus = false;
-      try {
-        const storedRole = localStorage.getItem(USER_ROLE_STORAGE_KEY);
-        authStatus = !!storedRole;
-      } catch (e) {
-        console.error("Error accessing localStorage in AppShell:", e);
-      }
+    const storedRole = typeof window !== 'undefined' ? localStorage.getItem(USER_ROLE_STORAGE_KEY) : null;
+    const authStatus = !!storedRole;
+    
+    setIsAuthenticated(authStatus);
 
-      setIsAuthenticated(authStatus);
-
-      if (authStatus) {
-        if (pathname === '/login') {
-          router.replace('/dashboard');
-        } else {
-          setIsAuthLoading(false);
-        }
+    if (authStatus) {
+      if (pathname === '/login') {
+        router.replace('/dashboard');
       } else {
-        if (pathname !== '/login') {
-          router.replace('/login');
-        } else {
-          setIsAuthLoading(false);
-        }
+        setIsAuthLoading(false);
       }
-    };
-
-    checkAuth();
+    } else {
+      if (pathname !== '/login') {
+        router.replace('/login');
+      } else {
+        setIsAuthLoading(false);
+      }
+    }
   }, [pathname, router]);
 
   // Idle session management - DISABLED to prevent auto-logout

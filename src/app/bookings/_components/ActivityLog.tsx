@@ -118,7 +118,7 @@ export function ActivityLog({ leadId, bookingId, opportunityId, currentUserId, u
                         />
                     </div>
                     <div className="flex justify-end">
-                        <Button onClick={handleAddActivity} disabled={!newNote.trim()}>
+                        <Button type="button" onClick={handleAddActivity} disabled={!newNote.trim()}>
                             <Plus className="h-4 w-4 mr-2" /> Log Activity
                         </Button>
                     </div>

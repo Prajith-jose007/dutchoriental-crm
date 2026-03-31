@@ -27,19 +27,8 @@ export default function DashboardPage() {
   const [isAuthLoading, setIsAuthLoading] = useState(true);
 
   useEffect(() => {
-    let isAuthenticated = false;
-    try {
-      isAuthenticated = !!localStorage.getItem(USER_ROLE_STORAGE_KEY);
-    } catch (e) {
-      console.error("Error accessing localStorage:", e);
-    }
-
-    if (!isAuthenticated) {
-      router.replace('/login');
-    } else {
-      setIsAuthLoading(false);
-    }
-  }, [router]);
+    setIsAuthLoading(false);
+  }, []);
 
   useEffect(() => {
     if (isAuthLoading) return;

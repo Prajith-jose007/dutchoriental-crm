@@ -142,13 +142,13 @@ export function TicketDialog({
 
                     {/* Action buttons */}
                     <div className="flex flex-col sm:flex-row gap-2 justify-center w-full print:hidden">
-                        <Button onClick={handlePrint} variant="outline" className="flex-1 border-[#B2904C] text-[#B2904C] hover:bg-[#B2904C] hover:text-white font-bold transition-colors">
+                        <Button type="button" onClick={handlePrint} variant="outline" className="flex-1 border-[#B2904C] text-[#B2904C] hover:bg-[#B2904C] hover:text-white font-bold transition-colors">
                             <Printer className="w-4 h-4 mr-2" /> Print Ticket
                         </Button>
-                        <Button onClick={handleWhatsApp} className="flex-1 bg-green-500 hover:bg-green-600 text-white font-bold transition-colors">
+                        <Button type="button" onClick={handleWhatsApp} className="flex-1 bg-green-500 hover:bg-green-600 text-white font-bold transition-colors">
                             <MessageCircle className="w-4 h-4 mr-2" /> WhatsApp
                         </Button>
-                        <Button onClick={handleEmail} variant="default" className="flex-1 bg-slate-800 hover:bg-slate-900 text-white font-bold transition-colors">
+                        <Button type="button" onClick={handleEmail} variant="default" className="flex-1 bg-slate-800 hover:bg-slate-900 text-white font-bold transition-colors">
                             <Mail className="w-4 h-4 mr-2" /> Email
                         </Button>
                     </div>

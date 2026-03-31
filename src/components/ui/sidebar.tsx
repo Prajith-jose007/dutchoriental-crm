@@ -293,6 +293,7 @@ const SidebarRail = React.forwardRef<
 
   return (
     <button
+      type="button"
       ref={ref}
       data-sidebar="rail"
       aria-label="Toggle Sidebar"
@@ -457,6 +458,7 @@ const SidebarGroupAction = React.forwardRef<
 
   return (
     <Comp
+      type={asChild ? undefined : "button"}
       ref={ref}
       data-sidebar="group-action"
       className={cn(
@@ -558,6 +560,7 @@ const SidebarMenuButton = React.forwardRef<
 
     const button = (
       <Comp
+        type={asChild ? undefined : "button"}
         ref={ref}
         data-sidebar="menu-button"
         data-size={size}
@@ -603,6 +606,7 @@ const SidebarMenuAction = React.forwardRef<
 
   return (
     <Comp
+      type={asChild ? undefined : "button"}
       ref={ref}
       data-sidebar="menu-action"
       className={cn(

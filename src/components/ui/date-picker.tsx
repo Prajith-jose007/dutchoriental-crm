@@ -30,6 +30,7 @@ export function DatePicker({ date, setDate, placeholder = "Pick a date", classNa
     <Popover modal={true} open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button
+          type="button"
           variant={'outline'}
           className={cn(
             'w-full justify-start text-left font-normal',

@@ -40,7 +40,16 @@ export async function PUT(
   }
 
   try {
-    const updatedUser = await request.json() as Partial<User>;
+    const requestBody = await request.json();
+    const { requestingUserId, requestingUserRole, ...updatedUser } = requestBody;
+
+    if (!requestingUserRole) {
+      return NextResponse.json({ message: 'Authentication required' }, { status: 401 });
+    }
+
+    if (requestingUserRole.toLowerCase() !== 'super admin') {
+      return NextResponse.json({ message: 'Permission Denied: Only Super Admins can modify users.' }, { status: 403 });
+    }
 
     const existingUserResult = await query<User[]>('SELECT email FROM users WHERE id = ?', [id]);
     if (existingUserResult.length === 0) {
@@ -107,6 +116,17 @@ export async function DELETE(
   }
 
   try {
+    const requestBody = await request.json().catch(() => ({}));
+    const { requestingUserId, requestingUserRole } = requestBody;
+
+    if (!requestingUserRole) {
+      return NextResponse.json({ message: 'Authentication required' }, { status: 401 });
+    }
+
+    if (requestingUserRole.toLowerCase() !== 'super admin') {
+      return NextResponse.json({ message: 'Permission Denied: Only Super Admins can delete users.' }, { status: 403 });
+    }
+
     const result = await query<{ affectedRows: number }>('DELETE FROM users WHERE id = ?', [id]);
 
     if (result.affectedRows === 0) {

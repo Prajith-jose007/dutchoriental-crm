@@ -29,10 +29,11 @@ interface UsersTableProps {
   users: User[];
   onEditUser: (user: User) => void;
   onDeleteUser: (userId: string) => void; // Added prop for delete
-  isAdmin: boolean; 
+  isAdmin: boolean;
+  isSuperAdmin: boolean;
 }
 
-export function UsersTable({ users, onEditUser, onDeleteUser, isAdmin }: UsersTableProps) {
+export function UsersTable({ users, onEditUser, onDeleteUser, isAdmin, isSuperAdmin }: UsersTableProps) {
 
   const getStatusBadgeVariant = (status?: User['status']) => {
     switch (status) {
@@ -115,7 +116,7 @@ export function UsersTable({ users, onEditUser, onDeleteUser, isAdmin }: UsersTa
                       <DropdownMenuLabel>Actions</DropdownMenuLabel>
                       <DropdownMenuItem 
                         onClick={() => onEditUser(user)}
-                        disabled={!isAdmin} 
+                        disabled={!isSuperAdmin} 
                       >
                         Edit User
                       </DropdownMenuItem>
@@ -124,7 +125,7 @@ export function UsersTable({ users, onEditUser, onDeleteUser, isAdmin }: UsersTa
                       <DropdownMenuItem 
                         className="text-destructive"
                         onClick={() => onDeleteUser(user.id)} // Call onDeleteUser prop
-                        disabled={!isAdmin} 
+                        disabled={!isSuperAdmin} 
                       >
                         Delete User
                       </DropdownMenuItem>

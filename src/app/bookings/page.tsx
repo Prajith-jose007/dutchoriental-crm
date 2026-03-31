@@ -237,6 +237,13 @@ export default function BookingsPage() {
   };
 
   const handleEditLeadClick = (lead: Lead) => {
+    const isAdmin = canBypassClosed;
+    const isOwner = String(lead.ownerUserId) === String(currentUserId);
+    
+    if (!isAdmin && !isOwner) {
+      toast({ title: "Access Denied", description: "You can only edit bookings you have entered.", variant: "destructive" });
+      return;
+    }
     setEditingLead(lead);
     setIsLeadDialogOpen(true);
   };
@@ -363,12 +370,16 @@ export default function BookingsPage() {
       toast({ title: 'Authentication Error', description: 'User details not found. Please re-login.', variant: 'destructive' });
       return;
     }
-    if (!canDelete) {
-      toast({ title: "Access Denied", description: "You do not have permission to delete bookings.", variant: "destructive" });
-      return;
-    }
     const leadToDelete = allLeads.find(l => l.id === leadId);
     if (!leadToDelete) return;
+
+    const isOwner = String(leadToDelete.ownerUserId) === String(currentUserId);
+    const isAdmin = canDelete; // canDelete is true for Admin/Super Admin
+
+    if (!isAdmin && !isOwner) {
+      toast({ title: "Access Denied", description: "You can only delete bookings you have entered.", variant: "destructive" });
+      return;
+    }
 
     if (!confirm(`Are you sure you want to delete booking ${leadId}? This action cannot be undone.`)) {
       return;
@@ -517,21 +528,38 @@ export default function BookingsPage() {
       toast({ title: "No Bookings Selected", description: "Please select bookings to delete.", variant: "destructive" });
       return;
     }
-    if (!canDelete) {
-      toast({ title: "Access Denied", description: "Only administrators can perform bulk delete.", variant: "destructive" });
+    const isAdmin = canDelete; // canDelete is true for Admin/Super Admin
+    
+    // Filter the selected leads to only those the user is authorized to delete
+    const authorizedLeadIds = selectedLeadIds.filter(id => {
+      const lead = allLeads.find(l => l.id === id);
+      if (!lead) return false;
+      return isAdmin || String(lead.ownerUserId) === String(currentUserId);
+    });
+
+    if (authorizedLeadIds.length === 0) {
+      toast({ 
+        title: "Access Denied", 
+        description: isAdmin ? "No valid bookings found to delete." : "You can only delete bookings you have entered.", 
+        variant: "destructive" 
+      });
       return;
     }
 
-    if (!confirm(`Are you sure you want to delete ${selectedLeadIds.length} selected bookings? This action cannot be undone.`)) {
+    const message = isAdmin && authorizedLeadIds.length === selectedLeadIds.length
+      ? `Are you sure you want to delete ${authorizedLeadIds.length} selected bookings?`
+      : `Are you sure you want to delete ${authorizedLeadIds.length} authorized bookings? (Selection contained ${selectedLeadIds.length - authorizedLeadIds.length} unauthorized ones).`;
+
+    if (!confirm(`${message} This action cannot be undone.`)) {
       return;
     }
+
     setIsLoading(true);
     try {
-
       let successfulDeletes = 0;
       let failedDeletes = 0;
 
-      for (const leadId of selectedLeadIds) {
+      for (const leadId of authorizedLeadIds) {
         const leadToDelete = allLeads.find(l => l.id === leadId);
         if (!leadToDelete) continue;
 

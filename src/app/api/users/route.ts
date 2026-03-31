@@ -30,7 +30,17 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const newUser = await request.json() as User;
+    const requestBody = await request.json();
+    const { requestingUserId, requestingUserRole, ...newUser } = requestBody;
+
+    if (!requestingUserRole) {
+      return NextResponse.json({ message: 'Authentication required' }, { status: 401 });
+    }
+
+    const roleLower = requestingUserRole.toLowerCase();
+    if (roleLower !== 'admin' && roleLower !== 'super admin') {
+      return NextResponse.json({ message: 'Permission Denied: Only admins can add new users.' }, { status: 403 });
+    }
 
     if (!newUser.id || !newUser.name || !newUser.email || !newUser.designation || !newUser.password) {
       return NextResponse.json({ message: 'Missing required user fields' }, { status: 400 });

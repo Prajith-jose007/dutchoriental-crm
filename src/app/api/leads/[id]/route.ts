@@ -223,8 +223,13 @@ export async function PUT(
     }
     const { ownerUserId: existingOwner, status: existingStatus } = existingLeadResult[0];
 
-    // All users allowed to edit bookings
     const userRoleLower = requestingUserRole?.toLowerCase() || '';
+    const isOwner = String(existingOwner) === String(requestingUserId);
+    const isAdmin = userRoleLower === 'admin' || userRoleLower === 'super admin';
+
+    if (!isOwner && !isAdmin) {
+      return NextResponse.json({ message: 'Permission Denied: You can only edit bookings you have entered.' }, { status: 403 });
+    }
 
     const { packageQuantities, freeGuestDetails, ...leadFields } = updatedLeadDataFromClient;
     const dataToUpdate: Partial<Omit<Lead, 'id' | 'createdAt' | 'packageQuantities' | 'freeGuestDetails'>> & { package_quantities_json?: string | null, free_guest_details_json?: string | null } = {
@@ -327,8 +332,13 @@ export async function DELETE(
     }
     const { ownerUserId: existingOwner, status: existingStatus } = existingLeadResult[0];
 
-    // All users allowed to delete bookings
     const userRoleLower = requestingUserRole?.toLowerCase() || '';
+    const isOwner = String(existingOwner) === String(requestingUserId);
+    const isAdmin = userRoleLower === 'admin' || userRoleLower === 'super admin';
+
+    if (!isOwner && !isAdmin) {
+      return NextResponse.json({ message: 'Permission Denied: You can only delete bookings you have entered.' }, { status: 403 });
+    }
 
     const result = await query<{ affectedRows: number }>('DELETE FROM leads WHERE id = ?', [id]);
     if (result.affectedRows === 0) {

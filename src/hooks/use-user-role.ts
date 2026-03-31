@@ -43,10 +43,25 @@ export function useUserRole() {
         if (!role) return false;
 
         switch (permission) {
-            case 'manage_users':
+            case 'manage_users': // Ability to VIEW and ADD users
                 return role === 'Super Admin' || role === 'Admin';
+            case 'edit_users':
+            case 'delete_users':
+                return role === 'Super Admin';
             case 'view_users':
                 return role === 'Super Admin' || role === 'Admin';
+            case 'delete_bookings':
+            case 'manage_bookings':
+            case 'bypass_closed_lock':
+            case 'manage_yachts':
+            case 'view_reports':
+            case 'manage_accounts':
+            case 'export_data':
+                return role === 'Super Admin' || role === 'Admin';
+            case 'create_agent':
+            case 'edit_agent':
+            case 'delete_agent':
+                return true; // Everyone can manage agents for now, or refine if needed
             default:
                 return true;
         }
@@ -58,6 +73,8 @@ export function useUserRole() {
 export type Permission =
     | 'manage_users'
     | 'view_users'
+    | 'edit_users'
+    | 'delete_users'
     | 'create_agent'
     | 'edit_agent'
     | 'delete_agent'

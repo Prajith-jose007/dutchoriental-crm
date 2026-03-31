@@ -19,8 +19,21 @@ export default function UsersPage() {
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
   const { role, hasPermission, isLoading: isRoleLoading } = useUserRole();
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
-  const isAdmin = hasPermission('manage_users');
+  useEffect(() => {
+    try {
+      const storedUserId = localStorage.getItem('currentUserId');
+      setCurrentUserId(storedUserId);
+    } catch (e) {
+      console.error("Error accessing localStorage in UsersPage:", e);
+    }
+  }, []);
+
+  const canAdd = hasPermission('manage_users');
+  const canEdit = hasPermission('edit_users');
+  const canDelete = hasPermission('delete_users');
+  const canView = hasPermission('view_users');
 
   const fetchUsers = useCallback(async () => {
     setIsLoading(true);
@@ -47,7 +60,7 @@ export default function UsersPage() {
 
 
   const handleAddUserClick = () => {
-    if (!isAdmin) {
+    if (!canAdd) {
       toast({ title: "Access Denied", description: "Only admins can add new users.", variant: "destructive" });
       return;
     }
@@ -56,8 +69,8 @@ export default function UsersPage() {
   };
 
   const handleEditUserClick = (user: User) => {
-    if (!isAdmin) {
-      toast({ title: "Access Denied", description: "Only admins can edit users.", variant: "destructive" });
+    if (!canEdit) {
+      toast({ title: "Access Denied", description: "Only super administrators can edit users.", variant: "destructive" });
       return;
     }
     setEditingUser(user);
@@ -65,7 +78,7 @@ export default function UsersPage() {
   };
 
   const handleUserFormSubmit = async (submittedUserData: User) => {
-    if (!isAdmin) {
+    if (!canAdd) {
       toast({ title: "Access Denied", description: "You do not have permission to save user data.", variant: "destructive" });
       return;
     }
@@ -78,12 +91,11 @@ export default function UsersPage() {
 
     try {
       let response;
-      const payload = { ...submittedUserData };
-      // If password is empty string for edit, don't send it (API handles not updating password)
-      if (editingUser && payload.password === '') {
-        delete payload.password;
-      }
-
+      const payload = { 
+        ...submittedUserData,
+        requestingUserId: currentUserId,
+        requestingUserRole: role
+      };
 
       if (editingUser) { // Editing existing user
         response = await fetch(`/api/users/${editingUser.id}`, {
@@ -116,8 +128,8 @@ export default function UsersPage() {
   };
 
   const handleDeleteUser = async (userId: string) => {
-    if (!isAdmin) {
-      toast({ title: "Access Denied", description: "Only admins can delete users.", variant: "destructive" });
+    if (!canDelete) {
+      toast({ title: "Access Denied", description: "Only super administrators can delete users.", variant: "destructive" });
       return;
     }
     if (!confirm(`Are you sure you want to delete user ${userId}? This action cannot be undone.`)) {
@@ -125,7 +137,11 @@ export default function UsersPage() {
     }
 
     try {
-      const response = await fetch(`/api/users/${userId}`, { method: 'DELETE' });
+      const response = await fetch(`/api/users/${userId}`, { 
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ requestingUserId: currentUserId, requestingUserRole: role })
+      });
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ message: response.statusText }));
         throw new Error(errorData.message || `Failed to delete user: ${response.statusText}`);
@@ -150,12 +166,12 @@ export default function UsersPage() {
   }
 
 
-  if (!isAdmin && !isLoading) {
+  if (!canView && !isLoading) {
     return (
       <div className="container mx-auto py-2">
         <PageHeader
           title="User Management"
-          description="Access Denied. User management is restricted to administrators."
+          description="Access Denied. User management is restricted to authorized personnel."
         />
         <p className="text-destructive text-center py-10">
           You do not have permission to view or manage user data.
@@ -189,14 +205,14 @@ export default function UsersPage() {
         title="User Management"
         description="Manage your team members and their roles."
         actions={
-          <Button onClick={handleAddUserClick} disabled={!isAdmin}>
+          <Button onClick={handleAddUserClick} disabled={!canAdd}>
             <PlusCircle className="mr-2 h-4 w-4" />
-            Add User {isAdmin ? "" : "(Admin Only)"}
+            Add User {!canAdd && "(Admin Only)"}
           </Button>
         }
       />
-      <UsersTable users={users} onEditUser={handleEditUserClick} onDeleteUser={handleDeleteUser} isAdmin={isAdmin} />
-      {isUserDialogOpen && isAdmin && (
+      <UsersTable users={users} onEditUser={handleEditUserClick} onDeleteUser={handleDeleteUser} isAdmin={canAdd} isSuperAdmin={canDelete} />
+      {isUserDialogOpen && (
         <UserFormDialog
           isOpen={isUserDialogOpen}
           onOpenChange={setIsUserDialogOpen}

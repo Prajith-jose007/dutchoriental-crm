@@ -380,9 +380,15 @@ export function BookingsTable({
       );
     }
     if (column.accessorKey === 'id') {
-      const canEdit = true;
+      const isOwner = String(lead.ownerUserId) === String(currentUserId);
+      const isAuthorized = isAdmin || isOwner;
       return (
-        <Button variant="link" className="p-0 h-auto font-medium" onClick={() => onEditLead(lead)} disabled={!canEdit}>
+        <Button 
+          variant="link" 
+          className="p-0 h-auto font-medium" 
+          onClick={() => onEditLead(lead)} 
+          disabled={!isAuthorized}
+        >
           {String(lead.id).length > 10 ? String(lead.id).substring(0, 4) + '...' + String(lead.id).substring(String(lead.id).length - 4) : lead.id}
         </Button>
       );
@@ -535,7 +541,10 @@ export function BookingsTable({
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                               <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                              <DropdownMenuItem onClick={() => onEditLead(lead)}>
+                              <DropdownMenuItem 
+                                onClick={() => onEditLead(lead)}
+                                disabled={!isAdmin && String(lead.ownerUserId) !== String(currentUserId)}
+                              >
                                 Edit Booking
                               </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => onViewTicket(lead)}>
@@ -553,6 +562,7 @@ export function BookingsTable({
                               <DropdownMenuItem
                                 className="text-destructive"
                                 onClick={() => onDeleteLead(lead.id)}
+                                disabled={!isAdmin && String(lead.ownerUserId) !== String(currentUserId)}
                               >
                                 Delete Booking
                               </DropdownMenuItem>

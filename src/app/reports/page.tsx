@@ -57,6 +57,9 @@ export default function ReportsPage() {
   const isAuthorized = true; // User request: Report page should be seen by all users
   const authChecked = true;
 
+  // Stable today's date to prevent re-render loops when passing to components
+  const today = useMemo(() => new Date(), []);
+
 
   const fetchAllData = async () => {
     setIsLoading(true);
@@ -545,7 +548,7 @@ export default function ReportsPage() {
         <DailyBookingsStats
           leads={allLeads}
           yachts={allYachts}
-          date={startDate || new Date()}
+          date={startDate || today}
           title={startDate ? "Daily Report (Selected Date)" : "Daily Report (Today)"}
         />
       </div>

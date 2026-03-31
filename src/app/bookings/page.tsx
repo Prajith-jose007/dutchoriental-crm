@@ -147,6 +147,9 @@ export default function BookingsPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [isImporting, setIsImporting] = useState(false);
 
+  // Stable today's date to prevent re-render loops when passing to components
+  const today = useMemo(() => new Date(), []);
+
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   const { hasPermission, role: currentUserRole } = useUserRole();
@@ -2069,7 +2072,7 @@ export default function BookingsPage() {
       <DailyBookingsStats
         leads={allLeads}
         yachts={allYachts}
-        date={startDate || new Date()}
+        date={startDate || today}
         title={startDate ? "Daily Report (Selected Date)" : "Daily Report (Today)"}
       />
       <BookingsTable

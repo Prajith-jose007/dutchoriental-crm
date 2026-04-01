@@ -39,6 +39,8 @@ interface DbLead {
     checked_in_quantities_json?: string;
     collectedAtCheckIn?: number;
     noShowCount?: number;
+    payAtCounterAmount?: number;
+    payAtCounterRemark?: string;
 }
 
 const ensureISOFormat = (dateSource?: string | Date): string | null => {
@@ -113,6 +115,8 @@ const mapDbLeadToLeadObject = (dbLead: DbLead): Lead => {
         freeGuestDetails,
         checkedInQuantities,
         noShowCount: Number(dbLead.noShowCount || 0),
+        payAtCounterAmount: dbLead.payAtCounterAmount !== null && dbLead.payAtCounterAmount !== undefined ? Number(dbLead.payAtCounterAmount) : undefined,
+        payAtCounterRemark: dbLead.payAtCounterRemark || undefined,
     };
 };
 
@@ -200,7 +204,9 @@ export async function POST(request: NextRequest) {
                 notes,
                 perTicketRate,
                 perTicketRateReason,
-                noShowCount
+                noShowCount,
+                payAtCounterAmount,
+                payAtCounterRemark
             } = leadData;
 
             const now = formatToMySQLDateTime(new Date());
@@ -220,9 +226,11 @@ export async function POST(request: NextRequest) {
                     yacht = ?,
                     clientName = ?,
                     notes = ?,
-                    perTicketRate = ?,
-                    perTicketRateReason = ?,
-                    noShowCount = ?,
+                    perTicketRate = ?, 
+                    perTicketRateReason = ?, 
+                    noShowCount = ?, 
+                    payAtCounterAmount = ?,
+                    payAtCounterRemark = ?,
                     updatedAt = ?
                 WHERE id = ?
             `;
@@ -245,6 +253,8 @@ export async function POST(request: NextRequest) {
                 perTicketRate || 0,
                 perTicketRateReason || null,
                 noShowCount || 0,
+                payAtCounterAmount !== undefined && payAtCounterAmount !== null ? Number(payAtCounterAmount) : null,
+                payAtCounterRemark || null,
                 now,
                 leadId
             ]);

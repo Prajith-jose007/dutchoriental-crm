@@ -457,7 +457,8 @@ export function BookingFormDialog({ isOpen, onOpenChange, lead, onSubmitSuccess,
     }
 
     const previousTotalPaid = lead ? Number(lead.paidAmount || 0) : 0;
-    const actualSignedBalanceAmount = Number(((calculatedNetAmount + parsedAddOnTotal) - (previousTotalPaid + visuallyAllocatedToMain)).toFixed(2));
+    // Office Balance = (Discounted Ticket + Additional) - PAC - (Already Paid to Office)
+    const actualSignedBalanceAmount = Number(((calculatedNetAmount + parsedAddOnTotal) - pacTotal - (previousTotalPaid + visuallyAllocatedToMain)).toFixed(2));
 
     const currentVals = form.getValues();
     if (Number(currentVals.totalAmount) !== calculatedTotalAmount) form.setValue('totalAmount', calculatedTotalAmount, { shouldValidate: true });

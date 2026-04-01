@@ -80,7 +80,7 @@ export function CheckInCard({ leads: initialLeads, yachts }: CheckInCardProps) {
             const leadTotal = leadPkgTotal + (l.perTicketRate || 0);
 
             const explicitComm = l.commissionAmount || 0;
-            const calculatedComm = l.commissionPercentage ? (leadTotal * l.commissionPercentage / 100) : 0;
+            const calculatedComm = l.commissionPercentage ? (leadPkgTotal * l.commissionPercentage / 100) : 0;
 
             // Prefer explicit, fallback to calculated if explicit is 0 but % exists
             let leadComm = explicitComm || calculatedComm;
@@ -88,14 +88,16 @@ export function CheckInCard({ leads: initialLeads, yachts }: CheckInCardProps) {
             // Fix for "Phantom Balance": 
             // If comm is still 0, but booking is Confirmed and Paid < Total, assume difference is agent commission.
             const paid = l.paidAmount || 0;
-            if (leadComm === 0 && (l.status === 'Confirmed' || l.status === 'Balance' || l.paymentConfirmationStatus === 'CONFIRMED') && paid > 0 && paid < leadTotal) {
+            if (leadComm === 0 && l.agent !== 'Direct' && (l.status === 'Confirmed' || l.status === 'Balance' || l.paymentConfirmationStatus === 'CONFIRMED') && paid > 0 && paid < leadTotal) {
                 const impliedDiff = leadTotal - paid;
                 if (impliedDiff > 0) leadComm = impliedDiff;
             }
 
             return sum + leadComm;
         }, 0);
-        const netAmt = totalAmt - totalComm; // Derived Net
+
+        // Net Amount = (Package Total - Commission) + Addons
+        const netAmt = (packageTotal - totalComm) + addonAmt;
 
         const paidAmt = currentLeads.reduce((sum, l) => sum + (l.paidAmount || 0), 0);
         const freeGuestTotal = currentLeads.reduce((sum, l) => sum + (Number(l.freeGuestCount) || 0), 0);
@@ -103,9 +105,13 @@ export function CheckInCard({ leads: initialLeads, yachts }: CheckInCardProps) {
         const adultsTotal = currentLeads.reduce((sum, l) => sum + (Number(l.adultsCount) || 0), 0);
         const noShowTotal = currentLeads.reduce((sum, l) => sum + (Number(l.noShowCount) || 0), 0);
 
-        // Balance is Net - Paid (or Total - Paid? Standard is Net - Paid for Agent, Total - Paid for Direct?)
-        const balAmt = netAmt - paidAmt;
+        const pacAmountTotal = currentLeads.reduce((sum, l) => sum + (l.payAtCounterAmount || 0), 0);
         const collectedAtCheckInTotal = currentLeads.reduce((sum, l) => sum + (l.collectedAtCheckIn || 0), 0);
+
+        // Office Balance = Net - Paid - Current PAC Due (Portion NOT due at counter)
+        const currentPacDue = Math.max(0, pacAmountTotal - collectedAtCheckInTotal);
+        const balAmt = (netAmt - paidAmt) - currentPacDue;
+        const pacRemarkJoined = Array.from(new Set(currentLeads.map(l => l.payAtCounterRemark).filter(Boolean))).join(', ');
 
         // Determine overall status
         const isAllCheckedIn = currentLeads.every(l => l.checkInStatus === 'Checked In');
@@ -132,6 +138,8 @@ export function CheckInCard({ leads: initialLeads, yachts }: CheckInCardProps) {
             kidsCount: kidsTotal,
             adultsCount: adultsTotal,
             noShowCount: noShowTotal,
+            payAtCounterAmount: pacAmountTotal,
+            payAtCounterRemark: pacRemarkJoined,
             status: isAllConfirmed ? 'Confirmed' : (isAllCheckedIn ? 'Confirmed' : primary.status),
             // Join IDs for display
             transactionId: currentLeads.map(l => l.transactionId).filter(Boolean)[0], // Show single TRN as per request
@@ -312,6 +320,12 @@ export function CheckInCard({ leads: initialLeads, yachts }: CheckInCardProps) {
             // (Keep existing status logic)
             if (virtualData.yacht !== originalVirtualData.yacht) lead.yacht = virtualData.yacht;
             if (virtualData.clientName !== originalVirtualData.clientName) lead.clientName = virtualData.clientName;
+            
+            // Sync Pay At Counter fields from virtual view back to primary lead
+            if (lead.id === updatedLeads[0]?.id) {
+                lead.payAtCounterAmount = virtualData.payAtCounterAmount ?? undefined;
+                lead.payAtCounterRemark = virtualData.payAtCounterRemark;
+            }
 
             const totBooked = (lead.packageQuantities || []).reduce((s, p) => s + p.quantity, 0);
             const totChecked = (lead.checkedInQuantities || []).reduce((s, c) => s + c.quantity, 0);
@@ -585,6 +599,32 @@ export function CheckInCard({ leads: initialLeads, yachts }: CheckInCardProps) {
                     </div>
                 </div>
 
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="p-3 bg-red-50/50 dark:bg-red-950/20 rounded-md border border-red-100 space-y-2">
+                        <p className="text-[10px] font-bold text-red-700 dark:text-red-300 uppercase flex items-center gap-1">Pay at Counter Amount (AED)</p>
+                        <Input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            placeholder="0.00"
+                            value={data.payAtCounterAmount === undefined || data.payAtCounterAmount === null ? '' : data.payAtCounterAmount}
+                            onChange={(e) => setVirtualData({ ...data, payAtCounterAmount: e.target.value === '' ? undefined : parseFloat(e.target.value) })}
+                            disabled={isLocked}
+                            className="bg-white border-red-200 font-mono font-bold text-red-700"
+                        />
+                    </div>
+                    <div className="p-3 bg-red-50/50 dark:bg-red-950/20 rounded-md border border-red-100 space-y-2">
+                        <p className="text-[10px] font-bold text-red-700 dark:text-red-300 uppercase flex items-center gap-1">Pay at Counter Remark</p>
+                        <Input
+                            placeholder="Remark..."
+                            value={data.payAtCounterRemark || ''}
+                            onChange={(e) => setVirtualData({ ...data, payAtCounterRemark: e.target.value })}
+                            disabled={isLocked}
+                            className="bg-white border-red-200 font-medium"
+                        />
+                    </div>
+                </div>
+
                 <div className="p-4 bg-slate-50 dark:bg-slate-900 rounded-lg border space-y-4">
                     <h4 className="text-xs font-bold uppercase text-muted-foreground border-b pb-2">Financial Calculation</h4>
 
@@ -616,24 +656,10 @@ export function CheckInCard({ leads: initialLeads, yachts }: CheckInCardProps) {
                             </p>
                         </div>
 
-                        {/* 4. Current Due (New Net - Original Paid) */}
-                        <div className="space-y-1 bg-blue-50/50 p-1 rounded -m-1">
-                            <p className="text-[10px] text-muted-foreground uppercase font-bold text-blue-700">Current Due</p>
-                            {(() => {
-                                const currentNet = data.netAmount || 0;
-                                const originalPaid = originalVirtualData.paidAmount || 0; // Use original paid, so we don't double count collectedNow yet
-                                // Actually data.paidAmount is NOT updated with collectedNow until Save. 
-                                // But data.paidAmount MIGHT include updates if we saved previously? 
-                                // data.paidAmount comes from virtualData which comes from leads.
-                                // If we haven't saved, data.paidAmount == originalVirtualData.paidAmount.
-
-                                const due = currentNet - (data.paidAmount || 0);
-                                return (
-                                    <p className="font-mono font-bold text-blue-700">
-                                        AED {due.toLocaleString()}
-                                    </p>
-                                );
-                            })()}
+                        {/* 5. Pay at Counter (Persistent) */}
+                        <div className="space-y-1">
+                            <p className="text-[10px] text-muted-foreground uppercase">Pay at Counter</p>
+                            <p className="font-mono font-medium text-red-600">AED {(data.payAtCounterAmount || 0).toLocaleString()}</p>
                         </div>
 
                         {/* 5. Pay Now (Collected Now Input) */}
@@ -657,7 +683,13 @@ export function CheckInCard({ leads: initialLeads, yachts }: CheckInCardProps) {
                             {(() => {
                                 const currentNet = data.netAmount || 0;
                                 const currentPaidTotal = (data.paidAmount || 0) + collectedNow;
-                                const remaining = currentNet - currentPaidTotal;
+                                
+                                // Remaining Office Balance = Total Net - Total Paid - Remaining PAC Due
+                                const currentPacTotal = data.payAtCounterAmount || 0;
+                                const currentPacPaid = data.collectedAtCheckIn || 0;
+                                const currentPacDue = Math.max(0, currentPacTotal - currentPacPaid);
+                                
+                                const remaining = currentNet - currentPaidTotal - currentPacDue;
 
                                 return (
                                     <p className={`font-mono text-lg font-bold ${remaining > 0 ? 'text-red-600' : 'text-green-600'}`}>

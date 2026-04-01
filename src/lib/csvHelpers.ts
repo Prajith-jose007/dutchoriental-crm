@@ -87,6 +87,8 @@ export const leadCsvHeaderMapping: Record<string, any> = {
     'extra_hours': 'extraHoursUsed',
     'extra_charges': 'extraCharges',
     'scanned_on': 'checkInTime', 'scannedon': 'checkInTime',
+    'pay_at_counter': 'payAtCounterAmount', 'pac': 'payAtCounterAmount', 'counter_payment': 'payAtCounterAmount', 'pay_at_counter_amount': 'payAtCounterAmount',
+    'pay_at_counter_remark': 'payAtCounterRemark', 'pac_remark': 'payAtCounterRemark', 'counter_remark': 'payAtCounterRemark',
 
     // New generic text capture for specific import logic
     'product_name': 'temp_package_text', 'product': 'temp_package_text', 'item': 'temp_package_text', 'package': 'temp_package_text',
@@ -185,7 +187,7 @@ export const convertLeadCsvValue = (
             case 'totalAmount': case 'commissionPercentage': case 'commissionAmount':
             case 'netAmount': case 'paidAmount': case 'balanceAmount':
             case 'freeGuestCount': return 0;
-            case 'perTicketRate': return null;
+            case 'perTicketRate': case 'payAtCounterAmount': return null;
             case 'modeOfPayment': return 'CARD';
             case 'status': return 'Pending';
             case 'type': return 'Dinner Cruise';
@@ -269,7 +271,8 @@ export const convertLeadCsvValue = (
             const numFinancial = parseFloat(trimmedValue.replace(/[^0-9.-]+/g, ''));
             return isNaN(numFinancial) ? 0 : numFinancial;
         case 'perTicketRate':
-            const numRate = parseFloat(trimmedValue.replace(/,/g, ''));
+        case 'payAtCounterAmount':
+            const numRate = parseFloat(trimmedValue.replace(/[^0-9.-]+/g, ''));
             return isNaN(numRate) ? null : numRate;
 
         case 'modeOfPayment':
